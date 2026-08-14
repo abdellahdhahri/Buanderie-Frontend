@@ -200,7 +200,7 @@ export const LingeProvider = ({ children }) => {
 
   const fetchGlobalHistory = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/linges/historique-global`);
+      const res = await fetch(`${API_BASE_URL}/api/linges/historique/historique-global`);
       return await res.json();
     } catch (err) {
       console.error("Erreur fetch historique global :", err);

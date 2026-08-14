@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { LingeContext } from "../../contextes/LingeContext";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter, Eye, RefreshCw, Calendar, Clock, Trash2 } from "lucide-react";
+import { Search, Filter, Eye, RefreshCw, Calendar, Clock, Trash2, User, Tag, Box, ArrowRight } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -9,6 +9,9 @@ import { Select } from "../../components/ui/select";
 import { Modal } from "../../components/ui/modal";
 import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+
 
 export default function HistoriqueGlobal() {
   const [history, setHistory] = useState([]);
@@ -23,6 +26,7 @@ export default function HistoriqueGlobal() {
     etat: "",
     dateFrom: "",
     dateTo: "",
+    typeOperation: "",
   });
 
   const { fetchGlobalHistory } = useContext(LingeContext);
@@ -40,9 +44,8 @@ export default function HistoriqueGlobal() {
     try {
       setLoading(true);
       const data = await fetchGlobalHistory();
-      console.log("l histrique :", data)
+      console.log("Historique chargé:", data);
       setHistory(Array.isArray(data) ? data : []);
-      console.log("historique ", history)
     } catch (error) {
       console.error("Erreur chargement historique :", error);
       setHistory([]);
@@ -52,6 +55,7 @@ export default function HistoriqueGlobal() {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return "—";
     return new Date(dateString).toLocaleString("fr-FR", {
       day: "2-digit",
       month: "2-digit",
@@ -61,17 +65,93 @@ export default function HistoriqueGlobal() {
     });
   };
 
-  const filteredHistory = history.filter((entry) => {
-    const matchSearch =
-      entry.lingeId.toString().includes(filters.search) ||
-      (entry.remarques || "").toLowerCase().includes(filters.search.toLowerCase());
+  const formatDateShort = (dateString) => {
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
-    const matchEtat = filters.etat ? entry.etat === filters.etat : true;
-    const entryDate = new Date(entry.dateHeureMouvement);
+  const getEtatBadge = (etat) => {
+    const etatColors = {
+      LIVRE: { variant: "success", label: "En service" },
+      COLLECTE: { variant: "warning", label: "Collecté" },
+      RECEPTION: { variant: "info", label: "Réception" },
+      EN_TRI: { variant: "info", label: "En tri" },
+      EN_LAVAGE: { variant: "info", label: "En lavage" },
+      LAVE: { variant: "success", label: "Lavé" },
+      EN_SECHAGE: { variant: "info", label: "Séchage" },
+      SECHE: { variant: "success", label: "Séché" },
+      PLIE: { variant: "secondary", label: "Plié" },
+      STOCKE: { variant: "secondary", label: "Stocké" },
+      MANQUANT: { variant: "destructive", label: "Manquant" },
+      HORS_SERVICE: { variant: "destructive", label: "Hors service" },
+      PROPRE_PRET: { variant: "success", label: "Propre/Prêt" },
+      PRET_LIVRAISON: { variant: "success", label: "Prêt livraison" },
+      RECEPTIONNE: { variant: "success", label: "Réceptionné" },
+      DISTRIBUE: { variant: "success", label: "Distribué" },
+    };
+    const config = etatColors[etat] || { variant: "secondary", label: etat };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const getTypeOperationBadge = (type) => {
+    const types = {
+      COLLECTE: { color: "#8b5cf6", bg: "#f5f3ff", label: "Collecte" },
+      RECEPTION: { color: "#f59e0b", bg: "#fffbeb", label: "Réception" },
+      TRI: { color: "#ec4899", bg: "#fdf2f8", label: "Tri" },
+      LAVAGE: { color: "#3b82f6", bg: "#eff6ff", label: "Lavage" },
+      SECHAGE: { color: "#14b8a6", bg: "#f0fdfa", label: "Séchage" },
+      PLIAGE: { color: "#8b5cf6", bg: "#f5f3ff", label: "Pliage" },
+      STOCKAGE: { color: "#10b981", bg: "#ecfdf5", label: "Stockage" },
+      LIVRAISON: { color: "#ef4444", bg: "#fef2f2", label: "Livraison" },
+      CHANGEMENT_ETAT: { color: "#64748b", bg: "#f1f5f9", label: "Chgt état" },
+    };
+    const config = types[type] || { color: "#64748b", bg: "#f1f5f9", label: type };
+    return (
+      <Badge style={{ background: config.bg, color: config.color, border: `1px solid ${config.color}30` }}>
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const getPosteBadge = (poste) => {
+    const postes = {
+      AGENT_COLLECTE: { color: "#8b5cf6", label: "Collecte" },
+      AGENT_RECEPTION: { color: "#f59e0b", label: "Réception" },
+      AGENT_TRI: { color: "#ec4899", label: "Tri" },
+      AGENT_LAVAGE: { color: "#3b82f6", label: "Lavage" },
+      AGENT_SECHAGE: { color: "#14b8a6", label: "Séchage" },
+      AGENT_PLIAGE: { color: "#8b5cf6", label: "Pliage" },
+      AGENT_STOCKAGE: { color: "#10b981", label: "Stockage" },
+      AGENT_LIVRAISON: { color: "#ef4444", label: "Livraison" },
+      CHEF_EQUIPE: { color: "#1e293b", label: "Chef" },
+    };
+    const config = postes[poste] || { color: "#64748b", label: poste };
+    return <span style={{ color: config.color, fontWeight: 500 }}>{config.label}</span>;
+  };
+
+  const filteredHistory = history.filter((entry) => {
+    const codeLinge = entry.linge?.codeBarre || entry.lingeId || "";
+    const remarques = entry.observations || entry.remarques || "";
+    const agentNom = entry.agent?.nom || entry.agentNom || "";
+    const searchLower = filters.search.toLowerCase();
+
+    const matchSearch = 
+      codeLinge.toLowerCase().includes(searchLower) ||
+      remarques.toLowerCase().includes(searchLower) ||
+      agentNom.toLowerCase().includes(searchLower);
+
+    const matchEtat = filters.etat ? entry.etatApres === filters.etat : true;
+    const matchType = filters.typeOperation ? entry.typeOperation === filters.typeOperation : true;
+
+    const entryDate = entry.dateOperation ? new Date(entry.dateOperation) : new Date();
     const matchDateFrom = filters.dateFrom ? entryDate >= new Date(filters.dateFrom) : true;
     const matchDateTo = filters.dateTo ? entryDate <= new Date(filters.dateTo + "T23:59:59") : true;
 
-    return matchSearch && matchEtat && matchDateFrom && matchDateTo;
+    return matchSearch && matchEtat && matchType && matchDateFrom && matchDateTo;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredHistory.length / itemsPerPage));
@@ -84,6 +164,7 @@ export default function HistoriqueGlobal() {
       etat: "",
       dateFrom: "",
       dateTo: "",
+      typeOperation: "",
     });
   };
 
@@ -92,47 +173,43 @@ export default function HistoriqueGlobal() {
     setIsDetailsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Supprimer cette entrée d'historique ?")) {
-      setHistory(history.filter(h => h.id !== id));
-      Swal.fire({
-        title: "Terminé!",
-        text: "Entré supprimé!",
-        icon: "success"
-      });
-    }
-  };
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: "Supprimer cette entrée ?",
+      text: "Cette action est irréversible.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Oui, supprimer !",
+      cancelButtonText: "Annuler",
+    });
 
-  const getEtatBadge = (etat) => {
-    const etatColors = {
-      COLLECTE: "warning",
-      EN_TRI: "info",
-      EN_LAVAGE: "info",
-      LAVE: "success",
-      EN_SECHAGE_REPASSAGE: "info",
-      SECHE: "success",
-      PROPRE_PRET: "success",
-      STOCKE: "secondary",
-      PRET_LIVRAISON: "success",
-      RECEPTIONNE: "success",
-      DISTRIBUE: "success",
-    };
-    const etatLabels = {
-      COLLECTE: "Collecte",
-      EN_TRI: "En tri",
-      EN_LAVAGE: "En lavage",
-      LAVE: "Lavé",
-      EN_SECHAGE_REPASSAGE: "Séchage/Repassage",
-      SECHE: "Séché",
-      PROPRE_PRET: "Propre et prêt",
-      STOCKE: "Stocké",
-      PRET_LIVRAISON: "Prêt livraison",
-      RECEPTIONNE: "Réceptionné",
-      DISTRIBUE: "Distribué",
-    };
-    const variant = etatColors[etat] || "secondary";
-    const label = etatLabels[etat] || etat;
-    return <Badge variant={variant}>{label}</Badge>;
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`${API_URL}/api/historique/${id}`, {
+          method: "DELETE",
+        });
+        if (response.ok) {
+          setHistory(history.filter(h => h.id !== id));
+          Swal.fire({
+            title: "✅ Supprimé !",
+            text: "Entrée supprimée avec succès.",
+            icon: "success",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+        } else {
+          throw new Error("Erreur lors de la suppression");
+        }
+      } catch (error) {
+        Swal.fire({
+          title: "❌ Erreur",
+          text: "Impossible de supprimer cette entrée.",
+          icon: "error",
+        });
+      }
+    }
   };
 
   return (
@@ -141,10 +218,10 @@ export default function HistoriqueGlobal() {
       <div className="space-y-2">
         <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
           <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-            Journal des Activités
+            📋 Journal des Activités
           </h1>
           <p className="text-sm text-slate-500" style={{ color: "#166d7c" }}>
-            Historique complet des mouvements de linge
+            Historique complet des mouvements de linge et opérations
           </p>
         </div>
       </div>
@@ -180,37 +257,60 @@ export default function HistoriqueGlobal() {
 
       <Card className="mb-6">
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="md:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Rechercher par ID ou remarque..."
+                  placeholder="Rechercher par code, agent ou remarque..."
                   value={filters.search}
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-input-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
             </div>
-            <Select
-              options={[
-                { value: "", label: "Tous les états" },
-                { value: "COLLECTE", label: "Collecte" },
-                { value: "EN_TRI", label: "En tri" },
-                { value: "EN_LAVAGE", label: "En lavage" },
-                { value: "LAVE", label: "Lavé" },
-                { value: "EN_SECHAGE_REPASSAGE", label: "Séchage/Repassage" },
-                { value: "SECHE", label: "Séché" },
-                { value: "PROPRE_PRET", label: "Propre et prêt" },
-                { value: "STOCKE", label: "Stocké" },
-                { value: "PRET_LIVRAISON", label: "Prêt livraison" },
-                { value: "RECEPTIONNE", label: "Réceptionné" },
-                { value: "DISTRIBUE", label: "Distribué" },
-              ]}
-              value={filters.etat}
-              onChange={(e) => setFilters({ ...filters, etat: e.target.value })}
-            />
+            <div>
+              <select
+                value={filters.etat}
+                onChange={(e) => setFilters({ ...filters, etat: e.target.value })}
+                className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Tous les états</option>
+                <option value="LIVRE">En service</option>
+                <option value="COLLECTE">Collecté</option>
+                <option value="RECEPTION">Réception</option>
+                <option value="EN_TRI">En tri</option>
+                <option value="EN_LAVAGE">En lavage</option>
+                <option value="LAVE">Lavé</option>
+                <option value="EN_SECHAGE">Séchage</option>
+                <option value="SECHE">Séché</option>
+                <option value="PLIE">Plié</option>
+                <option value="STOCKE">Stocké</option>
+                <option value="MANQUANT">Manquant</option>
+                <option value="HORS_SERVICE">Hors service</option>
+                <option value="PROPRE_PRET">Propre/Prêt</option>
+                <option value="PRET_LIVRAISON">Prêt livraison</option>
+              </select>
+            </div>
+            <div>
+              <select
+                value={filters.typeOperation}
+                onChange={(e) => setFilters({ ...filters, typeOperation: e.target.value })}
+                className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Tous les types</option>
+                <option value="COLLECTE">Collecte</option>
+                <option value="RECEPTION">Réception</option>
+                <option value="TRI">Tri</option>
+                <option value="LAVAGE">Lavage</option>
+                <option value="SECHAGE">Séchage</option>
+                <option value="PLIAGE">Pliage</option>
+                <option value="STOCKAGE">Stockage</option>
+                <option value="LIVRAISON">Livraison</option>
+                <option value="CHANGEMENT_ETAT">Changement d'état</option>
+              </select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -226,7 +326,7 @@ export default function HistoriqueGlobal() {
                   type="date"
                   value={filters.dateFrom}
                   onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-input-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
             </div>
@@ -238,7 +338,7 @@ export default function HistoriqueGlobal() {
                   type="date"
                   value={filters.dateTo}
                   onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-input-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
             </div>
@@ -253,69 +353,73 @@ export default function HistoriqueGlobal() {
               <thead>
                 <tr>
                   <th>Date & Heure</th>
-                  <th>ID Linge</th>
+                  <th>Code Linge</th>
                   <th>État</th>
-                  <th>Remarques</th>
+                  <th>Opération</th>
+                  <th>Agent</th>
                   <th className="actions-th">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={6} className="text-center py-8 text-muted-foreground">
                       Chargement en cours...
                     </td>
                   </tr>
                 ) : currentData.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={6} className="text-center py-8 text-muted-foreground">
                       Aucun historique trouvé
                     </td>
                   </tr>
                 ) : (
-                  currentData.map((entry) => (
-                    <tr
-                      key={entry.id}
-                      onClick={() => setSelectedEntry(selectedEntry?.id === entry.id ? null : entry)}
-                      className={selectedEntry?.id === entry.id ? "expanded " : ""}
-                      style={{ cursor: "pointer" }}
-                    >
-                      <td>
-                        <div className="flex items-center gap-2 justify-center">
-                          <Clock className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-mono text-sm">{formatDate(entry.dateHeureMouvement)}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="code-badge ">#{entry.lingeId}</span>
-                      </td>
-                      <td>{getEtatBadge(entry.etat)}</td>
-                      <td>
-                        {entry.remarques ? (
+                  currentData.map((entry) => {
+                    const isSelected = selectedEntry?.id === entry.id;
+                    const codeLinge = entry.linge?.codeBarre || entry.codeLinge || entry.lingeId || "N/A";
+                    const agentNom = entry.agent?.nom || entry.agentNom || "—";
+                    const etat = entry.etatApres || entry.etat || "—";
+                    
+                    return (
+                      <tr
+                        key={entry.id}
+                        onClick={() => setSelectedEntry(isSelected ? null : entry)}
+                        className={isSelected ? "expanded" : ""}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <td>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm">
-                              {entry.remarques.length > 100
-                                ? entry.remarques.substring(0, 100) + "..."
-                                : entry.remarques}
-                            </span>
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-mono text-sm">{formatDate(entry.dateOperation)}</span>
                           </div>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">- Aucune remarque -</span>
-                        )}
-                      </td>
-                      <td>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewDetails(entry);
-                          }}
-                          className="text-[#0794a4] hover:text-[#068391] font-semibold text-sm flex items-center gap-1.5 hover:underline"
-                        >
-                          <Eye className="w-4 h-4 stroke-[2.5]" /> Détails
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td>
+                          <span className="code-badge font-mono text-sm">{codeLinge}</span>
+                        </td>
+                        <td>{getEtatBadge(etat)}</td>
+                        <td>{getTypeOperationBadge(entry.typeOperation)}</td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm">{agentNom}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewDetails(entry);
+                              }}
+                              className="text-[#0794a4] hover:text-[#068391] font-semibold text-sm flex items-center gap-1.5 hover:underline"
+                            >
+                              <Eye className="w-4 h-4" /> Détails
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -355,46 +459,89 @@ export default function HistoriqueGlobal() {
       <Modal
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
-        title={`Détails du mouvement - Linge #${selectedEntry?.lingeId}`}
+        title={`Détails du mouvement - Linge ${selectedEntry?.linge?.codeBarre || selectedEntry?.lingeId || 'N/A'}`}
         size="lg"
       >
         {selectedEntry && (
           <React.Fragment>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ID de l'entrée
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ID</label>
                 <Input value={`#${selectedEntry.id}`} disabled />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ID du linge
-                </label>
-                <Input value={`#${selectedEntry.lingeId}`} disabled />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Code Linge</label>
+                <Input value={selectedEntry.linge?.codeBarre || selectedEntry.codeLinge || "N/A"} disabled />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date et heure
-                </label>
-                <Input value={formatDate(selectedEntry.dateHeureMouvement)} disabled />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
+                <Input value={selectedEntry.linge?.categorie || "—"} disabled />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  État
-                </label>
-                <div className="mt-2">{getEtatBadge(selectedEntry.etat)}</div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Poids</label>
+                <Input value={selectedEntry.linge?.poids ? `${selectedEntry.linge.poids} kg` : "—"} disabled />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">État avant</label>
+                <div className="mt-1">{getEtatBadge(selectedEntry.etatAvant)}</div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">État après</label>
+                <div className="mt-1">{getEtatBadge(selectedEntry.etatApres)}</div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Opération</label>
+                <div className="mt-1">{getTypeOperationBadge(selectedEntry.typeOperation)}</div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date & Heure</label>
+                <Input value={formatDate(selectedEntry.dateOperation)} disabled />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Agent</label>
+                <div className="flex items-center gap-2 p-2 rounded-lg border border-input bg-slate-50">
+                  <User className="w-4 h-4 text-slate-400" />
+                  <span>{selectedEntry.agent?.nom || selectedEntry.agentNom || "—"}</span>
+                  {selectedEntry.agent?.poste && (
+                    <Badge variant="outline" className="text-xs ml-auto">
+                      {getPosteBadge(selectedEntry.agent.poste)}
+                    </Badge>
+                  )}
+                </div>
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Remarques
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Observations</label>
                 <textarea
-                  className="w-full min-h-[100px] px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={selectedEntry.remarques || "Aucune remarque"}
+                  className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={selectedEntry.observations || selectedEntry.remarques || "Aucune remarque"}
                   disabled
                 />
               </div>
+              {selectedEntry.collecte && (
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Informations collecte</label>
+                  <div className="grid grid-cols-2 gap-2 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                    <div>
+                      <span className="text-xs text-slate-400">Numéro</span>
+                      <p className="text-sm font-medium">{selectedEntry.collecte.numeroCollecte || "—"}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400">Type</span>
+                      <p className="text-sm font-medium">{selectedEntry.collecte.typeCollecte || "—"}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400">Chambre</span>
+                      <p className="text-sm font-medium">{selectedEntry.collecte.codeChambre || "—"}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400">État collecte</span>
+                      <Badge variant={selectedEntry.collecte.etatCollecte === "verifie" ? "success" : "secondary"}>
+                        {selectedEntry.collecte.etatCollecte || "—"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 mt-6">

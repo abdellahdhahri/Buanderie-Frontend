@@ -29,6 +29,7 @@ import { PiUsersFourFill } from "react-icons/pi";
 
 import { FaGlassWater ,FaPrescriptionBottle } from "react-icons/fa6";
 import { LuCombine,LuWashingMachine  } from "react-icons/lu";
+import { FaDropbox } from "react-icons/fa";
 
 
 export const NAV_ITEMS = [
@@ -44,11 +45,6 @@ export const NAV_ITEMS = [
     icon: <Settings className="w-5 h-5" />,
     children: [
       
-       {
-        label: "Matériel",
-        path: "/immo",
-        icon: <LuCombine className="w-4 h-4" />,
-      },
 
        {
         label: "Bacs",
@@ -77,6 +73,12 @@ export const NAV_ITEMS = [
         path: "/programme",
         icon: <Workflow  className="w-4 h-4" />,
       },
+        ,
+       {
+        label: "Stock",
+        path: "/arsenal",
+        icon: <FaDropbox  className="w-4 h-4" />,
+      },
     ],
   },
   {
@@ -93,6 +95,12 @@ export const NAV_ITEMS = [
         label: "Inventaire",
         path: "/Linges",
         icon: <Package className="w-4 h-4" />,
+      },
+      
+       {
+        label: "Matériel",
+        path: "/immo",
+        icon: <LuCombine className="w-4 h-4" />,
       },
       
      

@@ -9,7 +9,7 @@ import PliageList from "./pages/Pliage/PliageList";
 import LivraisonList from "./pages/livraison/LivraisonList";
 import ReceptionList from "./pages/Reception/ReceptionList";
 import HistoriqueGlobal from "./pages/Historique/HistoriqueGlobal";
-import Statistiques from "./pages/Statistiques/Statistiques";
+import Statistiques from "./pages/Statistiques/BuanderieStats";
 import ReclamationList from "./pages/Reclamation/ReclamationList";
 import TrackingPage from "./pages/Tracking/TrackingPage";
 import DashboardBuanderie from "./pages/Dashboard/BuanderieDashboard";
@@ -30,7 +30,8 @@ import DistributionList from "./pages/livraison/DistributionList";
 import DistributionChambre from "./pages/livraison/DistributionChambre";
 import AgentList from "./pages/Agent/AgentList";
 import MachineList from "./pages/Machine/MachineList";
-import BuanderieDashboard from "./pages/Dashboard/BuanderieDashboard";
+import BuanderieStats from "./pages/Statistiques/BuanderieStats";
+import ArsenalList from "./pages/Arsenal/ArsenalList";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -46,7 +47,7 @@ export const router = createBrowserRouter([
       { path: "Livraisons", Component:LivraisonList  },
       { path: "Receptions", Component: ReceptionList },
       { path: "Historiques", Component: HistoriqueGlobal },
-      { path: "Statistiques", Component: BuanderieDashboard },
+      { path: "Statistiques", Component: BuanderieStats },
       { path: "Reclamations", Component: ReclamationList },
       { path: "tracking", Component: TrackingPage },
       { path: "stockage", Component: StockageList },
@@ -65,7 +66,8 @@ export const router = createBrowserRouter([
       { path: "distChambre", Component: DistributionChambre },
       { path: "distribution", Component: DistributionList },
       { path: "agents", Component: AgentList },
-      { path: "machine", Component: MachineList },
+      { path: "machines", Component: MachineList },
+      { path: "arsenal", Component: ArsenalList },
 
     ],
   },
