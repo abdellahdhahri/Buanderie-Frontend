@@ -8,7 +8,8 @@ import {
   FaIndustry, FaCircle, FaMicrochip,
   FaChartPie, FaChartBar, FaCalendarAlt,
   FaPercent, FaLayerGroup, FaBuilding,
-  FaUserCheck, FaPhone, FaEnvelope, FaMapMarkerAlt
+  FaUserCheck, FaPhone, FaEnvelope, FaMapMarkerAlt,
+  FaArrowRight, FaList, FaTh
 } from "react-icons/fa";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -57,11 +58,7 @@ const COLORS = {
   border: "#e2e8f0",
   bg: "#f8fafc",
   surface: "#ffffff",
-  dark: "#1e293b",
-  rose: "#f43f5e",
-  amber: "#d97706",
-  emerald: "#059669",
-  sky: "#0284c7"
+  dark: "#1e293b"
 };
 
 const CHART_COLORS = [
@@ -101,7 +98,7 @@ function useDashboard() {
       ]);
 
       const dist = machinesRes?.distributionEtats || {};
-      
+
       setData({
         kpis: kpisRes,
         stock: Array.isArray(stockRes) ? stockRes : [],
@@ -132,29 +129,28 @@ function useDashboard() {
 // ─── KPI Card ──────────────────────────────────────────────────────────────
 function KpiCard({ label, value, icon, color, trend, trendValue }) {
   const isUp = trend === 'up';
-  
   return (
     <Card className="hover:shadow-lg transition-all duration-300 border-slate-100 hover:border-teal-200">
-      <CardContent className="p-5">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">{label}</p>
-            <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
+          <div className="flex-1">
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{label}</p>
+            <p className="text-xl font-bold text-slate-800 mt-0.5">{value}</p>
             {trend && (
-              <div className="flex items-center gap-1 mt-1">
-                <span className={`text-xs font-medium ${isUp ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {isUp ? <FaArrowUp size={10} /> : <FaArrowDown size={10} />}
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className={`text-[10px] font-medium ${isUp ? 'text-emerald-500' : 'text-red-500'}`}>
+                  {isUp ? <FaArrowUp size={8} /> : <FaArrowDown size={8} />}
                   {trendValue}
                 </span>
-                <span className="text-[10px] text-slate-400">vs hier</span>
+                <span className="text-[8px] text-slate-400">vs hier</span>
               </div>
             )}
           </div>
-          <div 
-            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: `${color}15`, color }}
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: `${color}12`, color }}
           >
-            <span className="text-xl">{icon}</span>
+            <span className="text-base">{icon}</span>
           </div>
         </div>
       </CardContent>
@@ -171,7 +167,7 @@ function PieChartComponent({ data, title, labels }) {
         data: data || [30, 25, 20, 15, 10],
         backgroundColor: CHART_COLORS.slice(0, 5),
         borderColor: '#ffffff',
-        borderWidth: 3,
+        borderWidth: 2,
       },
     ],
   };
@@ -183,10 +179,10 @@ function PieChartComponent({ data, title, labels }) {
       legend: {
         position: 'bottom',
         labels: {
-          padding: 12,
+          padding: 8,
           usePointStyle: true,
           pointStyle: 'circle',
-          font: { size: 10, weight: '500' },
+          font: { size: 9, weight: '500' },
           color: '#64748b'
         }
       }
@@ -195,15 +191,15 @@ function PieChartComponent({ data, title, labels }) {
   };
 
   return (
-    <Card className="border-slate-100 h-full shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-teal-500 flex items-center justify-center text-white">
-            <FaChartPie size={12} />
+    <Card className="border-slate-100 h-full shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-400 to-teal-500 flex items-center justify-center text-white">
+            <FaChartPie size={11} />
           </div>
-          <h3 className="text-sm font-bold text-slate-700">{title || 'Répartition'}</h3>
+          <h3 className="text-xs font-bold text-slate-700">{title || 'Répartition'}</h3>
         </div>
-        <div className="h-48">
+        <div className="h-[180px]">
           <Pie data={chartData} options={options} />
         </div>
       </CardContent>
@@ -220,7 +216,7 @@ function BarChartComponent({ data, title, labels, colors }) {
         label: 'Activité',
         data: data || [12, 19, 15, 22, 18, 14, 8],
         backgroundColor: colors || CHART_COLORS.slice(0, 7),
-        borderRadius: 6,
+        borderRadius: 4,
         borderSkipped: false,
       },
     ],
@@ -242,7 +238,7 @@ function BarChartComponent({ data, title, labels, colors }) {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 9 },
+          font: { size: 8 },
           color: '#94a3b8',
         }
       },
@@ -251,7 +247,7 @@ function BarChartComponent({ data, title, labels, colors }) {
           display: false,
         },
         ticks: {
-          font: { size: 9 },
+          font: { size: 8 },
           color: '#94a3b8',
         }
       }
@@ -259,15 +255,15 @@ function BarChartComponent({ data, title, labels, colors }) {
   };
 
   return (
-    <Card className="border-slate-100 h-full shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center text-white">
-            <FaChartBar size={12} />
+    <Card className="border-slate-100 h-full shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center text-white">
+            <FaChartBar size={11} />
           </div>
-          <h3 className="text-sm font-bold text-slate-700">{title || 'Activité quotidienne'}</h3>
+          <h3 className="text-xs font-bold text-slate-700">{title || 'Activité quotidienne'}</h3>
         </div>
-        <div className="h-44">
+        <div className="h-[180px]">
           <Bar data={chartData} options={options} />
         </div>
       </CardContent>
@@ -275,7 +271,7 @@ function BarChartComponent({ data, title, labels, colors }) {
   );
 }
 
-// ─── Doughnut Chart ──────────────────────────────────────────────────────────
+// ─── Doughnut Chart ────────────────────────────────────────────────────────
 function DoughnutChartComponent({ data, title, labels }) {
   const chartData = {
     labels: labels || ['Disponible', 'En cours', 'Maintenance', 'HS'],
@@ -284,7 +280,7 @@ function DoughnutChartComponent({ data, title, labels }) {
         data: data || [40, 30, 20, 10],
         backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
         borderColor: '#ffffff',
-        borderWidth: 3,
+        borderWidth: 2,
       },
     ],
   };
@@ -296,10 +292,10 @@ function DoughnutChartComponent({ data, title, labels }) {
       legend: {
         position: 'bottom',
         labels: {
-          padding: 10,
+          padding: 8,
           usePointStyle: true,
           pointStyle: 'circle',
-          font: { size: 9, weight: '500' },
+          font: { size: 8, weight: '500' },
           color: '#64748b'
         }
       }
@@ -308,15 +304,15 @@ function DoughnutChartComponent({ data, title, labels }) {
   };
 
   return (
-    <Card className="border-slate-100 h-full shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-400 to-purple-500 flex items-center justify-center text-white">
-            <FaLayerGroup size={12} />
+    <Card className="border-slate-100 h-full shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-400 to-purple-500 flex items-center justify-center text-white">
+            <FaLayerGroup size={11} />
           </div>
-          <h3 className="text-sm font-bold text-slate-700">{title || 'État des machines'}</h3>
+          <h3 className="text-xs font-bold text-slate-700">{title || 'État des machines'}</h3>
         </div>
-        <div className="h-44">
+        <div className="h-[180px]">
           <Doughnut data={chartData} options={options} />
         </div>
       </CardContent>
@@ -324,84 +320,132 @@ function DoughnutChartComponent({ data, title, labels }) {
   );
 }
 
-// ─── STOCK SERVICES - Version élégante ─────────────────────────────────────
+// ─── STOCK SERVICES (moderne) ──────────────────────────────────────────────
 function StockServices({ services }) {
   if (!services || services.length === 0) {
     return (
       <Card className="border-slate-100 h-full shadow-sm">
-        <CardContent className="p-5 flex items-center justify-center h-48">
-          <p className="text-sm text-slate-400">Aucune donnée stock</p>
+        <CardContent className="p-5 flex items-center justify-center h-[240px]">
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
+              <FaWarehouse className="w-6 h-6 text-slate-300" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">Aucune donnée stock</p>
+            <p className="text-xs text-slate-400 mt-1">Les services apparaîtront ici</p>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
+  const totalLivre = services.reduce((sum, s) => sum + (s.nbLivre || 0), 0);
+  const totalCircuit = services.reduce((sum, s) => sum + (s.nbEnCircuit || 0), 0);
+  const totalStock = services.reduce((sum, s) => sum + (s.nbStocke || 0), 0);
+
   return (
-    <Card className="border-slate-100 h-full shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-teal-500 flex items-center justify-center text-white">
-            <FaWarehouse size={12} />
+    <Card className="border-slate-100 h-full shadow-sm overflow-hidden">
+      <CardContent className="p-0">
+        <div className="px-5 pt-5 pb-4 border-b border-slate-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20">
+                <FaWarehouse size={16} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Stock par service</h3>
+                <p className="text-xs text-slate-400">{services.length} services suivis</p>
+              </div>
+            </div>
+            <Badge className="bg-teal-50 text-teal-700 border-0 text-[10px] font-medium px-2.5 py-0.5">
+              Live
+            </Badge>
           </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-700">Stock par service</h3>
-            <p className="text-[10px] text-slate-400">{services.length} services suivis</p>
+
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            <div className="rounded-xl bg-teal-50/80 border border-teal-100 p-2.5 text-center">
+              <p className="text-lg font-bold text-teal-700 leading-none">{totalLivre}</p>
+              <p className="text-[10px] text-teal-600/80 mt-1 font-medium">En place</p>
+            </div>
+            <div className="rounded-xl bg-sky-50/80 border border-sky-100 p-2.5 text-center">
+              <p className="text-lg font-bold text-sky-700 leading-none">{totalCircuit}</p>
+              <p className="text-[10px] text-sky-600/80 mt-1 font-medium">En circuit</p>
+            </div>
+            <div className="rounded-xl bg-emerald-50/80 border border-emerald-100 p-2.5 text-center">
+              <p className="text-lg font-bold text-emerald-700 leading-none">{totalStock}</p>
+              <p className="text-[10px] text-emerald-600/80 mt-1 font-medium">Stock</p>
+            </div>
           </div>
-          <Badge variant="outline" className="text-[8px] font-normal ml-auto bg-teal-50 text-teal-600 border-teal-200">
-            En temps réel
-          </Badge>
         </div>
 
-        <div className="space-y-3 max-h-52 overflow-y-auto pr-1">
+        <div className="px-4 py-3 space-y-2 max-h-[220px] overflow-y-auto">
           {services.slice(0, 6).map((s, i) => {
             const total = s.nbTotal || 1;
             const livrePct = ((s.nbLivre || 0) / total) * 100;
             const circPct = ((s.nbEnCircuit || 0) / total) * 100;
-            const stockPct = ((s.nbStocke || 0) / total) * 100;
-            
+
             const statutConfig = {
-              CRITIQUE: { color: COLORS.danger, bg: "#fee2e2", label: "⚠️ Critique", dot: COLORS.danger },
-              ATTENTION: { color: COLORS.warning, bg: "#fef3c7", label: "⚡ Attention", dot: COLORS.warning },
-              NORMAL: { color: COLORS.success, bg: "#dcfce7", label: "✓ Normal", dot: COLORS.success },
-            }[s.statut] || { color: COLORS.muted, bg: "#f1f5f9", label: "—", dot: COLORS.muted };
+              CRITIQUE: { color: "bg-red-500", text: "text-red-600", bg: "bg-red-50", label: "Critique" },
+              ATTENTION: { color: "bg-amber-500", text: "text-amber-600", bg: "bg-amber-50", label: "Attention" },
+              NORMAL: { color: "bg-emerald-500", text: "text-emerald-600", bg: "bg-emerald-50", label: "Normal" },
+            }[s.statut] || { color: "bg-slate-400", text: "text-slate-500", bg: "bg-slate-50", label: "—" };
 
             return (
-              <div 
-                key={i} 
-                className="group p-3 rounded-xl bg-white border border-slate-100 hover:border-teal-200 hover:shadow-md transition-all"
+              <div
+                key={i}
+                className="group p-3 rounded-xl bg-white border border-slate-100 hover:border-teal-200 hover:shadow-sm transition-all duration-200"
               >
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: statutConfig.bg }}>
-                      <FaBuilding size={12} style={{ color: statutConfig.color }} />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-700">{s.serviceCode}</span>
-                    <span className="text-[9px] text-slate-400">{s.nbLivre || 0}/{total}</span>
+                    <div className={`w-2 h-2 rounded-full ${statutConfig.color}`} />
+                    <span className="text-sm font-semibold text-slate-800">{s.serviceCode || "N/A"}</span>
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${statutConfig.bg} ${statutConfig.text}`}>
+                      {statutConfig.label}
+                    </span>
                   </div>
-                  <Badge variant="outline" className="text-[8px] font-medium" style={{ borderColor: statutConfig.color + '40', color: statutConfig.color, background: statutConfig.bg }}>
-                    {statutConfig.label}
-                  </Badge>
+                  <span className="text-xs font-medium text-slate-500">
+                    <span className="text-slate-800 font-bold">{s.nbLivre || 0}</span>
+                    <span className="text-slate-300 mx-1">/</span>
+                    {total}
+                  </span>
                 </div>
-                <div className="flex h-1.5 rounded-full overflow-hidden bg-slate-100">
-                  <div className="h-full bg-teal-500 transition-all duration-500" style={{ width: `${Math.min(livrePct, 100)}%` }} />
-                  <div className="h-full bg-blue-400 transition-all duration-500" style={{ width: `${Math.min(circPct, 100)}%` }} />
-                  <div className="h-full bg-emerald-400 transition-all duration-500" style={{ width: `${Math.min(stockPct, 100)}%` }} />
+
+                <div className="h-2 rounded-full bg-slate-100 overflow-hidden flex">
+                  <div
+                    className="h-full bg-gradient-to-r from-teal-500 to-teal-400 transition-all duration-500"
+                    style={{ width: `${Math.min(livrePct, 100)}%` }}
+                  />
+                  <div
+                    className="h-full bg-gradient-to-r from-sky-400 to-sky-300 transition-all duration-500"
+                    style={{ width: `${Math.min(circPct, 100)}%` }}
+                  />
                 </div>
-                <div className="flex gap-3 mt-1.5 text-[8px] text-slate-400">
-                  <span>🛏️ {s.nbLivre || 0} en place</span>
-                  <span>🔄 {s.nbEnCircuit || 0} en circuit</span>
-                  <span>📦 {s.nbStocke || 0} stock</span>
+
+                <div className="flex justify-between mt-1.5 text-[10px] text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500" /> En place
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400" /> Circuit
+                  </span>
                 </div>
               </div>
             );
           })}
         </div>
+
+        {services.length > 6 && (
+          <div className="px-4 pb-3">
+            <p className="text-[11px] text-slate-400 text-center py-1.5 rounded-lg bg-slate-50">
+              + {services.length - 6} autres services
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-// ─── ALERTES - Version élégante ─────────────────────────────────────────────
+// ─── ALERTES (moderne) ─────────────────────────────────────────────────────
 function AlertesWidget({ alertes }) {
   const all = [
     ...(alertes?.stockCritique || []),
@@ -414,55 +458,70 @@ function AlertesWidget({ alertes }) {
   const nbCrit = all.filter(a => a.niveau === "CRITICAL").length;
 
   return (
-    <Card className={`border-slate-100 h-full shadow-sm hover:shadow-md transition-shadow ${isCritical ? 'border-red-200' : ''}`}>
-      <CardContent className="p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isCritical ? 'bg-red-100' : 'bg-amber-100'}`}>
-            <FaBell className={isCritical ? "text-red-500" : "text-amber-500"} size={14} />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-700">Alertes</h3>
-            <p className="text-[10px] text-slate-400">{all.length} alerte{all.length > 1 ? 's' : ''} active{all.length > 1 ? 's' : ''}</p>
+    <Card className={`border-slate-100 h-full shadow-sm overflow-hidden ${isCritical ? "ring-1 ring-red-200" : ""}`}>
+      <CardContent className="p-0">
+        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isCritical ? "bg-red-100" : "bg-amber-100"}`}>
+              <FaBell className={isCritical ? "text-red-500" : "text-amber-500"} size={16} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Alertes</h3>
+              <p className="text-xs text-slate-400">
+                {all.length === 0 ? "Aucune alerte" : `${all.length} active${all.length > 1 ? "s" : ""}`}
+              </p>
+            </div>
           </div>
           {nbCrit > 0 && (
-            <Badge variant="destructive" className="text-[8px] font-normal ml-auto">
-              {nbCrit} critique{nbCrit > 1 ? 's' : ''}
+            <Badge className="bg-red-500 text-white border-0 text-[10px] font-semibold px-2.5 py-0.5 shadow-sm shadow-red-200">
+              {nbCrit} critique{nbCrit > 1 ? "s" : ""}
             </Badge>
           )}
         </div>
 
         {all.length === 0 ? (
-          <div className="text-center py-6">
-            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
-              <FaCheckCircle className="w-6 h-6 text-emerald-500" />
+          <div className="px-5 pb-6 pt-2 flex items-center justify-center">
+            <div className="text-center py-4">
+              <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-3">
+                <FaCheckCircle className="w-7 h-7 text-emerald-500" />
+              </div>
+              <p className="text-sm font-semibold text-slate-700">Tout est sous contrôle</p>
+              <p className="text-xs text-slate-400 mt-1">Aucune alerte en cours</p>
             </div>
-            <p className="text-sm font-medium text-slate-600">Tout est sous contrôle</p>
-            <p className="text-xs text-slate-400">Aucune alerte en cours</p>
           </div>
         ) : (
-          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+          <div className="px-4 pb-4 space-y-2 max-h-[180px] overflow-y-auto">
             {all.slice(0, 5).map((a, i) => {
               const isCrit = a.niveau === "CRITICAL";
               return (
-                <div 
+                <div
                   key={i}
-                  className="p-3 rounded-xl bg-white border hover:shadow-sm transition-all"
-                  style={{ borderLeft: `3px solid ${isCrit ? COLORS.danger : COLORS.warning}` }}
+                  className={`p-3 rounded-xl border transition-all duration-200 hover:shadow-sm ${
+                    isCrit
+                      ? "bg-red-50/50 border-red-100 hover:border-red-200"
+                      : "bg-amber-50/40 border-amber-100 hover:border-amber-200"
+                  }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex-shrink-0">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isCrit ? 'bg-red-50' : 'bg-amber-50'}`}>
-                        {a.type?.includes("SAC") ? <FaBiohazard className={isCrit ? "text-red-500" : "text-amber-500"} size={10} /> : 
-                         a.type?.includes("FIN") ? <FaClock className="text-amber-500" size={10} /> :
-                         <FaExclamationTriangle className={isCrit ? "text-red-500" : "text-amber-500"} size={10} />}
-                      </div>
+                    <div className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      isCrit ? "bg-red-100" : "bg-amber-100"
+                    }`}>
+                      {a.type?.includes("SAC") ? (
+                        <FaBiohazard size={13} className={isCrit ? "text-red-500" : "text-amber-500"} />
+                      ) : a.type?.includes("FIN") ? (
+                        <FaClock size={13} className="text-amber-500" />
+                      ) : (
+                        <FaExclamationTriangle size={13} className={isCrit ? "text-red-500" : "text-amber-500"} />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-slate-700">{a.message}</p>
-                      {a.detail && <p className="text-[9px] text-slate-400 mt-0.5">{a.detail}</p>}
+                      <p className="text-xs font-semibold text-slate-800 leading-snug">{a.message || "Alerte"}</p>
+                      {a.detail && (
+                        <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{a.detail}</p>
+                      )}
                     </div>
                     {a.reference && (
-                      <code className="text-[9px] font-mono bg-slate-50 px-2 py-0.5 rounded text-slate-500 flex-shrink-0">
+                      <code className="text-[10px] font-mono bg-white/80 border border-slate-200 px-2 py-0.5 rounded-md text-slate-500 flex-shrink-0">
                         {a.reference}
                       </code>
                     )}
@@ -477,207 +536,156 @@ function AlertesWidget({ alertes }) {
   );
 }
 
-// ─── COLLECTES - Version élégante ──────────────────────────────────────────
+// ─── COLLECTES RÉCENTES (moderne) ──────────────────────────────────────────
 function CollectesRecentes({ collectes }) {
-  const typeIcon = { MIXTE: "🏢", CHAMBRE: "🏠", UNIFORME: "👔" };
-  const typeColor = { MIXTE: "#8b5cf6", CHAMBRE: "#0d9488", UNIFORME: "#0ea5e9" };
-  const typeBg = { MIXTE: "#f5f3ff", CHAMBRE: "#ccfbf1", UNIFORME: "#e0f2fe" };
+  const typeConfig = {
+    MIXTE: { icon: "🏢", color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
+    CHAMBRE: { icon: "🏠", color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100" },
+    UNIFORME: { icon: "👔", color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-100" },
+  };
+
+  if (!collectes || collectes.length === 0) {
+    return (
+      <Card className="border-slate-100 h-full shadow-sm">
+        <CardContent className="p-5 flex items-center justify-center h-[200px]">
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
+              <FaTruck className="w-6 h-6 text-slate-300" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">Aucune collecte récente</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card className="border-slate-100 h-full shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-400 to-purple-500 flex items-center justify-center text-white">
-            <FaTruck size={12} />
+    <Card className="border-slate-100 h-full shadow-sm overflow-hidden">
+      <CardContent className="p-0">
+        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-violet-500/20">
+              <FaTruck size={15} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Collectes récentes</h3>
+              <p className="text-xs text-slate-400">Dernières opérations</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-700">Collectes récentes</h3>
-            <p className="text-[10px] text-slate-400">Dernières opérations</p>
-          </div>
-          <Badge variant="outline" className="text-[8px] font-normal ml-auto bg-purple-50 text-purple-600 border-purple-200">
+          <Badge className="bg-violet-50 text-violet-700 border-0 text-[10px] font-medium px-2.5 py-0.5">
             {collectes.length}
           </Badge>
         </div>
 
-        {collectes.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-sm text-slate-400">Aucune collecte récente</p>
-          </div>
-        ) : (
-          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-            {collectes.map((c, i) => {
-              const total = (c.nbBlancs || 0) + (c.nbInfectes || 0) + (c.nbPropres || 0) + (c.nbManquants || 0);
-              const color = typeColor[c.typeCollecte] || '#64748b';
-              const bg = typeBg[c.typeCollecte] || '#f1f5f9';
-              
-              return (
-                <div 
-                  key={i} 
-                  className="p-3 rounded-xl bg-white border border-slate-100 hover:shadow-sm transition-all flex items-center gap-3"
-                >
-                  <div 
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
-                    style={{ background: bg }}
-                  >
-                    {typeIcon[c.typeCollecte] || "📦"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-medium text-slate-700 truncate">
-                        {c.serviceCode || c.codeChambre || c.agentNom || c.numeroCollecte}
-                      </p>
-                      <span className="text-[8px] font-medium px-1.5 py-0.5 rounded" style={{ background: bg, color }}>
-                        {c.typeCollecte || '—'}
-                      </span>
-                    </div>
-                    <p className="text-[9px] text-slate-400">
-                      {c.agentNom} · {c.dateCollecte ? new Date(c.dateCollecte).toLocaleDateString('fr-FR') : '—'}
-                    </p>
-                  </div>
-                  {total > 0 && (
-                    <div className="text-right flex-shrink-0">
-                      <span className="text-xs font-bold" style={{ color }}>{total}</span>
-                      <span className="text-[8px] text-slate-400 block">linges</span>
-                    </div>
-                  )}
+        <div className="px-4 pb-4 space-y-2 max-h-[180px] overflow-y-auto">
+          {collectes.map((c, i) => {
+            const total = (c.nbBlancs || 0) + (c.nbInfectes || 0) + (c.nbPropres || 0) + (c.nbManquants || 0);
+            const conf = typeConfig[c.typeCollecte] || { icon: "📦", color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-100" };
+
+            return (
+              <div
+                key={i}
+                className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-violet-200 hover:shadow-sm transition-all duration-200"
+              >
+                <div className={`w-10 h-10 rounded-xl ${conf.bg} ${conf.border} border flex items-center justify-center text-lg flex-shrink-0`}>
+                  {conf.icon}
                 </div>
-              );
-            })}
-          </div>
-        )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-800 truncate">
+                      {c.serviceCode || c.codeChambre || "Collecte"}
+                    </p>
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${conf.bg} ${conf.color}`}>
+                      {c.typeCollecte || "—"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {c.agentNom || "Agent"} · {c.dateCollecte ? new Date(c.dateCollecte).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "—"}
+                  </p>
+                </div>
+                {total > 0 && (
+                  <div className="text-right flex-shrink-0">
+                    <p className={`text-base font-bold ${conf.color}`}>{total}</p>
+                    <p className="text-[10px] text-slate-400">linges</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-// ─── AGENTS - Version élégante ─────────────────────────────────────────────
+// ─── AGENTS ACTIFS (moderne) ───────────────────────────────────────────────
 function AgentsActifs({ agents }) {
   if (!agents || agents.length === 0) {
     return (
       <Card className="border-slate-100 h-full shadow-sm">
-        <CardContent className="p-5 flex items-center justify-center h-48">
-          <p className="text-sm text-slate-400">Aucun agent actif</p>
+        <CardContent className="p-5 flex items-center justify-center h-[200px]">
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
+              <FaUsers className="w-6 h-6 text-slate-300" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">Aucun agent actif</p>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
+  const maxOps = Math.max(...agents.map(x => x.nbOperations || 0), 1);
+
   return (
-    <Card className="border-slate-100 h-full shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-400 to-pink-500 flex items-center justify-center text-white">
-            <FaUsers size={12} />
+    <Card className="border-slate-100 h-full shadow-sm overflow-hidden">
+      <CardContent className="p-0">
+        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white shadow-md shadow-pink-500/20">
+              <FaUsers size={15} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Agents actifs</h3>
+              <p className="text-xs text-slate-400">{agents.length} en activité</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-700">Agents actifs</h3>
-            <p className="text-[10px] text-slate-400">{agents.length} agents en activité</p>
-          </div>
-          <Badge variant="outline" className="text-[8px] font-normal ml-auto bg-pink-50 text-pink-600 border-pink-200">
+          <Badge className="bg-pink-50 text-pink-700 border-0 text-[10px] font-medium px-2.5 py-0.5">
             Aujourd'hui
           </Badge>
         </div>
 
-        <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1">
-          {agents.slice(0, 5).map((a, i) => (
-            <div 
-              key={i} 
-              className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 hover:border-pink-200 hover:shadow-sm transition-all"
-            >
-              <div 
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm"
-                style={{ background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.accent})` }}
+        <div className="px-4 pb-4 space-y-2.5 max-h-[180px] overflow-y-auto">
+          {agents.slice(0, 5).map((a, i) => {
+            const pct = ((a.nbOperations || 0) / maxOps) * 100;
+            const initials = a.nomComplet?.split(" ").map(n => n[0]).join("").slice(0, 2) || "?";
+
+            return (
+              <div
+                key={i}
+                className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-pink-200 hover:shadow-sm transition-all duration-200"
               >
-                {a.nomComplet?.split(" ").map(n => n[0]).join("").slice(0, 2) || "?"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-slate-700 truncate">{a.nomComplet}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-teal-400 to-teal-500 transition-all rounded-full"
-                      style={{ width: `${Math.min((a.nbOperations / 50) * 100, 100)}%` }}
+                <div className="relative flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                    {initials}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full" />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{a.nomComplet || "Agent"}</p>
+                    <span className="text-xs font-bold text-teal-600 flex-shrink-0">{a.nbOperations || 0}</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-teal-400 to-teal-500 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(pct, 100)}%` }}
                     />
                   </div>
-                  <span className="text-[9px] font-bold text-teal-600 flex-shrink-0">{a.nbOperations}</span>
-                </div>
-              </div>
-              {a.etapeActive && (
-                <Badge variant="outline" className="text-[7px] font-medium bg-teal-50 text-teal-600 border-teal-200 flex-shrink-0">
-                  {a.etapeActive}
-                </Badge>
-              )}
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── MACHINES - Version élégante ────────────────────────────────────────────
-function Machines({ machines }) {
-  if (!machines || machines.length === 0) {
-    return (
-      <Card className="border-slate-100 h-full shadow-sm">
-        <CardContent className="p-5 flex items-center justify-center h-48">
-          <p className="text-sm text-slate-400">Aucune machine</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const etatConfig = {
-    EN_COURS: { bg: "#dbeafe", color: COLORS.info, dot: "#3b82f6", label: "En cours" },
-    DISPONIBLE: { bg: "#d1fae5", color: COLORS.success, dot: COLORS.success, label: "Dispo" },
-    EN_MAINTENANCE: { bg: "#fef3c7", color: COLORS.warning, dot: COLORS.warning, label: "Maint." },
-    HORS_SERVICE: { bg: "#fee2e2", color: COLORS.danger, dot: COLORS.danger, label: "HS" },
-  };
-
-  const typeIcon = { LAVEUR: "🫧", SECHEUR: "🌬️", LAVEUR_SECHEUR: "🔁" };
-
-  return (
-    <Card className="border-slate-100 h-full shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center text-white">
-            <FaWrench size={12} />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-700">Machines</h3>
-            <p className="text-[10px] text-slate-400">{machines.filter(m => m.etat === "EN_COURS").length}/{machines.length} en cours</p>
-          </div>
-          <Badge variant="outline" className="text-[8px] font-normal ml-auto bg-amber-50 text-amber-600 border-amber-200">
-            Live
-          </Badge>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          {machines.slice(0, 4).map((m, i) => {
-            const e = etatConfig[m.etat] || { bg: "#f1f5f9", color: COLORS.muted, dot: COLORS.muted, label: m.etat };
-            return (
-              <div 
-                key={i}
-                className="p-3 rounded-xl bg-white border hover:shadow-md transition-all"
-                style={{ borderLeft: `3px solid ${e.color}` }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-lg">{typeIcon[m.type] || "⚙️"}</span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: e.dot }} />
-                    <span className="text-[8px] font-medium" style={{ color: e.color }}>{e.label}</span>
-                  </span>
-                </div>
-                <p className="text-xs font-mono font-bold text-slate-700 mt-1">{m.code}</p>
-                <div className="flex gap-2 mt-2 text-[9px]">
-                  <div className="bg-slate-50 rounded-lg px-2 py-1 flex-1 text-center">
-                    <span className="font-bold text-slate-700">{m.cyclesAujourdhui || 0}</span>
-                    <span className="text-slate-400 block text-[7px]">cycles</span>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg px-2 py-1 flex-1 text-center">
-                    <span className="font-bold text-slate-700">{m.poidsTraiteAujourdhui || 0}</span>
-                    <span className="text-slate-400 block text-[7px]">kg</span>
-                  </div>
+                  {a.etapeActive && (
+                    <p className="text-[10px] text-slate-400 mt-1 truncate">{a.etapeActive}</p>
+                  )}
                 </div>
               </div>
             );
@@ -688,10 +696,105 @@ function Machines({ machines }) {
   );
 }
 
+// ─── MACHINES (moderne) ────────────────────────────────────────────────────
+function Machines({ machines }) {
+  if (!machines || machines.length === 0) {
+    return (
+      <Card className="border-slate-100 h-full shadow-sm">
+        <CardContent className="p-5 flex items-center justify-center h-[200px]">
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
+              <FaWrench className="w-6 h-6 text-slate-300" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">Aucune machine</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const etatConfig = {
+    EN_COURS: { bg: "bg-sky-50", text: "text-sky-700", border: "border-sky-200", dot: "bg-sky-500", label: "En cours" },
+    DISPONIBLE: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500", label: "Disponible" },
+    EN_MAINTENANCE: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", dot: "bg-amber-500", label: "Maintenance" },
+    HORS_SERVICE: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", dot: "bg-red-500", label: "Hors service" },
+  };
+
+  const typeIcon = { LAVEUR: "🫧", SECHEUR: "🌬️", LAVEUR_SECHEUR: "🔁" };
+  const total = machines.length;
+  const enCours = machines.filter(m => m.etat === "EN_COURS").length;
+
+  return (
+    <Card className="border-slate-100 h-full shadow-sm overflow-hidden">
+      <CardContent className="p-0">
+        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-md shadow-amber-500/20">
+              <FaWrench size={15} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Machines</h3>
+              <p className="text-xs text-slate-400">
+                <span className="font-semibold text-amber-600">{enCours}</span> / {total} en cours
+              </p>
+            </div>
+          </div>
+          <Badge className="bg-amber-50 text-amber-700 border-0 text-[10px] font-medium px-2.5 py-0.5">
+            Live
+          </Badge>
+        </div>
+
+        <div className="px-4 pb-4 grid grid-cols-2 gap-2.5">
+          {machines.slice(0, 4).map((m, i) => {
+            const e = etatConfig[m.etat] || { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200", dot: "bg-slate-400", label: m.etat };
+
+            return (
+              <div
+                key={i}
+                className={`p-3 rounded-xl border ${e.border} ${e.bg} hover:shadow-md transition-all duration-200`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xl">{typeIcon[m.type] || "⚙️"}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${e.dot} ${m.etat === "EN_COURS" ? "animate-pulse" : ""}`} />
+                    <span className={`text-[10px] font-semibold ${e.text}`}>{e.label}</span>
+                  </div>
+                </div>
+
+                <p className="text-sm font-bold font-mono text-slate-800">{m.code || "N/A"}</p>
+
+                <div className="grid grid-cols-2 gap-1.5 mt-2.5">
+                  <div className="bg-white/70 rounded-lg px-2 py-1.5 text-center border border-white/50">
+                    <p className="text-sm font-bold text-slate-800 leading-none">{m.cyclesAujourdhui || 0}</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5">cycles</p>
+                  </div>
+                  <div className="bg-white/70 rounded-lg px-2 py-1.5 text-center border border-white/50">
+                    <p className="text-sm font-bold text-slate-800 leading-none">{m.poidsTraiteAujourdhui || 0}</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5">kg</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {machines.length > 4 && (
+          <div className="px-4 pb-3">
+            <p className="text-[11px] text-slate-400 text-center py-1.5 rounded-lg bg-slate-50">
+              + {machines.length - 4} autres machines
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Fonctions utilitaires ─────────────────────────────────────────────────
 const num = (n) => (n ?? 0).toLocaleString("fr-FR");
 const pct = (a, b) => b > 0 ? ((a / b) * 100).toFixed(1) : "0.0";
 
-// ─── PAGE PRINCIPALE ──────────────────────────────────────────────────────
+// ─── PAGE PRINCIPALE ───────────────────────────────────────────────────────
 export default function BuanderieStats() {
   const { data, loading, error, lastUpdate, refresh } = useDashboard();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -725,44 +828,45 @@ export default function BuanderieStats() {
   ];
 
   return (
-    <div >
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-lg shadow-teal-500/20">
-            <FaTshirt size={20} />
+    <div>
+      {/* ─── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-lg shadow-teal-500/20">
+            <FaTshirt size={18} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Buanderie Hospitalière</h1>
-            <p className="text-xs text-slate-400 flex items-center gap-2">
+            <h1 className="text-xl font-bold text-slate-800">Buanderie Hospitalière</h1>
+            <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
               <span className={`inline-block w-1.5 h-1.5 rounded-full ${loading ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-              {loading ? 'Chargement...' : 
+              {loading ? 'Chargement...' :
                lastUpdate ? `Dernière mise à jour · ${lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` :
                'En attente de données'}
             </p>
           </div>
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           size="sm"
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="text-xs gap-2 border-slate-200 hover:border-teal-300 hover:bg-teal-50 transition-all"
+          className="text-[10px] gap-1.5 border-slate-200 hover:border-teal-300 hover:bg-teal-50 transition-all h-8"
         >
-          <FaSync className={isRefreshing ? 'animate-spin' : ''} size={12} />
+          <FaSync className={isRefreshing ? 'animate-spin' : ''} size={10} />
           Actualiser
         </Button>
       </div>
 
-      {/* ─── Erreur ────────────────────────────────────────────────────────── */}
+      {/* ─── Erreur ─────────────────────────────────────────────────────── */}
       {error && (
-        <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm flex items-center gap-3">
-          <FaExclamationTriangle size={16} />
+        <div className="mb-4 p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs flex items-center gap-2">
+          <FaExclamationTriangle size={12} />
           {error}
         </div>
       )}
 
-      {/* ─── KPI ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+      {/* ─── KPI ────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
         <KpiCard label="Linges actifs" value={num(kpis.lingesActifs)} icon="🧺" color={COLORS.primary} trend="up" trendValue="+12%" />
         <KpiCard label="Disponibles" value={num(kpis.lingesDisponibles)} icon="📦" color={COLORS.success} trend="up" trendValue="+5%" />
         <KpiCard label="En circuit" value={num(kpis.lingesEnCircuit)} icon="🔄" color={COLORS.info} trend="down" trendValue="-3%" />
@@ -773,17 +877,17 @@ export default function BuanderieStats() {
         <KpiCard label="Taux infection" value={kpis.tauxInfectionMois != null ? `${kpis.tauxInfectionMois}%` : '—'} icon="🦠" color={COLORS.warning} />
       </div>
 
-      {/* ─── Graphiques ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+      {/* ─── Graphiques ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
         <div className="lg:col-span-2">
-          <BarChartComponent 
-            data={barData} 
+          <BarChartComponent
+            data={barData}
             labels={barLabels}
             title="Activité quotidienne"
           />
         </div>
         <div>
-          <PieChartComponent 
+          <PieChartComponent
             data={pieValues.length > 0 ? pieValues : [30, 25, 20, 15, 10]}
             labels={pieLabels.length > 0 ? pieLabels : ['Collecte', 'Lavage', 'Séchage', 'Stock', 'Autre']}
             title="Répartition des linges"
@@ -791,7 +895,7 @@ export default function BuanderieStats() {
         </div>
       </div>
 
-      {/* ─── Grille secondaire élégante ────────────────────────────────────── */}
+      {/* ─── Grille secondaire ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Stock - 4 colonnes */}
         <div className="lg:col-span-4">
@@ -801,7 +905,7 @@ export default function BuanderieStats() {
         {/* Machines + Doughnut - 4 colonnes */}
         <div className="lg:col-span-4 space-y-4">
           <Machines machines={machines} />
-          <DoughnutChartComponent 
+          <DoughnutChartComponent
             data={machinesData.length > 0 ? machinesData : [40, 30, 20, 10]}
             labels={['Disponible', 'En cours', 'Maintenance', 'HS']}
             title="État des machines"
@@ -816,12 +920,12 @@ export default function BuanderieStats() {
         </div>
       </div>
 
-      {/* ─── Footer ────────────────────────────────────────────────────────── */}
-      <div className="mt-6 pt-4 border-t border-slate-200 flex justify-between text-[10px] text-slate-400">
-        <span>🔄 Mise à jour automatique · 30 secondes</span>
+      {/* ─── Footer ─────────────────────────────────────────────────────── */}
+      <div className="mt-4 pt-3 border-t border-slate-200 flex justify-between text-[8px] text-slate-400">
+        <span>🔄 Mise à jour automatique · 30s</span>
         <span>
-          📊 {num(kpis.totalLinges)} linges total · 
-          ⚙️ {pct(kpis.tauxOccupationMachines, 100)}% machines en cours · 
+          📊 {num(kpis.totalLinges)} linges ·
+          ⚙️ {pct(kpis.tauxOccupationMachines, 100)}% machines ·
           📈 {kpis.tauxInfectionMois || 0}% infection
         </span>
       </div>

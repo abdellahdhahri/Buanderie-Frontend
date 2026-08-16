@@ -20,7 +20,10 @@ import {
   Phone,
   Mail,
   Calendar,
-  UserCheck
+  UserCheck,
+  Circle,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
 import { Modal } from "../../components/ui/modal";
@@ -31,6 +34,7 @@ import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import printJS from "print-js";
 
+// ─── Variables d'environnement ──────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 const POSTES = [
@@ -308,18 +312,14 @@ export default function AgentList() {
             />
           </div>
           
-          
-          
           <div style="font-size:10pt; font-weight:600; color:#1a1a1a;">
             ${nomComplet}
           </div>
-          
-          
         </div>
       `,
       type: "raw-html",
       style: "* { margin: 0; padding: 0; box-sizing: border-box; } body { background: white; display: flex; justify-content: center; }",
-      documentTitle: `M`,
+      documentTitle: "M",
       css: `
         @page { 
           size: 60mm 45mm;
@@ -340,15 +340,18 @@ export default function AgentList() {
     );
   });
 
+  // ─── Nouveau style pour le statut ──────────────────────────────────────────
   const getStatutBadge = (actif) => {
     return actif ? (
-      <Badge variant="success" className="flex items-center gap-1">
-        <UserCheck className="w-3 h-3" /> Actif
-      </Badge>
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+        Actif
+      </span>
     ) : (
-      <Badge variant="secondary" className="flex items-center gap-1">
-        <X className="w-3 h-3" /> Inactif
-      </Badge>
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+        <XCircle className="w-3.5 h-3.5 text-red-500" />
+        Inactif
+      </span>
     );
   };
 
@@ -479,12 +482,12 @@ export default function AgentList() {
                 <table className="w-full">
                   <thead className="border-b border-border bg-muted/50">
                     <tr>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Matricule</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Nom & Prénom</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Poste</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Téléphone</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Statut</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Actions</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Matricule</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Nom & Prénom</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Poste</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Téléphone</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Statut</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -512,28 +515,28 @@ export default function AgentList() {
                           onClick={() => handleRowClick(agent.id)}
                           className={`border-b border-border hover:bg-accent/50 transition-colors cursor-pointer ${selectedId === agent.id ? 'bg-blue-50' : ''}`}
                         >
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <div className="font-mono text-sm font-medium text-blue-600">
                               {agent.matricule}
                             </div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <div className="font-medium">{agent.prenom} {agent.nom}</div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             {getPosteBadge(agent.poste)}
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <Phone className="w-4 h-4 text-slate-400" />
                               <span className="text-sm">{agent.telephone || "-"}</span>
                             </div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             {getStatutBadge(agent.actif)}
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();

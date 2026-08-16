@@ -20,6 +20,9 @@ import printJS from "print-js";
 import Swal from 'sweetalert2'
 import { Plus, Eye, Trash2, Edit, History, Barcode, RefreshCw, Search, Filter, X, Tag } from "lucide-react";
 
+// ─── Variables d'environnement ──────────────────────────────────────────────
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+
 // ─── Composant ModeToggle ────────────────────────────────────────────────────
 function ModeToggle({ mode, onChange }) {
   return (
@@ -146,7 +149,7 @@ export default function LingeList() {
 
   const handlePrint = () => {
     if (!selectedLingeForPrint) return;
-    const { id, codebarre, categorie,serviceNom } = selectedLingeForPrint || {};
+    const { id, codebarre, categorie, serviceNom } = selectedLingeForPrint || {};
     const format = detectFormat(codebarre);
     printJS({
       printable: `
@@ -171,7 +174,6 @@ export default function LingeList() {
 
   const [newLinge, setNewLinge] = useState({
     categorie: "",
-   // chambre_id: "",
     poids: 0,
     serviceId: "",
     codebarre: "",
@@ -189,75 +191,70 @@ export default function LingeList() {
     return () => document.removeEventListener("keydown", handleGlobalScan);
   }, [showPopup, creationMode]);
 
- // Dans la fonction handleSave, modifiez la construction du payload
-const handleSave = async (e) => {
-  e.preventDefault();
+  const handleSave = async (e) => {
+    e.preventDefault();
 
-  if (lingeToEdit) {
-    await updateLinge(lingeToEdit.id, newLinge);
-    setLingeToEdit(null);
-    setShowPopup(false);
-    loadPage(currentPage);
-    return;
-  }
-
-  if (creationMode === "manual") {
-    const codeToCheck = newLinge.codebarre.trim();
-    if (!codeToCheck) {
-      showAlert("Attention", "Veuillez scanner ou saisir un code de suivi en mode manuel.", "warning");
+    if (lingeToEdit) {
+      await updateLinge(lingeToEdit.id, newLinge);
+      setLingeToEdit(null);
+      setShowPopup(false);
+      loadPage(currentPage);
       return;
     }
-    if (checkCodeExists) {
-      const exists = await checkCodeExists(codeToCheck);
-      if (exists) {
-        showAlert("Code Existant", `L'article avec le code "${codeToCheck}" existe déjà dans l'inventaire. L'ajout est bloqué.`, "error");
+
+    if (creationMode === "manual") {
+      const codeToCheck = newLinge.codebarre.trim();
+      if (!codeToCheck) {
+        showAlert("Attention", "Veuillez scanner ou saisir un code de suivi en mode manuel.", "warning");
         return;
       }
+      if (checkCodeExists) {
+        const exists = await checkCodeExists(codeToCheck);
+        if (exists) {
+          showAlert("Code Existant", `L'article avec le code "${codeToCheck}" existe déjà dans l'inventaire. L'ajout est bloqué.`, "error");
+          return;
+        }
+      }
     }
-  }
 
-  // ✅ CORRECTION ICI : Construire le payload correctement
-  const payload = {
-    codeBarre: (creationMode === "auto" || !newLinge.codebarre.trim()) ? null : newLinge.codebarre.trim(),
-    categorie: newLinge.categorie,
-   // chambreId: newLinge.chambre_id ? parseInt(newLinge.chambre_id) : null,
-    poids: parseFloat(newLinge.poids) || 0,
-    etat: "SALE",
-    serviceId: newLinge.serviceId ? parseInt(newLinge.serviceId) : null
+    const payload = {
+      codeBarre: (creationMode === "auto" || !newLinge.codebarre.trim()) ? null : newLinge.codebarre.trim(),
+      categorie: newLinge.categorie,
+      poids: parseFloat(newLinge.poids) || 0,
+      etat: "SALE",
+      serviceId: newLinge.serviceId ? parseInt(newLinge.serviceId) : null
+    };
+
+    if (newLinge.rfidTag?.trim()) {
+      payload.rfidTag = newLinge.rfidTag.trim();
+    }
+
+    if (!payload.serviceId && services.length > 0) {
+      payload.serviceId = services[0].id;
+    }
+
+    console.log('Payload envoyé :', payload);
+
+    try {
+      const created = await addLinge(payload);
+      if (created) {
+        setLingeToPrint(created);
+        setShowPopup(false);
+        setNewLinge({ 
+          categorie: "", 
+          poids: 0, 
+          serviceId: "", 
+          codebarre: "", 
+          rfidTag: "" 
+        });
+        loadPage(0);
+        showAlert("Succès", "Article créé avec succès", "success");
+      }
+    } catch (error) {
+      console.error('Erreur création :', error);
+      showAlert("Erreur", error.message || "Erreur lors de la création", "error");
+    }
   };
-
-  if (newLinge.rfidTag?.trim()) {
-    payload.rfidTag = newLinge.rfidTag.trim();
-  }
-
-  // Si pas de serviceId sélectionné, prendre le premier service par défaut
-  if (!payload.serviceId && services.length > 0) {
-    payload.serviceId = services[0].id;
-  }
-
-  console.log('Payload envoyé :', payload); // Debug
-
-  try {
-    const created = await addLinge(payload);
-    if (created) {
-      setLingeToPrint(created);
-      setShowPopup(false);
-      setNewLinge({ 
-        categorie: "", 
-       // chambre_id: "", 
-        poids: 0, 
-        serviceId: "", 
-        codebarre: "", 
-        rfidTag: "" 
-      });
-      loadPage(0);
-      showAlert("Succès", "Article créé avec succès", "success");
-    }
-  } catch (error) {
-    console.error('Erreur création :', error);
-    showAlert("Erreur", error.message || "Erreur lors de la création", "error");
-  }
-};
 
   const handleAssocierRfid = async () => {
     if (!selectedLingeForRfid) {
@@ -312,7 +309,6 @@ const handleSave = async (e) => {
     }
     setNewLinge({
       categorie: linge.categorie || "",
-//      chambre_id: linge.chambre_id || linge.chambre || "",
       poids: linge.poids || 0,
       serviceId: linge.serviceId || "",
       codebarre: linge.codebarre || "",
@@ -332,7 +328,7 @@ const handleSave = async (e) => {
 
   const [chambres, setChambres] = useState([]);
   useEffect(() => {
-    fetch("http://localhost:8082/api/chambres")
+    fetch(`${API_URL}/api/chambres`)
       .then(res => res.json())
       .then(data => {
         const chambresData = Array.isArray(data) ? data : data.content || [];
@@ -385,11 +381,6 @@ const handleSave = async (e) => {
           <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
             {displayMode === "RFID" ? "Inventaire RFID Global" : "Inventaire Complet"}
           </h1>
-          {/* <p className="text-sm text-slate-500" style={{ color: "#166d7c" }}>
-            {displayMode === "RFID"
-              ? "Base de données des textiles pucés EPC Gen2"
-              : "Liste exhaustive de tous les articles enregistrés"}
-          </p> */}
         </div>
       </div>
 
@@ -571,14 +562,14 @@ const handleSave = async (e) => {
             <table className="param-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>{displayMode === "RFID" ? "RFID TAG (EPC)" : "Code"}</th>
-                  <th>Catégorie</th>
-                  <th>Poids</th>
-                  <th>État</th>
-                  <th>Service</th>
-                  <th>RFID</th>
-                  <th className="actions-th">Action</th>
+                  <th className="text-center py-3 px-4">ID</th>
+                  <th className="text-center py-3 px-4">{displayMode === "RFID" ? "RFID TAG (EPC)" : "Code"}</th>
+                  <th className="text-center py-3 px-4">Catégorie</th>
+                  <th className="text-center py-3 px-4">Poids</th>
+                  <th className="text-center py-3 px-4">État</th>
+                  <th className="text-center py-3 px-4">Service</th>
+                  <th className="text-center py-3 px-4">RFID</th>
+                  <th className="text-center py-3 px-4 actions-th">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -606,10 +597,10 @@ const handleSave = async (e) => {
                         className={isSelected ? "expanded" : ""}
                         style={{ cursor: "pointer" }}
                       >
-                        <td>
+                        <td className="text-center py-3 px-4">
                           <span className="code-badge">{l.id}</span>
                         </td>
-                        <td>
+                        <td className="text-center py-3 px-4">
                           {displayMode === "RFID" ? (
                             l.rfidTag ? (
                               <code className="rfid-tag">{formatEPC(l.rfidTag)}</code>
@@ -620,11 +611,11 @@ const handleSave = async (e) => {
                             <code className="tracking-code">{l.codebarre}</code>
                           )}
                         </td>
-                        <td className="font-semibold text-slate-800">{l.categorie}</td>
-                        <td className="font-bold">{l.poids} kg</td>
-                        <td>{getEtatBadge(l.etat)}</td>
-                        <td>{serviceName}</td>
-                        <td>
+                        <td className="text-center font-semibold text-slate-800">{l.categorie}</td>
+                        <td className="text-center font-bold">{l.poids} kg</td>
+                        <td className="text-center">{getEtatBadge(l.etat)}</td>
+                        <td className="text-center">{serviceName}</td>
+                        <td className="text-center">
                           {hasRfid ? (
                             <Badge variant="success" className="text-xs">
                               <FaRss className="mr-1" size={10} /> {l.rfidTag.substring(0, 8)}...
@@ -633,8 +624,8 @@ const handleSave = async (e) => {
                             <Badge variant="secondary" className="text-xs">Non associé</Badge>
                           )}
                         </td>
-                        <td>
-                          <div className="flex items-center gap-2">
+                        <td className="text-center py-3 px-4">
+                          <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -782,8 +773,6 @@ const handleSave = async (e) => {
                 ))}
               </select>
             </div>
-
-         
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

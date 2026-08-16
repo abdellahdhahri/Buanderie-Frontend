@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter, Eye, RefreshCw, Calendar, Clock, ChevronRight, ChevronDown, Package, User, Building, Calendar as CalendarIcon } from "lucide-react";
+import { Search, Filter, Eye, RefreshCw, Calendar, Clock, ChevronRight, ChevronDown, Package, User, Building } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -9,6 +9,9 @@ import { Modal } from "../../components/ui/modal";
 import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
+
+// ─── Variables d'environnement ──────────────────────────────────────────────
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export default function HistoriqueCollecte() {
   const navigate = useNavigate();
@@ -38,10 +41,10 @@ export default function HistoriqueCollecte() {
   const loadCollectes = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:8082/api/collecte");
+      const response = await fetch(`${API_URL}/api/collecte`);
       if (response.ok) {
         const data = await response.json();
-console.log("liste brut des donnees :",data);        
+        console.log("liste brut des donnees :", data);        
         setCollectes(Array.isArray(data) ? data : []);
         console.log("Collectes chargées:", data.dateCollecte);
       } else {
@@ -57,7 +60,7 @@ console.log("liste brut des donnees :",data);
 
   const loadCollecteDetails = async (collecteId) => {
     try {
-      const response = await fetch(`http://localhost:8082/api/collecte/${collecteId}/resume`);
+      const response = await fetch(`${API_URL}/api/collecte/${collecteId}/resume`);
       if (response.ok) {
         const data = await response.json();
         return data;
@@ -244,13 +247,13 @@ console.log("liste brut des donnees :",data);
             <table className="param-table">
               <thead>
                 <tr>
-                  <th style={{ width: 40 }}>#</th>
-                  <th>Date & Heure</th>
-                  <th>Agent</th>
-                  <th>Service</th>
-                  <th>Etat</th>
-                  <th>Type</th>
-                  <th style={{ width: 50 }}>Action</th>
+                  <th className="text-center py-3 px-4" style={{ width: 40 }}>#</th>
+                  <th className="text-center py-3 px-4">Date & Heure</th>
+                  <th className="text-center py-3 px-4">Agent</th>
+                  <th className="text-center py-3 px-4">Service</th>
+                  <th className="text-center py-3 px-4">État</th>
+                  <th className="text-center py-3 px-4">Type</th>
+                  <th className="text-center py-3 px-4" style={{ width: 50 }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -281,41 +284,41 @@ console.log("liste brut des donnees :",data);
                           className={isExpanded ? "expanded" : ""}
                           style={{ cursor: "pointer" }}
                         >
-                          <td>
+                          <td className="text-center py-3 px-4">
                             <span className="text-slate-400 text-sm">#{startIndex + index + 1}</span>
                           </td>
-                          <td>
-                            <div className="flex items-center gap-2">
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <Clock className="w-4 h-4 text-muted-foreground" />
                               <span className="font-mono text-sm">{formatDate(collecte.dateCollecte)}</span>
                             </div>
                           </td>
-                          <td>
-                            <div className="flex items-center gap-2">
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <User className="w-4 h-4 text-muted-foreground" />
                               <span>{collecte.agent?.nom || "N/A"}</span>
                             </div>
                           </td>
-                          <td>
-                            <div className="flex items-center gap-2">
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <Building className="w-4 h-4 text-muted-foreground" />
                               <span>{collecte.service?.nom || "N/A"}</span>
                             </div>
                           </td>
-                          <td>
-                            <div className="flex items-center gap-2">
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <Package className="w-4 h-4 text-muted-foreground" />
                               <span>{collecte.etatCollecte || "N/A"}</span>
                             </div>
                           </td>
-                          <td>{getTypeBadge(collecte.typeCollecte)}</td>
-                          <td>
+                          <td className="text-center py-3 px-4">{getTypeBadge(collecte.typeCollecte)}</td>
+                          <td className="text-center py-3 px-4">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleViewDetails(collecte);
                               }}
-                              className="text-[#0794a4] hover:text-[#068391] font-semibold text-sm flex items-center gap-1.5 hover:underline"
+                              className="text-[#0794a4] hover:text-[#068391] font-semibold text-sm flex items-center justify-center gap-1.5 hover:underline"
                             >
                               {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                             </button>

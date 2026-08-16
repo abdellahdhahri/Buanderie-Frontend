@@ -29,6 +29,9 @@ import Swal from 'sweetalert2';
 import { ProgrammeContext } from "../../contextes/ProgrammeContext";
 import "./ProgrammeList.css";
 
+// ─── Variables d'environnement ──────────────────────────────────────────────
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+
 // ─── Composant ModeToggle ────────────────────────────────────────────────────
 function ProgrammeModeToggle({ mode, onChange }) {
   return (
@@ -109,7 +112,6 @@ const CATEGORY_LABELS = {
   AUTRE: "Autre"
 };
 
-// ─── Catégories disponibles (basées sur l'enum Java) ──────────────────────
 const CATEGORIES = [
   "DRAP",
   "TAIE_OREILLER",
@@ -247,13 +249,11 @@ export default function ProgrammeList() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
     if (!formData.nom.trim()) {
       Swal.fire('Erreur', 'Le nom du programme est obligatoire', 'error');
       return;
     }
 
-    // Validation des catégories
     if (formData.categories.length === 0) {
       Swal.fire('Erreur', 'Veuillez sélectionner au moins une catégorie de linge', 'error');
       return;
@@ -327,7 +327,7 @@ export default function ProgrammeList() {
   const getProgrammeBadge = (programme) => {
     const hasCategories = programme.categories && programme.categories.length > 0;
     return (
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1 justify-center">
         {hasCategories ? (
           programme.categories.slice(0, 3).map((cat, i) => (
             <Badge key={i} variant="secondary" className="text-xs flex items-center gap-1">
@@ -407,17 +407,17 @@ export default function ProgrammeList() {
             <table className="param-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Nom</th>
-                  <th>Température</th>
-                  <th>Durée</th>
+                  <th className="text-center py-3 px-4">ID</th>
+                  <th className="text-center py-3 px-4">Nom</th>
+                  <th className="text-center py-3 px-4">Température</th>
+                  <th className="text-center py-3 px-4">Durée</th>
                   {mode === "LAVAGE" ? (
-                    <th>Essorage</th>
+                    <th className="text-center py-3 px-4">Essorage</th>
                   ) : (
-                    <th>Humidité</th>
+                    <th className="text-center py-3 px-4">Humidité</th>
                   )}
-                  <th>Catégories</th>
-                  <th className="actions-th">Actions</th>
+                  <th className="text-center py-3 px-4">Catégories</th>
+                  <th className="text-center py-3 px-4 actions-th">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -444,10 +444,10 @@ export default function ProgrammeList() {
                         className={isSelected ? "expanded" : ""}
                         style={{ cursor: "pointer" }}
                       >
-                        <td>
+                        <td className="text-center py-3 px-4">
                           <span className="code-badge">{programme.id}</span>
                         </td>
-                        <td>
+                        <td className="text-center py-3 px-4">
                           <span className="font-semibold text-slate-800">{programme.nom}</span>
                           {programme.description && (
                             <p className="text-xs text-slate-400 truncate max-w-[200px]">
@@ -455,32 +455,32 @@ export default function ProgrammeList() {
                             </p>
                           )}
                         </td>
-                        <td>
-                          <div className="flex items-center gap-1.5">
+                        <td className="text-center py-3 px-4">
+                          <div className="flex items-center justify-center gap-1.5">
                             <Thermometer className="w-4 h-4 text-orange-500" />
                             <span className="font-medium">
                               {programme.temperatureCelsius || "—"}°C
                             </span>
                           </div>
                         </td>
-                        <td>
-                          <div className="flex items-center gap-1.5">
+                        <td className="text-center py-3 px-4">
+                          <div className="flex items-center justify-center gap-1.5">
                             <Clock className="w-4 h-4 text-blue-500" />
                             <span className="font-medium">
                               {programme.dureeMinutes || "—"} min
                             </span>
                           </div>
                         </td>
-                        <td>
+                        <td className="text-center py-3 px-4">
                           {mode === "LAVAGE" ? (
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center justify-center gap-1.5">
                               <Gauge className="w-4 h-4 text-purple-500" />
                               <span className="font-medium">
                                 {programme.vitesseEssorageRpm || "—"} RPM
                               </span>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center justify-center gap-1.5">
                               <Gauge className="w-4 h-4 text-cyan-500" />
                               <span className="font-medium">
                                 {programme.niveauHumidite || "—"}%
@@ -488,9 +488,9 @@ export default function ProgrammeList() {
                             </div>
                           )}
                         </td>
-                        <td>{getProgrammeBadge(programme)}</td>
-                        <td>
-                          <div className="flex items-center gap-2">
+                        <td className="text-center py-3 px-4">{getProgrammeBadge(programme)}</td>
+                        <td className="text-center py-3 px-4">
+                          <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

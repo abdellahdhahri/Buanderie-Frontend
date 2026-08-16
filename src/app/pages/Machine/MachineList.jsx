@@ -33,6 +33,7 @@ import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import printJS from "print-js";
 
+// ─── Variables d'environnement ──────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 const TYPES_MACHINE = [
@@ -49,8 +50,8 @@ const ETATS_MACHINE = [
 ];
 
 const CATEGORIES_MACHINE = [
-  { value: "LINGES_INFECTE", label: "linges infectee" },
-  { value: "LINGES_NORMAL", label: "linges normal " }
+  { value: "LINGES_INFECTE", label: "Linges infectés" },
+  { value: "LINGES_NORMAL", label: "Linges normaux" }
 ];
 
 const TYPE_COLORS = {
@@ -364,6 +365,7 @@ export default function MachineList() {
     );
   });
 
+  // ─── Nouveau style pour l'état ─────────────────────────────────────────────
   const getEtatBadge = (etat) => {
     const config = ETATS_MACHINE.find(e => e.value === etat) || { color: "#64748b", bg: "#f1f5f9", label: etat };
     const icons = {
@@ -373,19 +375,17 @@ export default function MachineList() {
       HORS_SERVICE: <AlertCircle className="w-3 h-3" />
     };
     return (
-      <Badge 
+      <span 
+        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
         style={{ 
           background: config.bg, 
           color: config.color,
-          border: `1px solid ${config.color}30`,
-          display: "flex",
-          alignItems: "center",
-          gap: "4px"
+          border: `1px solid ${config.color}30`
         }}
       >
         {icons[etat] || null}
         {config.label}
-      </Badge>
+      </span>
     );
   };
 
@@ -414,9 +414,7 @@ export default function MachineList() {
             <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
               ⚙️ Gestion des Machines
             </h1>
-            <p className="text-sm text-slate-500" style={{ color: "#166d7c" }}>
-              Gestion complète des machines et impression des codes
-            </p>
+            
           </div>
 
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
@@ -516,13 +514,13 @@ export default function MachineList() {
                 <table className="w-full">
                   <thead className="border-b border-border bg-muted/50">
                     <tr>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Code</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Référence</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Type</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Marque</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Capacité</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">État</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Actions</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Code</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Référence</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Type</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Marque</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Capacité</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">État</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -550,31 +548,31 @@ export default function MachineList() {
                           onClick={() => handleRowClick(machine.id)}
                           className={`border-b border-border hover:bg-accent/50 transition-colors cursor-pointer ${selectedId === machine.id ? 'bg-blue-50' : ''}`}
                         >
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <div className="font-mono text-sm font-medium text-blue-600">
                               {machine.code || machine.reference}
                             </div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <div className="font-medium">{machine.reference}</div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             {getTypeBadge(machine.type)}
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <span className="text-sm">{machine.marque}</span>
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <Weight className="w-4 h-4 text-slate-400" />
                               <span className="font-medium">{machine.capaciteKg || 0} kg</span>
                             </div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             {getEtatBadge(machine.etat)}
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();

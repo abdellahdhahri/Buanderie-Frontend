@@ -25,7 +25,7 @@ import {
   WashingMachine,
   LibraryBig, SlidersHorizontal, Cog, Wrench,Workflow 
 } from "lucide-react";
-import { PiUsersFourFill } from "react-icons/pi";
+import { PiUsersFourFill,PiWashingMachineBold  } from "react-icons/pi";
 
 import { FaGlassWater ,FaPrescriptionBottle } from "react-icons/fa6";
 import { LuCombine,LuWashingMachine  } from "react-icons/lu";
@@ -101,6 +101,11 @@ export const NAV_ITEMS = [
         label: "Matériel",
         path: "/immo",
         icon: <LuCombine className="w-4 h-4" />,
+      },
+      {
+        label: "Cycles Lavages",
+        path: "/cycleLavage",
+        icon: <PiWashingMachineBold  className="w-4 h-4" />,
       },
       
      

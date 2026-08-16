@@ -1,4 +1,3 @@
-// je veux ajouter une page de gestion des immobilisations de buanderie je veux oresque le meme design que gestion des bacs 
 import React, { useState, useEffect } from "react";
 import {
   Plus,
@@ -32,7 +31,8 @@ import {
   MapPin,
   User,
   Phone,
-  Mail
+  Mail,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
 import { Modal } from "../../components/ui/modal";
@@ -42,6 +42,8 @@ import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import printJS from "print-js";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export default function ImmobilisationList() {
   const [immobilisations, setImmobilisations] = useState([]);
@@ -54,7 +56,6 @@ export default function ImmobilisationList() {
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Pagination state
   const [pagination, setPagination] = useState({
     page: 0,
     size: 10,
@@ -90,7 +91,7 @@ export default function ImmobilisationList() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:8082/api/sqlserver/machines?page=${pagination.page}&size=${pagination.size}`
+        `${API_URL}/api/sqlserver/machines?page=${pagination.page}&size=${pagination.size}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -114,32 +115,16 @@ export default function ImmobilisationList() {
     }
   };
 
-  // Navigation de pagination
   const goToPage = (page) => {
     if (page >= 0 && page < pagination.totalPages) {
       setPagination({ ...pagination, page });
     }
   };
 
-  const goToFirstPage = () => {
-    goToPage(0);
-  };
-
-  const goToLastPage = () => {
-    goToPage(pagination.totalPages - 1);
-  };
-
-  const goToNextPage = () => {
-    if (!pagination.last) {
-      goToPage(pagination.page + 1);
-    }
-  };
-
-  const goToPreviousPage = () => {
-    if (!pagination.first) {
-      goToPage(pagination.page - 1);
-    }
-  };
+  const goToFirstPage = () => goToPage(0);
+  const goToLastPage = () => goToPage(pagination.totalPages - 1);
+  const goToNextPage = () => { if (!pagination.last) goToPage(pagination.page + 1); };
+  const goToPreviousPage = () => { if (!pagination.first) goToPage(pagination.page - 1); };
 
   const changePageSize = (size) => {
     setPagination({ ...pagination, size: parseInt(size), page: 0 });
@@ -240,7 +225,6 @@ export default function ImmobilisationList() {
           timer: 1500,
           showConfirmButton: false,
         });
-        // Rafraîchir la liste après suppression
         fetchImmobilisations();
       } catch (err) {
         console.error("Erreur suppression:", err);
@@ -277,8 +261,6 @@ export default function ImmobilisationList() {
               alt="Code-barres"
             />
           </div>
-          
-          
           
           <div style="font-size:8pt; color:#666; margin-top:2mm; border-top:1px solid #ddd; padding-top:2mm;">
             <div style="font-size:5pt; margin-top:1mm;">
@@ -320,35 +302,26 @@ export default function ImmobilisationList() {
     );
   });
 
-  // Générer les numéros de page pour l'affichage
   const getPageNumbers = () => {
     const pages = [];
     const total = pagination.totalPages;
     const current = pagination.page;
     
     if (total <= 7) {
-      for (let i = 0; i < total; i++) {
-        pages.push(i);
-      }
+      for (let i = 0; i < total; i++) pages.push(i);
     } else {
       if (current < 3) {
-        for (let i = 0; i < 5; i++) {
-          pages.push(i);
-        }
+        for (let i = 0; i < 5; i++) pages.push(i);
         pages.push('...');
         pages.push(total - 1);
       } else if (current > total - 4) {
         pages.push(0);
         pages.push('...');
-        for (let i = total - 5; i < total; i++) {
-          pages.push(i);
-        }
+        for (let i = total - 5; i < total; i++) pages.push(i);
       } else {
         pages.push(0);
         pages.push('...');
-        for (let i = current - 1; i <= current + 1; i++) {
-          pages.push(i);
-        }
+        for (let i = current - 1; i <= current + 1; i++) pages.push(i);
         pages.push('...');
         pages.push(total - 1);
       }
@@ -376,6 +349,33 @@ export default function ImmobilisationList() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
+            <button
+              onClick={() => {
+                setSelectedImmobilisation(null);
+                setNewRec({
+                  designation: "",
+                  marque: "",
+                  codeBarre: "",
+                  code: "",
+                  articleFamilleId: "",
+                  type: "",
+                  dateAchat: "",
+                  prixAchat: "",
+                  numeroSerie: "",
+                  fournisseur: "",
+                  localisation: "",
+                  responsable: "",
+                  telephone: "",
+                  email: "",
+                  observations: ""
+                });
+                setIsModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" /> Nouvelle Immobilisation
+            </button>
+
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
 
             <button
@@ -457,13 +457,13 @@ export default function ImmobilisationList() {
                 <table className="w-full">
                   <thead className="border-b border-border bg-muted/50">
                     <tr>
-                      <th className="text-left py-3 px-4 text-sm font-medium w-10">#</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Désignation</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Code</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Marque</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Type</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Code-barres</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Actions</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium w-10">#</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Désignation</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Code</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Marque</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Type</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Code-barres</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -471,9 +471,7 @@ export default function ImmobilisationList() {
                       <tr>
                         <td colSpan={7} className="text-center py-8 text-muted-foreground">
                           <div className="flex items-center justify-center gap-2">
-                            <svg className="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
+                            <Loader2 className="w-5 h-5 animate-spin" />
                             Chargement...
                           </div>
                         </td>
@@ -491,32 +489,32 @@ export default function ImmobilisationList() {
                           className={`border-b border-border hover:bg-accent/50 transition-colors ${selectedId === item.id ? 'bg-blue-50' : ''}`}
                           onClick={() => handleRowClick(item.id)}
                         >
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <span className="text-sm text-slate-400">
                               {pagination.page * pagination.size + index + 1}
                             </span>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <div className="font-medium">{item.designation || "N/A"}</div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <div className="text-sm font-mono text-slate-600">
                               {item.code || "N/A"}
                             </div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <span className="text-sm">{item.marque || "N/A"}</span>
                           </td>
-                          <td className="py-3 px-4">
-                            Matériel de Buanderie
+                          <td className="text-center py-3 px-4">
+                            {getStatusBadge(item.type)}
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <div className="text-sm font-mono text-slate-600">
                               {item.codeBarre || "N/A"}
                             </div>
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -558,7 +556,7 @@ export default function ImmobilisationList() {
             </CardContent>
           </Card>
 
-          {/* Pagination améliorée */}
+          {/* Pagination */}
           {pagination.totalPages > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-white rounded-xl border border-slate-200">
               <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -566,7 +564,6 @@ export default function ImmobilisationList() {
                   {pagination.totalElements} immobilisation(s) au total
                 </div>
                 
-                {/* Sélecteur de taille de page */}
                 <div className="flex items-center gap-2">
                   <label className="text-sm text-slate-500">Lignes:</label>
                   <select
@@ -584,7 +581,6 @@ export default function ImmobilisationList() {
               </div>
 
               <div className="flex items-center gap-1 flex-wrap justify-center">
-                {/* Bouton Première page */}
                 <button
                   onClick={goToFirstPage}
                   disabled={pagination.first || isLoading}
@@ -594,7 +590,6 @@ export default function ImmobilisationList() {
                   <ChevronLeft className="w-4 h-4 -ml-2" />
                 </button>
 
-                {/* Bouton Page précédente */}
                 <button
                   onClick={goToPreviousPage}
                   disabled={pagination.first || isLoading}
@@ -603,7 +598,6 @@ export default function ImmobilisationList() {
                   <ChevronLeft className="w-4 h-4" />
                 </button>
 
-                {/* Numéros de page */}
                 <div className="flex gap-1">
                   {getPageNumbers().map((page, index) => (
                     page === '...' ? (
@@ -627,7 +621,6 @@ export default function ImmobilisationList() {
                   ))}
                 </div>
 
-                {/* Bouton Page suivante */}
                 <button
                   onClick={goToNextPage}
                   disabled={pagination.last || isLoading}
@@ -636,7 +629,6 @@ export default function ImmobilisationList() {
                   <ChevronRight className="w-4 h-4" />
                 </button>
 
-                {/* Bouton Dernière page */}
                 <button
                   onClick={goToLastPage}
                   disabled={pagination.last || isLoading}
@@ -647,7 +639,6 @@ export default function ImmobilisationList() {
                 </button>
               </div>
 
-              {/* Affichage de la page actuelle */}
               <div className="text-sm text-slate-500 whitespace-nowrap">
                 Page {pagination.page + 1} / {pagination.totalPages}
               </div>

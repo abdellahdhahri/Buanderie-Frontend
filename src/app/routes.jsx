@@ -32,6 +32,9 @@ import AgentList from "./pages/Agent/AgentList";
 import MachineList from "./pages/Machine/MachineList";
 import BuanderieStats from "./pages/Statistiques/BuanderieStats";
 import ArsenalList from "./pages/Arsenal/ArsenalList";
+import CycleLavageList from "./pages/CycleLavge/CycleLavageList";
+import AuthentificationPage from "./pages/authentication/AuthentificationPage";
+import ChambreList from "./pages/chambre/ChambreList";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -66,8 +69,11 @@ export const router = createBrowserRouter([
       { path: "distChambre", Component: DistributionChambre },
       { path: "distribution", Component: DistributionList },
       { path: "agents", Component: AgentList },
-      { path: "machines", Component: MachineList },
+      { path: "machine", Component: MachineList },
       { path: "arsenal", Component: ArsenalList },
+      { path: "cycleLavage", Component: CycleLavageList },
+      { path: "auth", Component: AuthentificationPage },
+      { path: "chambre", Component: ChambreList },
 
     ],
   },

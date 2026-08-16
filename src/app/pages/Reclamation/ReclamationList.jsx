@@ -8,6 +8,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  RefreshCw,
+  Filter
 } from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
 import { Modal } from "../../components/ui/modal";
@@ -15,6 +17,9 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
+
+// ─── Variables d'environnement ──────────────────────────────────────────────
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export default function ReclamationList() {
   const [reclamations, setReclamations] = useState([]);
@@ -37,7 +42,7 @@ export default function ReclamationList() {
   const fetchReclamations = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:8082/api/reclamations");
+      const response = await fetch(`${API_URL}/api/reclamations`);
       if (response.ok) {
         const data = await response.json();
         setReclamations(data);
@@ -133,9 +138,8 @@ export default function ReclamationList() {
       };
 
       if (selectedReclamation) {
-        // MODIFICATION
         const response = await fetch(
-          `http://localhost:8082/api/reclamations/${selectedReclamation.id}`,
+          `${API_URL}/api/reclamations/${selectedReclamation.id}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -159,8 +163,7 @@ export default function ReclamationList() {
           throw new Error(error);
         }
       } else {
-        // CRÉATION
-        const response = await fetch("http://localhost:8082/api/reclamations", {
+        const response = await fetch(`${API_URL}/api/reclamations`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -206,7 +209,7 @@ export default function ReclamationList() {
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`http://localhost:8082/api/reclamations/${id}`, {
+        const response = await fetch(`${API_URL}/api/reclamations/${id}`, {
           method: "DELETE",
         });
         if (response.ok) {
@@ -236,7 +239,7 @@ export default function ReclamationList() {
   const updateStatus = async (id, newStatus) => {
     try {
       const response = await fetch(
-        `http://localhost:8082/api/reclamations/${id}/statut?statut=${newStatus}`,
+        `${API_URL}/api/reclamations/${id}/statut?statut=${newStatus}`,
         {
           method: "PUT",
         }
@@ -245,7 +248,7 @@ export default function ReclamationList() {
         const data = await response.json();
         setReclamations((prev) => prev.map((r) => (r.id === data.id ? data : r)));
         Swal.fire({
-          title: " Statut mis à jour!",
+          title: "✅ Statut mis à jour!",
           text: `Statut passé à ${newStatus}`,
           icon: "success",
           timer: 1500,
@@ -290,7 +293,7 @@ export default function ReclamationList() {
             className="text-3xl font-extrabold"
             style={{ marginBottom: "4px" }}
           >
-            Gestion des Réclamations
+            📋 Gestion des Réclamations
           </h1>
           <p className="text-sm text-slate-500" style={{ color: "#166d7c" }}>
             Historique complet des réclamations
@@ -298,37 +301,26 @@ export default function ReclamationList() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-6">
-        <Button onClick={handleOpenCreateModal}>
-          <Plus className="w-5 h-5 mr-2" />
-          Nouvelle Réclamation
-        </Button>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-500">
-            Total: {reclamations.length} réclamation(s)
-          </span>
-          <button
-            onClick={fetchReclamations}
-            className="p-2 hover:bg-accent rounded-lg transition-colors"
-            title="Actualiser"
-          >
-            <svg
-              className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-          </button>
-        </div>
+      {/* ─── Barre d'outils ────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
+        <button
+          onClick={handleOpenCreateModal}
+          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" /> Nouvelle Réclamation
+        </button>
+
+        <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
+
+        <button
+          onClick={fetchReclamations}
+          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Actualiser
+        </button>
       </div>
 
+      {/* ─── Barre de recherche ───────────────────────────────────────────── */}
       <Card className="mb-6">
         <CardContent className="p-6">
           <div className="relative">
@@ -338,36 +330,25 @@ export default function ReclamationList() {
               placeholder="Rechercher par code, catégorie, agent ou type..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-input-background focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
         </CardContent>
       </Card>
 
+      {/* ─── Tableau ───────────────────────────────────────────────────────── */}
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="border-b border-border bg-muted/50">
                 <tr>
-                  <th className="text-left py-3 px-4 text-sm font-medium">
-                    Article
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">
-                    Agent
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">
-                    Type
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">
-                    Date
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">
-                    Statut
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">
-                    Actions
-                  </th>
+                  <th className="text-center py-3 px-4 text-sm font-medium">Article</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium">Agent</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium">Type</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium">Date</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium">Statut</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -384,10 +365,7 @@ export default function ReclamationList() {
                   </tr>
                 ) : filteredReclamations.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="text-center py-8 text-muted-foreground"
-                    >
+                    <td colSpan={6} className="text-center py-8 text-muted-foreground">
                       {searchTerm ? "Aucune réclamation correspondante" : "Aucune réclamation trouvée"}
                     </td>
                   </tr>
@@ -397,7 +375,7 @@ export default function ReclamationList() {
                       key={r.id}
                       className="border-b border-border hover:bg-accent/50"
                     >
-                      <td className="py-3 px-4 text-sm">
+                      <td className="text-center py-3 px-4 text-sm">
                         <div className="font-medium">{r.linge?.categorie || "N/A"}</div>
                         <div className="text-xs text-muted-foreground font-mono">
                           {r.linge?.codeBarre || "N/A"}
@@ -408,7 +386,7 @@ export default function ReclamationList() {
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-sm">
+                      <td className="text-center py-3 px-4 text-sm">
                         {r.agent ? (
                           <>
                             <div className="font-medium">{r.agent.nom} {r.agent.prenom}</div>
@@ -418,20 +396,20 @@ export default function ReclamationList() {
                           </>
                         ) : "N/A"}
                       </td>
-                      <td className="py-3 px-4 text-sm">
+                      <td className="text-center py-3 px-4 text-sm">
                         {getTypeBadge(r.type)}
                       </td>
-                      <td className="py-3 px-4 text-sm">
+                      <td className="text-center py-3 px-4 text-sm">
                         {r.dateCreation ? new Date(r.dateCreation).toLocaleDateString("fr-FR") : "N/A"}
                       </td>
-                      <td className="py-3 px-4 text-sm">
-                        <div className="flex items-center gap-2">
+                      <td className="text-center py-3 px-4 text-sm">
+                        <div className="flex items-center justify-center gap-2">
                           {getStatusIcon(r.status)}
                           {getStatusBadge(r.status)}
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-sm">
-                        <div className="flex items-center gap-2">
+                      <td className="text-center py-3 px-4 text-sm">
+                        <div className="flex items-center justify-center gap-2">
                           {r.statut === "OUVERTE" && (
                             <button
                               onClick={() => updateStatus(r.id, "EN_COURS")}
@@ -475,7 +453,7 @@ export default function ReclamationList() {
         </CardContent>
       </Card>
 
-      {/* Modal */}
+      {/* ─── Modal ────────────────────────────────────────────────────────── */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

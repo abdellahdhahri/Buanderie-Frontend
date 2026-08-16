@@ -10,8 +10,8 @@ import { Modal } from "../../components/ui/modal";
 import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 
+// ─── Variables d'environnement ──────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
-
 
 export default function HistoriqueGlobal() {
   const [history, setHistory] = useState([]);
@@ -352,12 +352,12 @@ export default function HistoriqueGlobal() {
             <table className="param-table">
               <thead>
                 <tr>
-                  <th>Date & Heure</th>
-                  <th>Code Linge</th>
-                  <th>État</th>
-                  <th>Opération</th>
-                  <th>Agent</th>
-                  <th className="actions-th">Action</th>
+                  <th className="text-center py-3 px-4">Date & Heure</th>
+                  <th className="text-center py-3 px-4">Code Linge</th>
+                  <th className="text-center py-3 px-4">État</th>
+                  <th className="text-center py-3 px-4">Opération</th>
+                  <th className="text-center py-3 px-4">Agent</th>
+                  <th className="text-center py-3 px-4 actions-th">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -387,25 +387,25 @@ export default function HistoriqueGlobal() {
                         className={isSelected ? "expanded" : ""}
                         style={{ cursor: "pointer" }}
                       >
-                        <td>
-                          <div className="flex items-center gap-2">
+                        <td className="text-center py-3 px-4">
+                          <div className="flex items-center justify-center gap-2">
                             <Clock className="w-4 h-4 text-muted-foreground" />
                             <span className="font-mono text-sm">{formatDate(entry.dateOperation)}</span>
                           </div>
                         </td>
-                        <td>
+                        <td className="text-center py-3 px-4">
                           <span className="code-badge font-mono text-sm">{codeLinge}</span>
                         </td>
-                        <td>{getEtatBadge(etat)}</td>
-                        <td>{getTypeOperationBadge(entry.typeOperation)}</td>
-                        <td>
-                          <div className="flex items-center gap-2">
+                        <td className="text-center py-3 px-4">{getEtatBadge(etat)}</td>
+                        <td className="text-center py-3 px-4">{getTypeOperationBadge(entry.typeOperation)}</td>
+                        <td className="text-center py-3 px-4">
+                          <div className="flex items-center justify-center gap-2">
                             <User className="w-4 h-4 text-muted-foreground" />
                             <span className="text-sm">{agentNom}</span>
                           </div>
                         </td>
-                        <td>
-                          <div className="flex items-center gap-2">
+                        <td className="text-center py-3 px-4">
+                          <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
