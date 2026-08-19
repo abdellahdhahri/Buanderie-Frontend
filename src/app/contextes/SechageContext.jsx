@@ -55,7 +55,7 @@ export function SechageProvider({ children }) {
   const chargerLots = useCallback(async () => {
     setLoadingLots(true);
     try {
-      const r = await fetch(`${API_URL}/lots`);
+      const r = await fetch(`${API_URL}/api/lots`);
       if (r.ok) {
         const tous = await r.json();
         setLotsDisponibles(tous.filter(l => l.etat === "LAVE" || l.etat === "EN_TRI"));
@@ -75,7 +75,7 @@ export function SechageProvider({ children }) {
       if (machine && poidsActuel + (lot.poidsActuel||0) > machine.capaciteKg) {
         showAlert("⚠️ Capacité dépassée", `Machine pleine (${machine.capaciteKg} kg).`, "warning"); return;
       }
-      const rInfo = await fetch(`${API_BASE}/api/sechage/scan-lot/${code}`);
+      const rInfo = await fetch(`${API_BASE}/sechage/scan-lot/${code}`);
       const lotInfo = rInfo.ok ? await rInfo.json() : null;
       setLotDialog({ lotInfo, lot });
     } catch { showAlert("Erreur réseau", "", "error"); }
@@ -132,7 +132,7 @@ export function SechageProvider({ children }) {
     if (!ok) return;
     setLoading(true);
     try {
-      const r = await fetch(`${API_BASE}/api/sechage/${cycleId}/finish`, { method: "PUT" });
+      const r = await fetch(`${API_BASE}/sechage/${cycleId}/finish`, { method: "PUT" });
       if (!r.ok) throw new Error("Erreur fin de cycle");
       setEtape("TERMINE"); setCycleInfo(null);
       showAlert("✅ Séchage terminé", `Cycle #${cycleId} — linges SECHE`, "success");

@@ -2,209 +2,377 @@ import React from "react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router";
 import logoSoftSys from "../../../assets/logo_SoftSys.png";
-import {
-  LayoutDashboard,
-  Package,
-  Warehouse,
-  Tag,
-  Truck,
-  Settings,
-  Shirt,
-  Wind,
-  Layers,
-  PackageOpen,
-  History,
-  TrendingUp,
-  Boxes,
-  Factory,
-  Waves,
-  Layers3,
-  ScanSearch,
-  BarChart3,
-  MessageSquareWarning,
-  WashingMachine,
-  LibraryBig, SlidersHorizontal, Cog, Wrench,Workflow 
-} from "lucide-react";
-import { PiUsersFourFill,PiWashingMachineBold  } from "react-icons/pi";
-
-import { FaGlassWater ,FaPrescriptionBottle } from "react-icons/fa6";
-import { LuCombine,LuWashingMachine  } from "react-icons/lu";
-import { FaDropbox } from "react-icons/fa";
-
 
 export const NAV_ITEMS = [
   {
     id: "rh",
     label: "Tableau de Bord",
     path: "/",
-    icon: <LayoutDashboard className="w-5 h-5" />,
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    ),
   },
   {
     id: "params",
     label: "Parametrage",
-    icon: <Settings className="w-5 h-5" />,
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
     children: [
-      
-
-       {
+      {
         label: "Bacs",
         path: "/bac",
-        icon: <FaGlassWater className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+          </svg>
+        ),
       },
-       {
+      {
         label: "Lots",
         path: "/lot",
-        icon: <FaPrescriptionBottle  className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+            <line x1="12" y1="22.08" x2="12" y2="12" />
+          </svg>
+        ),
       },
-         {
+      {
         label: "Agents",
         path: "/Agents",
-        icon: <PiUsersFourFill  className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        ),
       },
-      ,
-         {
+      {
         label: "Machines",
         path: "/machine",
-        icon: <LuWashingMachine   className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        ),
       },
-      ,
-       {
+      {
         label: "Programmes",
         path: "/programme",
-        icon: <Workflow  className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            <polyline points="21 3 12 12 9 9" />
+          </svg>
+        ),
       },
-        ,
-       {
+      {
         label: "Stock",
         path: "/arsenal",
-        icon: <FaDropbox  className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+            <rect x="9" y="9" width="6" height="6" rx="1" />
+          </svg>
+        ),
       },
     ],
   },
   {
     id: "suivi",
     label: "Suivi",
-    icon: <ScanSearch className="w-5 h-5" />,
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+        <path d="M11 8v3l2 2" />
+      </svg>
+    ),
     children: [
       {
         label: "Tracking",
         path: "/tracking",
-        icon: <ScanSearch className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        ),
+      },
+      {
+        label: "Linges",
+        path: "/Linges",
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+          </svg>
+        ),
       },
       {
         label: "Inventaire",
-        path: "/Linges",
-        icon: <Package className="w-4 h-4" />,
+        path: "/inventaire",
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+          </svg>
+        ),
       },
-      
-       {
+      {
         label: "Matériel",
         path: "/immo",
-        icon: <LuCombine className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <rect x="2" y="2" width="20" height="20" rx="2" ry="2" />
+            <line x1="8" y1="2" x2="8" y2="22" />
+            <line x1="16" y1="2" x2="16" y2="22" />
+            <line x1="2" y1="8" x2="22" y2="8" />
+            <line x1="2" y1="16" x2="22" y2="16" />
+          </svg>
+        ),
+      },
+      {
+        label: "Chambres",
+        path: "/chambre",
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+        ),
       },
       {
         label: "Cycles Lavages",
         path: "/cycleLavage",
-        icon: <PiWashingMachineBold  className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M23 4v6h-6" />
+            <path d="M1 20v-6h6" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
+            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
+          </svg>
+        ),
       },
-      
-     
     ],
   },
   {
     id: "presences",
     label: "Zone Sale",
-    icon: <Factory className="w-5 h-5" />,
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+        <line x1="8" y1="6" x2="16" y2="6" />
+        <line x1="8" y1="10" x2="16" y2="10" />
+        <line x1="8" y1="14" x2="12" y2="14" />
+      </svg>
+    ),
     children: [
       {
-        label: "Collage",
+        label: "Collecte",
         path: "/collecteList",
-        icon: <Tag className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+        ),
       },
-     
       {
         label: "Réception",
         path: "/Receptions",
-        icon: <PackageOpen className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+        ),
       },
       {
         label: "Tri",
         path: "/tri",
-        icon: <LibraryBig className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+          </svg>
+        ),
       },
       {
         label: "Lavage",
         path: "/Lavages",
-        icon: <Waves className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v8" />
+            <path d="M8 12h8" />
+            <path d="M8 8l8 8" />
+            <path d="M8 16l8-8" />
+          </svg>
+        ),
       },
-      // ,
-      // {
-      //   label: "Laveurs",
-      //   path: "/machines",
-      //   icon: <WashingMachine className="w-4 h-4" />,
-      // },
     ],
   },
-
   {
     id: "paie",
     label: "Zone Propre",
-    icon: <Truck className="w-5 h-5" />,
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+        <path d="M2 17l10 5 10-5" />
+        <path d="M2 12l10 5 10-5" />
+        <circle cx="12" cy="12" r="1.5" />
+      </svg>
+    ),
     children: [
       {
         label: "Séchage",
         path: "/Sechages",
-        icon: <Wind className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M12 2v4" />
+            <path d="M12 18v4" />
+            <path d="M4 12H2" />
+            <path d="M22 12h-2" />
+            <path d="M19 5l-3 3" />
+            <path d="M8 16l-3 3" />
+            <path d="M16 16l3 3" />
+            <path d="M5 5l3 3" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        ),
       },
       {
         label: "Pliage",
         path: "/Pliages",
-        icon: <Layers3 className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+          </svg>
+        ),
       },
       {
         label: "Stockage",
         path: "/stockage",
-        icon: <Warehouse className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+          </svg>
+        ),
+      },
+         {
+        label: "Livraison",
+        path: "/remise",
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+            <path d="M6 12v5c0 1.5 6 3 6 3s6-1.5 6-3v-5" />
+            <path d="M12 20v-5" />
+            <circle cx="12" cy="10" r="1.5" />
+            <path d="M8 7l-2 3" />
+            <path d="M16 7l2 3" />
+          </svg>
+        ),
       },
       {
-        label: "Livraisons",
+        label: "distribution",
         path: "/distribution",
-        icon: <Truck className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M1 3h5l2 9h13l4-7h-9" />
+            <circle cx="6" cy="19" r="2" />
+            <circle cx="18" cy="19" r="2" />
+            <line x1="12" y1="12" x2="12" y2="19" />
+          </svg>
+        ),
       },
+   
     ],
   },
   {
     id: "conges",
     label: "Reporting",
-    icon: <BarChart3 className="w-5 h-5" />,
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z" />
+      </svg>
+    ),
     children: [
       {
         label: "Historique",
         path: "/Historiques",
-        icon: <History className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        ),
       },
       {
         label: "Statistiques",
         path: "/Statistiques",
-        icon: <TrendingUp className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M21 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="9" y1="15" x2="15" y2="9" />
+          </svg>
+        ),
       },
       {
         label: "Réclamations",
         path: "/Reclamations",
-        icon: <MessageSquareWarning className="w-4 h-4" />,
-      },  {
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        ),
+      },
+      {
         label: "Process",
         path: "/process",
-        icon: <MessageSquareWarning className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            <polyline points="21 3 12 12 9 9" />
+          </svg>
+        ),
       },
-      ,  {
+      {
         label: "Historique collectes",
         path: "/collecte",
-        icon: <MessageSquareWarning className="w-4 h-4" />,
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+        ),
       },
     ],
   },
-
 ];
 
 export function Sidebar({ sidebarOpen, setSidebarOpen }) {

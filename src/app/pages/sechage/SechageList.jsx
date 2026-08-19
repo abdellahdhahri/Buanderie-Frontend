@@ -52,12 +52,65 @@ function SechageInner() {
     <div className="collecte-container">
       <LotInfoDialogSechage />
 
-      <div className="page-header" style={{ marginBottom:0, textAlign:"left" }}>
-        <h1 className="text-3xl font-extrabold" style={{ marginBottom:"4px" }}>🌬️ Station de Séchage</h1>
-        <p className="text-sm" style={{ color:"#166d7c", marginBottom:"24px" }}>
-          Lots lavés · Cycles séchage par programme
-        </p>
-      </div>
+      <div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: "linear-gradient(135deg, #0891b2, #0e7490)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: "0 4px 16px rgba(8, 145, 178, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <path d="M12 2v4" />
+        <path d="M12 18v4" />
+        <path d="M4 12H2" />
+        <path d="M22 12h-2" />
+        <path d="M19 5l-3 3" />
+        <path d="M8 16l-3 3" />
+        <path d="M16 16l3 3" />
+        <path d="M5 5l3 3" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        Station de Séchage
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Lots lavés · Cycles séchage par programme
+      </p>
+    </div>
+  </div>
+</div>
 
       <div className="collecte-panel-grand" style={{ background:"white", borderRadius:"20px",
         padding:"32px", border:"1px solid #e2e8f0", boxShadow:"0 4px 16px rgba(0,0,0,0.06)" }}>

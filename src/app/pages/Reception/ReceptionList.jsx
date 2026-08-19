@@ -12,11 +12,11 @@ import Swal from "sweetalert2";
 function ReceptionInner() {
   const {
     agent,
-    bacsRecus = [],  // ← Valeur par défaut
-    sacsInfectes = [],  // ← Valeur par défaut
+    bacsRecus = [],
+    sacsInfectes = [],
     dernierRecu,
     bacEnCours,
-    lingesAffichés = [],  // ← Valeur par défaut
+    lingesAffichés = [],
     afficherLinges = false,
     loadingLinges = false,
     loading = false,
@@ -45,7 +45,6 @@ function ReceptionInner() {
     return () => { isMounted.current = false; };
   }, []);
 
-  // Focus permanent
   useEffect(() => {
     if (mode !== "BARCODE") return;
     const keepFocus = () => {
@@ -58,7 +57,6 @@ function ReceptionInner() {
     return () => clearInterval(id);
   }, [mode]);
 
-  // Debounce scan auto
   useEffect(() => {
     if (mode !== "BARCODE" || scanValue.trim().length < 3) return;
     const t = setTimeout(() => {
@@ -126,168 +124,308 @@ function ReceptionInner() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="collecte-container">
+{/* ── Header ── */}
+<div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: "linear-gradient(135deg, #10b981, #059669)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: "0 4px 16px rgba(16, 185, 129, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="17 8 12 3 7 8" />
+        <line x1="12" y1="3" x2="12" y2="15" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        Réception
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Réceptionnez les Bacs  et sacs
+      </p>
+    </div>
+  </div>
+</div>
+      <div
+        className="collecte-panel-grand"
+        style={{
+          background: "white",
+          borderRadius: "20px",
+          padding: "32px",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
+          minHeight: "600px"
+        }}
+      >
 
-      {/* Header */}
-      <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-        <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-          📦 Réception
-        </h1>
-      
-      </div>
-
-      {/* Barre actions */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-2 flex-wrap items-center">
-          {agent && (
-            <Button variant="outline" onClick={handleLogout}>
-              <User className="w-4 h-4 mr-2" /> Changer
-            </Button>
-          )}
-          <Button variant="outline" onClick={handleReset}>
-            <RotateCcw className="w-4 h-4 mr-2" /> Reset
-          </Button>
-          <ModeToggle mode={mode} onChange={setMode} />
+        {/* ── Barre d'info et actions ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+            <div style={{ background: "#dbeafe", width: "48px", height: "48px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {agent ? <Package size={18} /> : <User size={18} />}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, color: "#1e3a8a", fontSize: "20px" }}>Réception automatique</div>
+              <div style={{ fontSize: "13px", color: "#64748b" }}>
+                {agent
+                  ? <span>Agent: <strong>{agent.nom || agent.matricule}</strong></span>
+                  : "En attente de scan de l'agent"
+                }
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <ModeToggle mode={mode} onChange={setMode} />
+            {agent && (
+              <button onClick={handleLogout} style={btnStyle}>
+                <User size={14} /> Changer d'agent
+              </button>
+            )}
+            <button onClick={handleReset} style={btnStyle}>
+              <RotateCcw size={14} /> Réinitialiser
+            </button>
+          </div>
         </div>
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold ${agent ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-400"}`}>
-          {agent
-            ? <><CheckCircle className="w-4 h-4 text-green-500" /> {agent.nom}</>
-            : <><XCircle className="w-4 h-4" /> Hors ligne</>}
-        </div>
-      </div>
 
-      {/* ── Zone scan CODE-BARRES ── */}
-      {mode === "BARCODE" && (
-        <Card className={`border-2 ${agent ? "border-sky-400" : "border-dashed border-slate-200"}`}>
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit}>
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  {!agent ? <User size={18} /> : <Package size={18} />}
+        {/* ── Stats ── */}
+        {agent && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "20px", padding: "16px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+            <StatCard value={bacsRecus.length || 0} label="Bacs reçus" color="#0ea5e9" />
+            <StatCard value={sacsInfectes.length || 0} label="Sacs infectés" color="#ef4444" />
+            <StatCard value={dernierRecu ? (dernierRecu.type === "BAC" ? "Bac" : "Sac") : "-"} label="Dernier reçu" color="#8b5cf6" />
+          </div>
+        )}
+
+        {/* ── Zone scan ── */}
+        <div style={{ display: "flex", gap: "16px", marginBottom: "24px", flexWrap: "wrap", padding: "20px", background: "#f8fafc", borderRadius: "12px", border: agent ? "2px solid #22c55e" : "2px dashed #e2e8f0" }}>
+          <div style={{ flex: 1, minWidth: "300px" }}>
+            {mode === "BARCODE" ? (
+              <form onSubmit={handleSubmit} style={{ margin: 0 }}>
+                <div style={{ position: "relative", width: "100%" }}>
+                  <div style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }}>
+                    {!agent ? <User size={18} /> : <Package size={18} />}
+                  </div>
+                  <input
+                    ref={scanInputRef}
+                    type="text"
+                    placeholder={getPlaceholder()}
+                    value={scanValue}
+                    onChange={e => setScanValue(e.target.value)}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    disabled={loading}
+                    style={{
+                      width: "100%",
+                      padding: "16px 16px 16px 48px",
+                      borderRadius: "10px",
+                      border: `2px solid ${isFocused ? "#0ea5e9" : "#e2e8f0"}`,
+                      fontSize: "16px",
+                      background: loading ? "#f1f5f9" : "white",
+                      transition: "all 0.2s",
+                      outline: "none",
+                      boxShadow: isFocused ? "0 0 0 3px rgba(14,165,233,0.1)" : "none",
+                      cursor: loading ? "not-allowed" : "text",
+                      boxSizing: "border-box"
+                    }}
+                    autoFocus
+                  />
+                  {scanValue && (
+                    <button
+                      type="button"
+                      onClick={() => setScanValue("")}
+                      style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: "8px" }}
+                    >
+                      <XCircle size={16} />
+                    </button>
+                  )}
                 </div>
-                <input
-                  ref={scanInputRef}
-                  type="text"
-                  placeholder={getPlaceholder()}
-                  value={scanValue}
-                  onChange={e => setScanValue(e.target.value)}
-                  disabled={loading}
-                  className="w-full h-12 pl-10 pr-10 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring text-base"
-                  autoFocus
-                />
-                {scanValue && (
+              </form>
+            ) : (
+              /* ── Zone RFID ── */
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {!agent ? (
+                  <div style={{ position: "relative" }}>
+                    <div style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }}>
+                      <User size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="👤 Scanner badge agent..."
+                      value={scanValue}
+                      onChange={e => setScanValue(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && scanValue.trim()) {
+                          scanAgent(scanValue.trim());
+                          setScanValue("");
+                        }
+                      }}
+                      ref={scanInputRef}
+                      style={{
+                        width: "100%",
+                        padding: "16px 16px 16px 48px",
+                        borderRadius: "10px",
+                        border: "2px solid #e2e8f0",
+                        fontSize: "16px",
+                        outline: "none",
+                        boxSizing: "border-box"
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "10px" }}>
+                    <div style={{ position: "relative" }}>
+                      <div style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }}>
+                        <Package size={16} />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="📦 Code bac"
+                        value={rfidCodeBac}
+                        onChange={e => setRfidCodeBac(e.target.value)}
+                        ref={rfidBacRef}
+                        style={{
+                          width: "100%",
+                          padding: "16px 16px 16px 40px",
+                          borderRadius: "10px",
+                          border: "2px solid #e2e8f0",
+                          fontSize: "14px",
+                          outline: "none",
+                          boxSizing: "border-box"
+                        }}
+                      />
+                    </div>
+                    <div style={{ position: "relative" }}>
+                      <div style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }}>
+                        <Wifi size={16} />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="📡 Tags RFID (séparés par virgule)"
+                        value={rfidTags}
+                        onChange={e => setRfidTags(e.target.value)}
+                        ref={rfidTagsRef}
+                        onKeyDown={e => { if (e.key === "Enter") handlePortique(); }}
+                        style={{
+                          width: "100%",
+                          padding: "16px 16px 16px 40px",
+                          borderRadius: "10px",
+                          border: "2px solid #e2e8f0",
+                          fontSize: "14px",
+                          outline: "none",
+                          boxSizing: "border-box"
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {agent && (
                   <button
-                    type="button"
-                    onClick={() => setScanValue("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    onClick={handlePortique}
+                    disabled={rfidLoading || !rfidCodeBac.trim() || !rfidTags.trim()}
+                    style={{
+                      padding: "12px 24px",
+                      borderRadius: "10px",
+                      border: "none",
+                      background: rfidLoading || !rfidCodeBac.trim() || !rfidTags.trim()
+                        ? "#e2e8f0"
+                        : "linear-gradient(135deg, #7c3aed, #6d28d9)",
+                      color: rfidLoading || !rfidCodeBac.trim() || !rfidTags.trim()
+                        ? "#94a3b8"
+                        : "white",
+                      fontWeight: 600,
+                      fontSize: "14px",
+                      cursor: rfidLoading || !rfidCodeBac.trim() || !rfidTags.trim()
+                        ? "not-allowed"
+                        : "pointer",
+                      transition: "all 0.2s",
+                      width: "100%"
+                    }}
                   >
-                    <XCircle size={18} />
+                    {rfidLoading ? "⏳ Lecture..." : "✅ Valider le passage"}
                   </button>
                 )}
               </div>
-            </form>
-            <div className="mt-2 text-xs text-slate-400 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
-              {loading
-                ? "⏳ Traitement..."
-                : agent
-                  ? "✅ Agent connecté — Scan bac ou sac infecté"
-                  : "👤 En attente du badge agent"}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Zone scan RFID ── */}
-      {mode === "RFID" && (
-        <Card style={{ border: "2px solid #c4b5fd" }}>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "#ede9fe", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Wifi size={20} color="#7c3aed" />
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: "15px", color: "#7c3aed" }}>Portique RFID</div>
-                <div style={{ fontSize: "11px", color: "#64748b" }}>Tags lus automatiquement</div>
-              </div>
-            </div>
-
-            {!agent && (
-              <div className="mb-3">
-                <input
-                  type="text"
-                  placeholder="👤 Scanner badge agent..."
-                  value={scanValue}
-                  onChange={e => setScanValue(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && scanValue.trim()) {
-                      scanAgent(scanValue.trim());
-                      setScanValue("");
-                    }
-                  }}
-                  ref={scanInputRef}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none text-sm"
-                />
-              </div>
             )}
 
-            {agent && (
-              <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "10px" }}>
-                  <input
-                    type="text"
-                    placeholder="📦 Code bac"
-                    value={rfidCodeBac}
-                    onChange={e => setRfidCodeBac(e.target.value)}
-                    ref={rfidBacRef}
-                    className="h-10 px-3 rounded-lg border border-input bg-background focus:outline-none text-sm"
-                  />
-                  <input
-                    type="text"
-                    placeholder="📡 Tags RFID (séparés par virgule)"
-                    value={rfidTags}
-                    onChange={e => setRfidTags(e.target.value)}
-                    ref={rfidTagsRef}
-                    onKeyDown={e => { if (e.key === "Enter") handlePortique(); }}
-                    className="h-10 px-3 rounded-lg border border-input bg-background focus:outline-none text-sm"
-                  />
-                </div>
-                <Button
-                  onClick={handlePortique}
-                  disabled={rfidLoading || !rfidCodeBac.trim() || !rfidTags.trim()}
-                  className="w-full mt-3"
-                  style={{
-                    background: rfidLoading || !rfidCodeBac.trim() || !rfidTags.trim()
-                      ? undefined
-                      : "linear-gradient(135deg,#7c3aed,#6d28d9)"
-                  }}
-                >
-                  {rfidLoading ? "⏳ Lecture..." : "✅ Valider le passage"}
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "#94a3b8" }}>
+              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: isFocused ? "#10b981" : "#9ca3af", transition: "background 0.3s" }} />
+              <span>Lecteur: {isFocused ? "Prêt" : "Inactif"}</span>
+              {loading && <span style={{ marginLeft: "16px", color: "#0ea5e9" }}>⏳ Traitement...</span>}
+              <span style={{ marginLeft: "16px" }}>{agent ? "📦 Scan bac/sac" : "👤 Scan agent"}</span>
+            </div>
+          </div>
 
-      {/* ── Dernier reçu ── */}
-      {dernierRecu && (
-        <Card style={{
-          border: `2px solid ${dernierRecu.type === "BAC" ? "#0ea5e9" : "#dc2626"}`,
-          background: dernierRecu.type === "BAC" ? "#f0f9ff" : "#fff5f5"
-        }}>
-          <CardContent className="p-3">
-            <div className="flex items-center gap-3 flex-wrap">
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <div style={{ padding: "8px 16px", borderRadius: "10px", background: agent ? "#dcfce7" : "#f1f5f9", color: agent ? "#15803d" : "#94a3b8", fontSize: "14px", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px" }}>
+              {agent ? <CheckCircle size={16} color="#22c55e" /> : <XCircle size={16} />}
+              {agent ? "Agent connecté" : "Agent non connecté"}
+            </div>
+            <div style={{ padding: "8px 16px", borderRadius: "10px", background: "#f1f5f9", color: "#64748b", fontSize: "13px", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}>
+              {mode === "RFID" ? "📡 RFID" : "📷 Code-barres"}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Dernier reçu ── */}
+        {dernierRecu && (
+          <div style={{
+            background: dernierRecu.type === "BAC" ? "linear-gradient(135deg, #dbeafe, #eff6ff)" : "linear-gradient(135deg, #fee2e2, #fef2f2)",
+            borderRadius: "12px",
+            padding: "16px",
+            border: `2px solid ${dernierRecu.type === "BAC" ? "#3b82f6" : "#dc2626"}`,
+            marginBottom: "20px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
               {dernierRecu.type === "BAC"
-                ? <Package size={18} className="text-sky-500" />
-                : <ShieldAlert size={18} className="text-red-500" />}
-              <Badge variant={dernierRecu.type === "BAC" ? "default" : "destructive"}>
+                ? <Package size={20} color="#2563eb" />
+                : <ShieldAlert size={20} color="#dc2626" />}
+              <span style={{
+                padding: "4px 12px",
+                borderRadius: "20px",
+                background: dernierRecu.type === "BAC" ? "#2563eb" : "#dc2626",
+                color: "white",
+                fontSize: "12px",
+                fontWeight: 600
+              }}>
                 {dernierRecu.type === "BAC" ? "Bac" : "Sac infecté"}
-              </Badge>
+              </span>
               <code style={{
-                padding: "2px 8px",
+                padding: "4px 12px",
                 borderRadius: "6px",
-                fontSize: "13px",
+                fontSize: "14px",
                 fontWeight: 700,
                 background: dernierRecu.type === "BAC" ? "#dbeafe" : "#fee2e2",
                 color: dernierRecu.type === "BAC" ? "#1d4ed8" : "#dc2626"
@@ -295,29 +433,43 @@ function ReceptionInner() {
                 {dernierRecu.code}
               </code>
               {dernierRecu.type === "BAC" && bacEnCours && (
-                <Button
-                  size="sm"
-                  variant="outline"
+                <button
                   onClick={() => fetchLingesDuBac(bacEnCours.id)}
-                  className="text-xs h-7"
+                  style={{
+                    padding: "4px 16px",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                    background: "white",
+                    color: "#64748b",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: 500,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
                 >
-                  <Eye className="w-3 h-3 mr-1" /> Voir linges
-                </Button>
+                  <Eye size={14} /> Voir linges
+                </button>
               )}
               {dernierRecu.type === "SAC_INFECTE" && (
-                <span className="text-sm text-slate-500">
+                <span style={{ fontSize: "13px", color: "#64748b" }}>
                   {dernierRecu.data?.quantiteDeclaree || 0} art.
                 </span>
               )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* ── Panneau linges ── */}
-      {afficherLinges && (
-        <Card style={{ border: "2px solid #0ea5e9", background: "#f0f9ff" }}>
-          <CardContent className="p-4">
+        {/* ── Panneau linges ── */}
+        {afficherLinges && (
+          <div style={{
+            background: "#f0f9ff",
+            borderRadius: "12px",
+            padding: "16px",
+            border: "2px solid #0ea5e9",
+            marginBottom: "20px"
+          }}>
             <PanneauLinges
               linges={lingesAffichés || []}
               titre={`Linges du bac ${bacEnCours?.code || ""}`}
@@ -325,66 +477,136 @@ function ReceptionInner() {
               isLoading={loadingLinges}
               onClose={fermerLinges}
             />
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* ── Résumé des bacs reçus ── */}
-      {agent && (bacsRecus.length > 0 || sacsInfectes.length > 0) && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap gap-4">
+        {/* ── Historique / Résumé ── */}
+        {agent && (bacsRecus.length > 0 || sacsInfectes.length > 0) && (
+          <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "16px", border: "1px solid #e2e8f0", marginTop: "16px" }}>
+            <div style={{ fontWeight: 600, fontSize: "14px", color: "#1e293b", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <Package size={16} />
+              Résumé des réceptions
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
               {bacsRecus.length > 0 && (
                 <div>
-                  <div className="text-xs text-slate-400 font-medium">Bacs reçus</div>
-                  <div className="flex flex-wrap gap-2 mt-1">
+                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600 }}>Bacs reçus</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
                     {bacsRecus.map((bac, i) => (
-                      <Badge key={i} variant="outline" className="bg-sky-50">
+                      <span key={i} style={{
+                        padding: "4px 12px",
+                        borderRadius: "12px",
+                        background: "#dbeafe",
+                        color: "#1d4ed8",
+                        fontSize: "12px",
+                        fontWeight: 600
+                      }}>
                         {bac.codeBac || bac.code}
-                      </Badge>
+                      </span>
                     ))}
                   </div>
                 </div>
               )}
               {sacsInfectes.length > 0 && (
                 <div>
-                  <div className="text-xs text-slate-400 font-medium">Sacs infectés</div>
-                  <div className="flex flex-wrap gap-2 mt-1">
+                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600 }}>Sacs infectés</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
                     {sacsInfectes.map((sac, i) => (
-                      <Badge key={i} variant="outline" className="bg-red-50 text-red-700">
+                      <span key={i} style={{
+                        padding: "4px 12px",
+                        borderRadius: "12px",
+                        background: "#fee2e2",
+                        color: "#dc2626",
+                        fontSize: "12px",
+                        fontWeight: 600
+                      }}>
                         {sac.numeroSac}
-                      </Badge>
+                      </span>
                     ))}
                   </div>
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* Footer */}
-      <div className="flex justify-between items-center text-xs text-slate-400 pt-2 border-t border-slate-100 flex-wrap gap-2">
-        <div className="flex gap-4">
-          {agent && <span>Agent : <strong className="text-slate-600">{agent.nom}</strong></span>}
-          {agent && (
-            <>
-              <span>Bacs : <strong className="text-sky-600">{bacsRecus.length}</strong></span>
-              <span>Sacs : <strong className="text-red-600">{sacsInfectes.length}</strong></span>
-            </>
-          )}
-          <Badge variant="outline" style={{ fontSize: "11px" }}>
-            {mode === "RFID" ? "📡 RFID" : "📷 Code-barres"}
-          </Badge>
+        {/* ── Footer ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e2e8f0", flexWrap: "wrap", gap: "8px" }}>
+          <div style={{ display: "flex", gap: "20px", fontSize: "13px", color: "#64748b" }}>
+            {agent && (
+              <>
+                <span>Agent: <strong style={{ color: "#0f172a" }}>{agent.nom || agent.matricule}</strong></span>
+                <span>Matricule: <strong style={{ color: "#0f172a" }}>{agent.matricule}</strong></span>
+              </>
+            )}
+            {bacsRecus.length > 0 && (
+              <span>Bacs: <strong style={{ color: "#3b82f6" }}>{bacsRecus.length}</strong></span>
+            )}
+            {sacsInfectes.length > 0 && (
+              <span>Sacs: <strong style={{ color: "#dc2626" }}>{sacsInfectes.length}</strong></span>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: "8px", fontSize: "12px", color: "#94a3b8" }}>
+            <span>{new Date().toLocaleDateString("fr-FR")}</span>
+            <span>•</span>
+            <span>{new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+          </div>
         </div>
-        <span>
-          {new Date().toLocaleDateString("fr-FR")} {new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-        </span>
-      </div>
 
+      </div>
     </div>
   );
 }
+
+// ── Composant StatCard ──
+function StatCard({ value, label, color }) {
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "12px",
+      borderRadius: "10px",
+      background: "white",
+      border: `1px solid ${color}33`,
+      textAlign: "center"
+    }}>
+      <span style={{
+        fontSize: "24px",
+        fontWeight: 800,
+        color: color,
+        lineHeight: 1.2
+      }}>
+        {value}
+      </span>
+      <span style={{
+        fontSize: "12px",
+        color: "#64748b",
+        fontWeight: 500
+      }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+const btnStyle = {
+  padding: "8px 20px",
+  border: "1px solid #e2e8f0",
+  borderRadius: "10px",
+  background: "white",
+  color: "#64748b",
+  cursor: "pointer",
+  fontSize: "13px",
+  fontWeight: 500,
+  display: "flex",
+  alignItems: "center",
+  gap: "6px"
+};
+
+// État de focus pour l'input
+let isFocused = true;
 
 export default function ReceptionList() {
   return <ReceptionProvider><ReceptionInner /></ReceptionProvider>;

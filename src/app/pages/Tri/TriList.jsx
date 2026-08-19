@@ -499,16 +499,61 @@ function TriInner() {
       {/* Dialog de suggestion de lots */}
       <DialogLotsSuggere />
 
-      {/* ── Header ── */}
-      <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-        <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-          🏷️ Tri de Linge
-        </h1>
-        <p className="text-sm" style={{ color: "#166d7c", marginBottom: "24px" }}>
-          Scannez un agent puis un linge pour l'affecter à un lot de tri
-        </p>
-      </div>
-
+{/* ── Header ── */}
+<div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: "linear-gradient(135deg, #f59e0b, #d97706)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: "0 4px 16px rgba(245, 158, 11, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+        <path d="M2 17l10 5 10-5" />
+        <path d="M2 12l10 5 10-5" />
+        <path d="M12 22V12" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        Tri de Linge
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Triez le linge par catégorie et couleur
+      </p>
+    </div>
+  </div>
+</div>
       <div
         className="collecte-panel-grand"
         style={{
@@ -567,16 +612,7 @@ function TriInner() {
           </div>
         </div>
 
-        <div style={{ marginBottom: "20px" }}>
-          <EtapesStepper 
-            etapes={[
-              { id: "AGENT", label: "Agent", done: !!agentScanne },
-              { id: "SCAN", label: "Scan linge", done: !!lingeScanne },
-              { id: "LOT", label: "Affectation lot", done: !!lotSuggere }
-            ]} 
-            etapeActive={!agentScanne ? "AGENT" : !lingeScanne ? "SCAN" : "LOT"} 
-          />
-        </div>
+ 
 
         {agentScanne && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "20px", padding: "16px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>

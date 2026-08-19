@@ -376,14 +376,60 @@ export default function AgentList() {
         className="transition-all duration-500 ease-in-out w-full"
       >
         <div className="space-y-4">
-          <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-            <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-              👤 Gestion des Agents
-            </h1>
-            <p className="text-sm text-slate-500" style={{ color: "#166d7c" }}>
-              Gestion complète des agents et impression des matricules
-            </p>
-          </div>
+        <div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: "0 4px 16px rgba(14, 165, 233, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        Gestion des Agents
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Gérez les agents et leurs affectations
+      </p>
+    </div>
+  </div>
+</div>
 
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
             <button

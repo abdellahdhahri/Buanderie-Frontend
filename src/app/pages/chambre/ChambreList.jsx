@@ -27,7 +27,6 @@ import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import printJS from "print-js";
 
-// ─── Variables d'environnement ──────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export default function ChambreList() {
@@ -51,7 +50,6 @@ export default function ChambreList() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // ─── Fetch ──────────────────────────────────────────────────────────────────
   const fetchServices = async () => {
     try {
       const response = await fetch(`${API_URL}/api/sqlserver/services?page=0&size=50`);
@@ -91,7 +89,6 @@ export default function ChambreList() {
     setCurrentPage(1);
   }, [searchTerm]);
 
-  // ─── Fetch lits par chambre ──────────────────────────────────────────────
   const fetchChambreLits = useCallback(async (chambreId) => {
     setIsLitsLoading(true);
     setChambreLits([]);
@@ -114,7 +111,6 @@ export default function ChambreList() {
     }
   }, []);
 
-  // ─── Toggle accordéon ─────────────────────────────────────────────────────
   const toggleExpand = useCallback((chambre) => {
     if (expandedId === chambre.id) {
       setExpandedId(null);
@@ -128,7 +124,6 @@ export default function ChambreList() {
     }
   }, [expandedId, fetchChambreLits]);
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
   const getServiceName = useCallback((serviceId) => {
     if (!serviceId || !Array.isArray(services)) return "Non assigné";
     const service = services.find(s => s.id === serviceId);
@@ -143,6 +138,70 @@ export default function ChambreList() {
     }
     return <Badge variant="secondary">Inconnu</Badge>;
   };
+
+  // ─── Détection du format de code-barres ──────────────────────────────────
+  const detectFormat = useCallback((value) => {
+    if (!value) return "code128";
+    const clean = value.replace(/\s+/g, "");
+    if (/^\d{13}$/.test(clean)) return "ean13";
+    if (/^\d{8}$/.test(clean)) return "ean8";
+    if (/^\d{12}$/.test(clean)) return "upc";
+    return "code128";
+  }, []);
+
+  // ─── Impression du code-barres de la chambre ────────────────────────────
+  const handlePrintChambreCode = useCallback((chambre) => {
+    if (!chambre) return;
+    
+    const barcodeValue = chambre.codeBarre || chambre.code || `CH-${chambre.id}`;
+    const format = detectFormat(barcodeValue);
+    const serviceName = getServiceName(chambre.serviceId);
+
+    printJS({
+      printable: `
+        <div style="width:60mm;padding:3mm;font-family:'Courier New',monospace;background:white;text-align:center;">
+          <div style="border-bottom:1px solid #ddd;padding-bottom:2mm;margin-bottom:2mm;">
+            <div style="font-size:10pt;font-weight:bold;color:#1a1a1a;">CHAMBRE</div>
+            <div style="font-size:7pt;color:#666;">${serviceName || "N/A"}</div>
+          </div>
+          <div style="display:flex;justify-content:center;margin:2mm 0;">
+            <img src="https://barcodeapi.org/api/${format}/${encodeURIComponent(barcodeValue)}" style="height:70px;width:100%;max-width:180px;" />
+          </div>
+          
+        </div>
+      `,
+      type: "raw-html",
+      style: "*{margin:0;padding:0;box-sizing:border-box;}body{background:white;display:flex;justify-content:center;}",
+      documentTitle: `Code_Chambre_${chambre.code || chambre.id}`,
+      css: `@page{size:60mm 45mm;margin:0;}`
+    });
+  }, [detectFormat, getServiceName]);
+
+  const handlePrintLitCode = useCallback((lit) => {
+    if (!lit) return;
+    
+    const barcodeValue = lit.codeBarre || lit.code || `LIT-${lit.id}`;
+    const format = detectFormat(barcodeValue);
+
+    printJS({
+      printable: `
+        <div style="width:60mm;padding:3mm;font-family:'Courier New',monospace;background:white;text-align:center;">
+          <div style="border-bottom:1px solid #ddd;padding-bottom:2mm;margin-bottom:2mm;">
+            <div style="font-size:10pt;font-weight:bold;color:#1a1a1a;">LIT</div>
+            <div style="font-size:7pt;color:#666;">${lit.description || "N/A"}</div>
+          </div>
+          <div style="display:flex;justify-content:center;margin:2mm 0;">
+            <img src="https://barcodeapi.org/api/${format}/${encodeURIComponent(barcodeValue)}" style="height:70px;width:100%;max-width:180px;" />
+          </div>
+          
+        </div>
+      `,
+      type: "raw-html",
+      style: "*{margin:0;padding:0;box-sizing:border-box;}body{background:white;display:flex;justify-content:center;}",
+      documentTitle: `Code_Lit_${lit.code || lit.id}`,
+      css: `@page{size:60mm 45mm;margin:0;}`
+    });
+  }, [detectFormat]);
 
   // ─── CRUD ──────────────────────────────────────────────────────────────────
   const handleOpenCreateModal = useCallback(() => {
@@ -220,83 +279,13 @@ export default function ChambreList() {
     }
   }, [expandedId]);
 
-  // ─── Impression ───────────────────────────────────────────────────────────
-  const detectFormat = useCallback((value) => {
-    if (!value) return "code128";
-    const clean = value.replace(/\s+/g, "");
-    if (/^\d{13}$/.test(clean)) return "ean13";
-    if (/^\d{8}$/.test(clean)) return "ean8";
-    if (/^\d{12}$/.test(clean)) return "upc";
-    return "code128";
-  }, []);
-
-  const handlePrintChambreCode = useCallback((chambre) => {
-    if (!chambre) return;
-    const code = chambre.code || `CH-${chambre.id}`;
-    const format = detectFormat(code);
-    const serviceName = getServiceName(chambre.serviceId);
-
-    printJS({
-      printable: `
-        <div style="width:60mm;padding:3mm;font-family:'Courier New',monospace;background:white;text-align:center;">
-          <div style="border-bottom:1px solid #ddd;padding-bottom:2mm;margin-bottom:2mm;">
-            <div style="font-size:10pt;font-weight:bold;color:#1a1a1a;">CHAMBRE</div>
-            <div style="font-size:7pt;color:#666;">${serviceName || "N/A"}</div>
-          </div>
-          <div style="display:flex;justify-content:center;margin:2mm 0;">
-            <img src="https://barcodeapi.org/api/${format}/${encodeURIComponent(code)}" style="height:70px;width:100%;max-width:180px;" />
-          </div>
-          <div style="font-size:12pt;font-weight:bold;letter-spacing:1px;margin:2mm 0;">${code}</div>
-          <div style="font-size:9pt;font-weight:600;color:#1a1a1a;">Chambre ${code}</div>
-          <div style="font-size:8pt;color:#666;margin-top:2mm;border-top:1px solid #ddd;padding-top:2mm;">
-            <div>🏢 ${serviceName || "Service non assigné"}</div>
-            <div style="font-size:7pt;margin-top:1mm;">${new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
-          </div>
-        </div>
-      `,
-      type: "raw-html",
-      style: "*{margin:0;padding:0;box-sizing:border-box;}body{background:white;display:flex;justify-content:center;}",
-      documentTitle: `Code_Chambre_${chambre.code || chambre.id}`,
-      css: `@page{size:60mm 45mm;margin:0;}`
-    });
-  }, [detectFormat, getServiceName]);
-
-  const handlePrintLitCode = useCallback((lit) => {
-    if (!lit) return;
-    const code = lit.code || `LIT-${lit.id}`;
-    const format = detectFormat(code);
-
-    printJS({
-      printable: `
-        <div style="width:60mm;padding:3mm;font-family:'Courier New',monospace;background:white;text-align:center;">
-          <div style="border-bottom:1px solid #ddd;padding-bottom:2mm;margin-bottom:2mm;">
-            <div style="font-size:10pt;font-weight:bold;color:#1a1a1a;">LIT</div>
-            <div style="font-size:7pt;color:#666;">${lit.description || "N/A"}</div>
-          </div>
-          <div style="display:flex;justify-content:center;margin:2mm 0;">
-            <img src="https://barcodeapi.org/api/${format}/${encodeURIComponent(code)}" style="height:70px;width:100%;max-width:180px;" />
-          </div>
-          <div style="font-size:12pt;font-weight:bold;letter-spacing:1px;margin:2mm 0;">${code}</div>
-          <div style="font-size:9pt;font-weight:600;color:#1a1a1a;">${lit.description || "Lit"}</div>
-          <div style="font-size:8pt;color:#666;margin-top:2mm;border-top:1px solid #ddd;padding-top:2mm;">
-            <div>🛏️ ${lit.etat === 1 ? "Occupé" : "Libre"}</div>
-            <div style="font-size:7pt;margin-top:1mm;">${new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
-          </div>
-        </div>
-      `,
-      type: "raw-html",
-      style: "*{margin:0;padding:0;box-sizing:border-box;}body{background:white;display:flex;justify-content:center;}",
-      documentTitle: `Code_Lit_${lit.code || lit.id}`,
-      css: `@page{size:60mm 45mm;margin:0;}`
-    });
-  }, [detectFormat]);
-
   // ─── Filtrage ─────────────────────────────────────────────────────────────
   const filteredChambres = useMemo(() => {
     if (!searchTerm) return chambres;
     const term = searchTerm.toLowerCase();
     return chambres.filter(r =>
-      r.code?.toLowerCase().includes(term)
+      r.code?.toLowerCase().includes(term) ||
+      r.codeBarre?.toLowerCase().includes(term)
     );
   }, [chambres, searchTerm]);
 
@@ -308,14 +297,58 @@ export default function ChambreList() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-        <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-          🏠 Gestion des Chambres
-        </h1>
-        <p className="text-sm text-slate-500" style={{ color: "#166d7c" }}>
-          Gestion complète des chambres et des lits associés
-        </p>
-      </div>
+<div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: "linear-gradient(135deg, #f472b6, #ec4899)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: "0 4px 16px rgba(244, 114, 182, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        Gestion des Chambres
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Gérez les chambres et leurs disponibilités
+      </p>
+    </div>
+  </div>
+</div>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
@@ -378,7 +411,7 @@ export default function ChambreList() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Rechercher par code chambre..."
+              placeholder="Rechercher par code chambre ou code-barres..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -396,6 +429,7 @@ export default function ChambreList() {
                 <tr>
                   <th className="text-center py-3 px-4 text-sm font-medium w-12"></th>
                   <th className="text-center py-3 px-4 text-sm font-medium">Code</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium">Code-Barres</th>
                   <th className="text-center py-3 px-4 text-sm font-medium">Service</th>
                   <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
                 </tr>
@@ -403,7 +437,7 @@ export default function ChambreList() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={4} className="text-center py-10 text-muted-foreground">
+                    <td colSpan={5} className="text-center py-10 text-muted-foreground">
                       <div className="flex items-center justify-center gap-2">
                         <Loader2 className="w-5 h-5 animate-spin" />
                         Chargement...
@@ -412,7 +446,7 @@ export default function ChambreList() {
                   </tr>
                 ) : currentData.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="text-center py-10 text-muted-foreground">
+                    <td colSpan={5} className="text-center py-10 text-muted-foreground">
                       {searchTerm ? "Aucune chambre correspondante" : "Aucune chambre trouvée"}
                     </td>
                   </tr>
@@ -447,6 +481,11 @@ export default function ChambreList() {
                             </div>
                           </td>
                           <td className="text-center py-3 px-4">
+                            <div className="font-mono text-sm text-slate-600">
+                              {chambre.codeBarre || "-"}
+                            </div>
+                          </td>
+                          <td className="text-center py-3 px-4">
                             <div className="flex items-center justify-center gap-2">
                               <Building2 className="w-4 h-4 text-slate-400" />
                               <span className="text-sm">{getServiceName(chambre.serviceId)}</span>
@@ -460,7 +499,7 @@ export default function ChambreList() {
                                   handlePrintChambreCode(chambre);
                                 }}
                                 className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title="Imprimer le code"
+                                title="Imprimer le code-barres"
                               >
                                 <Barcode className="w-4 h-4 text-[#e67700]" />
                               </button>
@@ -492,7 +531,7 @@ export default function ChambreList() {
                         <AnimatePresence initial={false}>
                           {isExpanded && (
                             <tr>
-                              <td colSpan={4} className="p-0 border-b border-blue-100">
+                              <td colSpan={5} className="p-0 border-b border-blue-100">
                                 <motion.div
                                   initial={{ height: 0, opacity: 0 }}
                                   animate={{ height: "auto", opacity: 1 }}
@@ -581,7 +620,7 @@ export default function ChambreList() {
                                                   handlePrintLitCode(lit);
                                                 }}
                                                 className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
-                                                title="Imprimer le code du lit"
+                                                title="Imprimer le code-barres du lit"
                                               >
                                                 <Barcode className="w-4 h-4 text-[#e67700]" />
                                               </button>

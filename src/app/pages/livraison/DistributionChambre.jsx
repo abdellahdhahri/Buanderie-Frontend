@@ -327,8 +327,6 @@ export default function DistributionChambre() {
             </div>
           )}
 
-          {/* Stepper */}
-          <EtapesStepper etapes={ETAPES} etapeActive={etape} couleurActive={BORDER}/>
 
           {/* Zone scan */}
           {etape !== "RESUME" && (

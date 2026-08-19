@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   FaSync, FaBell, FaArrowUp, FaArrowDown,
-  FaTshirt, FaSoap, FaWind, FaBoxes, FaTruck,
+  FaTshirt, FaTruck,
   FaBiohazard, FaExclamationTriangle,
-  FaCheckCircle, FaClock, FaChevronRight,
-  FaWarehouse, FaUsers, FaWrench, FaChartLine,
-  FaIndustry, FaCircle, FaMicrochip,
-  FaChartPie, FaChartBar, FaCalendarAlt,
-  FaPercent, FaLayerGroup, FaBuilding,
-  FaUserCheck, FaPhone, FaEnvelope, FaMapMarkerAlt,
-  FaArrowRight, FaList, FaTh
+  FaCheckCircle, FaClock,
+  FaWarehouse, FaUsers, FaWrench,
+  FaChartPie, FaChartBar,
+  FaLayerGroup,
 } from "react-icons/fa";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -26,7 +23,7 @@ import {
   PointElement,
   LineElement
 } from 'chart.js';
-import { Pie, Bar, Line, Doughnut } from 'react-chartjs-2';
+import { Pie, Bar, Doughnut } from 'react-chartjs-2';
 
 ChartJS.register(
   ArcElement,
@@ -44,21 +41,11 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 const COLORS = {
   primary: "#0d9488",
-  primaryLight: "#ccfbf1",
-  accent: "#14b8a6",
-  info: "#0ea5e9",
   success: "#10b981",
+  info: "#0ea5e9",
   warning: "#f59e0b",
   danger: "#ef4444",
   purple: "#8b5cf6",
-  pink: "#ec4899",
-  indigo: "#6366f1",
-  text: "#0f172a",
-  muted: "#64748b",
-  border: "#e2e8f0",
-  bg: "#f8fafc",
-  surface: "#ffffff",
-  dark: "#1e293b"
 };
 
 const CHART_COLORS = [
@@ -81,6 +68,7 @@ const ETATS = {
   HORS_SERVICE: { label: "Hors service", color: "#64748b", bg: "#f1f5f9", icon: "🗑️" },
 };
 
+// ─── HOOK ──────────────────────────────────────────────────────────────────
 function useDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -126,7 +114,7 @@ function useDashboard() {
   return { data, loading, error, lastUpdate, refresh: fetchData };
 }
 
-// ─── KPI Card ──────────────────────────────────────────────────────────────
+// ─── KPI CARD ──────────────────────────────────────────────────────────────
 function KpiCard({ label, value, icon, color, trend, trendValue }) {
   const isUp = trend === 'up';
   return (
@@ -158,7 +146,7 @@ function KpiCard({ label, value, icon, color, trend, trendValue }) {
   );
 }
 
-// ─── Pie Chart ─────────────────────────────────────────────────────────────
+// ─── PIE CHART ─────────────────────────────────────────────────────────────
 function PieChartComponent({ data, title, labels }) {
   const chartData = {
     labels: labels || ['Collecte', 'Lavage', 'Séchage', 'Stock', 'Autre'],
@@ -207,15 +195,15 @@ function PieChartComponent({ data, title, labels }) {
   );
 }
 
-// ─── Bar Chart ─────────────────────────────────────────────────────────────
-function BarChartComponent({ data, title, labels, colors }) {
+// ─── BAR CHART ─────────────────────────────────────────────────────────────
+function BarChartComponent({ data, title, labels }) {
   const chartData = {
     labels: labels || ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
     datasets: [
       {
         label: 'Activité',
         data: data || [12, 19, 15, 22, 18, 14, 8],
-        backgroundColor: colors || CHART_COLORS.slice(0, 7),
+        backgroundColor: CHART_COLORS.slice(0, 7),
         borderRadius: 4,
         borderSkipped: false,
       },
@@ -271,13 +259,208 @@ function BarChartComponent({ data, title, labels, colors }) {
   );
 }
 
-// ─── Doughnut Chart ────────────────────────────────────────────────────────
-function DoughnutChartComponent({ data, title, labels }) {
+// ─── STOCK PAR SERVICE ─────────────────────────────────────────────────────
+function StockServices({ services }) {
+  if (!services || services.length === 0) {
+    return (
+      <Card className="border-slate-100 shadow-sm">
+        <CardContent className="p-6 text-center">
+          <FaWarehouse className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+          <p className="text-sm text-slate-500">Aucune donnée stock</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-slate-100 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-teal-500 flex items-center justify-center text-white">
+            <FaWarehouse size={12} />
+          </div>
+          <h3 className="text-xs font-bold text-slate-700">Stock par service</h3>
+          <Badge className="ml-auto bg-teal-50 text-teal-700 text-[9px] px-2 py-0.5">
+            {services.length}
+          </Badge>
+        </div>
+
+        <div className="space-y-2 max-h-[220px] overflow-y-auto">
+          {services.map((s, i) => {
+            const total = s.nbTotal || 1;
+            const enPlace = s.nbLivre || 0;
+            const enCircuit = s.nbEnCircuit || 0;
+            const stocke = s.nbStocke || 0;
+
+            return (
+              <div key={i} className="p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-semibold text-slate-700">{s.serviceCode || "N/A"}</span>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="text-teal-600 font-medium">{enPlace}</span>
+                    <span className="text-slate-300">/</span>
+                    <span className="text-slate-500">{total}</span>
+                  </div>
+                </div>
+                <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                  <div className="h-full bg-teal-500 rounded-full" style={{ width: `${(enPlace / total) * 100}%` }} />
+                </div>
+                <div className="flex gap-4 mt-1.5 text-[10px] text-slate-400">
+                  <span>📦 {enPlace} en place</span>
+                  <span>🔄 {enCircuit} circuit</span>
+                  <span>📥 {stocke} stock</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── ÉTAT DES MACHINES ─────────────────────────────────────────────────────
+function EtatMachines({ machines }) {
+  if (!machines || machines.length === 0) {
+    return (
+      <Card className="border-slate-100 shadow-sm">
+        <CardContent className="p-4 text-center py-6">
+          <FaWrench className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <p className="text-sm text-slate-500">Aucune machine</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const stats = {
+    DISPONIBLE: machines.filter(m => m.etat === "DISPONIBLE").length,
+    EN_COURS: machines.filter(m => m.etat === "EN_COURS").length,
+    EN_MAINTENANCE: machines.filter(m => m.etat === "EN_MAINTENANCE").length,
+    HORS_SERVICE: machines.filter(m => m.etat === "HORS_SERVICE").length,
+  };
+
+  const total = machines.length;
+
+  const etatConfig = {
+    DISPONIBLE: { color: "emerald", bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", label: "Disponible", icon: "🟢", barColor: "#10b981" },
+    EN_COURS: { color: "blue", bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500", label: "En cours", icon: "🔵", barColor: "#3b82f6" },
+    EN_MAINTENANCE: { color: "amber", bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500", label: "Maintenance", icon: "🟡", barColor: "#f59e0b" },
+    HORS_SERVICE: { color: "red", bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500", label: "Hors service", icon: "🔴", barColor: "#ef4444" },
+  };
+
+  const typeIcon = {
+    LAVEUR: '🫧',
+    SECHEUR: '🌬️',
+    LAVEUR_SECHEUR: '🔁'
+  };
+
+  return (
+    <Card className="border-slate-100 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center text-white">
+            <FaWrench size={12} />
+          </div>
+          <h3 className="text-xs font-bold text-slate-700">État des machines</h3>
+          <Badge className="ml-auto bg-amber-50 text-amber-700 text-[9px] px-2 py-0.5">
+            {total} machines
+          </Badge>
+        </div>
+
+        {/* Barres de progression */}
+        <div className="space-y-2 mb-4">
+          {Object.entries(etatConfig).map(([key, config]) => {
+            const count = stats[key] || 0;
+            const pct = total > 0 ? (count / total) * 100 : 0;
+            if (count === 0) return null;
+
+            return (
+              <div key={key}>
+                <div className="flex justify-between items-center text-xs mb-0.5">
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-sm">{config.icon}</span>
+                    <span className="font-medium text-slate-600">{config.label}</span>
+                  </span>
+                  <span className="font-bold text-slate-700">{count}</span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div 
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ 
+                      width: `${Math.min(pct, 100)}%`,
+                      backgroundColor: config.barColor
+                    }} 
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Grille des machines */}
+        <div className="grid grid-cols-2 gap-2">
+          {machines.slice(0, 4).map((m, i) => {
+            const e = etatConfig[m.etat] || { bg: "bg-slate-50", text: "text-slate-600", dot: "bg-slate-400", label: m.etat || "Inconnu", icon: "⚪" };
+            const icon = typeIcon[m.type] || '⚙️';
+            
+            return (
+              <div key={i} className={`p-2.5 rounded-lg ${e.bg} border border-slate-100`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">{icon}</span>
+                    <span className="text-sm font-mono font-semibold text-slate-700">{m.code || "N/A"}</span>
+                  </div>
+                  <span className={`text-[9px] font-medium ${e.text} flex items-center gap-1`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${e.dot}`} />
+                    {e.label}
+                  </span>
+                </div>
+                <div className="flex gap-4 mt-1 text-[10px] text-slate-500">
+                  <span>🔄 {m.cyclesAujourdhui || 0} cycles</span>
+                  <span>⚖️ {m.poidsTraiteAujourdhui || 0} kg</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {machines.length > 4 && (
+          <p className="text-[10px] text-slate-400 text-center mt-2.5">
+            + {machines.length - 4} autre{machines.length - 4 > 1 ? 's' : ''} machine{machines.length - 4 > 1 ? 's' : ''}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── RÉPARTITION DES MACHINES ─────────────────────────────────────────────
+function RepartitionMachines({ machines }) {
+  if (!machines || machines.length === 0) {
+    return (
+      <Card className="border-slate-100 shadow-sm">
+        <CardContent className="p-4 text-center py-6">
+          <FaLayerGroup className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <p className="text-sm text-slate-500">Aucune machine</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const stats = {
+    DISPONIBLE: machines.filter(m => m.etat === "DISPONIBLE").length,
+    EN_COURS: machines.filter(m => m.etat === "EN_COURS").length,
+    EN_MAINTENANCE: machines.filter(m => m.etat === "EN_MAINTENANCE").length,
+    HORS_SERVICE: machines.filter(m => m.etat === "HORS_SERVICE").length,
+  };
+
+  const total = machines.length;
+
   const chartData = {
-    labels: labels || ['Disponible', 'En cours', 'Maintenance', 'HS'],
+    labels: ['Disponible', 'En cours', 'Maintenance', 'Hors service'],
     datasets: [
       {
-        data: data || [40, 30, 20, 10],
+        data: [stats.DISPONIBLE, stats.EN_COURS, stats.EN_MAINTENANCE, stats.HORS_SERVICE],
         backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
         borderColor: '#ffffff',
         borderWidth: 2,
@@ -295,157 +478,66 @@ function DoughnutChartComponent({ data, title, labels }) {
           padding: 8,
           usePointStyle: true,
           pointStyle: 'circle',
-          font: { size: 8, weight: '500' },
+          font: { size: 9, weight: '500' },
           color: '#64748b'
         }
       }
     },
-    cutout: '70%',
+    cutout: '65%',
   };
 
+  const etatList = [
+    { key: 'DISPONIBLE', label: 'Disponible', icon: '🟢', count: stats.DISPONIBLE, color: '#10b981', bg: 'bg-emerald-50' },
+    { key: 'EN_COURS', label: 'En cours', icon: '🔵', count: stats.EN_COURS, color: '#3b82f6', bg: 'bg-blue-50' },
+    { key: 'EN_MAINTENANCE', label: 'Maintenance', icon: '🟡', count: stats.EN_MAINTENANCE, color: '#f59e0b', bg: 'bg-amber-50' },
+    { key: 'HORS_SERVICE', label: 'Hors service', icon: '🔴', count: stats.HORS_SERVICE, color: '#ef4444', bg: 'bg-red-50' },
+  ];
+
   return (
-    <Card className="border-slate-100 h-full shadow-sm">
+    <Card className="border-slate-100 shadow-sm">
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-400 to-purple-500 flex items-center justify-center text-white">
-            <FaLayerGroup size={11} />
+            <FaLayerGroup size={12} />
           </div>
-          <h3 className="text-xs font-bold text-slate-700">{title || 'État des machines'}</h3>
-        </div>
-        <div className="h-[180px]">
-          <Doughnut data={chartData} options={options} />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── STOCK SERVICES (moderne) ──────────────────────────────────────────────
-function StockServices({ services }) {
-  if (!services || services.length === 0) {
-    return (
-      <Card className="border-slate-100 h-full shadow-sm">
-        <CardContent className="p-5 flex items-center justify-center h-[240px]">
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
-              <FaWarehouse className="w-6 h-6 text-slate-300" />
-            </div>
-            <p className="text-sm font-medium text-slate-500">Aucune donnée stock</p>
-            <p className="text-xs text-slate-400 mt-1">Les services apparaîtront ici</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const totalLivre = services.reduce((sum, s) => sum + (s.nbLivre || 0), 0);
-  const totalCircuit = services.reduce((sum, s) => sum + (s.nbEnCircuit || 0), 0);
-  const totalStock = services.reduce((sum, s) => sum + (s.nbStocke || 0), 0);
-
-  return (
-    <Card className="border-slate-100 h-full shadow-sm overflow-hidden">
-      <CardContent className="p-0">
-        <div className="px-5 pt-5 pb-4 border-b border-slate-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20">
-                <FaWarehouse size={16} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">Stock par service</h3>
-                <p className="text-xs text-slate-400">{services.length} services suivis</p>
-              </div>
-            </div>
-            <Badge className="bg-teal-50 text-teal-700 border-0 text-[10px] font-medium px-2.5 py-0.5">
-              Live
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 mt-4">
-            <div className="rounded-xl bg-teal-50/80 border border-teal-100 p-2.5 text-center">
-              <p className="text-lg font-bold text-teal-700 leading-none">{totalLivre}</p>
-              <p className="text-[10px] text-teal-600/80 mt-1 font-medium">En place</p>
-            </div>
-            <div className="rounded-xl bg-sky-50/80 border border-sky-100 p-2.5 text-center">
-              <p className="text-lg font-bold text-sky-700 leading-none">{totalCircuit}</p>
-              <p className="text-[10px] text-sky-600/80 mt-1 font-medium">En circuit</p>
-            </div>
-            <div className="rounded-xl bg-emerald-50/80 border border-emerald-100 p-2.5 text-center">
-              <p className="text-lg font-bold text-emerald-700 leading-none">{totalStock}</p>
-              <p className="text-[10px] text-emerald-600/80 mt-1 font-medium">Stock</p>
-            </div>
-          </div>
+          <h3 className="text-xs font-bold text-slate-700">Répartition des machines</h3>
+          <Badge className="ml-auto bg-purple-50 text-purple-700 text-[9px] px-2 py-0.5">
+            {total} machines
+          </Badge>
         </div>
 
-        <div className="px-4 py-3 space-y-2 max-h-[220px] overflow-y-auto">
-          {services.slice(0, 6).map((s, i) => {
-            const total = s.nbTotal || 1;
-            const livrePct = ((s.nbLivre || 0) / total) * 100;
-            const circPct = ((s.nbEnCircuit || 0) / total) * 100;
+        <div className="grid grid-cols-1 gap-3">
+          {/* Graphique Doughnut */}
+          <div className="h-[200px]">
+            <Doughnut data={chartData} options={options} />
+          </div>
 
-            const statutConfig = {
-              CRITIQUE: { color: "bg-red-500", text: "text-red-600", bg: "bg-red-50", label: "Critique" },
-              ATTENTION: { color: "bg-amber-500", text: "text-amber-600", bg: "bg-amber-50", label: "Attention" },
-              NORMAL: { color: "bg-emerald-500", text: "text-emerald-600", bg: "bg-emerald-50", label: "Normal" },
-            }[s.statut] || { color: "bg-slate-400", text: "text-slate-500", bg: "bg-slate-50", label: "—" };
-
-            return (
-              <div
-                key={i}
-                className="group p-3 rounded-xl bg-white border border-slate-100 hover:border-teal-200 hover:shadow-sm transition-all duration-200"
+          {/* Légende détaillée avec compteurs */}
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {etatList.map((item) => (
+              <div 
+                key={item.key}
+                className={`p-2.5 rounded-lg ${item.bg} border border-slate-100`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-2 h-2 rounded-full ${statutConfig.color}`} />
-                    <span className="text-sm font-semibold text-slate-800">{s.serviceCode || "N/A"}</span>
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${statutConfig.bg} ${statutConfig.text}`}>
-                      {statutConfig.label}
-                    </span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">{item.icon}</span>
+                    <span className="text-xs font-medium text-slate-600">{item.label}</span>
                   </div>
-                  <span className="text-xs font-medium text-slate-500">
-                    <span className="text-slate-800 font-bold">{s.nbLivre || 0}</span>
-                    <span className="text-slate-300 mx-1">/</span>
-                    {total}
-                  </span>
-                </div>
-
-                <div className="h-2 rounded-full bg-slate-100 overflow-hidden flex">
-                  <div
-                    className="h-full bg-gradient-to-r from-teal-500 to-teal-400 transition-all duration-500"
-                    style={{ width: `${Math.min(livrePct, 100)}%` }}
-                  />
-                  <div
-                    className="h-full bg-gradient-to-r from-sky-400 to-sky-300 transition-all duration-500"
-                    style={{ width: `${Math.min(circPct, 100)}%` }}
-                  />
-                </div>
-
-                <div className="flex justify-between mt-1.5 text-[10px] text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500" /> En place
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400" /> Circuit
+                  <span className="text-sm font-bold" style={{ color: item.color }}>
+                    {item.count}
                   </span>
                 </div>
               </div>
-            );
-          })}
-        </div>
-
-        {services.length > 6 && (
-          <div className="px-4 pb-3">
-            <p className="text-[11px] text-slate-400 text-center py-1.5 rounded-lg bg-slate-50">
-              + {services.length - 6} autres services
-            </p>
+            ))}
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-// ─── ALERTES (moderne) ─────────────────────────────────────────────────────
+// ─── ALERTES ───────────────────────────────────────────────────────────────
 function AlertesWidget({ alertes }) {
   const all = [
     ...(alertes?.stockCritique || []),
@@ -454,77 +546,39 @@ function AlertesWidget({ alertes }) {
     ...(alertes?.finDeVie || []).slice(0, 3),
   ];
 
-  const isCritical = all.some(a => a.niveau === "CRITICAL");
-  const nbCrit = all.filter(a => a.niveau === "CRITICAL").length;
-
   return (
-    <Card className={`border-slate-100 h-full shadow-sm overflow-hidden ${isCritical ? "ring-1 ring-red-200" : ""}`}>
-      <CardContent className="p-0">
-        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isCritical ? "bg-red-100" : "bg-amber-100"}`}>
-              <FaBell className={isCritical ? "text-red-500" : "text-amber-500"} size={16} />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Alertes</h3>
-              <p className="text-xs text-slate-400">
-                {all.length === 0 ? "Aucune alerte" : `${all.length} active${all.length > 1 ? "s" : ""}`}
-              </p>
-            </div>
+    <Card className="border-slate-100 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center text-white">
+            <FaBell size={12} />
           </div>
-          {nbCrit > 0 && (
-            <Badge className="bg-red-500 text-white border-0 text-[10px] font-semibold px-2.5 py-0.5 shadow-sm shadow-red-200">
-              {nbCrit} critique{nbCrit > 1 ? "s" : ""}
+          <h3 className="text-xs font-bold text-slate-700">Alertes</h3>
+          {all.length > 0 && (
+            <Badge className="ml-auto bg-red-100 text-red-700 text-[9px] px-2 py-0.5">
+              {all.length}
             </Badge>
           )}
         </div>
 
         {all.length === 0 ? (
-          <div className="px-5 pb-6 pt-2 flex items-center justify-center">
-            <div className="text-center py-4">
-              <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-3">
-                <FaCheckCircle className="w-7 h-7 text-emerald-500" />
-              </div>
-              <p className="text-sm font-semibold text-slate-700">Tout est sous contrôle</p>
-              <p className="text-xs text-slate-400 mt-1">Aucune alerte en cours</p>
-            </div>
+          <div className="text-center py-6">
+            <FaCheckCircle className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+            <p className="text-sm font-medium text-slate-600">Tout est sous contrôle</p>
+            <p className="text-xs text-slate-400">Aucune alerte en cours</p>
           </div>
         ) : (
-          <div className="px-4 pb-4 space-y-2 max-h-[180px] overflow-y-auto">
+          <div className="space-y-2 max-h-[160px] overflow-y-auto">
             {all.slice(0, 5).map((a, i) => {
               const isCrit = a.niveau === "CRITICAL";
               return (
-                <div
-                  key={i}
-                  className={`p-3 rounded-xl border transition-all duration-200 hover:shadow-sm ${
-                    isCrit
-                      ? "bg-red-50/50 border-red-100 hover:border-red-200"
-                      : "bg-amber-50/40 border-amber-100 hover:border-amber-200"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      isCrit ? "bg-red-100" : "bg-amber-100"
-                    }`}>
-                      {a.type?.includes("SAC") ? (
-                        <FaBiohazard size={13} className={isCrit ? "text-red-500" : "text-amber-500"} />
-                      ) : a.type?.includes("FIN") ? (
-                        <FaClock size={13} className="text-amber-500" />
-                      ) : (
-                        <FaExclamationTriangle size={13} className={isCrit ? "text-red-500" : "text-amber-500"} />
-                      )}
-                    </div>
+                <div key={i} className={`p-2.5 rounded-lg ${isCrit ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-100'}`}>
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5">{isCrit ? '🔴' : '⚠️'}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 leading-snug">{a.message || "Alerte"}</p>
-                      {a.detail && (
-                        <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{a.detail}</p>
-                      )}
+                      <p className="text-xs font-medium text-slate-700">{a.message || "Alerte"}</p>
+                      {a.detail && <p className="text-[10px] text-slate-500 truncate">{a.detail}</p>}
                     </div>
-                    {a.reference && (
-                      <code className="text-[10px] font-mono bg-white/80 border border-slate-200 px-2 py-0.5 rounded-md text-slate-500 flex-shrink-0">
-                        {a.reference}
-                      </code>
-                    )}
                   </div>
                 </div>
               );
@@ -536,78 +590,44 @@ function AlertesWidget({ alertes }) {
   );
 }
 
-// ─── COLLECTES RÉCENTES (moderne) ──────────────────────────────────────────
+// ─── COLLECTES RÉCENTES ────────────────────────────────────────────────────
 function CollectesRecentes({ collectes }) {
-  const typeConfig = {
-    MIXTE: { icon: "🏢", color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
-    CHAMBRE: { icon: "🏠", color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100" },
-    UNIFORME: { icon: "👔", color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-100" },
-  };
-
   if (!collectes || collectes.length === 0) {
     return (
-      <Card className="border-slate-100 h-full shadow-sm">
-        <CardContent className="p-5 flex items-center justify-center h-[200px]">
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
-              <FaTruck className="w-6 h-6 text-slate-300" />
-            </div>
-            <p className="text-sm font-medium text-slate-500">Aucune collecte récente</p>
-          </div>
+      <Card className="border-slate-100 shadow-sm">
+        <CardContent className="p-4 text-center py-6">
+          <FaTruck className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <p className="text-sm text-slate-500">Aucune collecte récente</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="border-slate-100 h-full shadow-sm overflow-hidden">
-      <CardContent className="p-0">
-        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-violet-500/20">
-              <FaTruck size={15} />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Collectes récentes</h3>
-              <p className="text-xs text-slate-400">Dernières opérations</p>
-            </div>
+    <Card className="border-slate-100 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-purple-500 flex items-center justify-center text-white">
+            <FaTruck size={12} />
           </div>
-          <Badge className="bg-violet-50 text-violet-700 border-0 text-[10px] font-medium px-2.5 py-0.5">
-            {collectes.length}
-          </Badge>
+          <h3 className="text-xs font-bold text-slate-700">Collectes récentes</h3>
         </div>
 
-        <div className="px-4 pb-4 space-y-2 max-h-[180px] overflow-y-auto">
+        <div className="space-y-2 max-h-[160px] overflow-y-auto">
           {collectes.map((c, i) => {
             const total = (c.nbBlancs || 0) + (c.nbInfectes || 0) + (c.nbPropres || 0) + (c.nbManquants || 0);
-            const conf = typeConfig[c.typeCollecte] || { icon: "📦", color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-100" };
-
             return (
-              <div
-                key={i}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-violet-200 hover:shadow-sm transition-all duration-200"
-              >
-                <div className={`w-10 h-10 rounded-xl ${conf.bg} ${conf.border} border flex items-center justify-center text-lg flex-shrink-0`}>
-                  {conf.icon}
-                </div>
+              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-slate-800 truncate">
-                      {c.serviceCode || c.codeChambre || "Collecte"}
-                    </p>
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${conf.bg} ${conf.color}`}>
-                      {c.typeCollecte || "—"}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {c.agentNom || "Agent"} · {c.dateCollecte ? new Date(c.dateCollecte).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "—"}
+                  <p className="text-sm font-medium text-slate-700 truncate">{c.serviceCode || c.codeChambre || "Collecte"}</p>
+                  <p className="text-[10px] text-slate-400">
+                    {c.agentNom || "Agent"} · {c.dateCollecte ? new Date(c.dateCollecte).toLocaleDateString("fr-FR") : "—"}
                   </p>
                 </div>
                 {total > 0 && (
-                  <div className="text-right flex-shrink-0">
-                    <p className={`text-base font-bold ${conf.color}`}>{total}</p>
-                    <p className="text-[10px] text-slate-400">linges</p>
-                  </div>
+                  <Badge className="bg-purple-50 text-purple-700 text-[10px] px-2 py-0.5">
+                    {total} linges
+                  </Badge>
                 )}
               </div>
             );
@@ -618,75 +638,49 @@ function CollectesRecentes({ collectes }) {
   );
 }
 
-// ─── AGENTS ACTIFS (moderne) ───────────────────────────────────────────────
+// ─── AGENTS ACTIFS ─────────────────────────────────────────────────────────
 function AgentsActifs({ agents }) {
   if (!agents || agents.length === 0) {
     return (
-      <Card className="border-slate-100 h-full shadow-sm">
-        <CardContent className="p-5 flex items-center justify-center h-[200px]">
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
-              <FaUsers className="w-6 h-6 text-slate-300" />
-            </div>
-            <p className="text-sm font-medium text-slate-500">Aucun agent actif</p>
-          </div>
+      <Card className="border-slate-100 shadow-sm">
+        <CardContent className="p-4 text-center py-6">
+          <FaUsers className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <p className="text-sm text-slate-500">Aucun agent actif</p>
         </CardContent>
       </Card>
     );
   }
 
-  const maxOps = Math.max(...agents.map(x => x.nbOperations || 0), 1);
-
   return (
-    <Card className="border-slate-100 h-full shadow-sm overflow-hidden">
-      <CardContent className="p-0">
-        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white shadow-md shadow-pink-500/20">
-              <FaUsers size={15} />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Agents actifs</h3>
-              <p className="text-xs text-slate-400">{agents.length} en activité</p>
-            </div>
+    <Card className="border-slate-100 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-pink-500 flex items-center justify-center text-white">
+            <FaUsers size={12} />
           </div>
-          <Badge className="bg-pink-50 text-pink-700 border-0 text-[10px] font-medium px-2.5 py-0.5">
-            Aujourd'hui
+          <h3 className="text-xs font-bold text-slate-700">Agents actifs</h3>
+          <Badge className="ml-auto bg-pink-50 text-pink-700 text-[9px] px-2 py-0.5">
+            {agents.length}
           </Badge>
         </div>
 
-        <div className="px-4 pb-4 space-y-2.5 max-h-[180px] overflow-y-auto">
+        <div className="space-y-2 max-h-[160px] overflow-y-auto">
           {agents.slice(0, 5).map((a, i) => {
-            const pct = ((a.nbOperations || 0) / maxOps) * 100;
-            const initials = a.nomComplet?.split(" ").map(n => n[0]).join("").slice(0, 2) || "?";
-
+            const initials = a.nomComplet?.split(" ").map(n => n[0]).join("").slice(0, 2) || "??";
             return (
-              <div
-                key={i}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-pink-200 hover:shadow-sm transition-all duration-200"
-              >
-                <div className="relative flex-shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                    {initials}
-                  </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full" />
+              <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white text-xs font-bold">
+                  {initials}
                 </div>
-
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-slate-800 truncate">{a.nomComplet || "Agent"}</p>
-                    <span className="text-xs font-bold text-teal-600 flex-shrink-0">{a.nbOperations || 0}</span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-teal-400 to-teal-500 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(pct, 100)}%` }}
-                    />
-                  </div>
+                  <p className="text-sm font-medium text-slate-700 truncate">{a.nomComplet || "Agent"}</p>
                   {a.etapeActive && (
-                    <p className="text-[10px] text-slate-400 mt-1 truncate">{a.etapeActive}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{a.etapeActive}</p>
                   )}
                 </div>
+                <Badge className="bg-teal-50 text-teal-700 text-[10px] px-2 py-0.5">
+                  {a.nbOperations || 0} op.
+                </Badge>
               </div>
             );
           })}
@@ -696,103 +690,8 @@ function AgentsActifs({ agents }) {
   );
 }
 
-// ─── MACHINES (moderne) ────────────────────────────────────────────────────
-function Machines({ machines }) {
-  if (!machines || machines.length === 0) {
-    return (
-      <Card className="border-slate-100 h-full shadow-sm">
-        <CardContent className="p-5 flex items-center justify-center h-[200px]">
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
-              <FaWrench className="w-6 h-6 text-slate-300" />
-            </div>
-            <p className="text-sm font-medium text-slate-500">Aucune machine</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const etatConfig = {
-    EN_COURS: { bg: "bg-sky-50", text: "text-sky-700", border: "border-sky-200", dot: "bg-sky-500", label: "En cours" },
-    DISPONIBLE: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500", label: "Disponible" },
-    EN_MAINTENANCE: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", dot: "bg-amber-500", label: "Maintenance" },
-    HORS_SERVICE: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", dot: "bg-red-500", label: "Hors service" },
-  };
-
-  const typeIcon = { LAVEUR: "🫧", SECHEUR: "🌬️", LAVEUR_SECHEUR: "🔁" };
-  const total = machines.length;
-  const enCours = machines.filter(m => m.etat === "EN_COURS").length;
-
-  return (
-    <Card className="border-slate-100 h-full shadow-sm overflow-hidden">
-      <CardContent className="p-0">
-        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-md shadow-amber-500/20">
-              <FaWrench size={15} />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Machines</h3>
-              <p className="text-xs text-slate-400">
-                <span className="font-semibold text-amber-600">{enCours}</span> / {total} en cours
-              </p>
-            </div>
-          </div>
-          <Badge className="bg-amber-50 text-amber-700 border-0 text-[10px] font-medium px-2.5 py-0.5">
-            Live
-          </Badge>
-        </div>
-
-        <div className="px-4 pb-4 grid grid-cols-2 gap-2.5">
-          {machines.slice(0, 4).map((m, i) => {
-            const e = etatConfig[m.etat] || { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200", dot: "bg-slate-400", label: m.etat };
-
-            return (
-              <div
-                key={i}
-                className={`p-3 rounded-xl border ${e.border} ${e.bg} hover:shadow-md transition-all duration-200`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xl">{typeIcon[m.type] || "⚙️"}</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${e.dot} ${m.etat === "EN_COURS" ? "animate-pulse" : ""}`} />
-                    <span className={`text-[10px] font-semibold ${e.text}`}>{e.label}</span>
-                  </div>
-                </div>
-
-                <p className="text-sm font-bold font-mono text-slate-800">{m.code || "N/A"}</p>
-
-                <div className="grid grid-cols-2 gap-1.5 mt-2.5">
-                  <div className="bg-white/70 rounded-lg px-2 py-1.5 text-center border border-white/50">
-                    <p className="text-sm font-bold text-slate-800 leading-none">{m.cyclesAujourdhui || 0}</p>
-                    <p className="text-[9px] text-slate-400 mt-0.5">cycles</p>
-                  </div>
-                  <div className="bg-white/70 rounded-lg px-2 py-1.5 text-center border border-white/50">
-                    <p className="text-sm font-bold text-slate-800 leading-none">{m.poidsTraiteAujourdhui || 0}</p>
-                    <p className="text-[9px] text-slate-400 mt-0.5">kg</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {machines.length > 4 && (
-          <div className="px-4 pb-3">
-            <p className="text-[11px] text-slate-400 text-center py-1.5 rounded-lg bg-slate-50">
-              + {machines.length - 4} autres machines
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Fonctions utilitaires ─────────────────────────────────────────────────
+// ─── FONCTIONS UTILITAIRES ────────────────────────────────────────────────
 const num = (n) => (n ?? 0).toLocaleString("fr-FR");
-const pct = (a, b) => b > 0 ? ((a / b) * 100).toFixed(1) : "0.0";
 
 // ─── PAGE PRINCIPALE ───────────────────────────────────────────────────────
 export default function BuanderieStats() {
@@ -820,23 +719,16 @@ export default function BuanderieStats() {
   const barData = [12, 19, 15, 22, 18, 14, 8];
   const barLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-  const machinesData = [
-    machines.filter(m => m.etat === "DISPONIBLE").length || 0,
-    machines.filter(m => m.etat === "EN_COURS").length || 0,
-    machines.filter(m => m.etat === "EN_MAINTENANCE").length || 0,
-    machines.filter(m => m.etat === "HORS_SERVICE").length || 0,
-  ];
-
   return (
-    <div>
-      {/* ─── Header ─────────────────────────────────────────────────────── */}
+    <div className="p-6">
+      {/* ─── HEADER ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-lg shadow-teal-500/20">
             <FaTshirt size={18} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Buanderie Hospitalière</h1>
+            <h1 className="text-xl font-bold text-slate-800">Dashboard</h1>
             <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
               <span className={`inline-block w-1.5 h-1.5 rounded-full ${loading ? 'bg-amber-400' : 'bg-emerald-400'}`} />
               {loading ? 'Chargement...' :
@@ -857,7 +749,7 @@ export default function BuanderieStats() {
         </Button>
       </div>
 
-      {/* ─── Erreur ─────────────────────────────────────────────────────── */}
+      {/* ─── ERREUR ─────────────────────────────────────────────────────── */}
       {error && (
         <div className="mb-4 p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs flex items-center gap-2">
           <FaExclamationTriangle size={12} />
@@ -877,7 +769,7 @@ export default function BuanderieStats() {
         <KpiCard label="Taux infection" value={kpis.tauxInfectionMois != null ? `${kpis.tauxInfectionMois}%` : '—'} icon="🦠" color={COLORS.warning} />
       </div>
 
-      {/* ─── Graphiques ─────────────────────────────────────────────────── */}
+      {/* ─── GRAPHIQUES ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
         <div className="lg:col-span-2">
           <BarChartComponent
@@ -895,37 +787,32 @@ export default function BuanderieStats() {
         </div>
       </div>
 
-      {/* ─── Grille secondaire ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Stock - 4 colonnes */}
-        <div className="lg:col-span-4">
+      {/* ─── GRILLE SECONDAIRE ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Stock par service */}
+        <div>
           <StockServices services={data?.stock || []} />
         </div>
 
-        {/* Machines + Doughnut - 4 colonnes */}
-        <div className="lg:col-span-4 space-y-4">
-          <Machines machines={machines} />
-          <DoughnutChartComponent
-            data={machinesData.length > 0 ? machinesData : [40, 30, 20, 10]}
-            labels={['Disponible', 'En cours', 'Maintenance', 'HS']}
-            title="État des machines"
-          />
+        {/* Machines + État */}
+        <div className="space-y-4">
+          <EtatMachines machines={machines} />
+          <RepartitionMachines machines={machines} />
         </div>
 
-        {/* Alertes + Collectes + Agents - 4 colonnes */}
-        <div className="lg:col-span-4 space-y-4">
+        {/* Alertes, Collectes, Agents */}
+        <div className="space-y-4">
           <AlertesWidget alertes={data?.alertes || {}} />
           <CollectesRecentes collectes={data?.collectes || []} />
           <AgentsActifs agents={data?.agents || []} />
         </div>
       </div>
 
-      {/* ─── Footer ─────────────────────────────────────────────────────── */}
       <div className="mt-4 pt-3 border-t border-slate-200 flex justify-between text-[8px] text-slate-400">
         <span>🔄 Mise à jour automatique · 30s</span>
         <span>
           📊 {num(kpis.totalLinges)} linges ·
-          ⚙️ {pct(kpis.tauxOccupationMachines, 100)}% machines ·
+          ⚙️ {kpis.tauxOccupationMachines || 0}% machines ·
           📈 {kpis.tauxInfectionMois || 0}% infection
         </span>
       </div>

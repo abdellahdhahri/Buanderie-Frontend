@@ -18,12 +18,10 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import printJS from "print-js";
 import Swal from 'sweetalert2'
-import { Plus, Eye, Trash2, Edit, History, Barcode, RefreshCw, Search, Filter, X, Tag } from "lucide-react";
+import { Plus, Eye, Trash2, Edit, History, Barcode, RefreshCw, Search, Filter, X, Tag, User as UserIcon, Calendar, Loader2 } from "lucide-react";
 
-// ─── Variables d'environnement ──────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
-// ─── Composant ModeToggle ────────────────────────────────────────────────────
 function ModeToggle({ mode, onChange }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px", background: "#f1f5f9", borderRadius: "12px" }}>
@@ -93,11 +91,34 @@ export default function LingeList() {
   const [selectedLingeForRfid, setSelectedLingeForRfid] = useState(null);
   const [filterService, setFilterService] = useState("");
   const [displayMode, setDisplayMode] = useState(isRfidMode ? "RFID" : "BARCODE");
+  const [personnel, setPersonnel] = useState([]);
+  const [isPersonnelLoading, setIsPersonnelLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const printRef = React.useRef(null);
 
   const [currentPage, setCurrentPage] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+
+  const fetchPersonnel = async () => {
+    setIsPersonnelLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/sqlserver/personnel`);
+      if (response.ok) {
+        const data = await response.json();
+        setPersonnel(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error("Erreur chargement personnel:", err);
+    } finally {
+      setIsPersonnelLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPersonnel();
+  }, []);
 
   const loadPage = async (page) => {
     if (!fetchLingesPaged) return;
@@ -178,6 +199,10 @@ export default function LingeList() {
     serviceId: "",
     codebarre: "",
     rfidTag: "",
+    dureVie: "",
+    porteurId: "",
+    etat: "SALE",
+    observations: ""
   });
 
   const [creationMode, setCreationMode] = useState("auto");
@@ -193,49 +218,95 @@ export default function LingeList() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-
-    if (lingeToEdit) {
-      await updateLinge(lingeToEdit.id, newLinge);
-      setLingeToEdit(null);
-      setShowPopup(false);
-      loadPage(currentPage);
-      return;
-    }
-
-    if (creationMode === "manual") {
-      const codeToCheck = newLinge.codebarre.trim();
-      if (!codeToCheck) {
-        showAlert("Attention", "Veuillez scanner ou saisir un code de suivi en mode manuel.", "warning");
-        return;
-      }
-      if (checkCodeExists) {
-        const exists = await checkCodeExists(codeToCheck);
-        if (exists) {
-          showAlert("Code Existant", `L'article avec le code "${codeToCheck}" existe déjà dans l'inventaire. L'ajout est bloqué.`, "error");
-          return;
-        }
-      }
-    }
-
-    const payload = {
-      codeBarre: (creationMode === "auto" || !newLinge.codebarre.trim()) ? null : newLinge.codebarre.trim(),
-      categorie: newLinge.categorie,
-      poids: parseFloat(newLinge.poids) || 0,
-      etat: "SALE",
-      serviceId: newLinge.serviceId ? parseInt(newLinge.serviceId) : null
-    };
-
-    if (newLinge.rfidTag?.trim()) {
-      payload.rfidTag = newLinge.rfidTag.trim();
-    }
-
-    if (!payload.serviceId && services.length > 0) {
-      payload.serviceId = services[0].id;
-    }
-
-    console.log('Payload envoyé :', payload);
+    setIsSaving(true);
 
     try {
+      if (lingeToEdit) {
+        const updatePayload = {
+          categorie: newLinge.categorie,
+          poids: parseFloat(newLinge.poids) || 0,
+          serviceId: newLinge.serviceId ? parseInt(newLinge.serviceId) : null,
+          etat: newLinge.etat,
+          durevie: newLinge.dureVie ? parseInt(newLinge.dureVie) : null,
+          porteurId: newLinge.porteurId ? parseInt(newLinge.porteurId) : null,
+          rfidTag: newLinge.rfidTag?.trim() || null,
+          observations: newLinge.observations?.trim() || null
+        };
+
+        console.log('📤 Update payload:', JSON.stringify(updatePayload, null, 2));
+
+        const response = await fetch(`${API_URL}/api/linges/${lingeToEdit.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatePayload)
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(error);
+        }
+
+        const updated = await response.json();
+        
+        // Mettre à jour la liste locale
+        const updatedLinges = (pagedData.content || []).map(l => 
+          l.id === updated.id ? updated : l
+        );
+        setPagedData({ ...pagedData, content: updatedLinges });
+        
+        setLingeToEdit(null);
+        setShowPopup(false);
+        loadPage(currentPage);
+        
+        Swal.fire({
+          title: "✅ Modifié!",
+          text: "Linge modifié avec succès.",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false
+        });
+        return;
+      }
+
+      // ✅ CRÉATION
+      if (creationMode === "manual") {
+        const codeToCheck = newLinge.codebarre.trim();
+        if (!codeToCheck) {
+          showAlert("Attention", "Veuillez scanner ou saisir un code de suivi en mode manuel.", "warning");
+          setIsSaving(false);
+          return;
+        }
+        if (checkCodeExists) {
+          const exists = await checkCodeExists(codeToCheck);
+          if (exists) {
+            showAlert("Code Existant", `L'article avec le code "${codeToCheck}" existe déjà dans l'inventaire. L'ajout est bloqué.`, "error");
+            setIsSaving(false);
+            return;
+          }
+        }
+      }
+
+      const payload = {
+        codeBarre: (creationMode === "auto" || !newLinge.codebarre.trim()) ? null : newLinge.codebarre.trim(),
+        categorie: newLinge.categorie,
+        poids: parseFloat(newLinge.poids) || 0,
+        etat: newLinge.etat || "SALE",
+        serviceId: newLinge.serviceId ? parseInt(newLinge.serviceId) : null,
+        durevie: newLinge.dureVie ? parseInt(newLinge.dureVie) : null,
+        porteurId: newLinge.porteurId ? parseInt(newLinge.porteurId) : null,
+        observations: newLinge.observations?.trim() || null
+      };
+
+      if (newLinge.rfidTag?.trim()) {
+        payload.rfidTag = newLinge.rfidTag.trim();
+      }
+
+      if (!payload.serviceId && services.length > 0) {
+        payload.serviceId = services[0].id;
+      }
+
+      console.log('📤 Payload envoyé:', JSON.stringify(payload, null, 2));
+
       const created = await addLinge(payload);
       if (created) {
         setLingeToPrint(created);
@@ -245,14 +316,20 @@ export default function LingeList() {
           poids: 0, 
           serviceId: "", 
           codebarre: "", 
-          rfidTag: "" 
+          rfidTag: "",
+          dureVie: "",
+          porteurId: "",
+          etat: "SALE",
+          observations: ""
         });
         loadPage(0);
         showAlert("Succès", "Article créé avec succès", "success");
       }
     } catch (error) {
-      console.error('Erreur création :', error);
-      showAlert("Erreur", error.message || "Erreur lors de la création", "error");
+      console.error('❌ Erreur:', error);
+      showAlert("Erreur", error.message || "Erreur lors de l'opération", "error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -313,13 +390,16 @@ export default function LingeList() {
       serviceId: linge.serviceId || "",
       codebarre: linge.codebarre || "",
       rfidTag: linge.rfidTag || "",
+      dureVie: linge.dureVie || "",
+      porteurId: linge.porteurId || "",
+      etat: linge.etat || "SALE",
+      observations: linge.observations || ""
     });
     setLingeToEdit(linge);
     setShowPopup(true);
   };
 
   const displayedLinges = pagedData.content || [];
-  console.log('la liste des linges ', displayedLinges)
   const selectedLinge = displayedLinges.find((l) => l.id === selectedId);
 
   const handleRowClick = (id) => {
@@ -348,20 +428,28 @@ export default function LingeList() {
     loadPage(0);
   };
 
+  // ─── Badges ────────────────────────────────────────────────────────────────
   const getEtatBadge = (etat) => {
     const etatColors = {
-      COLLECTE: "warning",
-      EN_LAVAGE: "info",
-      PROPRE_PRET: "success",
-      RECEPTIONNE: "success",
-      DISTRIBUE: "success",
-      EN_SECHAGE_REPASSAGE: "info",
-      STOCKE: "secondary",
-      PRET_LIVRAISON: "success",
-      EN_TRI: "info",
-      LAVE: "success",
-      SECHE: "success",
       SALE: "danger",
+      EN_LAVAGE: "info",
+      LAVE: "success",
+      EN_SECHAGE: "info",
+      SECHE: "success",
+      PLIE: "secondary",
+      COLLE: "secondary",
+      STOCKE: "secondary",
+      COLLECTE: "warning",
+      LIVRE: "success",
+      HORS_SERVICE: "destructive",
+      EN_TRI: "info",
+      RECEPTION: "info",
+      INFECTE_COLLECTE: "danger",
+      INFECTE_EN_LAVAGE: "danger",
+      INFECTE_LAVE: "danger",
+      INFECTE_ECART: "danger",
+      PROPRE: "success",
+      MANQUANT: "destructive"
     };
     const variant = etatColors[etat] || "secondary";
     return <Badge variant={variant}>{etat}</Badge>;
@@ -374,14 +462,86 @@ export default function LingeList() {
     return service ? service.code : "Non assigné";
   };
 
+  const getPorteurName = (porteurId) => {
+    if (!porteurId) return "Non assigné";
+    const porteur = personnel.find(p => p.id === porteurId);
+    if (porteur) {
+      return `${porteur.prenom} ${porteur.nom}`;
+    }
+    return "Non assigné";
+  };
+
+  // Vérifier si la catégorie est UNIFORME
+  const isUniforme = newLinge.categorie === "UNIFORME";
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-          <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-            {displayMode === "RFID" ? "Inventaire RFID Global" : "Inventaire Complet"}
-          </h1>
-        </div>
+       <div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: displayMode === "RFID" 
+        ? "linear-gradient(135deg, #8b5cf6, #7c3aed)" 
+        : "linear-gradient(135deg, #14b8a6, #0d9488)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: displayMode === "RFID"
+        ? "0 4px 16px rgba(139, 92, 246, 0.25)"
+        : "0 4px 16px rgba(20, 184, 166, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <path d="M16 10a4 4 0 0 1-8 0" />
+        {displayMode === "RFID" && (
+          <>
+            <circle cx="12" cy="14" r="2" />
+            <path d="M10 18a4 4 0 0 1 4 0" />
+          </>
+        )}
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        {displayMode === "RFID" ? "Gestion des Linges RFID" : "Gestion des Linges"}
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        {displayMode === "RFID" 
+          ? "Suivi et traçabilité des linges par puce RFID" 
+          : "Gestion et suivi des linges"}
+      </p>
+    </div>
+  </div>
+</div>
       </div>
 
       {/* Mode Toggle */}
@@ -491,18 +651,21 @@ export default function LingeList() {
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Tous</option>
-                <option value="COLLECTE">COLLECTE</option>
-                <option value="EN_LAVAGE">LAVAGE</option>
-                <option value="PROPRE_PRET">PROPRE_PRET</option>
-                <option value="RECEPTIONNE">RECEPTIONNE</option>
-                <option value="DISTRIBUE">DISTRIBUE</option>
-                <option value="EN_SECHAGE_REPASSAGE">EN_SECHAGE_REPASSAGE</option>
-                <option value="STOCKE">STOCKE</option>
-                <option value="PRET_LIVRAISON">PRET_LIVRAISON</option>
-                <option value="EN_TRI">EN_TRI</option>
-                <option value="LAVE">LAVE</option>
-                <option value="SECHE">SECHE</option>
-                <option value="SALE">SALE</option>
+                <option value="SALE">Sale</option>
+                <option value="EN_LAVAGE">En lavage</option>
+                <option value="LAVE">Lavé</option>
+                <option value="EN_SECHAGE">En séchage</option>
+                <option value="SECHE">Séché</option>
+                <option value="PLIE">Plié</option>
+                <option value="COLLE">Collé</option>
+                <option value="STOCKE">Stocké</option>
+                <option value="COLLECTE">Collecte</option>
+                <option value="LIVRE">Livre</option>
+                <option value="HORS_SERVICE">Hors service</option>
+                <option value="EN_TRI">En tri</option>
+                <option value="RECEPTION">Réception</option>
+                <option value="PROPRE">Propre</option>
+                <option value="MANQUANT">Manquant</option>
               </select>
             </div>
             <div>
@@ -568,6 +731,7 @@ export default function LingeList() {
                   <th className="text-center py-3 px-4">Poids</th>
                   <th className="text-center py-3 px-4">État</th>
                   <th className="text-center py-3 px-4">Service</th>
+                  <th className="text-center py-3 px-4">Porteur</th>
                   <th className="text-center py-3 px-4">RFID</th>
                   <th className="text-center py-3 px-4 actions-th">Action</th>
                 </tr>
@@ -576,6 +740,7 @@ export default function LingeList() {
                 {isLoading ? (
                   <tr>
                     <td colSpan={9} className="text-center py-8 text-muted-foreground">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                       Chargement en cours...
                     </td>
                   </tr>
@@ -590,6 +755,8 @@ export default function LingeList() {
                     const serviceName = getServiceName(l.serviceId);
                     const isSelected = selectedId === l.id;
                     const hasRfid = l.rfidTag && l.rfidTag !== "";
+                    const isUniformeRow = l.categorie === "UNIFORME";
+                    
                     return (
                       <tr
                         key={l.id}
@@ -615,6 +782,19 @@ export default function LingeList() {
                         <td className="text-center font-bold">{l.poids} kg</td>
                         <td className="text-center">{getEtatBadge(l.etat)}</td>
                         <td className="text-center">{serviceName}</td>
+                       <td className="text-center">
+  {isUniformeRow ? (
+    l.porteurNom ? (
+      <span className="text-xs font-medium text-blue-600 flex items-center justify-center gap-1">
+        <UserIcon className="w-3 h-3" /> {l.porteurNom}
+      </span>
+    ) : (
+      <span className="text-xs text-slate-400">Non assigné</span>
+    )
+  ) : (
+    <span className="text-xs text-slate-400">—</span>
+  )}
+</td>
                         <td className="text-center">
                           {hasRfid ? (
                             <Badge variant="success" className="text-xs">
@@ -687,6 +867,7 @@ export default function LingeList() {
         </div>
       </div>
 
+      {/* ─── Modal Création/Modification ──────────────────────────────────── */}
       <Modal
         isOpen={showPopup}
         onClose={() => setShowPopup(false)}
@@ -759,11 +940,17 @@ export default function LingeList() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Catégorie
+                Catégorie <span className="text-red-500">*</span>
               </label>
               <select
                 value={newLinge.categorie}
-                onChange={(e) => setNewLinge({ ...newLinge, categorie: e.target.value })}
+                onChange={(e) => {
+                  setNewLinge({ 
+                    ...newLinge, 
+                    categorie: e.target.value,
+                    porteurId: e.target.value !== "UNIFORME" ? "" : newLinge.porteurId
+                  });
+                }}
                 className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
@@ -776,7 +963,7 @@ export default function LingeList() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Poids (kg)
+                Poids (kg) <span className="text-red-500">*</span>
               </label>
               <Input
                 type="number"
@@ -789,7 +976,24 @@ export default function LingeList() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Service
+                Durée de vie (cycles)
+              </label>
+              <Input
+                type="number"
+                step="1"
+                min="0"
+                placeholder="Nombre de cycles de lavage"
+                value={newLinge.dureVie}
+                onChange={(e) => setNewLinge({ ...newLinge, dureVie: e.target.value })}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                💡 Nombre de cycles de lavage estimé pour cet article
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Service <span className="text-red-500">*</span>
               </label>
               <select
                 value={newLinge.serviceId || ""}
@@ -803,14 +1007,77 @@ export default function LingeList() {
                 ))}
               </select>
             </div>
+
+            {isUniforme && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Porteur <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={newLinge.porteurId || ""}
+                  onChange={(e) => setNewLinge({ ...newLinge, porteurId: e.target.value ? parseInt(e.target.value) : "" })}
+                  className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required={isUniforme}
+                >
+                  <option value="">Sélectionner un porteur...</option>
+                  {personnel.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.prenom} {p.nom} - {p.codeBarre}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-blue-500 mt-1">
+                  👤 Sélectionnez le personnel porteur de cet uniforme
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                État
+              </label>
+              <select
+                value={newLinge.etat}
+                onChange={(e) => setNewLinge({ ...newLinge, etat: e.target.value })}
+                className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="SALE">Sale</option>
+                <option value="EN_LAVAGE">En lavage</option>
+                <option value="LAVE">Lavé</option>
+                <option value="EN_SECHAGE">En séchage</option>
+                <option value="SECHE">Séché</option>
+                <option value="PLIE">Plié</option>
+                <option value="COLLE">Collé</option>
+                <option value="STOCKE">Stocké</option>
+                <option value="COLLECTE">Collecte</option>
+                <option value="LIVRE">Livre</option>
+                <option value="HORS_SERVICE">Hors service</option>
+                <option value="EN_TRI">En tri</option>
+                <option value="RECEPTION">Réception</option>
+                <option value="PROPRE">Propre</option>
+                <option value="MANQUANT">Manquant</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Observations
+              </label>
+              <textarea
+                value={newLinge.observations}
+                onChange={(e) => setNewLinge({ ...newLinge, observations: e.target.value })}
+                placeholder="Observations..."
+                className="w-full min-h-[60px] px-3 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setShowPopup(false)} type="button">
+            <Button variant="outline" onClick={() => setShowPopup(false)} type="button" disabled={isSaving}>
               Annuler
             </Button>
-            <Button type="submit">
-              {lingeToEdit ? "Enregistrer" : "Créer"}
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? "Enregistrement..." : (lingeToEdit ? "Enregistrer" : "Créer")}
             </Button>
           </div>
         </form>
@@ -899,7 +1166,6 @@ export default function LingeList() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
               <Input value={selectedLingeDetail.categorie} disabled />
             </div>
-          
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Poids</label>
               <Input value={`${selectedLingeDetail.poids} kg`} disabled />
@@ -912,10 +1178,23 @@ export default function LingeList() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Type de collecte</label>
               <Input value={selectedLingeDetail.typeCollecte || "Non défini"} disabled />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Durée de vie</label>
+              <Input value={selectedLingeDetail.dureVie ? `${selectedLingeDetail.dureVie} cycles` : "Non définie"} disabled />
+            </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Service</label>
               <Input value={getServiceName(selectedLingeDetail.serviceId)} disabled />
             </div>
+            {selectedLingeDetail.porteurId && (
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Porteur</label>
+                <div className="flex items-center gap-2 p-2 rounded-lg border border-input bg-slate-50">
+                  <UserIcon className="w-4 h-4 text-slate-400" />
+                  <span>{selectedLingeDetail.porteurNom || getPorteurName(selectedLingeDetail.porteurId)}</span>
+                </div>
+              </div>
+            )}
             {selectedLingeDetail.dateCreation && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Date de création</label>

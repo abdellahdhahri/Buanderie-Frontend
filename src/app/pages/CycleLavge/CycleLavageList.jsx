@@ -253,14 +253,59 @@ export default function CycleLavageList() {
       >
         <div className="space-y-4">
           {/* ─── Header ────────────────────────────────────────────────────── */}
-          <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-            <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-              🔄 Cycles de Lavage
-            </h1>
-            <p className="text-sm text-slate-500" style={{ color: "#166d7c" }}>
-              Gestion et suivi des cycles de lavage
-            </p>
-          </div>
+        {/* ─── Header ────────────────────────────────────────────────────── */}
+<div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: "linear-gradient(135deg, #06b6d4, #0891b2)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: "0 4px 16px rgba(6, 182, 212, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+        <polyline points="21 3 12 12 9 9" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        Cycles de Lavage
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Gestion et suivi des cycles de lavage
+      </p>
+    </div>
+  </div>
+</div>
 
           {/* ─── Barre d'outils ────────────────────────────────────────────── */}
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">

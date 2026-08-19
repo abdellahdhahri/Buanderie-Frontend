@@ -5,7 +5,6 @@ import {
 } from "react-icons/fa";
 import { LavageProvider, useLavage } from "../../contextes/LavageContext";
 
-// ── Sous-composants ────────────────────────────────────────────────────────────
 import ScanInput              from "../../components/utils/ScanInput";
 import CarteLot               from "../../components/utils/CarteLot";
 import CarteSacInfecte        from "../../components/utils/CarteSacInfecte";
@@ -16,9 +15,7 @@ import GuideSacInfecte        from "../../components/utils/GuideSacInfecte";
 
 import "../Linge/WorkflowList.css";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Composant interne (accède au contexte)
-// ─────────────────────────────────────────────────────────────────────────────
+
 function LavageInner() {
   const {
     agent, identifierAgent,
@@ -35,14 +32,12 @@ function LavageInner() {
   const [scanVal,   setScanVal]   = useState("");
   const [searchLot, setSearchLot] = useState("");
 
-  // ── Chargement selon onglet ──────────────────────────────────────────────
   useEffect(() => {
     if (!agent) return;
     if (onglet === "BLANC" && etapeBlanc === "LOTS") chargerLots();
     if (onglet === "INFECTE") chargerSacsInfectes();
   }, [onglet, agent, etapeBlanc]);
 
-  // ── Soumettre le scan selon le contexte ──────────────────────────────────
   const handleScan = async (code) => {
     setScanVal("");
     if (!agent)                                        { await identifierAgent(code);   return; }
@@ -54,7 +49,6 @@ function LavageInner() {
     if (onglet === "INFECTE")                          { await scannerSacInfecte(code); return; }
   };
 
-  // ── Lots filtrés ──────────────────────────────────────────────────────────
   const lotsFiltres = useMemo(() => {
     const ids = new Set(lotsSelectionnes.map(ls => ls.lot.id));
     return lotsDisponibles.filter(l =>
@@ -66,7 +60,6 @@ function LavageInner() {
     );
   }, [lotsDisponibles, lotsSelectionnes, searchLot]);
 
-  // ── Placeholder selon contexte ────────────────────────────────────────────
   const getPlaceholder = () => {
     if (!agent)                                        return "👤 Scanner votre badge agent...";
     if (onglet === "BLANC" && etapeBlanc === "MACHINE") return "🔧 Scanner le code de la machine...";
@@ -81,7 +74,6 @@ function LavageInner() {
     return "#0ea5e9";
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="collecte-container">
 
@@ -89,15 +81,61 @@ function LavageInner() {
       <LotInfoDialog />
       <ScanLingesPropresModal />
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-        <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-          🫧 Station de Lavage
-        </h1>
-        <p className="text-sm" style={{ color: "#166d7c", marginBottom: "24px" }}>
-          Linge blanc (lots triés) · Linge infecté (sacs directs)
-        </p>
-      </div>
+      <div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: "linear-gradient(135deg, #06b6d4, #0891b2)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: "0 4px 16px rgba(6, 182, 212, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 8v8" />
+        <path d="M8 12h8" />
+        <path d="M8 8l8 8" />
+        <path d="M8 16l8-8" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        Station de Lavage
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Linge blanc (lots triés) · Linge infecté (sacs directs)
+      </p>
+    </div>
+  </div>
+</div>
 
       <div className="collecte-panel-grand" style={{
         background: "white", borderRadius: "20px", padding: "32px",

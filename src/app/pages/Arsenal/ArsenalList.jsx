@@ -266,13 +266,7 @@ export default function ArsenalList() {
           <div style="display:flex;justify-content:center;margin:2mm 0;">
             <img src="https://barcodeapi.org/api/${format}/${encodeURIComponent(code)}" style="height:70px;width:100%;max-width:180px;" />
           </div>
-          <div style="font-size:12pt;font-weight:bold;letter-spacing:1px;margin:2mm 0;">${code}</div>
-          <div style="font-size:9pt;font-weight:600;">${arsenal.nom}</div>
-          <div style="font-size:8pt;color:#666;margin-top:2mm;border-top:1px solid #ddd;padding-top:2mm;">
-            <div>🏢 ${serviceName || "Service non assigné"}</div>
-            <div style="font-size:7pt;margin-top:1mm;">${new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
-          </div>
-        </div>
+         
       `,
       type: "raw-html",
       style: "*{margin:0;padding:0;box-sizing:border-box;}body{background:white;display:flex;justify-content:center;}",
@@ -292,15 +286,66 @@ export default function ArsenalList() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-        <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-          📦 Gestion des Arsenals
-        </h1>
-        <p className="text-sm text-slate-500" style={{ color: "#166d7c" }}>
-          Gestion complète des arsenals et impression des codes
-        </p>
-      </div>
+    <div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: "linear-gradient(135deg, #ef4444, #dc2626)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: "0 4px 16px rgba(239, 68, 68, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <rect x="2" y="2" width="20" height="20" rx="2.18" />
+        <line x1="8" y1="2" x2="8" y2="22" />
+        <line x1="16" y1="2" x2="16" y2="22" />
+        <line x1="2" y1="8" x2="22" y2="8" />
+        <line x1="2" y1="16" x2="22" y2="16" />
+        <circle cx="12" cy="12" r="2" />
+        <circle cx="6" cy="6" r="0.5" fill="currentColor" />
+        <circle cx="18" cy="6" r="0.5" fill="currentColor" />
+        <circle cx="6" cy="18" r="0.5" fill="currentColor" />
+        <circle cx="18" cy="18" r="0.5" fill="currentColor" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        Gestion des Arsenals
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Gérez les arsenals et leurs équipements
+      </p>
+    </div>
+  </div>
+</div>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">

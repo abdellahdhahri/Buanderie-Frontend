@@ -42,7 +42,7 @@ export function PliageProvider({ children }) {
     try {
       const item = await getLingeByCode(code);
       if (!item) { showAlert("Erreur", `❌ Code [${code}] inconnu.`, "error"); return; }
-      if (item.etat !== "LAVE") {
+      if (item.etat !== "SECHE") {
         showAlert("Attention", `⚠️ Linge [${code}] est en état [${item.etat}]. Attendu: LAVE.`, "warning");
         return;
       }

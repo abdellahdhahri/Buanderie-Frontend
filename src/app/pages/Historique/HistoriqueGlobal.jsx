@@ -217,13 +217,26 @@ export default function HistoriqueGlobal() {
 
       <div className="space-y-2">
         <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-          <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-            📋 Journal des Activités
-          </h1>
-          <p className="text-sm text-slate-500" style={{ color: "#166d7c" }}>
-            Historique complet des mouvements de linge et opérations
-          </p>
-        </div>
+  <h1 className="text-3xl font-extrabold flex items-center gap-3 text-blue-600">
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="30" 
+      height="30" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      className="flex-shrink-0"
+      style={{ display: 'block' }}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+    Journal des Activités
+  </h1>
+</div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">

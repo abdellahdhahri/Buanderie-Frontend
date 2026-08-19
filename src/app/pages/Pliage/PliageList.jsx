@@ -34,7 +34,7 @@ function PliageInner() {
   ];
 
   const getPlaceholder = () => !agent
-    ? "👤 Scanner votre badge agent..."
+    ? "Scanner votre badge agent..."
     : mode === "RFID" ? "📡 Scanner tag RFID..." : "📦 Scanner un linge (état LAVE)...";
 
   return (
@@ -43,10 +43,59 @@ function PliageInner() {
         <DialoguePliage item={dialogueItem} agent={agent} onFermer={fermerDialogue} onSuccess={() => { fermerDialogue(); }} />
       )}
 
-      <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-        <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>👔 Pliage</h1>
-        <p className="text-sm" style={{ color: "#166d7c", marginBottom: "24px" }}>Scan linge LAVE → Pliage et préparation</p>
-      </div>
+   <div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: "0 4px 16px rgba(139, 92, 246, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+        <path d="M2 17l10 5 10-5" />
+        <path d="M2 12l10 5 10-5" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        Pliage
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Gérez les opérations de pliage
+      </p>
+    </div>
+  </div>
+</div>
 
       <div className="collecte-panel-grand" style={{ background: "white", borderRadius: "20px", padding: "32px", border: "1px solid #e2e8f0", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
 
@@ -74,10 +123,7 @@ function PliageInner() {
           </div>
         </div>
 
-        {/* Étapes */}
-        <div style={{ marginBottom: "20px" }}>
-          <EtapesStepper etapes={ETAPES} etapeActive={!agent ? "AGENT" : "PLIAGE"} />
-        </div>
+       
 
         {/* Zone scan */}
         <Card style={{ marginBottom: "20px", border: `2px dashed ${!agent ? "#e2e8f0" : "#0ea5e9"}` }}>
@@ -101,7 +147,7 @@ function PliageInner() {
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaUser color="#22c55e" />
                 <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt à plier</span>
-                <span style={{ color: "#64748b" }}>Scannez un linge en état LAVE</span>
+                <span style={{ color: "#64748b" }}>Scannez un linge en état SECHE</span>
               </div>
             </CardContent>
           </Card>

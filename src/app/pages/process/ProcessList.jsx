@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  FaUser, FaBarcode, FaCheckCircle, FaSpinner, FaTimes,
-  FaArrowRight, FaIndustry, FaRobot, FaLongArrowAltDown,
+  FaBuilding, FaUser, FaBarcode, FaTimes, FaArrowRight,
   FaTruck, FaBoxes, FaWarehouse, FaSoap, FaWind,
-  FaHands, FaHome, FaShieldAlt, FaClock, FaBuilding,
-  FaMicrochip, FaNetworkWired, FaChartLine, FaUsers,
-  FaCog, FaPrint, FaSearch, FaBell
+  FaHands, FaHome, FaCheckCircle, FaSpinner,
+  FaLongArrowAltDown, FaCog, FaIndustry, FaNetworkWired,
+  FaMicrochip, FaRobot, FaChartLine
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModal } from "../../contextes/ModalContext";
@@ -18,16 +17,15 @@ import "../Linge/WorkflowList.css";
 
 const API = "http://localhost:8082";
 
-// ─── Configuration des étapes ──────────────────────────────────────────────
 const ETAPES = [
-  { id: "Collecte", route: "/collecte", icon: FaTruck, zone: "sale", color: "#8b5cf6", bg: "#f5f3ff" },
-  { id: "Reception", route: "/receptions", icon: FaBoxes, zone: "sale", color: "#f59e0b", bg: "#fffbeb" },
-  { id: "Tri", route: "/tri", icon: FaHands, zone: "sale", color: "#ec4899", bg: "#fdf2f8" },
-  { id: "Lavage", route: "/lavages", icon: FaSoap, zone: "sale", color: "#3b82f6", bg: "#eff6ff" },
-  { id: "Sechage", route: "/sechages", icon: FaWind, zone: "propre", color: "#14b8a6", bg: "#f0fdfa" },
-  { id: "Pliage", route: "/pliage", icon: FaHands, zone: "propre", color: "#8b5cf6", bg: "#f5f3ff" },
-  { id: "Stockage", route: "/stockage", icon: FaWarehouse, zone: "propre", color: "#10b981", bg: "#ecfdf5" },
-  { id: "Livraison", route: "/livraisons", icon: FaHome, zone: "propre", color: "#ef4444", bg: "#fef2f2" }
+  { id: "Collecte", route: "/collecte", icon: FaTruck, zone: "sale", gradient: "from-purple-600 to-purple-400" },
+  { id: "Reception", route: "/receptions", icon: FaBoxes, zone: "sale", gradient: "from-amber-600 to-amber-400" },
+  { id: "Tri", route: "/tri", icon: FaHands, zone: "sale", gradient: "from-pink-600 to-pink-400" },
+  { id: "Lavage", route: "/lavages", icon: FaSoap, zone: "sale", gradient: "from-blue-600 to-blue-400" },
+  { id: "Sechage", route: "/sechages", icon: FaWind, zone: "propre", gradient: "from-teal-600 to-teal-400" },
+  { id: "Pliage", route: "/pliage", icon: FaHands, zone: "propre", gradient: "from-violet-600 to-violet-400" },
+  { id: "Stockage", route: "/stockage", icon: FaWarehouse, zone: "propre", gradient: "from-emerald-600 to-emerald-400" },
+  { id: "Livraison", route: "/livraisons", icon: FaHome, zone: "propre", gradient: "from-red-600 to-red-400" }
 ];
 
 const POSTE_TO_ETAPE = {
@@ -42,7 +40,7 @@ const POSTE_TO_ETAPE = {
   CHEF_EQUIPE: "Collecte"
 };
 
-export default function AuthentificationPage() {
+export default function ProcessList() {
   const navigate = useNavigate();
   const { showAlert } = useModal();
   const [agent, setAgent] = useState(null);
@@ -50,7 +48,6 @@ export default function AuthentificationPage() {
   const [isFocused, setIsFocused] = useState(true);
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
-  const [showProcess, setShowProcess] = useState(false);
   const scanInputRef = useRef(null);
 
   useEffect(() => {
@@ -74,7 +71,6 @@ export default function AuthentificationPage() {
       const ag = await res.json();
       setAgent(ag);
       setScanValue("");
-      setShowProcess(true);
       
       showAlert("✅ Agent identifié", `${ag.nom} (${ag.matricule})`, "success");
       
@@ -85,7 +81,7 @@ export default function AuthentificationPage() {
           setRedirecting(true);
           setTimeout(() => {
             navigate(etape.route);
-          }, 2000);
+          }, 1500);
         }
       } else {
         showAlert("⚠️ Poste non reconnu", `L'agent ${ag.nom} n'a pas de poste configuré.`, "warning");
@@ -107,13 +103,6 @@ export default function AuthentificationPage() {
     setAgent(null);
     setScanValue("");
     setRedirecting(false);
-    setShowProcess(false);
-    setTimeout(() => {
-      if (scanInputRef.current) {
-        scanInputRef.current.focus();
-        setIsFocused(true);
-      }
-    }, 200);
   };
 
   const etapeActive = agent ? ETAPES.find(e => e.id === POSTE_TO_ETAPE[agent?.poste]) : null;
@@ -124,48 +113,23 @@ export default function AuthentificationPage() {
 
   return (
     <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)",
+      minHeight: "calc(100vh - 80px)",
+      background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
       padding: "24px",
       display: "flex",
       justifyContent: "center",
-      alignItems: "center",
-      position: "relative",
-      overflow: "hidden"
+      alignItems: "center"
     }}>
-      {/* ─── Effet de fond ──────────────────────────────────────────────────── */}
+      
       <div style={{
-        position: "absolute",
-        top: -200,
-        right: -200,
-        width: 600,
-        height: 600,
-        borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)",
-        pointerEvents: "none"
-      }} />
-      <div style={{
-        position: "absolute",
-        bottom: -200,
-        left: -200,
-        width: 600,
-        height: 600,
-        borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)",
-        pointerEvents: "none"
-      }} />
-
-      <div style={{
-        maxWidth: "1000px",
+        maxWidth: "1100px",
         width: "100%",
-        background: "rgba(255,255,255,0.05)",
-        backdropFilter: "blur(40px)",
+        background: "rgba(255,255,255,0.85)",
+        backdropFilter: "blur(20px)",
         borderRadius: "32px",
-        padding: "40px 48px",
-        border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 25px 80px rgba(0,0,0,0.5), 0 4px 20px rgba(0,0,0,0.1)",
-        position: "relative",
-        zIndex: 1
+        padding: "32px 40px",
+        border: "1px solid rgba(255,255,255,0.3)",
+        boxShadow: "0 25px 80px rgba(0,0,0,0.08), 0 4px 20px rgba(0,0,0,0.02)"
       }}>
 
         {/* ─── Header ────────────────────────────────────────────────────────── */}
@@ -173,78 +137,65 @@ export default function AuthentificationPage() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "32px",
+          marginBottom: "28px",
           flexWrap: "wrap",
           gap: "16px"
         }}>
           <div>
             <h1 style={{
-              fontSize: "30px",
+              fontSize: "28px",
               fontWeight: 800,
-              background: "linear-gradient(135deg, #f1f5f9, #94a3b8)",
+              background: "linear-gradient(135deg, #0f172a, #334155)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               display: "flex",
               alignItems: "center",
-              gap: "14px",
-              margin: 0,
-              letterSpacing: "-0.5px"
+              gap: "12px",
+              margin: 0
             }}>
               <span style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "16px",
-                background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+                width: "44px",
+                height: "44px",
+                borderRadius: "14px",
+                background: "linear-gradient(135deg, #1e293b, #475569)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 color: "white",
-                WebkitTextFillColor: "white",
-                boxShadow: "0 4px 16px rgba(59,130,246,0.3)"
+                WebkitTextFillColor: "white"
               }}>
-                <FaIndustry size={22} />
+                <FaIndustry size={20} />
               </span>
-              Buanderie
+              Processus Buanderie
             </h1>
-            <p style={{ 
-              color: "rgba(255,255,255,0.5)", 
-              margin: "4px 0 0 0", 
-              fontSize: "14px",
-              fontWeight: 400
-            }}>
+            <p style={{ color: "#64748b", margin: "4px 0 0 0", fontSize: "14px" }}>
               {agent 
                 ? `👤 ${agent.nom} · ${etapeActive?.id || agent.poste || "Poste non configuré"}`
-                : "🔑 Authentification pour accéder à votre poste"}
+                : "🔑 Authentification requise pour accéder au poste"}
             </p>
           </div>
           
           {agent && (
             <motion.button
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               onClick={handleReset}
               style={{
-                padding: "8px 20px",
+                padding: "8px 18px",
                 borderRadius: "12px",
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.05)",
+                border: "1px solid #e2e8f0",
+                background: "white",
                 cursor: "pointer",
                 fontSize: "12px",
-                color: "rgba(255,255,255,0.6)",
+                color: "#64748b",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
                 transition: "all 0.2s",
-                backdropFilter: "blur(10px)"
+                boxShadow: "0 2px 8px rgba(0,0,0,0.02)"
               }}
-              onMouseEnter={(e) => { 
-                e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-                e.currentTarget.style.color = "rgba(255,255,255,0.9)";
-              }}
-              onMouseLeave={(e) => { 
-                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                e.currentTarget.style.color = "rgba(255,255,255,0.6)";
-              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.borderColor = "#cbd5e1"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "white"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
             >
               <FaTimes size={12} />
               Changer d'agent
@@ -252,24 +203,23 @@ export default function AuthentificationPage() {
           )}
         </div>
 
-        {/* ─── Zone de Scan ────────────────────────────────────────────────── */}
+        {/* ─── Zone de Scan ──────────────────────────────────────────────────── */}
         <div style={{
           display: "flex",
           justifyContent: "center",
-          marginBottom: "36px"
+          marginBottom: "32px"
         }}>
           <div style={{
-            width: "70%",
+            width: "65%",
             maxWidth: "600px",
             position: "relative"
           }}>
             <div style={{
               position: "relative",
-              background: "rgba(255,255,255,0.05)",
+              background: "white",
               borderRadius: "16px",
               padding: "4px",
-              border: "1px solid rgba(255,255,255,0.08)",
-              backdropFilter: "blur(10px)"
+              boxShadow: "0 4px 20px rgba(0,0,0,0.04), 0 1px 4px rgba(0,0,0,0.02)"
             }}>
               <div style={{
                 position: "absolute",
@@ -278,10 +228,8 @@ export default function AuthentificationPage() {
                 right: "-2px",
                 bottom: "-2px",
                 borderRadius: "18px",
-                background: agent 
-                  ? "linear-gradient(135deg, #10b981, #059669)" 
-                  : "linear-gradient(135deg, #6366f1, #8b5cf6)",
-                opacity: 0.2,
+                background: agent ? "linear-gradient(135deg, #10b981, #059669)" : "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                opacity: 0.15,
                 zIndex: -1
               }} />
               <ScanInput
@@ -295,13 +243,8 @@ export default function AuthentificationPage() {
                 style={{
                   border: "none",
                   background: "transparent",
-                  padding: "16px 24px",
-                  fontSize: "16px",
-                  color: "white"
-                }}
-                inputStyle={{
-                  color: "white",
-                  placeholderColor: "rgba(255,255,255,0.4)"
+                  padding: "14px 20px",
+                  fontSize: "15px"
                 }}
               />
             </div>
@@ -315,21 +258,20 @@ export default function AuthentificationPage() {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: "12px",
-                  marginTop: "14px",
-                  padding: "10px 24px",
-                  background: "rgba(16,185,129,0.15)",
+                  marginTop: "12px",
+                  padding: "8px 20px",
+                  background: "linear-gradient(135deg, #ecfdf5, #d1fae5)",
                   borderRadius: "12px",
-                  border: "1px solid rgba(16,185,129,0.2)",
-                  backdropFilter: "blur(10px)"
+                  border: "1px solid #6ee7b7"
                 }}
               >
-                <FaCheckCircle color="#10b981" size={18} />
-                <span style={{ fontWeight: 600, color: "#34d399", fontSize: "15px" }}>{agent.nom}</span>
+                <FaCheckCircle color="#059669" size={16} />
+                <span style={{ fontWeight: 600, color: "#065f46", fontSize: "14px" }}>{agent.nom}</span>
                 <span style={{ 
                   fontSize: "11px", 
-                  background: "rgba(16,185,129,0.2)", 
-                  color: "#34d399",
-                  padding: "2px 14px",
+                  background: "#059669", 
+                  color: "white",
+                  padding: "2px 12px",
                   borderRadius: "20px",
                   fontWeight: 600
                 }}>
@@ -338,23 +280,15 @@ export default function AuthentificationPage() {
                 <span style={{
                   fontSize: "11px",
                   fontWeight: 600,
-                  color: "#34d399",
-                  background: "rgba(16,185,129,0.1)",
-                  padding: "2px 14px",
+                  color: "#065f46",
+                  background: "rgba(5,150,105,0.15)",
+                  padding: "2px 12px",
                   borderRadius: "20px"
                 }}>
                   {etapeActive?.id || "Poste"}
                 </span>
                 {redirecting && (
-                  <span style={{ 
-                    fontSize: "11px", 
-                    color: "#60a5fa", 
-                    animation: "pulse 1s infinite",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px"
-                  }}>
-                    <FaSpinner className="animate-spin" size={12} />
+                  <span style={{ fontSize: "11px", color: "#3b82f6", animation: "pulse 1s infinite" }}>
                     Redirection...
                   </span>
                 )}
@@ -363,530 +297,437 @@ export default function AuthentificationPage() {
           </div>
         </div>
 
-        {/* ─── Message de bienvenue ou processus ───────────────────────────── */}
-        {!agent ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            style={{
-              textAlign: "center",
-              padding: "40px 20px"
-            }}
-          >
-            <div style={{
-              fontSize: "64px",
-              marginBottom: "16px"
-            }}>
-              🏥
-            </div>
-            <h2 style={{
-              color: "white",
-              fontSize: "22px",
-              fontWeight: 700,
-              marginBottom: "8px"
-            }}>
-              Bienvenue dans votre buanderie
-            </h2>
-            <p style={{
-              color: "rgba(255,255,255,0.4)",
-              fontSize: "14px",
-              maxWidth: "400px",
-              margin: "0 auto"
-            }}>
-              Scannez votre badge agent pour accéder à votre poste de travail
-            </p>
-            
-            <div style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "12px",
-              marginTop: "24px",
-              flexWrap: "wrap"
-            }}>
-              <div style={{
-                padding: "8px 16px",
-                borderRadius: "20px",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.3)",
-                fontSize: "11px",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px"
-              }}>
-                <FaShieldAlt size={12} /> Sécurisé
-              </div>
-              <div style={{
-                padding: "8px 16px",
-                borderRadius: "20px",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.3)",
-                fontSize: "11px",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px"
-              }}>
-                <FaClock size={12} /> 24/7
-              </div>
-              <div style={{
-                padding: "8px 16px",
-                borderRadius: "20px",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.3)",
-                fontSize: "11px",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px"
-              }}>
-                <FaNetworkWired size={12} /> Connecté
-              </div>
-            </div>
-          </motion.div>
-        ) : (
-          /* ─── Processus ──────────────────────────────────────────────────── */
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div style={{
-              display: "flex",
-              gap: "20px",
-              alignItems: "center",
-              justifyContent: "center"
-            }}>
-              {/* ─── Zone Sale ────────────────────────────────────────────── */}
-              <div style={{
-                flex: 1,
-                background: "rgba(220,38,38,0.08)",
-                borderRadius: "16px",
-                padding: "16px 14px",
-                border: "1px solid rgba(220,38,38,0.12)"
-              }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  marginBottom: "12px",
-                  paddingBottom: "10px",
-                  borderBottom: "1px solid rgba(220,38,38,0.1)"
-                }}>
-                  <div style={{
-                    width: "6px",
-                    height: "6px",
-                    borderRadius: "50%",
-                    background: "#ef4444",
-                    boxShadow: "0 0 12px rgba(239,68,68,0.3)"
-                  }} />
-                  <span style={{ 
-                    fontWeight: 700, 
-                    color: "rgba(255,255,255,0.7)", 
-                    fontSize: "11px", 
-                    letterSpacing: "0.5px", 
-                    textTransform: "uppercase" 
-                  }}>
-                    Zone Sale
-                  </span>
-                  <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.2)", marginLeft: "auto" }}>
-                    ⚡ {zoneSale.length}
-                  </span>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  {zoneSale.map((etape, idx) => {
-                    const isActive = agent && POSTE_TO_ETAPE[agent.poste] === etape.id;
-                    const Icon = etape.icon;
-                    const isPast = etapeIndex > idx && agent;
-                    
-                    return (
-                      <React.Fragment key={etape.id}>
-                        <motion.div
-                          whileHover={isActive ? { scale: 1.02 } : {}}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            padding: "8px 12px",
-                            borderRadius: "8px",
-                            background: isActive 
-                              ? "rgba(239,68,68,0.2)" 
-                              : isPast 
-                                ? "rgba(255,255,255,0.03)" 
-                                : "rgba(255,255,255,0.02)",
-                            border: isActive 
-                              ? "1px solid rgba(239,68,68,0.3)" 
-                              : "1px solid transparent",
-                            opacity: isPast ? 0.5 : 1,
-                            cursor: isActive ? "pointer" : "default"
-                          }}
-                          onClick={() => {
-                            if (agent && isActive) {
-                              navigate(etape.route);
-                            }
-                          }}
-                        >
-                          <div style={{
-                            width: "24px",
-                            height: "24px",
-                            borderRadius: "6px",
-                            background: isActive 
-                              ? "rgba(239,68,68,0.2)" 
-                              : "rgba(255,255,255,0.05)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: isActive ? "#ef4444" : "rgba(255,255,255,0.3)"
-                          }}>
-                            <Icon size={12} />
-                          </div>
-                          <span style={{
-                            fontSize: "12px",
-                            fontWeight: isActive ? 600 : 400,
-                            color: isActive ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.4)"
-                          }}>
-                            {etape.id}
-                          </span>
-                          {isActive && (
-                            <span style={{
-                              fontSize: "7px",
-                              fontWeight: 700,
-                              color: "rgba(255,255,255,0.8)",
-                              background: "rgba(239,68,68,0.2)",
-                              padding: "1px 8px",
-                              borderRadius: "12px",
-                              marginLeft: "auto",
-                              textTransform: "uppercase"
-                            }}>
-                              Actif
-                            </span>
-                          )}
-                          {isPast && !isActive && (
-                            <FaCheckCircle style={{ color: "rgba(16,185,129,0.3)", marginLeft: "auto" }} size={10} />
-                          )}
-                        </motion.div>
-                        {idx < zoneSale.length - 1 && (
-                          <div style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            padding: "1px 0",
-                            color: "rgba(255,255,255,0.05)"
-                          }}>
-                            <FaLongArrowAltDown size={10} />
-                          </div>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* ─── Transition ────────────────────────────────────────────── */}
-              <div style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "2px",
-                padding: "0 2px",
-                minWidth: "40px"
-              }}>
-                <div style={{
-                  width: "1px",
-                  height: "30px",
-                  background: "linear-gradient(to bottom, rgba(239,68,68,0.2), rgba(245,158,11,0.2))"
-                }} />
-                <motion.div
-                  animate={{ scale: [1, 1.15, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, #f59e0b, #d97706)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "white",
-                    fontSize: "14px",
-                    boxShadow: "0 4px 20px rgba(245,158,11,0.2)"
-                  }}
-                >
-                  <FaRobot size={14} />
-                </motion.div>
-                <div style={{
-                  fontSize: "7px",
-                  fontWeight: 700,
-                  color: "rgba(245,158,11,0.5)",
-                  letterSpacing: "0.5px",
-                  textTransform: "uppercase"
-                }}>
-                  Lavage
-                </div>
-                <div style={{
-                  width: "1px",
-                  height: "30px",
-                  background: "linear-gradient(to bottom, rgba(245,158,11,0.2), rgba(16,185,129,0.2))"
-                }} />
-              </div>
-
-              {/* ─── Zone Propre ────────────────────────────────────────────── */}
-              <div style={{
-                flex: 1,
-                background: "rgba(16,185,129,0.08)",
-                borderRadius: "16px",
-                padding: "16px 14px",
-                border: "1px solid rgba(16,185,129,0.12)"
-              }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  marginBottom: "12px",
-                  paddingBottom: "10px",
-                  borderBottom: "1px solid rgba(16,185,129,0.1)"
-                }}>
-                  <div style={{
-                    width: "6px",
-                    height: "6px",
-                    borderRadius: "50%",
-                    background: "#10b981",
-                    boxShadow: "0 0 12px rgba(16,185,129,0.3)"
-                  }} />
-                  <span style={{ 
-                    fontWeight: 700, 
-                    color: "rgba(255,255,255,0.7)", 
-                    fontSize: "11px", 
-                    letterSpacing: "0.5px", 
-                    textTransform: "uppercase" 
-                  }}>
-                    Zone Propre
-                  </span>
-                  <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.2)", marginLeft: "auto" }}>
-                    ✨ {zonePropre.length}
-                  </span>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column-reverse", gap: "4px" }}>
-                  {zonePropre.map((etape, idx) => {
-                    const isActive = agent && POSTE_TO_ETAPE[agent.poste] === etape.id;
-                    const Icon = etape.icon;
-                    const globalIdx = ETAPES.indexOf(etape);
-                    const isPast = etapeIndex > globalIdx && agent;
-                    
-                    return (
-                      <React.Fragment key={etape.id}>
-                        <motion.div
-                          whileHover={isActive ? { scale: 1.02 } : {}}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            padding: "8px 12px",
-                            borderRadius: "8px",
-                            background: isActive 
-                              ? "rgba(16,185,129,0.2)" 
-                              : isPast 
-                                ? "rgba(255,255,255,0.03)" 
-                                : "rgba(255,255,255,0.02)",
-                            border: isActive 
-                              ? "1px solid rgba(16,185,129,0.3)" 
-                              : "1px solid transparent",
-                            opacity: isPast ? 0.5 : 1,
-                            cursor: isActive ? "pointer" : "default"
-                          }}
-                          onClick={() => {
-                            if (agent && isActive) {
-                              navigate(etape.route);
-                            }
-                          }}
-                        >
-                          <div style={{
-                            width: "24px",
-                            height: "24px",
-                            borderRadius: "6px",
-                            background: isActive 
-                              ? "rgba(16,185,129,0.2)" 
-                              : "rgba(255,255,255,0.05)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: isActive ? "#10b981" : "rgba(255,255,255,0.3)"
-                          }}>
-                            <Icon size={12} />
-                          </div>
-                          <span style={{
-                            fontSize: "12px",
-                            fontWeight: isActive ? 600 : 400,
-                            color: isActive ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.4)"
-                          }}>
-                            {etape.id}
-                          </span>
-                          {isActive && (
-                            <span style={{
-                              fontSize: "7px",
-                              fontWeight: 700,
-                              color: "rgba(255,255,255,0.8)",
-                              background: "rgba(16,185,129,0.2)",
-                              padding: "1px 8px",
-                              borderRadius: "12px",
-                              marginLeft: "auto",
-                              textTransform: "uppercase"
-                            }}>
-                              Actif
-                            </span>
-                          )}
-                          {isPast && !isActive && (
-                            <FaCheckCircle style={{ color: "rgba(16,185,129,0.3)", marginLeft: "auto" }} size={10} />
-                          )}
-                        </motion.div>
-                        {idx < zonePropre.length - 1 && (
-                          <div style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            padding: "1px 0",
-                            color: "rgba(255,255,255,0.05)"
-                          }}>
-                            <FaLongArrowAltDown size={10} />
-                          </div>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* ─── Footer avec bouton d'accès ────────────────────────────── */}
-            {agent && !redirecting && etapeActive && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  marginTop: "20px",
-                  padding: "12px 20px",
-                  borderRadius: "12px",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: "12px"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{
-                    width: "30px",
-                    height: "30px",
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "white"
-                  }}>
-                    <FaUser size={12} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>
-                      {agent.nom} · {etapeActive.id}
-                    </div>
-                    <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.3)" }}>
-                      {etapeActive.zone === "sale" ? "🔴 Zone Sale" : "🟢 Zone Propre"}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate(etapeActive.route)}
-                  style={{
-                    background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-                    color: "white",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "8px 20px",
-                    borderRadius: "10px",
-                    border: "none",
-                    fontWeight: 600,
-                    fontSize: "13px",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    boxShadow: "0 4px 16px rgba(59,130,246,0.2)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-                >
-                  Accéder <FaArrowRight size={12} />
-                </button>
-              </motion.div>
-            )}
-
-            {redirecting && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                style={{
-                  marginTop: "16px",
-                  textAlign: "center",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  background: "rgba(59,130,246,0.08)",
-                  border: "1px solid rgba(59,130,246,0.15)"
-                }}
-              >
-                <FaSpinner style={{ animation: "spin 1s linear infinite", display: "inline-block", marginRight: "10px", color: "#60a5fa" }} />
-                <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)" }}>Redirection vers votre poste...</span>
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-
-        {/* ─── Footer ────────────────────────────────────────────────────────── */}
+        {/* ─── Processus ────────────────────────────────────────────────────── */}
         <div style={{
-          marginTop: "24px",
-          paddingTop: "16px",
-          borderTop: "1px solid rgba(255,255,255,0.05)",
           display: "flex",
-          justifyContent: "space-between",
+          gap: "24px",
           alignItems: "center",
-          flexWrap: "wrap",
-          gap: "12px"
+          justifyContent: "center"
         }}>
+
+          {/* ─── Zone Sale ──────────────────────────────────────────────────── */}
           <div style={{
-            display: "flex",
-            gap: "16px",
-            fontSize: "11px",
-            color: "rgba(255,255,255,0.2)"
+            flex: 1,
+            background: "linear-gradient(180deg, #fef2f2 0%, #fecaca 100%)",
+            borderRadius: "20px",
+            padding: "20px 16px",
+            border: "1px solid #fca5a5",
+            boxShadow: "0 4px 20px rgba(220,38,38,0.06)"
           }}>
-            <span>Version 1.0</span>
-            <span>•</span>
-            <span>{new Date().toLocaleDateString("fr-FR", { 
-              day: "2-digit", 
-              month: "long", 
-              year: "numeric" 
-            })}</span>
-            <span>•</span>
-            <span>{new Date().toLocaleTimeString("fr-FR", { 
-              hour: "2-digit", 
-              minute: "2-digit" 
-            })}</span>
-          </div>
-          {agent && (
             <div style={{
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              fontSize: "11px",
-              color: "rgba(255,255,255,0.2)"
+              marginBottom: "16px",
+              paddingBottom: "12px",
+              borderBottom: "2px solid rgba(220,38,38,0.15)"
             }}>
-              <span>👤 {agent.nom}</span>
-              <span>•</span>
-              <span>🔑 {agent.matricule}</span>
+              <div style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: "#dc2626",
+                boxShadow: "0 0 12px rgba(220,38,38,0.3)"
+              }} />
+              <span style={{ fontWeight: 700, color: "#991b1b", fontSize: "13px", letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                Zone Sale
+              </span>
+              <span style={{ fontSize: "10px", color: "#7f1d1d", marginLeft: "auto" }}>
+                ⚡ {zoneSale.length} étapes
+              </span>
             </div>
-          )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {zoneSale.map((etape, idx) => {
+                const isActive = agent && POSTE_TO_ETAPE[agent.poste] === etape.id;
+                const Icon = etape.icon;
+                const isPast = etapeIndex > idx && agent;
+                const isNext = etapeIndex + 1 === idx && agent;
+                
+                return (
+                  <React.Fragment key={etape.id}>
+                    <motion.div
+                      onClick={() => {
+                        if (agent && isActive) {
+                          navigate(etape.route);
+                        }
+                      }}
+                      whileHover={isActive ? { scale: 1.02 } : {}}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "12px 16px",
+                        borderRadius: "12px",
+                        background: isActive 
+                          ? "linear-gradient(135deg, #dc2626, #b91c1c)" 
+                          : isPast 
+                            ? "rgba(255,255,255,0.5)" 
+                            : "rgba(255,255,255,0.7)",
+                        border: isActive 
+                          ? "2px solid #dc2626" 
+                          : isPast 
+                            ? "1px solid rgba(220,38,38,0.2)" 
+                            : "1px solid rgba(255,255,255,0.5)",
+                        boxShadow: isActive 
+                          ? "0 4px 20px rgba(220,38,38,0.2)" 
+                          : "0 1px 4px rgba(0,0,0,0.02)",
+                        cursor: isActive ? "pointer" : "default",
+                        transition: "all 0.3s",
+                        opacity: isPast ? 0.7 : 1
+                      }}
+                    >
+                      <div style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "10px",
+                        background: isActive 
+                          ? "rgba(255,255,255,0.2)" 
+                          : isPast 
+                            ? "rgba(220,38,38,0.1)" 
+                            : "rgba(220,38,38,0.05)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: isActive ? "white" : (isPast ? "#991b1b" : "#dc2626")
+                      }}>
+                        <Icon size={14} />
+                      </div>
+                      <span style={{
+                        fontSize: "13px",
+                        fontWeight: isActive ? 700 : 500,
+                        color: isActive ? "white" : (isPast ? "#7f1d1d" : "#1e293b")
+                      }}>
+                        {etape.id}
+                      </span>
+                      {isActive && (
+                        <span style={{
+                          fontSize: "8px",
+                          fontWeight: 700,
+                          color: "white",
+                          background: "rgba(255,255,255,0.2)",
+                          padding: "2px 10px",
+                          borderRadius: "20px",
+                          marginLeft: "auto",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px"
+                        }}>
+                          Actif
+                        </span>
+                      )}
+                      {isPast && !isActive && (
+                        <FaCheckCircle style={{ color: "#16a34a", marginLeft: "auto" }} size={12} />
+                      )}
+                      {isNext && !isActive && !isPast && (
+                        <div style={{
+                          marginLeft: "auto",
+                          width: "6px",
+                          height: "6px",
+                          borderRadius: "50%",
+                          background: "#f59e0b",
+                          boxShadow: "0 0 12px rgba(245,158,11,0.4)"
+                        }} />
+                      )}
+                    </motion.div>
+                    {idx < zoneSale.length - 1 && (
+                      <motion.div
+                        initial={{ opacity: 0.3 }}
+                        animate={{ opacity: [0.3, 0.6, 0.3] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          padding: "2px 0",
+                          color: "rgba(220,38,38,0.25)"
+                        }}
+                      >
+                        <FaLongArrowAltDown size={14} />
+                      </motion.div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ─── Transition ──────────────────────────────────────────────────── */}
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "4px",
+            padding: "0 4px",
+            minWidth: "50px"
+          }}>
+            <div style={{
+              width: "2px",
+              height: "40px",
+              background: "linear-gradient(to bottom, #dc2626, #f59e0b)"
+            }} />
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                fontSize: "18px",
+                boxShadow: "0 4px 24px rgba(245,158,11,0.3)"
+              }}
+            >
+              <FaRobot size={18} />
+            </motion.div>
+            <div style={{
+              fontSize: "8px",
+              fontWeight: 700,
+              color: "#92400e",
+              letterSpacing: "0.5px",
+              textTransform: "uppercase",
+              background: "rgba(245,158,11,0.1)",
+              padding: "2px 12px",
+              borderRadius: "20px",
+              border: "1px solid rgba(245,158,11,0.2)"
+            }}>
+              Lavage
+            </div>
+            <div style={{
+              width: "2px",
+              height: "40px",
+              background: "linear-gradient(to bottom, #f59e0b, #16a34a)"
+            }} />
+          </div>
+
+          {/* ─── Zone Propre ────────────────────────────────────────────────── */}
+          <div style={{
+            flex: 1,
+            background: "linear-gradient(180deg, #ecfdf5 0%, #a7f3d0 100%)",
+            borderRadius: "20px",
+            padding: "20px 16px",
+            border: "1px solid #6ee7b7",
+            boxShadow: "0 4px 20px rgba(22,163,74,0.06)"
+          }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "16px",
+              paddingBottom: "12px",
+              borderBottom: "2px solid rgba(22,163,74,0.15)"
+            }}>
+              <div style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: "#16a34a",
+                boxShadow: "0 0 12px rgba(22,163,74,0.3)"
+              }} />
+              <span style={{ fontWeight: 700, color: "#065f46", fontSize: "13px", letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                Zone Propre
+              </span>
+              <span style={{ fontSize: "10px", color: "#065f46", marginLeft: "auto" }}>
+                ✨ {zonePropre.length} étapes
+              </span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column-reverse", gap: "6px" }}>
+              {zonePropre.map((etape, idx) => {
+                const isActive = agent && POSTE_TO_ETAPE[agent.poste] === etape.id;
+                const Icon = etape.icon;
+                const globalIdx = ETAPES.indexOf(etape);
+                const isPast = etapeIndex > globalIdx && agent;
+                const isNext = etapeIndex + 1 === globalIdx && agent;
+                
+                return (
+                  <React.Fragment key={etape.id}>
+                    <motion.div
+                      onClick={() => {
+                        if (agent && isActive) {
+                          navigate(etape.route);
+                        }
+                      }}
+                      whileHover={isActive ? { scale: 1.02 } : {}}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "12px 16px",
+                        borderRadius: "12px",
+                        background: isActive 
+                          ? "linear-gradient(135deg, #16a34a, #15803d)" 
+                          : isPast 
+                            ? "rgba(255,255,255,0.5)" 
+                            : "rgba(255,255,255,0.7)",
+                        border: isActive 
+                          ? "2px solid #16a34a" 
+                          : isPast 
+                            ? "1px solid rgba(22,163,74,0.2)" 
+                            : "1px solid rgba(255,255,255,0.5)",
+                        boxShadow: isActive 
+                          ? "0 4px 20px rgba(22,163,74,0.2)" 
+                          : "0 1px 4px rgba(0,0,0,0.02)",
+                        cursor: isActive ? "pointer" : "default",
+                        transition: "all 0.3s",
+                        opacity: isPast ? 0.7 : 1
+                      }}
+                    >
+                      <div style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "10px",
+                        background: isActive 
+                          ? "rgba(255,255,255,0.2)" 
+                          : isPast 
+                            ? "rgba(22,163,74,0.1)" 
+                            : "rgba(22,163,74,0.05)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: isActive ? "white" : (isPast ? "#065f46" : "#16a34a")
+                      }}>
+                        <Icon size={14} />
+                      </div>
+                      <span style={{
+                        fontSize: "13px",
+                        fontWeight: isActive ? 700 : 500,
+                        color: isActive ? "white" : (isPast ? "#065f46" : "#1e293b")
+                      }}>
+                        {etape.id}
+                      </span>
+                      {isActive && (
+                        <span style={{
+                          fontSize: "8px",
+                          fontWeight: 700,
+                          color: "white",
+                          background: "rgba(255,255,255,0.2)",
+                          padding: "2px 10px",
+                          borderRadius: "20px",
+                          marginLeft: "auto",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px"
+                        }}>
+                          Actif
+                        </span>
+                      )}
+                      {isPast && !isActive && (
+                        <FaCheckCircle style={{ color: "#16a34a", marginLeft: "auto" }} size={12} />
+                      )}
+                      {isNext && !isActive && !isPast && (
+                        <div style={{
+                          marginLeft: "auto",
+                          width: "6px",
+                          height: "6px",
+                          borderRadius: "50%",
+                          background: "#f59e0b",
+                          boxShadow: "0 0 12px rgba(245,158,11,0.4)"
+                        }} />
+                      )}
+                    </motion.div>
+                    {idx < zonePropre.length - 1 && (
+                      <motion.div
+                        initial={{ opacity: 0.3 }}
+                        animate={{ opacity: [0.3, 0.6, 0.3] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          padding: "2px 0",
+                          color: "rgba(22,163,74,0.25)"
+                        }}
+                      >
+                        <FaLongArrowAltDown size={14} />
+                      </motion.div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
         </div>
+
+        {agent && !redirecting && etapeActive && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              marginTop: "24px",
+              padding: "14px 24px",
+              borderRadius: "16px",
+              background: "linear-gradient(135deg, #f1f5f9, #e2e8f0)",
+              border: "1px solid #cbd5e1",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "12px"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #1e293b, #475569)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white"
+              }}>
+                <FaUser size={14} />
+              </div>
+              <div>
+                <div style={{ fontSize: "14px", fontWeight: 600, color: "#0f172a" }}>
+                  {agent.nom} · {etapeActive.id}
+                </div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>
+                  {etapeActive.zone === "sale" ? "🔴 Zone Sale" : "🟢 Zone Propre"} · Cliquez sur la carte active pour accéder
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate(etapeActive.route)}
+              style={{
+                background: "linear-gradient(135deg, #1e293b, #334155)",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "10px 24px",
+                borderRadius: "12px",
+                border: "none",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
+              onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+            >
+              Accéder au poste <FaArrowRight size={14} />
+            </button>
+          </motion.div>
+        )}
+
+        {redirecting && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            style={{
+              marginTop: "20px",
+              textAlign: "center",
+              padding: "14px",
+              borderRadius: "12px",
+              background: "rgba(59,130,246,0.08)",
+              border: "1px solid rgba(59,130,246,0.2)"
+            }}
+          >
+            <FaSpinner style={{ animation: "spin 1s linear infinite", display: "inline-block", marginRight: "10px" }} />
+            <span style={{ fontSize: "14px", color: "#1e40af", fontWeight: 500 }}>Redirection vers votre poste...</span>
+          </motion.div>
+        )}
       </div>
 
       <style>{`
@@ -897,9 +738,6 @@ export default function AuthentificationPage() {
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
-        }
-        .animate-spin {
-          animation: spin 1s linear infinite;
         }
       `}</style>
     </div>

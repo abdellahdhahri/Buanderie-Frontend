@@ -7,10 +7,11 @@ import { Badge } from "../../components/ui/badge";
 import { Select } from "../../components/ui/select";
 import { Modal } from "../../components/ui/modal";
 import { Input } from "../../components/ui/input";
+import { ServiceContext } from "../../contextes/ServiceContext";
+
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 
-// ─── Variables d'environnement ──────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export default function HistoriqueCollecte() {
@@ -22,6 +23,7 @@ export default function HistoriqueCollecte() {
   const [expandedId, setExpandedId] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const itemsPerPage = 8;
+  const { services } = useContext(ServiceContext);
 
   const [filters, setFilters] = useState({
     search: "",
@@ -37,7 +39,11 @@ export default function HistoriqueCollecte() {
   useEffect(() => {
     setCurrentPage(1);
   }, [filters]);
-
+  const getServiceName = (serviceId) => {
+    if (!serviceId) return "Non assigné";
+    const service = services.find(s => s.id === serviceId);
+    return service ? service.code : "Non assigné";
+  };
   const loadCollectes = async () => {
     try {
       setLoading(true);
@@ -150,12 +156,28 @@ export default function HistoriqueCollecte() {
 
       <div className="space-y-2">
         <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-          <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-            📋 Liste des Collectes
-          </h1>
-          <p className="text-sm text-slate-500" style={{ color: "#166d7c" }}>
-            Historique complet des collectes de linge
-          </p>
+         <h1 className="text-3xl font-extrabold flex items-center gap-2" style={{ marginBottom: "4px" }}>
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="32" 
+    height="32" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className="inline-block"
+  >
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+    <line x1="8" y1="11" x2="16" y2="11" />
+    <line x1="8" y1="15" x2="16" y2="15" />
+    <line x1="8" y1="19" x2="13" y2="19" />
+  </svg>
+  Liste des Collectes
+</h1>
+          
         </div>
       </div>
 
@@ -271,6 +293,7 @@ export default function HistoriqueCollecte() {
                   </tr>
                 ) : (
                   currentData.map((collecte, index) => {
+                    const serviceName = getServiceName(collecte.service);
                     const isExpanded = expandedId === collecte.id;
                     const details = collecte.details || collecte.resume;
 
@@ -302,7 +325,7 @@ export default function HistoriqueCollecte() {
                           <td className="text-center py-3 px-4">
                             <div className="flex items-center justify-center gap-2">
                               <Building className="w-4 h-4 text-muted-foreground" />
-                              <span>{collecte.service?.nom || "N/A"}</span>
+                              <span>{serviceName } </span>
                             </div>
                           </td>
                           <td className="text-center py-3 px-4">

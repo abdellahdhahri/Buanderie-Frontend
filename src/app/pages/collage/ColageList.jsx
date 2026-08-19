@@ -357,7 +357,6 @@ export default function ColageList() {
             </div>
           )}
 
-          <EtapesStepper etapes={ETAPES} etapeActive={etape} couleurActive={BORDER}/>
 
           {etape!=="RESUME"&&(
             <Card style={{ border:`2px dashed ${BORDER}` }}>

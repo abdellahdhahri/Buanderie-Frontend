@@ -38,7 +38,7 @@ export default function DashboardBuanderie() {
         <div className="dashboard-wrapper">
             <div className="dashboard-overlay-content">
                 <div className="dashboard-header">
-                    <h1>Micro-Service   Gestion de Buanderie</h1>
+                    <h1>Gestion de Buanderie</h1>
                     <p>Bienvenue dans votre espace de gestion de buanderie</p>
                 </div>
 

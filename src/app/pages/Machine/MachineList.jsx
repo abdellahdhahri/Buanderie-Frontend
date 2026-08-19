@@ -318,14 +318,9 @@ export default function MachineList() {
               alt="Code-barres"
             />
           </div>
+         
           
-          <div style="font-size:12pt; font-weight:bold; letter-spacing:1px; margin:2mm 0; font-family:'Courier New',monospace;">
-            ${code}
-          </div>
-          
-          <div style="font-size:9pt; font-weight:600; color:#1a1a1a;">
-            ${machine.reference}
-          </div>
+         
           
           <div style="font-size:8pt; color:#666; margin-top:2mm; border-top:1px solid #ddd; padding-top:2mm;">
             <div>📦 ${machine.categorie || 'N/A'} · ${machine.capaciteKg || 0} kg</div>
@@ -365,7 +360,6 @@ export default function MachineList() {
     );
   });
 
-  // ─── Nouveau style pour l'état ─────────────────────────────────────────────
   const getEtatBadge = (etat) => {
     const config = ETATS_MACHINE.find(e => e.value === etat) || { color: "#64748b", bg: "#f1f5f9", label: etat };
     const icons = {
@@ -410,12 +404,61 @@ export default function MachineList() {
         className="transition-all duration-500 ease-in-out w-full"
       >
         <div className="space-y-4">
-          <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-            <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-              ⚙️ Gestion des Machines
-            </h1>
-            
-          </div>
+        <div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: "0 4px 16px rgba(99, 102, 241, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <rect x="4" y="4" width="16" height="16" rx="2" />
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="16" cy="8" r="0.5" fill="currentColor" />
+        <path d="M8 12a4 4 0 0 1 8 0" />
+        <path d="M8 16a4 4 0 0 0 8 0" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        Gestion des Machines
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Gérez les machines et leurs maintenances
+      </p>
+    </div>
+  </div>
+</div>
 
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
             <button

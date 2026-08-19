@@ -13,6 +13,7 @@ const TYPES_RECLAMATION = [
   { id: "COUTURE_ABIMEE", label: "Couture abîmée", color: "#7c3aed", bg: "#ede9fe", icon: FaRuler },
   { id: "BOUTON_MANQUANT", label: "Bouton manquant", color: "#0891b2", bg: "#cffafe", icon: FaTimes },
   { id: "A_REFORMER", label: "À reformer", color: "#475569", bg: "#f1f5f9", icon: FaTrash },
+  { id: "MAL_LAVE", label: "Mal Lavé", color: "#24426d", bg: "#f1f5f9", icon: FaTrash },
 ];
 
 export default function DialogueControleQualite({ item, agent, onClose, onConfirmer }) {

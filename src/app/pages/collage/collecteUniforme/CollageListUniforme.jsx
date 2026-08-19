@@ -1,10 +1,4 @@
-/**
- * CollageListUniforme — Collecte UNIFORME
- * Backend : CollecteUniformeController → /api/collecte/uniforme/*
- * Flux : scan badge médecin → uniformes LIVRE + flag infection
- *        scan uniforme → scan bac → traitement individuel
- *        manquant → dialogue
- */
+
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useModal } from "../../../contextes/ModalContext";
 import { FaUser, FaTimes, FaExclamationTriangle, FaSpinner,
@@ -117,7 +111,7 @@ export default function CollageListUniforme() {
   const handleAgent = useCallback(async code=>{
     setLoading(true);
     try {
-      const ag=await fetch(`http://localhost:8082/agents/matricule/${code}`).then(r=>r.ok?r.json():null);
+      const ag=await fetch(`http://localhost:8082/api/agents/matricule/${code}`).then(r=>r.ok?r.json():null);
       if(!ag){showAlert("❌ Agent introuvable",code,"error");return;}
       setAgent({nom:ag.nom,matricule:ag.matricule});
       setEtape("BADGE"); showAlert("✅ "+ag.nom,"Scannez le badge du médecin","success");
@@ -279,7 +273,6 @@ export default function CollageListUniforme() {
                 style={{ background:"none",border:"none",cursor:"pointer",color:"#94a3b8" }}>✕</button>
             </div>
           )}
-          <EtapesStepper etapes={ETAPES} etapeActive={etape} couleurActive={BORDER}/>
           {etape!=="RESUME"&&(
             <Card style={{ border:`2px dashed ${BORDER}` }}>
               <CardContent className="p-4">

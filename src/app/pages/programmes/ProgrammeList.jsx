@@ -354,16 +354,72 @@ export default function ProgrammeList() {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-2">
-        <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-          <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-            {mode === "LAVAGE" ? "Programmes de Lavage" : "Programmes de Séchage"}
-          </h1>
-          <p className="text-sm text-slate-500">
-            {mode === "LAVAGE" 
-              ? "Gestion des cycles de lavage et paramètres associés" 
-              : "Gestion des cycles de séchage et paramètres associés"}
-          </p>
-        </div>
+<div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: mode === "LAVAGE" 
+        ? "linear-gradient(135deg, #06b6d4, #0891b2)" 
+        : "linear-gradient(135deg, #f59e0b, #d97706)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: mode === "LAVAGE"
+        ? "0 4px 16px rgba(6, 182, 212, 0.25)"
+        : "0 4px 16px rgba(245, 158, 11, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+        <line x1="16" y1="2" x2="16" y2="6" />
+        <line x1="8" y1="2" x2="8" y2="6" />
+        <line x1="3" y1="10" x2="21" y2="10" />
+        <circle cx="12" cy="14" r="1" />
+        <circle cx="16" cy="14" r="1" />
+        <circle cx="8" cy="14" r="1" />
+        <circle cx="12" cy="18" r="1" />
+        <circle cx="16" cy="18" r="1" />
+        <circle cx="8" cy="18" r="1" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        {mode === "LAVAGE" ? "Programmes de Lavage" : "Programmes de Séchage"}
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        {mode === "LAVAGE" 
+          ? "Gestion des cycles de lavage et paramètres associés" 
+          : "Gestion des cycles de séchage et paramètres associés"}
+      </p>
+    </div>
+  </div>
+</div>
       </div>
 
       {/* Mode Toggle & Actions */}

@@ -125,25 +125,91 @@ export default function TrackingPage() {
 
 
 
-        <div
-          className="page-header"
-          style={{ marginBottom: 0, textAlign: "left" }}
+<div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: isRfidMode 
+        ? "linear-gradient(135deg, #8b5cf6, #7c3aed)" 
+        : "linear-gradient(135deg, #0ea5e9, #0284c7)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: isRfidMode
+        ? "0 4px 16px rgba(139, 92, 246, 0.25)"
+        : "0 4px 16px rgba(14, 165, 233, 0.25)"
+    }}>
+      {isRfidMode ? (
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="24" 
+          height="24" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="2" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
         >
-          <h1
-            className="text-3xl font-extrabold"
-            style={{ marginBottom: "4px" }}
-          >
-             
-            {/* {isRfidMode ? (
-              <FaRss size={24} />
-            ) : (
-              <FaEye size={24} />
-            )} */}
-           {isRfidMode ? "Traçabilité RFID" : "Suivi d'article"}
-          </h1>
-          <p className="text-sm text-slate-500" style={{ color: "#166d7c", marginBottom: "52px" }}>
-Suivi d'etat d'un article           </p>
-        </div>
+          <rect x="2" y="2" width="20" height="20" rx="2.18" />
+          <line x1="8" y1="2" x2="8" y2="22" />
+          <line x1="16" y1="2" x2="16" y2="22" />
+          <line x1="2" y1="8" x2="22" y2="8" />
+          <line x1="2" y1="16" x2="22" y2="16" />
+          <circle cx="12" cy="12" r="2" />
+        </svg>
+      ) : (
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="24" 
+          height="24" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="2" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <polyline points="3 6 5 6 5 8" />
+          <polyline points="3 18 5 18 5 16" />
+          <polyline points="21 6 19 6 19 8" />
+          <polyline points="21 18 19 18 19 16" />
+          <line x1="8" y1="6" x2="16" y2="6" />
+          <line x1="8" y1="18" x2="16" y2="18" />
+          <line x1="9" y1="10" x2="9" y2="14" />
+          <line x1="15" y1="10" x2="15" y2="14" />
+          <line x1="10" y1="10" x2="14" y2="10" />
+          <line x1="10" y1="14" x2="14" y2="14" />
+        </svg>
+      )}
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        {isRfidMode ? "Traçabilité RFID" : "Suivi d'article"}
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Suivi d'état d'un article
+      </p>
+    </div>
+  </div>
+</div>
       <div className="filter-panel-section">
         <div className="filter-main-layout">
           <div className="filter-row" style={{ alignItems: "flex-end" }}>

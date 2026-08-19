@@ -203,8 +203,8 @@ export default function LotList() {
       console.log("📦 Paramètres envoyés:", params.toString());
 
       const url = selectedLot 
-        ? `http://localhost:8082/lots/${selectedLot.id}`
-        : `http://localhost:8082/lots?${params.toString()}`;
+        ? `http://localhost:8082/api/lots/${selectedLot.id}`
+        : `http://localhost:8082/api/lots?${params.toString()}`;
       
       const method = selectedLot ? "PUT" : "POST";
 
@@ -289,7 +289,7 @@ export default function LotList() {
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`http://localhost:8082/lots/${id}`, {
+        const response = await fetch(`http://localhost:8082/api/lots/${id}`, {
           method: "DELETE",
         });
         if (response.ok) {
@@ -422,14 +422,59 @@ export default function LotList() {
         }}
       >
         <div className="space-y-4">
-          <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-            <h1 className="text-3xl font-extrabold" style={{ marginBottom: "4px" }}>
-              📦 Gestion des lots
-            </h1>
-            <p className="text-sm text-slate-500" style={{ color: "#166d7c" }}>
-              Création et gestion des lots de linge
-            </p>
-          </div>
+<div style={{ marginBottom: "32px" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "8px"
+  }}>
+    <div style={{
+      width: "52px",
+      height: "52px",
+      borderRadius: "16px",
+      background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      boxShadow: "0 4px 16px rgba(139, 92, 246, 0.25)"
+    }}>
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+        <line x1="12" y1="22.08" x2="12" y2="12" />
+      </svg>
+    </div>
+    <div>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0
+      }}>
+        Gestion des lots
+      </h1>
+      <p style={{
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "2px 0 0 0"
+      }}>
+        Création et gestion des lots de linge
+      </p>
+    </div>
+  </div>
+</div>
 
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
             <button
