@@ -2,26 +2,17 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import Swal from 'sweetalert2';
 import { toast } from 'sonner';
-
-// ============================================================
-// CONFIGURATION URLs avec variables d'environnement
-// ============================================================
-
 // URL de l'API - Utilise VITE_API_URL ou fallback
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082/api';
 
-// URL du WebSocket - Utilise VITE_WS_URL ou construit à partir de VITE_API_URL
 const WS_URL = import.meta.env.VITE_WS_URL || 
                (import.meta.env.VITE_API_URL 
                  ? import.meta.env.VITE_API_URL.replace('/api', '') 
                  : 'http://localhost:8082');
 
-// URL complète du WebSocket
 const WS_ENDPOINT = `${WS_URL}/ws`;
 
-// ============================================================
-// LOGGING en développement uniquement
-// ============================================================
+
 
 const isDevelopment = import.meta.env.MODE === 'development';
 
@@ -192,12 +183,7 @@ class NotificationService {
                 this.reconnectAttempts = 0;
                 this.active = true;
 
-                log('✅ WebSocket connecté à', WS_ENDPOINT);
-                this.subscribeToTopics();
-
-                if (isDevelopment) {
-                    toast.success('🔔 Connecté au service de notifications');
-                }
+          
             },
 
             onDisconnect: () => {
@@ -205,9 +191,7 @@ class NotificationService {
                 this.active = false;
                 log('❌ WebSocket déconnecté');
 
-                if (isDevelopment) {
-                    toast.warning('📡 Connexion perdue, tentative de reconnexion...');
-                }
+                
             },
 
             onStompError: (frame) => {

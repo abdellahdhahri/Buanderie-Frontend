@@ -1,11 +1,4 @@
-/**
- * CollageListService.jsx — Collecte SERVICE
- * Utilise DialogCategorie existant pour la déclaration des linges infectés.
- *
- * FLUX :
- *   AGENT → SERVICE → BAC BLANC → SCAN LINGES
- *   Pour infectés : bouton → DialogCategorie (sélection image) → saisir quantité → scan bac rouge → valider
- */
+
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useModal } from "../../../contextes/ModalContext";
 import {
@@ -25,7 +18,6 @@ import "../../Linge/WorkflowList.css";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
 
-// ─── COMPOSANT : Barre de statut ──────────────────────────────────────────
 function StatutCard({ label, value, icon, color, bg, subValue }) {
   return (
     <div style={{

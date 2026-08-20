@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useModal } from "../../contextes/ModalContext";
 import "../Linge/WorkflowList.css";
 
-const API = "http://localhost:8082";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 // ─── Mapping poste → route ──────────────────────────────────────────────────
 const POSTE_TO_ROUTE = {
@@ -87,7 +87,7 @@ export default function Authentification() {
     setRedirecting(false);
     
     try {
-      const res = await fetch(`${API}/api/agents/matricule/${code}`);
+      const res = await fetch(`${API_URL}/api/agents/matricule/${code}`);
       
       if (!res.ok) {
         setError("Matricule non reconnu");
@@ -114,7 +114,7 @@ export default function Authentification() {
       
       setAgent(agentData);
       setRedirecting(true);
-      showAlert("Authentifié", `Bienvenue ${ag.nom}`, "success");
+      //showAlert("Authentifié", `Bienvenue ${ag.nom}`, "success");
       
       setTimeout(() => {
         const route = POSTE_TO_ROUTE[ag.poste];
@@ -150,7 +150,7 @@ export default function Authentification() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        backgroundImage: "url('https://images.unsplash.com/photo-1584225064785-c62a8b43d148?w=1920&q=80')",
+        backgroundImage: "url('https://images.unsplash.com/photo-1582735689369-4fe89db7114c?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         padding: "24px",

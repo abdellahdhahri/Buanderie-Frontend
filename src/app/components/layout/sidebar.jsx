@@ -377,34 +377,49 @@ export const NAV_ITEMS = [
 const POSTE_TO_MENU = {
   AGENT_COLLECTE: [
     "/collecteList",
+    "/Reclamations"
   ],
 
   AGENT_RECEPTION: [
     "/Receptions",
+        "/Reclamations"
+
   ],
 
   AGENT_TRI: [
     "/tri",
+        "/Reclamations"
+
   ],
 
   AGENT_LAVAGE: [
     "/Lavages",
+        "/Reclamations"
+
   ],
 
   AGENT_SECHAGE: [
     "/Sechages",
+        "/Reclamations"
+
   ],
 
   AGENT_PLIAGE: [
     "/Pliages",
+        "/Reclamations"
+
   ],
 
   AGENT_STOCKAGE: [
     "/stockage",
+        "/Reclamations"
+
   ],
 
   AGENT_LIVRAISON: [
     "/remise",
+        "/Reclamations"
+
   ],
 
   CHEF_EQUIPE: [
@@ -472,7 +487,6 @@ const [agent, setAgent] = useState(null);
               };
             }
 
-            // Cas d'un menu simple
             if (allowedPaths?.includes(item.path)) {
               return item;
             }

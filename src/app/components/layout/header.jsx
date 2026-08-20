@@ -148,7 +148,6 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     }
   };
 
-  // ─── Mise à jour du compteur ─────────────────────────────────────────
   const updateUnreadCount = useCallback(async () => {
     try {
       const count = await getUnreadCount();

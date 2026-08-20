@@ -33,7 +33,7 @@ import MachineList from "./pages/Machine/MachineList";
 import BuanderieStats from "./pages/Statistiques/BuanderieStats";
 import ArsenalList from "./pages/Arsenal/ArsenalList";
 import CycleLavageList from "./pages/CycleLavge/CycleLavageList";
-import AuthentificationPage from "./pages/authentication/AuthentificationPage";
+//import AuthentificationPage from "./pages/authentication/AuthentificationPage";
 import ChambreList from "./pages/chambre/ChambreList";
 import InventaireArsenal from "./pages/inventaire/InventaireArsenal";
 import RemiseLinge from "./pages/remise-Linges/RemiseLinge";
@@ -88,6 +88,7 @@ export const router = createBrowserRouter([
                     { path: "chambre", Component: ChambreList },
                     { path: "inventaire", Component: InventaireArsenal },
                     { path: "remise", Component: RemiseLinge },
+                    
                 ],
             },
         ],

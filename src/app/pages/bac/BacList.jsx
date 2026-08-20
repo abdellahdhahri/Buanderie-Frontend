@@ -41,6 +41,7 @@ export default function BacList() {
   const [selectedId, setSelectedId] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedLingeDetail, setSelectedLingeDetail] = useState(null);
+  const [number,setNumber] = useState();
 
   const [newRec, setNewRec] = useState({
     reference: "",
@@ -90,6 +91,30 @@ export default function BacList() {
     }
   };
 
+    const fetchBacLingesNumber= async (bacId) => {
+    setIsLingesLoading(true);
+    try {
+      const response = await fetch(`http://localhost:8082/api/bacs/bacs/${bacId}/linges`);
+      if (response.ok) {
+        const data = await response.json();
+        setBacLinges(Array.isArray(data) ? data : data.content || []);
+        setNumber(bacLinges.length())
+      } else {
+        setBacLinges([]);
+        
+      }
+    } catch (err) {
+      console.error("Erreur chargement linges:", err);
+      setBacLinges([]);
+    } finally {
+      setIsLingesLoading(false);
+    }
+  };
+
+
+  const fetchLingsBac = (bacId) =>{
+
+  }
   const handleOpenPanel = async (bac) => {
     if (selectedBacId === bac.id && panelOpen) {
       setPanelOpen(false);
@@ -715,7 +740,7 @@ export default function BacList() {
                           <td className="py-3 px-4">
                             {getStatusBadge(bac.typeCollecte)}
                             <div className="text-xs text-muted-foreground mt-1">
-                              {bac.nombreLinges || 0} linges
+                              {bacLinges.length || 0} linges
                             </div>
                           </td>
                           <td className="py-3 px-4">
