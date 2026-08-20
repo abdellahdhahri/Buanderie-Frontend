@@ -15,6 +15,14 @@ import {
 } from "../../services/NotificationService";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { 
+  getAgent, 
+  authenticateAgent, 
+  logoutAgent, 
+  isAgentConnected,
+  getAgentRoute,
+  getAgentPosteName
+} from '../../services/agentService';
 
 // ─── BREADCRUMB ──────────────────────────────────────────────────────────
 const BREADCRUMB_ITEMS = [
@@ -87,17 +95,36 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [isLoadingAgent, setIsLoadingAgent] = useState(true);
   
   // Popup notification
   const [currentNotification, setCurrentNotification] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
-  
+  const [agent, setAgent] = useState(null);
+
   const location = useLocation();
   const currentPath = location.pathname;
   const wsSubscriptionRef = useRef(null);
   const popupTimerRef = useRef(null);
 
-  // ─── Récupération des notifications ──────────────────────────────────
+  // ─── Chargement de l'agent ──────────────────────────────────────────────
+  useEffect(() => {
+    const loadAgent = async () => {
+      try {
+        const savedAgent = getAgent();
+        if (savedAgent) {
+          setAgent(savedAgent);
+        }
+      } catch (error) {
+        console.error("Erreur chargement agent:", error);
+        setAgent(null);
+      } finally {
+        setIsLoadingAgent(false);
+      }
+    };
+    loadAgent();
+  }, []);
+
   const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
@@ -112,6 +139,14 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
       setLoading(false);
     }
   }, []);
+
+  const handleLogout = () => {
+    const success = logoutAgent();
+    if (success) {
+      setAgent(null);
+      toast.success("Déconnexion réussie");
+    }
+  };
 
   // ─── Mise à jour du compteur ─────────────────────────────────────────
   const updateUnreadCount = useCallback(async () => {
@@ -128,11 +163,9 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     try {
       await markNotificationAsRead(id);
       
-      // Mettre à jour la liste locale
       setNotifications(prev => prev.filter(n => n.id !== id));
       setUnreadCount(prev => Math.max(0, prev - 1));
       
-      // Si c'est la notification actuelle de la popup
       if (currentNotification && currentNotification.id === id) {
         setCurrentNotification(null);
         setShowPopup(false);
@@ -162,15 +195,12 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
   const handleNewNotification = useCallback((notification) => {
     console.log("📨 Nouvelle notification reçue:", notification);
     
-    // Ajouter à la liste des notifications non lues
     setNotifications(prev => [notification, ...prev]);
     setUnreadCount(prev => prev + 1);
     
-    // Afficher la popup
     setCurrentNotification(notification);
     setShowPopup(true);
     
-    // Fermer automatiquement après 6 secondes
     if (popupTimerRef.current) {
       clearTimeout(popupTimerRef.current);
     }
@@ -181,23 +211,15 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
 
   // ─── Initialisation WebSocket ────────────────────────────────────────
   useEffect(() => {
-    // Charger les notifications au montage
     loadNotifications();
     
-    // Importer et démarrer le service
     import("../../services/NotificationService").then(module => {
       const { startNotificationService, getNotificationStatus } = module;
       
-      // Démarrer le service si pas déjà connecté
       if (!getNotificationStatus()) {
         startNotificationService();
       }
       
-      // S'abonner aux nouvelles notifications via WebSocket
-      // Note: Le service gère déjà l'abonnement, nous écoutons via un événement
-      // ou nous utilisons le callback du service
-      
-      // Alternative: Utiliser un EventListener personnalisé
       const handleWebSocketMessage = (event) => {
         try {
           const notification = JSON.parse(event.detail);
@@ -207,7 +229,6 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
         }
       };
       
-      // Ajouter un écouteur d'événement personnalisé
       window.addEventListener('new-notification', handleWebSocketMessage);
       
       return () => {
@@ -227,9 +248,7 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
 
   // ─── Mise à jour périodique du compteur ──────────────────────────────
   useEffect(() => {
-    // Mettre à jour le compteur toutes les 30 secondes
     const interval = setInterval(updateUnreadCount, 30000);
-    
     return () => clearInterval(interval);
   }, [updateUnreadCount]);
 
@@ -246,7 +265,6 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     setShowNotifications(prev => !prev);
     setUserDropOpen(false);
     
-    // Recharger les notifications à l'ouverture
     if (!showNotifications) {
       loadNotifications();
     }
@@ -273,6 +291,31 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
   const toggleTheme = () => {
     setIsDark(!isDark);
     document.documentElement.classList.toggle("dark");
+  };
+
+  // ─── Obtenir les initiales de l'agent ──────────────────────────────────
+  const getInitials = () => {
+    if (!agent || !agent.nom) return "??";
+    // Prendre la première lettre du nom
+    return agent.nom.charAt(0).toUpperCase();
+  };
+
+  // ─── Obtenir le nom complet ─────────────────────────────────────────────
+  const getAgentFullName = () => {
+    if (!agent) return "Utilisateur";
+    return agent.nom || "Utilisateur";
+  };
+
+  // ─── Obtenir le poste ──────────────────────────────────────────────────
+  const getAgentPoste = () => {
+    if (!agent) return "Non défini";
+    return agent.poste?.replace("AGENT_", "") || agent.poste || "Non défini";
+  };
+
+  // ─── Obtenir l'email ──────────────────────────────────────────────────
+  const getAgentEmail = () => {
+    if (!agent) return "";
+    return agent.email || `${agent.nom?.toLowerCase() || 'utilisateur'}@softsys.com`;
   };
 
   return (
@@ -520,11 +563,11 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
               }}
             >
               <div className="w-[30px] h-[30px] rounded-lg bg-teal-600 text-white flex items-center justify-center font-bold text-xs">
-                DF
+                {getInitials()}
               </div>
               <div className="user-btn__info">
-                <span className="user-btn__name">Mr. Fouleni</span>
-                <span className="user-btn__role">Administrateur</span>
+                <span className="user-btn__name">{getAgentFullName()}</span>
+                <span className="user-btn__role">{getAgentPoste()}</span>
               </div>
               <ChevronDown className={`user-btn__chevron ${userDropOpen ? "user-btn__chevron--open" : ""}`} />
             </button>
@@ -532,8 +575,8 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
             {userDropOpen && (
               <div className="user-dropdown">
                 <div className="user-dropdown__header">
-                  <p className="user-dropdown__name">Mr. Foulen Fouleni</p>
-                  <p className="user-dropdown__email">foulen.fouleni@softsys.com</p>
+                  <p className="user-dropdown__name">{getAgentFullName()}</p>
+                  <p className="user-dropdown__email">{getAgentEmail()}</p>
                 </div>
                 <div className="user-dropdown__menu">
                   <Link to="/" className="user-dropdown__link" onClick={() => setUserDropOpen(false)}>
@@ -542,10 +585,10 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
                   <Link to="/parametres" className="user-dropdown__link" onClick={() => setUserDropOpen(false)}>
                     Paramètres
                   </Link>
-                  <div className="user-dropdown__separator" />
-                  <a href="#" className="user-dropdown__link user-dropdown__link--danger">
+                  <Link to="/process" className="user-dropdown__link user-dropdown__link--danger" onClick={() => handleLogout()}>
                     Déconnexion
-                  </a>
+                  </Link>
+                  <div className="user-dropdown__separator" />
                 </div>
               </div>
             )}
