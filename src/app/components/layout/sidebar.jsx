@@ -374,11 +374,58 @@ export const NAV_ITEMS = [
     ],
   },
 ];
+const POSTE_TO_MENU = {
+  AGENT_COLLECTE: [
+    "/collecteList",
+  ],
+
+  AGENT_RECEPTION: [
+    "/Receptions",
+  ],
+
+  AGENT_TRI: [
+    "/tri",
+  ],
+
+  AGENT_LAVAGE: [
+    "/Lavages",
+  ],
+
+  AGENT_SECHAGE: [
+    "/Sechages",
+  ],
+
+  AGENT_PLIAGE: [
+    "/Pliages",
+  ],
+
+  AGENT_STOCKAGE: [
+    "/stockage",
+  ],
+
+  AGENT_LIVRAISON: [
+    "/remise",
+  ],
+
+  CHEF_EQUIPE: [
+    "/collecteList",
+    "/Receptions",
+    "/tri",
+    "/Lavages",
+    "/Sechages",
+    "/Pliages",
+    "/stockage",
+    "/remise",
+    "/distribution",
+  ],
+
+  ADMIN: "ALL",
+};
 
 export function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const [activePopup, setActivePopup] = useState(null);
-
+const [agent, setAgent] = useState(null);
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -387,6 +434,55 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
       item.path === currentPath ||
       item.children?.some((child) => child.path === currentPath)
   );
+  useEffect(() => {
+    const savedAgent = localStorage.getItem("agent");
+
+    if (savedAgent) {
+      try {
+        const parsedAgent = JSON.parse(savedAgent);
+        setAgent(parsedAgent);
+      } catch (error) {
+        console.error("Erreur lecture agent :", error);
+        localStorage.removeItem("agent");
+      }
+    }
+  }, []);
+
+  // Filtrer les menus selon le poste
+  const allowedPaths = POSTE_TO_MENU[agent?.poste];
+
+  const filteredNavItems =
+    allowedPaths === "ALL"
+      ? NAV_ITEMS
+      : NAV_ITEMS
+          .map((item) => {
+            // Cas d'un menu avec sous-menus
+            if (item.children) {
+              const filteredChildren = item.children.filter((child) =>
+                allowedPaths?.includes(child.path)
+              );
+
+              if (filteredChildren.length === 0) {
+                return null;
+              }
+
+              return {
+                ...item,
+                children: filteredChildren,
+              };
+            }
+
+            // Cas d'un menu simple
+            if (allowedPaths?.includes(item.path)) {
+              return item;
+            }
+
+            return null;
+          })
+          .filter(Boolean);
+
+
+
 
   useEffect(() => {
     if (activeNavItem && sidebarOpen && activeNavItem.children) {
@@ -443,7 +539,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
       <nav className="sidebar__nav">
         {sidebarOpen && <span className="sidebar__section-label">Menu principal</span>}
-        {NAV_ITEMS.map((item) => (
+        {filteredNavItems.map((item) => (
           <div key={item.id} className="nav-item-wrap">
             {item.children ? (
               <button

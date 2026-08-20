@@ -20,7 +20,8 @@ const POSTE_TO_ROUTE = {
   AGENT_PLIAGE: "/pliage",
   AGENT_STOCKAGE: "/stockage",
   AGENT_LIVRAISON: "/livraisons",
-  CHEF_EQUIPE: "/collecte"
+  CHEF_EQUIPE: "/collecte",
+  ADMIN: "/"
 };
 
 export default function Authentification() {

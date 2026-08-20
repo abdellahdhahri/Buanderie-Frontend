@@ -46,7 +46,8 @@ const POSTES = [
   { value: "AGENT_PLIAGE", label: "Agent Pliage" },
   { value: "AGENT_STOCKAGE", label: "Agent Stockage" },
   { value: "AGENT_LIVRAISON", label: "Agent Livraison" },
-  { value: "CHEF_EQUIPE", label: "Chef d'Équipe" }
+  { value: "CHEF_EQUIPE", label: "Chef d'Équipe" },
+  { value: "ADMIN", label: "admin" }
 ];
 
 const POSTE_COLORS = {
