@@ -37,6 +37,7 @@ import AuthentificationPage from "./pages/authentication/AuthentificationPage";
 import ChambreList from "./pages/chambre/ChambreList";
 import InventaireArsenal from "./pages/inventaire/InventaireArsenal";
 import RemiseLinge from "./pages/remise-Linges/RemiseLinge";
+//import Login from "./pages/Login/Login";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
       { path: "chambre", Component: ChambreList },
       { path: "inventaire", Component: InventaireArsenal },
       { path: "remise", Component: RemiseLinge },
+   //   { path: "login", Component: Login },
 
     ],
   },

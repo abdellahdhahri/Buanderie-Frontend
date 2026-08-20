@@ -2,8 +2,6 @@ import React from "react";
 import { FaTimes, FaBiohazard } from "react-icons/fa";
 import { CATEGORIES_INFECTE } from "../../../constants/collecte";
 
-// ─── Import des images depuis assets ──────────────────────────────────────
-// Assurez-vous que les images existent dans le dossier assets/categories/
 import drapImage from "../../../../assets/linges/drap.png";
 import taieImage from "../../../../assets/linges/taie.png";
 import servietteBainImage from "../../../../assets/linges/sbain.png";
@@ -28,17 +26,16 @@ const CATEGORY_IMAGES = {
 
 /**
  * Dialog de sélection de catégorie linge infecté.
- * Boutons visuels avec images — accessible aux agents non lecteurs.
+ * Design industriel professionnel - tons gris et bleu foncé
  */
 export default function DialogCategorie({ onChoisir, onFermer }) {
-  // Gestionnaire d'erreur d'image (fallback)
   const handleImageError = (e) => {
     e.target.style.display = 'none';
-    // Afficher un texte de remplacement
     const parent = e.target.parentElement;
     const fallback = document.createElement('span');
     fallback.textContent = e.target.alt || '📦';
-    fallback.style.fontSize = '34px';
+    fallback.style.fontSize = '32px';
+    fallback.style.fontWeight = '400';
     parent.insertBefore(fallback, e.target);
   };
 
@@ -49,69 +46,89 @@ export default function DialogCategorie({ onChoisir, onFermer }) {
       left: 0, 
       right: 0, 
       bottom: 0, 
-      background: "rgba(0,0,0,0.6)", 
+      background: "rgba(15, 23, 42, 0.75)", 
       display: "flex", 
       alignItems: "center", 
       justifyContent: "center", 
       zIndex: 9999, 
-      backdropFilter: "blur(4px)" 
+      backdropFilter: "blur(6px)" 
     }}>
       <div style={{ 
-        background: "white", 
-        borderRadius: "24px", 
-        padding: "28px", 
-        maxWidth: "560px", 
-        width: "95%", 
-        boxShadow: "0 24px 80px rgba(0,0,0,0.3)", 
+        background: "#ffffff", 
+        borderRadius: "16px", 
+        padding: "32px", 
+        maxWidth: "640px", 
+        width: "92%", 
+        boxShadow: "0 24px 64px rgba(0,0,0,0.35)", 
         maxHeight: "90vh", 
-        overflowY: "auto" 
+        overflowY: "auto",
+        border: "1px solid #e2e8f0"
       }}>
         {/* ─── Header ─── */}
         <div style={{ 
           display: "flex", 
           justifyContent: "space-between", 
           alignItems: "center", 
-          marginBottom: "24px" 
+          marginBottom: "28px",
+          paddingBottom: "16px",
+          borderBottom: "1px solid #e2e8f0"
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
             <div style={{ 
               width: "44px", 
               height: "44px", 
-              borderRadius: "50%", 
-              background: "#fee2e2", 
+              borderRadius: "10px", 
+              background: "#0f172a", 
               display: "flex", 
               alignItems: "center", 
               justifyContent: "center" 
             }}>
-              <FaBiohazard size={22} color="#dc2626" />
+              <FaBiohazard size={20} color="#94a3b8" />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: "17px", color: "#1e293b" }}>
+              <div style={{ 
+                fontWeight: 600, 
+                fontSize: "18px", 
+                color: "#0f172a",
+                letterSpacing: "-0.3px"
+              }}>
                 Sélectionner une catégorie
               </div>
-              <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
-                Appuyez sur la catégorie correspondante
+              <div style={{ 
+                fontSize: "13px", 
+                color: "#64748b", 
+                marginTop: "2px",
+                fontWeight: 400
+              }}>
+                Choisissez la catégorie du linge infecté
               </div>
             </div>
           </div>
           <button 
             onClick={onFermer} 
             style={{ 
-              background: "#f1f5f9", 
-              border: "none", 
-              borderRadius: "50%", 
+              background: "transparent", 
+              border: "1px solid #e2e8f0", 
+              borderRadius: "8px", 
               width: "36px", 
               height: "36px", 
               cursor: "pointer", 
               display: "flex", 
               alignItems: "center", 
               justifyContent: "center",
-              transition: "all 0.2s"
+              transition: "all 0.15s",
+              color: "#94a3b8"
             }}
-            onMouseEnter={e => e.currentTarget.style.background = "#e2e8f0"}
-            onMouseLeave={e => e.currentTarget.style.background = "#f1f5f9"}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "#f1f5f9";
+              e.currentTarget.style.borderColor = "#94a3b8";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = "#e2e8f0";
+            }}
           >
-            <FaTimes size={16} color="#64748b" />
+            <FaTimes size={16} />
           </button>
         </div>
 
@@ -130,28 +147,30 @@ export default function DialogCategorie({ onChoisir, onFermer }) {
                 key={cat.id}
                 onClick={() => onChoisir(cat)}
                 style={{
-                  padding: "16px 8px",
-                  borderRadius: "14px",
-                  border: `2px solid ${cat.border}`,
-                  background: cat.bg,
+                  padding: "20px 12px",
+                  borderRadius: "12px",
+                  border: "1px solid #e2e8f0",
+                  background: "#fafbfc",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: "8px",
-                  transition: "all 0.2s ease",
+                  gap: "10px",
+                  transition: "all 0.15s ease",
                   position: "relative",
-                  minHeight: "100px"
+                  minHeight: "120px"
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "scale(1.05)";
-                  e.currentTarget.style.borderColor = cat.color;
-                  e.currentTarget.style.boxShadow = `0 4px 16px ${cat.color}40`;
+                  e.currentTarget.style.borderColor = "#0f172a";
+                  e.currentTarget.style.background = "#f1f5f9";
+                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+                  e.currentTarget.style.transform = "translateY(-2px)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                  e.currentTarget.style.borderColor = cat.border;
+                  e.currentTarget.style.borderColor = "#e2e8f0";
+                  e.currentTarget.style.background = "#fafbfc";
                   e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.transform = "translateY(0)";
                 }}
               >
                 {/* Image de la catégorie */}
@@ -163,40 +182,41 @@ export default function DialogCategorie({ onChoisir, onFermer }) {
                       width: "48px",
                       height: "48px",
                       objectFit: "contain",
-                      display: "block"
+                      display: "block",
+                      opacity: 0.85
                     }}
                     onError={handleImageError}
                   />
                 ) : (
-                  // Fallback si l'image n'est pas disponible
-                  <span style={{ fontSize: "34px", lineHeight: 1 }}>
+                  <span style={{ fontSize: "32px", lineHeight: 1, opacity: 0.7 }}>
                     {cat.emoji || "📦"}
                   </span>
                 )}
                 
                 {/* Nom de la catégorie */}
                 <span style={{
-                  fontWeight: 700,
+                  fontWeight: 500,
                   fontSize: "12px",
-                  color: cat.color,
+                  color: "#0f172a",
                   textAlign: "center",
-                  lineHeight: 1.3
+                  lineHeight: 1.3,
+                  letterSpacing: "0.2px"
                 }}>
                   {cat.label}
                 </span>
 
-                {/* Badge "Infecté" si applicable */}
+                {/* Badge "Infecté" */}
                 {cat.infecte && (
                   <span style={{
                     position: "absolute",
-                    top: "-6px",
-                    right: "-6px",
-                    background: "#dc2626",
-                    color: "white",
+                    top: "8px",
+                    right: "8px",
+                    background: "#0f172a",
+                    color: "#f8fafc",
                     fontSize: "8px",
-                    fontWeight: 700,
+                    fontWeight: 600,
                     padding: "2px 8px",
-                    borderRadius: "12px",
+                    borderRadius: "4px",
                     textTransform: "uppercase",
                     letterSpacing: "0.5px"
                   }}>
@@ -210,17 +230,17 @@ export default function DialogCategorie({ onChoisir, onFermer }) {
 
         {/* ─── Footer ─── */}
         <div style={{
-          marginTop: "16px",
-          paddingTop: "12px",
+          marginTop: "20px",
+          paddingTop: "16px",
           borderTop: "1px solid #f1f5f9",
           display: "flex",
           justifyContent: "center",
-          gap: "8px",
-          fontSize: "11px",
-          color: "#94a3b8"
+          gap: "12px",
+          fontSize: "12px",
+          color: "#94a3b8",
+          fontWeight: 400
         }}>
-          <span>🖱️ Cliquez sur une catégorie</span>
-          <span>•</span>
+          <span>Cliquez sur une catégorie pour continuer</span>
         </div>
       </div>
     </div>

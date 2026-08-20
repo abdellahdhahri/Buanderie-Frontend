@@ -1,11 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useLocation } from "react-router";
 import logoSoftSys from "../../../assets/logo_SoftSys.png";
-import { Sun, Moon, Bell, MessageSquare, ChevronDown, User, LogOut, Settings, Award, X, CheckCircle, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import { 
+  Sun, Moon, Bell, MessageSquare, ChevronDown, User, LogOut, 
+  Settings, Award, X, CheckCircle, AlertCircle, Info, AlertTriangle,
+  Eye, CheckCheck 
+} from "lucide-react";
 import { Badge } from "../ui/badge";
-import { useNotifications } from "../../contextes/NotificationContext";
+import { 
+  getUnreadCount, 
+  markNotificationAsRead, 
+  markAllNotificationsAsRead,
+  getUnreadNotifications 
+} from "../../services/NotificationService";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
+// ─── BREADCRUMB ──────────────────────────────────────────────────────────
 const BREADCRUMB_ITEMS = [
   { path: "/", parent: "", label: "Accueil" },
   { path: "/Receptions", parent: "Zone Sale", label: "Reception" },
@@ -22,8 +33,20 @@ const BREADCRUMB_ITEMS = [
   { path: "/Livraisons", parent: "Zone Propre", label: "Livraison" },
 ];
 
-// ─── Styles des notifications ──────────────────────────────────────────────
+// ─── STYLES DES NOTIFICATIONS ──────────────────────────────────────────
 const NOTIFICATION_STYLES = {
+  RECLAMATION: {
+    icon: AlertCircle,
+    color: "#dc2626",
+    bg: "#fef2f2",
+    border: "#fca5a5"
+  },
+  FIN_DE_VIE: {
+    icon: AlertTriangle,
+    color: "#f59e0b",
+    bg: "#fffbeb",
+    border: "#fcd34d"
+  },
   STOCK_UNIFORME: {
     icon: CheckCircle,
     color: "#10b981",
@@ -56,66 +79,180 @@ const NOTIFICATION_STYLES = {
   }
 };
 
+// ─── COMPOSANT HEADER ──────────────────────────────────────────────────
 export function Header({ sidebarOpen, setSidebarOpen }) {
   const [isDark, setIsDark] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [userDropOpen, setUserDropOpen] = useState(false);
-  const { notifications } = useNotifications();
-  const location = useLocation();
-  const currentPath = location.pathname;
-
-  // ─── État pour la notification popup ──────────────────────────────────────
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  
+  // Popup notification
   const [currentNotification, setCurrentNotification] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
+  
+  const location = useLocation();
+  const currentPath = location.pathname;
+  const wsSubscriptionRef = useRef(null);
+  const popupTimerRef = useRef(null);
 
-  const currentItem = BREADCRUMB_ITEMS.find((item) => item.path === currentPath) || {
-    parent: "",
-    label: "Page",
-  };
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle("dark");
-  };
-
-  // ─── Surveiller les nouvelles notifications ───────────────────────────────
-  useEffect(() => {
-    if (notifications && notifications.length > 0) {
-      // Prendre la dernière notification (la plus récente)
-      const lastNotif = notifications[notifications.length - 1];
+  // ─── Récupération des notifications ──────────────────────────────────
+  const loadNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      const unreadNotifs = await getUnreadNotifications();
+      const count = await getUnreadCount();
       
-      // Vérifier si c'est une nouvelle notification (non lue)
-      if (!lastNotif.read) {
-        setCurrentNotification(lastNotif);
-        setShowPopup(true);
-        
-        // Fermer automatiquement après 5 secondes
-        const timer = setTimeout(() => {
-          setShowPopup(false);
-        }, 5000);
-        
-        return () => clearTimeout(timer);
+      setNotifications(unreadNotifs);
+      setUnreadCount(count);
+    } catch (error) {
+      console.error("❌ Erreur chargement notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ─── Mise à jour du compteur ─────────────────────────────────────────
+  const updateUnreadCount = useCallback(async () => {
+    try {
+      const count = await getUnreadCount();
+      setUnreadCount(count);
+    } catch (error) {
+      console.error("❌ Erreur mise à jour compteur:", error);
+    }
+  }, []);
+
+  // ─── Marquer une notification comme lue ──────────────────────────────
+  const handleMarkAsRead = useCallback(async (id) => {
+    try {
+      await markNotificationAsRead(id);
+      
+      // Mettre à jour la liste locale
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      
+      // Si c'est la notification actuelle de la popup
+      if (currentNotification && currentNotification.id === id) {
+        setCurrentNotification(null);
+        setShowPopup(false);
       }
+      
+      toast.success("✅ Notification marquée comme lue");
+    } catch (error) {
+      console.error("❌ Erreur marquage:", error);
+      toast.error("Impossible de marquer comme lue");
     }
-  }, [notifications]);
+  }, [currentNotification]);
 
-  // ─── Fermer la popup ──────────────────────────────────────────────────────
-  const handleClosePopup = () => {
+  // ─── Marquer toutes comme lues ──────────────────────────────────────
+  const handleMarkAllAsRead = useCallback(async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications([]);
+      setUnreadCount(0);
+      toast.success("✅ Toutes les notifications sont lues");
+    } catch (error) {
+      console.error("❌ Erreur marquage toutes:", error);
+      toast.error("Impossible de marquer toutes comme lues");
+    }
+  }, []);
+
+  // ─── Gestion des notifications WebSocket ─────────────────────────────
+  const handleNewNotification = useCallback((notification) => {
+    console.log("📨 Nouvelle notification reçue:", notification);
+    
+    // Ajouter à la liste des notifications non lues
+    setNotifications(prev => [notification, ...prev]);
+    setUnreadCount(prev => prev + 1);
+    
+    // Afficher la popup
+    setCurrentNotification(notification);
+    setShowPopup(true);
+    
+    // Fermer automatiquement après 6 secondes
+    if (popupTimerRef.current) {
+      clearTimeout(popupTimerRef.current);
+    }
+    popupTimerRef.current = setTimeout(() => {
+      setShowPopup(false);
+    }, 6000);
+  }, []);
+
+  // ─── Initialisation WebSocket ────────────────────────────────────────
+  useEffect(() => {
+    // Charger les notifications au montage
+    loadNotifications();
+    
+    // Importer et démarrer le service
+    import("../../services/NotificationService").then(module => {
+      const { startNotificationService, getNotificationStatus } = module;
+      
+      // Démarrer le service si pas déjà connecté
+      if (!getNotificationStatus()) {
+        startNotificationService();
+      }
+      
+      // S'abonner aux nouvelles notifications via WebSocket
+      // Note: Le service gère déjà l'abonnement, nous écoutons via un événement
+      // ou nous utilisons le callback du service
+      
+      // Alternative: Utiliser un EventListener personnalisé
+      const handleWebSocketMessage = (event) => {
+        try {
+          const notification = JSON.parse(event.detail);
+          handleNewNotification(notification);
+        } catch (error) {
+          console.error("❌ Erreur parsing message WebSocket:", error);
+        }
+      };
+      
+      // Ajouter un écouteur d'événement personnalisé
+      window.addEventListener('new-notification', handleWebSocketMessage);
+      
+      return () => {
+        window.removeEventListener('new-notification', handleWebSocketMessage);
+        if (popupTimerRef.current) {
+          clearTimeout(popupTimerRef.current);
+        }
+      };
+    });
+    
+    return () => {
+      if (popupTimerRef.current) {
+        clearTimeout(popupTimerRef.current);
+      }
+    };
+  }, [loadNotifications, handleNewNotification]);
+
+  // ─── Mise à jour périodique du compteur ──────────────────────────────
+  useEffect(() => {
+    // Mettre à jour le compteur toutes les 30 secondes
+    const interval = setInterval(updateUnreadCount, 30000);
+    
+    return () => clearInterval(interval);
+  }, [updateUnreadCount]);
+
+  // ─── Fermer la popup ─────────────────────────────────────────────────
+  const handleClosePopup = useCallback(() => {
     setShowPopup(false);
-    // Marquer comme lu si la fonction existe
-    if (currentNotification && currentNotification.markAsRead) {
-      currentNotification.markAsRead();
+    if (popupTimerRef.current) {
+      clearTimeout(popupTimerRef.current);
     }
-  };
+  }, []);
 
-  // ─── Marquer comme lu sans fermer ────────────────────────────────────────
-  const handleMarkAsRead = () => {
-    if (currentNotification && currentNotification.markAsRead) {
-      currentNotification.markAsRead();
+  // ─── Ouvrir la liste des notifications ──────────────────────────────
+  const toggleNotifications = useCallback(() => {
+    setShowNotifications(prev => !prev);
+    setUserDropOpen(false);
+    
+    // Recharger les notifications à l'ouverture
+    if (!showNotifications) {
+      loadNotifications();
     }
-  };
+  }, [showNotifications, loadNotifications]);
 
-  // ─── Formater le temps ────────────────────────────────────────────────────
+  // ─── Formater le temps ───────────────────────────────────────────────
   const formatTime = (timestamp) => {
     if (!timestamp) return "À l'instant";
     const date = new Date(timestamp);
@@ -126,6 +263,16 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     if (diff < 3600000) return `${Math.floor(diff / 60000)} min`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h`;
     return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+  };
+
+  const currentItem = BREADCRUMB_ITEMS.find((item) => item.path === currentPath) || {
+    parent: "",
+    label: "Page",
+  };
+
+  const toggleTheme = () => {
+    setIsDark(!isDark);
+    document.documentElement.classList.toggle("dark");
   };
 
   return (
@@ -181,42 +328,182 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
             {isDark ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
           </button>
 
+          {/* ─── BOUTON NOTIFICATIONS ──────────────────────────────────── */}
           <div className="relative">
             <button
-              onClick={() => {
-                setShowNotifications(!showNotifications);
-                setUserDropOpen(false);
-              }}
+              onClick={toggleNotifications}
               className="navbar__icon-btn navbar__icon-btn--notif"
             >
               <Bell className="w-[18px] h-[18px]" />
-              {notifications.filter(n => !n.read).length > 0 && (
-                <span className="navbar__notif-dot">
-                  {notifications.filter(n => !n.read).length}
-                </span>
+              {unreadCount > 0 && (
+                <motion.span
+                  key={unreadCount}
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="navbar__notif-dot"
+                >
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </motion.span>
               )}
             </button>
 
+            {/* ─── DROPDOWN NOTIFICATIONS ────────────────────────────── */}
             {showNotifications && (
-              <div className="user-dropdown" style={{ top: "calc(100% + 8px)", right: 0, width: "320px", padding: "8px 0" }}>
-                <div className="user-dropdown__header" style={{ padding: "12px 16px" }}>
-                  <p className="user-dropdown__name" style={{ fontSize: "14px" }}>
+              <div 
+                className="user-dropdown" 
+                style={{ 
+                  top: "calc(100% + 8px)", 
+                  right: 0, 
+                  width: "380px", 
+                  padding: "0",
+                  maxHeight: "450px",
+                  overflow: "hidden"
+                }}
+              >
+                <div 
+                  className="user-dropdown__header" 
+                  style={{ 
+                    padding: "12px 16px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    borderBottom: "1px solid #e2e8f0"
+                  }}
+                >
+                  <p className="user-dropdown__name" style={{ fontSize: "14px", fontWeight: 600 }}>
                     Notifications
-                  </p>
-                </div>
-                <div className="user-dropdown__menu" style={{ padding: "8px" }}>
-                  {notifications.map((notif) => (
-                    <div key={notif.id} className="p-3 mb-2 rounded-lg bg-slate-50 hover:bg-slate-100">
-                      <Badge variant={notif.type === "STOCK_UNIFORME" ? "success" : "info"}>
-                        {notif.type}
+                    {unreadCount > 0 && (
+                      <Badge variant="destructive" style={{ marginLeft: "8px", fontSize: "10px" }}>
+                        {unreadCount} non lue{unreadCount > 1 ? "s" : ""}
                       </Badge>
-                      <div>
-                        <p className="text-xs font-semibold">{notif.message}</p>
-                        <p className="text-[10px] text-gray-400">{notif.time}</p>
-                        <p className="text-[10px] text-gray-400">{notif.codeLinge}</p>
-                      </div>
+                    )}
+                  </p>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllAsRead}
+                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    >
+                      <CheckCheck size={14} />
+                      Tout lire
+                    </button>
+                  )}
+                </div>
+
+                <div 
+                  className="user-dropdown__menu" 
+                  style={{ 
+                    padding: "8px",
+                    maxHeight: "350px",
+                    overflowY: "auto"
+                  }}
+                >
+                  {loading ? (
+                    <div style={{ textAlign: "center", padding: "20px", color: "#94a3b8" }}>
+                      Chargement...
                     </div>
-                  ))}
+                  ) : notifications.length === 0 ? (
+                    <div style={{ 
+                      textAlign: "center", 
+                      padding: "30px 20px",
+                      color: "#94a3b8"
+                    }}>
+                      <Bell size={32} style={{ margin: "0 auto 8px", opacity: 0.4 }} />
+                      <p style={{ fontSize: "13px" }}>Aucune notification non lue</p>
+                    </div>
+                  ) : (
+                    notifications.map((notif) => {
+                      const style = NOTIFICATION_STYLES[notif.type] || NOTIFICATION_STYLES.default;
+                      const Icon = style.icon;
+                      
+                      return (
+                        <motion.div
+                          key={notif.id}
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="p-3 mb-2 rounded-lg hover:bg-slate-50 transition-all cursor-pointer"
+                          style={{ 
+                            background: "white",
+                            border: "1px solid #f1f5f9",
+                            position: "relative"
+                          }}
+                          onClick={() => handleMarkAsRead(notif.id)}
+                        >
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                            <div style={{
+                              width: "32px",
+                              height: "32px",
+                              borderRadius: "8px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: style.bg,
+                              flexShrink: 0
+                            }}>
+                              <Icon style={{ color: style.color, width: "16px", height: "16px" }} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <Badge 
+                                  variant={notif.type === "RECLAMATION" ? "destructive" : "outline"}
+                                  style={{ fontSize: "8px", padding: "1px 6px" }}
+                                >
+                                  {notif.type || "Général"}
+                                </Badge>
+                                <span style={{ fontSize: "9px", color: "#94a3b8" }}>
+                                  {formatTime(notif.createdAt || notif.time)}
+                                </span>
+                              </div>
+                              <p style={{ 
+                                fontSize: "12px", 
+                                color: "#1e293b",
+                                marginTop: "2px",
+                                fontWeight: 500
+                              }}>
+                                {notif.message || notif.titre || notif.title}
+                              </p>
+                              {notif.codeBarre && (
+                                <p style={{ fontSize: "10px", color: "#94a3b8", fontFamily: "monospace" }}>
+                                  📦 {notif.codeBarre}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMarkAsRead(notif.id);
+                              }}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                cursor: "pointer",
+                                padding: "4px",
+                                color: "#94a3b8",
+                                borderRadius: "4px",
+                                flexShrink: 0
+                              }}
+                              title="Marquer comme lue"
+                            >
+                              <Eye size={14} />
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div style={{
+                  padding: "8px 16px",
+                  borderTop: "1px solid #e2e8f0",
+                  textAlign: "center"
+                }}>
+                  <Link 
+                    to="/notifications" 
+                    className="text-xs text-blue-600 hover:text-blue-800"
+                    onClick={() => setShowNotifications(false)}
+                  >
+                    Voir toutes les notifications
+                  </Link>
                 </div>
               </div>
             )}
@@ -266,7 +553,7 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
         </div>
       </header>
 
-      {/* ─── POPUP DE NOTIFICATION ──────────────────────────────────────────── */}
+      {/* ─── POPUP DE NOTIFICATION EN TEMPS RÉEL ──────────────────────── */}
       <AnimatePresence>
         {showPopup && currentNotification && (
           <motion.div
@@ -289,11 +576,10 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
               overflow: "hidden"
             }}
           >
-            {/* Barre de progression */}
             <motion.div
               initial={{ width: "100%" }}
               animate={{ width: "0%" }}
-              transition={{ duration: 5, ease: "linear" }}
+              transition={{ duration: 6, ease: "linear" }}
               style={{
                 height: "3px",
                 background: "linear-gradient(90deg, #3b82f6, #8b5cf6)",
@@ -303,9 +589,7 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
               }}
             />
 
-            {/* Contenu */}
             <div style={{ padding: "16px 20px" }}>
-              {/* Header */}
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
                   {(() => {
@@ -336,16 +620,16 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
                       </Badge>
                     </div>
                     <p style={{ fontSize: "13px", color: "#334155", marginTop: "2px", fontWeight: 500 }}>
-                      {currentNotification.message || currentNotification.codeLinge}
+                      {currentNotification.message || currentNotification.titre || currentNotification.title}
                     </p>
-                    {currentNotification.codeLinge && (
+                    {currentNotification.codeBarre && (
                       <p style={{
                         fontSize: "11px",
                         color: "#94a3b8",
                         fontFamily: "monospace",
                         marginTop: "2px"
                       }}>
-                        📦 Code: {currentNotification.codeLinge}
+                        📦 Code: {currentNotification.codeBarre}
                       </p>
                     )}
                     <p style={{
@@ -353,12 +637,11 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
                       color: "#94a3b8",
                       marginTop: "4px"
                     }}>
-                      {formatTime(currentNotification.time || currentNotification.createdAt)}
+                      {formatTime(currentNotification.createdAt || currentNotification.time)}
                     </p>
                   </div>
                 </div>
 
-                {/* Bouton fermer */}
                 <button
                   onClick={handleClosePopup}
                   style={{
@@ -381,7 +664,6 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
                 </button>
               </div>
 
-              {/* Actions */}
               <div style={{
                 display: "flex",
                 justifyContent: "flex-end",
@@ -410,8 +692,9 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
                 </button>
                 <button
                   onClick={() => {
-                    handleMarkAsRead();
-                    handleClosePopup();
+                    if (currentNotification?.id) {
+                      handleMarkAsRead(currentNotification.id);
+                    }
                   }}
                   style={{
                     padding: "6px 16px",
@@ -444,13 +727,26 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
           color: white;
           font-size: 9px;
           font-weight: 700;
-          width: 18px;
+          min-width: 18px;
           height: 18px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           border: 2px solid white;
+          padding: 0 4px;
+        }
+        
+        .user-dropdown__menu::-webkit-scrollbar {
+          width: 4px;
+        }
+        .user-dropdown__menu::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 8px;
+        }
+        .user-dropdown__menu::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 8px;
         }
       `}</style>
     </>
