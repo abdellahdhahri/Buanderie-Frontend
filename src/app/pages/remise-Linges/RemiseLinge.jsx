@@ -11,11 +11,11 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import EtapesStepper from "../../components/utils/shared/EtapesStepper";
+import { getAgent, isAgentConnected } from "../../services/agentService";
 import "../Linge/WorkflowList.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
-// ─── COMPOSANT : Barre de progression ─────────────────────────────────────
 function ProgressionBar({ value, label }) {
   const pct = Math.min(Math.max(value, 0), 100);
   const isComplete = pct === 100;
@@ -250,6 +250,17 @@ export default function RemiseLinge() {
   const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
 
   const scanInputRef = useRef(null);
+
+  // ✅ Récupérer l'agent depuis localStorage au chargement
+  useEffect(() => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      // Si l'agent est déjà connecté, on peut le définir comme agent de remise
+      setAgentRemise(agentData);
+      setEtape("AGENT_COLLECTE");
+      showAlert("Agent chargé", `✅ ${agentData.nom} (${agentData.matricule})`, "success", 1500);
+    }
+  }, []);
 
   // ─── Alerte SweetAlert ──────────────────────────────────────────────────
   const showAlert = useCallback((title, text, icon = "info", timer = null) => {
@@ -555,7 +566,7 @@ export default function RemiseLinge() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agentRemise ? `Agent: ${agentRemise.nom}` : "Scannez le badge de l'agent de remise"}
+              {agentRemise ? `Agent: ${agentRemise.nom}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -568,8 +579,6 @@ export default function RemiseLinge() {
         border: "1px solid #e2e8f0",
         boxShadow: "0 4px 20px rgba(0,0,0,0.06)"
       }}>
-
-      
 
         <div style={{
           display: "flex",
@@ -661,7 +670,7 @@ export default function RemiseLinge() {
         {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
-          border: `2px dashed ${!agentRemise || (etape === "AGENT_COLLECTE" && !agentCollecte) ? "#e2e8f0" : isCloturee ? "#e2e8f0" : "#0ea5e9"}`,
+          border: `2px dashed ${!agentRemise || (etape === "AGENT_COLLECTE" && !agentCollecte) ? "#dc2626" : isCloturee ? "#e2e8f0" : "#0ea5e9"}`,
           background: isCloturee ? "#f8fafc" : "white",
           borderRadius: "16px"
         }}>
@@ -680,16 +689,29 @@ export default function RemiseLinge() {
                   handleScan(code);
                 }
               }}
-              borderColor={!agentRemise || (etape === "AGENT_COLLECTE" && !agentCollecte) ? "#e2e8f0" : isCloturee ? "#e2e8f0" : "#0ea5e9"}
+              borderColor={!agentRemise || (etape === "AGENT_COLLECTE" && !agentCollecte) ? "#dc2626" : isCloturee ? "#e2e8f0" : "#0ea5e9"}
               keepFocus={true}
               autoDebounce={true}
-              disabled={isCloturee || loading}
+              disabled={isCloturee || loading || !agentRemise}
             />
             {scanStatus && <ScanStatus {...scanStatus} />}
           </CardContent>
         </Card>
 
         {/* ─── INFO AGENT ────────────────────────────────────────────────── */}
+
+        {!agentRemise && (
+          <Card style={{ background: "#fef2f2", border: "1px solid #fca5a5", marginBottom: "16px", borderRadius: "12px" }}>
+            <CardContent className="p-4">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+                <FaExclamationTriangle color="#dc2626" size={16} />
+                <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
+                <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une remise</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {agentRemise && !agentCollecte && (
           <Card style={{ background: "#eff6ff", border: "1px solid #93c5fd", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   FaSoap, FaFilter, FaCheckCircle, FaBiohazard,
-  FaCalendarAlt, FaBoxes, FaSpinner, FaPlay, FaStop
+  FaCalendarAlt, FaBoxes, FaSpinner, FaPlay, FaStop,
+  FaUser, FaExclamationTriangle
 } from "react-icons/fa";
 import { LavageProvider, useLavage } from "../../contextes/LavageContext";
+import { getAgent, isAgentConnected } from "../../services/agentService";
 
 import ScanInput              from "../../components/utils/ScanInput";
 import CarteLot               from "../../components/utils/CarteLot";
@@ -18,7 +20,8 @@ import "../Linge/WorkflowList.css";
 
 function LavageInner() {
   const {
-    agent, identifierAgent,
+    agent: agentFromContext,
+    identifierAgent,
     etapeBlanc, machine, lotsDisponibles, lotsSelectionnes,
     loadingLots, poidsTotal,
     scannerMachine, chargerLots, scannerLot,
@@ -31,16 +34,43 @@ function LavageInner() {
   const [onglet,    setOnglet]    = useState("BLANC");
   const [scanVal,   setScanVal]   = useState("");
   const [searchLot, setSearchLot] = useState("");
+  const [agent,     setAgent]     = useState(null);
+
+  // ✅ Récupérer l'agent depuis localStorage au chargement
+  useEffect(() => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      setAgent(agentData);
+      // Si le contexte a une méthode pour définir l'agent, l'utiliser
+      if (identifierAgent) {
+        // On appelle identifierAgent avec le matricule pour synchroniser le contexte
+        identifierAgent(agentData.matricule).catch(() => {});
+      }
+    }
+  }, []);
+
+  // ✅ Si l'agent du contexte change, mettre à jour l'agent local
+  useEffect(() => {
+    if (agentFromContext) {
+      setAgent(agentFromContext);
+    }
+  }, [agentFromContext]);
 
   useEffect(() => {
     if (!agent) return;
     if (onglet === "BLANC" && etapeBlanc === "LOTS") chargerLots();
     if (onglet === "INFECTE") chargerSacsInfectes();
-  }, [onglet, agent, etapeBlanc]);
+  }, [onglet, agent, etapeBlanc, chargerLots, chargerSacsInfectes]);
 
   const handleScan = async (code) => {
     setScanVal("");
-    if (!agent)                                        { await identifierAgent(code);   return; }
+    if (!agent) {
+      // ✅ Si pas d'agent, on essaie de l'identifier via le contexte
+      if (identifierAgent) {
+        await identifierAgent(code);
+      }
+      return;
+    }
     if (onglet === "BLANC" && etapeBlanc === "MACHINE") { await scannerMachine(code);   return; }
     if (onglet === "BLANC" && etapeBlanc === "LOTS")    {
       await scannerLot(code, poidsTotal);
@@ -61,7 +91,7 @@ function LavageInner() {
   }, [lotsDisponibles, lotsSelectionnes, searchLot]);
 
   const getPlaceholder = () => {
-    if (!agent)                                        return "👤 Scanner votre badge agent...";
+    if (!agent)                                        return "👤 Agent non connecté — veuillez vous reconnecter";
     if (onglet === "BLANC" && etapeBlanc === "MACHINE") return "🔧 Scanner le code de la machine...";
     if (onglet === "BLANC" && etapeBlanc === "LOTS")    return "📦 Scanner un lot...";
     if (onglet === "INFECTE")                           return "🔴 Scanner un sac infecté...";
@@ -69,7 +99,7 @@ function LavageInner() {
   };
 
   const getBorderColor = () => {
-    if (!agent)               return "#e2e8f0";
+    if (!agent)               return "#dc2626";
     if (onglet === "INFECTE") return "#ef4444";
     return "#0ea5e9";
   };
@@ -81,61 +111,62 @@ function LavageInner() {
       <LotInfoDialog />
       <ScanLingesPropresModal />
 
+      {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "32px" }}>
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    marginBottom: "8px"
-  }}>
-    <div style={{
-      width: "52px",
-      height: "52px",
-      borderRadius: "16px",
-      background: "linear-gradient(135deg, #06b6d4, #0891b2)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      boxShadow: "0 4px 16px rgba(6, 182, 212, 0.25)"
-    }}>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        width="24" 
-        height="24" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 8v8" />
-        <path d="M8 12h8" />
-        <path d="M8 8l8 8" />
-        <path d="M8 16l8-8" />
-      </svg>
-    </div>
-    <div>
-      <h1 style={{
-        fontSize: "28px",
-        fontWeight: 800,
-        color: "#0f172a",
-        margin: 0
-      }}>
-        Station de Lavage
-      </h1>
-      <p style={{
-        fontSize: "14px",
-        color: "#64748b",
-        margin: "2px 0 0 0"
-      }}>
-        Linge blanc (lots triés) · Linge infecté (sacs directs)
-      </p>
-    </div>
-  </div>
-</div>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "8px"
+        }}>
+          <div style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "16px",
+            background: "linear-gradient(135deg, #06b6d4, #0891b2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            boxShadow: "0 4px 16px rgba(6, 182, 212, 0.25)"
+          }}>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v8" />
+              <path d="M8 12h8" />
+              <path d="M8 8l8 8" />
+              <path d="M8 16l8-8" />
+            </svg>
+          </div>
+          <div>
+            <h1 style={{
+              fontSize: "28px",
+              fontWeight: 800,
+              color: "#0f172a",
+              margin: 0
+            }}>
+              Station de Lavage
+            </h1>
+            <p style={{
+              fontSize: "14px",
+              color: "#64748b",
+              margin: "2px 0 0 0"
+            }}>
+              {agent ? `Agent: ${agent.nom || agent.matricule}` : "Aucun agent connecté"}
+            </p>
+          </div>
+        </div>
+      </div>
 
       <div className="collecte-panel-grand" style={{
         background: "white", borderRadius: "20px", padding: "32px",
@@ -153,19 +184,24 @@ function LavageInner() {
               borderRadius: "12px", display: "flex",
               alignItems: "center", justifyContent: "center"
             }}>
-              <FaSoap size={22} color="#0ea5e9" />
+              {agent ? <FaSoap size={22} color="#0ea5e9" /> : <FaUser size={22} color="#94a3b8" />}
             </div>
             <div>
               <span style={{ fontWeight: 700, color: "#1e3a8a", fontSize: "18px" }}>
                 {agent ? `${agent.nom} (${agent.matricule})` : "Station de Lavage"}
               </span>
-              <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <FaCalendarAlt size={10} />
                 {new Date().toLocaleDateString("fr-FR")}{" "}
                 {new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                 {machine && (
                   <span style={{ fontWeight: 600, color: "#0ea5e9", marginLeft: "6px" }}>
                     · Machine : {machine.code} ({machine.capaciteKg} kg)
+                  </span>
+                )}
+                {!agent && (
+                  <span style={{ fontWeight: 600, color: "#dc2626", marginLeft: "6px" }}>
+                    ⚠️ Agent non connecté
                   </span>
                 )}
               </div>
@@ -181,6 +217,26 @@ function LavageInner() {
           </button>
         </div>
 
+        {/* ─── Message si agent non connecté ──────────────────────────────── */}
+        {!agent && (
+          <div style={{
+            padding: "12px 16px",
+            borderRadius: "10px",
+            background: "#fef2f2",
+            border: "1px solid #fca5a5",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "13px",
+            color: "#dc2626"
+          }}>
+            <FaExclamationTriangle size={16} />
+            <span style={{ fontWeight: 600 }}>Aucun agent connecté</span>
+            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour utiliser la station de lavage</span>
+          </div>
+        )}
+
         {/* ── Zone de scan — focus permanent ────────────────────────────────── */}
         <div style={{
           marginBottom: "20px", padding: "18px 20px",
@@ -195,6 +251,7 @@ function LavageInner() {
             borderColor={getBorderColor()}
             keepFocus={true}
             autoDebounce={true}
+            disabled={!agent}
           />
         </div>
 
@@ -279,7 +336,7 @@ function LavageInner() {
                             placeholder="Rechercher..."
                             value={searchLot}
                             onChange={e => setSearchLot(e.target.value)}
-                            onFocus={e => e.stopPropagation()} // ne pas voler le focus du ScanInput
+                            onFocus={e => e.stopPropagation()}
                             style={{
                               padding: "6px 10px", borderRadius: "8px",
                               border: "1px solid #e2e8f0", fontSize: "12px",

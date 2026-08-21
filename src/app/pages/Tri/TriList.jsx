@@ -19,6 +19,7 @@ import { Button } from "../../components/ui/button";
 import { TriProvider, useTri } from "../../contextes/TriContext";
 import EtapesStepper from "../../components/utils/shared/EtapesStepper";
 import ScanInput from "../../components/utils/shared/ScanInput";
+import { getAgent, isAgentConnected } from "../../services/agentService";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -46,6 +47,30 @@ function TriInner() {
   const resetTimeoutRef = useRef(null);
   const scanTimeoutRef  = useRef(null);
 
+  // ✅ Récupérer l'agent depuis localStorage au chargement
+  useEffect(() => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      setAgentScanne(agentData);
+      // Charger les statistiques de l'agent
+      chargerStatistiques(agentData.matricule);
+      showAlert("Agent chargé", `✅ ${agentData.nom || agentData.matricule}`, "success");
+    }
+  }, []);
+
+  const chargerStatistiques = useCallback(async (matricule) => {
+    try {
+      const res = await fetch(
+        `${API_URL}/api/tri/statistiques?matricule=${matricule}`
+      );
+      if (res.ok && isMounted.current) {
+        setStatistiques(await res.json());
+      }
+    } catch (err) {
+      console.error("Erreur statistiques:", err);
+    }
+  }, []);
+
   useEffect(() => {
     isMounted.current = true;
     return () => {
@@ -64,24 +89,6 @@ function TriInner() {
     }, 100);
     return () => clearTimeout(t);
   }, []);
-
-  // Statistiques quand agent change
-  useEffect(() => {
-    if (!agentScanne) return;
-    const charger = async () => {
-      try {
-        const res = await fetch(
-          `${API_URL}/api/tri/statistiques?matricule=${agentScanne.matricule}`
-        );
-        if (res.ok && isMounted.current) {
-          setStatistiques(await res.json());
-        }
-      } catch (err) {
-        console.error("Erreur statistiques:", err);
-      }
-    };
-    charger();
-  }, [agentScanne]);
 
   const focusInput = useCallback((delay = 200) => {
     setTimeout(() => {
@@ -137,6 +144,7 @@ function TriInner() {
       if (res.ok) {
         const agent = await res.json();
         setAgentScanne(agent);
+        await chargerStatistiques(agent.matricule);
         showAlert("Agent identifié", `✅ ${agent.nom || agent.matricule}`, "success");
       } else {
         showAlert("Agent introuvable", `❌ L'agent [${code}] n'existe pas.`, "error");
@@ -150,7 +158,7 @@ function TriInner() {
         focusInput();
       }
     }
-  }, [scanValue, showAlert, focusInput]);
+  }, [scanValue, showAlert, focusInput, chargerStatistiques]);
 
   const fetchLotsSuggere = useCallback(async (code) => {
     try {
@@ -499,61 +507,62 @@ function TriInner() {
       {/* Dialog de suggestion de lots */}
       <DialogLotsSuggere />
 
-{/* ── Header ── */}
-<div style={{ marginBottom: "32px" }}>
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    marginBottom: "8px"
-  }}>
-    <div style={{
-      width: "52px",
-      height: "52px",
-      borderRadius: "16px",
-      background: "linear-gradient(135deg, #f59e0b, #d97706)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      boxShadow: "0 4px 16px rgba(245, 158, 11, 0.25)"
-    }}>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        width="24" 
-        height="24" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <path d="M12 2L2 7l10 5 10-5-10-5z" />
-        <path d="M2 17l10 5 10-5" />
-        <path d="M2 12l10 5 10-5" />
-        <path d="M12 22V12" />
-      </svg>
-    </div>
-    <div>
-      <h1 style={{
-        fontSize: "28px",
-        fontWeight: 800,
-        color: "#0f172a",
-        margin: 0
-      }}>
-        Tri de Linge
-      </h1>
-      <p style={{
-        fontSize: "14px",
-        color: "#64748b",
-        margin: "2px 0 0 0"
-      }}>
-        Triez le linge par catégorie et couleur
-      </p>
-    </div>
-  </div>
-</div>
+      {/* ── Header ── */}
+      <div style={{ marginBottom: "32px" }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "8px"
+        }}>
+          <div style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "16px",
+            background: "linear-gradient(135deg, #f59e0b, #d97706)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            boxShadow: "0 4px 16px rgba(245, 158, 11, 0.25)"
+          }}>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+              <path d="M12 22V12" />
+            </svg>
+          </div>
+          <div>
+            <h1 style={{
+              fontSize: "28px",
+              fontWeight: 800,
+              color: "#0f172a",
+              margin: 0
+            }}>
+              Tri de Linge
+            </h1>
+            <p style={{
+              fontSize: "14px",
+              color: "#64748b",
+              margin: "2px 0 0 0"
+            }}>
+              {agentScanne ? `Agent: ${agentScanne.nom || agentScanne.matricule}` : "Aucun agent connecté"}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div
         className="collecte-panel-grand"
         style={{
@@ -576,7 +585,7 @@ function TriInner() {
               <div style={{ fontSize: "13px", color: "#64748b" }}>
                 {agentScanne
                   ? <span>Agent: <strong>{agentScanne.nom || agentScanne.matricule}</strong></span>
-                  : "En attente de scan de l'agent"
+                  : "Aucun agent connecté"
                 }
               </div>
             </div>
@@ -612,13 +621,31 @@ function TriInner() {
           </div>
         </div>
 
- 
-
         {agentScanne && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "20px", padding: "16px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
             <StatCard value={statistiques.totalTrie || 0} label="Articles triés" color="#0ea5e9" />
             <StatCard value={statistiques.lotsUtilises || 0} label="Lots utilisés" color="#22c55e" />
             <StatCard value={(statistiques.poidsTotal?.toFixed(1) || "0") + " kg"} label="Poids total" color="#8b5cf6" />
+          </div>
+        )}
+
+        {/* ─── Message si agent non connecté ── */}
+        {!agentScanne && (
+          <div style={{
+            padding: "12px 16px",
+            borderRadius: "10px",
+            background: "#fef2f2",
+            border: "1px solid #fca5a5",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "13px",
+            color: "#dc2626"
+          }}>
+            <FaExclamationTriangle size={16} />
+            <span style={{ fontWeight: 600 }}>Aucun agent connecté</span>
+            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer un tri</span>
           </div>
         )}
 
@@ -637,22 +664,22 @@ function TriInner() {
                   onChange={e => setScanValue(e.target.value)}
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
-                  disabled={isLoading || showDialog}
+                  disabled={isLoading || showDialog || !agentScanne}
                   style={{
                     width: "100%",
                     padding: "16px 16px 16px 48px",
                     borderRadius: "10px",
-                    border: `2px solid ${isFocused ? "#0ea5e9" : "#e2e8f0"}`,
+                    border: `2px solid ${isFocused && agentScanne ? "#0ea5e9" : "#e2e8f0"}`,
                     fontSize: "16px",
-                    background: (isLoading || showDialog) ? "#f1f5f9" : "white",
+                    background: (isLoading || showDialog || !agentScanne) ? "#f1f5f9" : "white",
                     transition: "all 0.2s",
                     outline: "none",
-                    boxShadow: isFocused ? "0 0 0 3px rgba(14,165,233,0.1)" : "none",
-                    cursor: (isLoading || showDialog) ? "not-allowed" : "text",
+                    boxShadow: isFocused && agentScanne ? "0 0 0 3px rgba(14,165,233,0.1)" : "none",
+                    cursor: (isLoading || showDialog || !agentScanne) ? "not-allowed" : "text",
                     boxSizing: "border-box"
                   }}
                 />
-                {scanValue && !showDialog && (
+                {scanValue && !showDialog && agentScanne && (
                   <button
                     type="button"
                     onClick={() => setScanValue("")}
@@ -665,10 +692,10 @@ function TriInner() {
             </form>
 
             <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "#94a3b8" }}>
-              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: isFocused ? "#10b981" : "#9ca3af", transition: "background 0.3s" }} />
-              <span>Lecteur: {isFocused ? "Prêt" : "Inactif"}</span>
+              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: isFocused && agentScanne ? "#10b981" : "#9ca3af", transition: "background 0.3s" }} />
+              <span>Lecteur: {isFocused && agentScanne ? "Prêt" : "Inactif"}</span>
               {isLoading && <span style={{ marginLeft: "16px", color: "#0ea5e9" }}>⏳ Traitement...</span>}
-              <span style={{ marginLeft: "16px" }}>{agentScanne ? "📦 Scan linge" : "👤 Scan agent"}</span>
+              <span style={{ marginLeft: "16px" }}>{agentScanne ? "📦 Scan linge" : "👤 En attente"}</span>
             </div>
           </div>
 
@@ -755,6 +782,9 @@ function TriInner() {
                 <span>Agent: <strong style={{ color: "#0f172a" }}>{agentScanne.nom || agentScanne.matricule}</strong></span>
                 <span>Matricule: <strong style={{ color: "#0f172a" }}>{agentScanne.matricule}</strong></span>
               </>
+            )}
+            {!agentScanne && (
+              <span style={{ color: "#dc2626" }}>⚠️ Aucun agent connecté</span>
             )}
             {lotSuggere && (
               <span>Dernier lot: <strong style={{ color: "#3b82f6" }}>{lotSuggere.codeLot}</strong></span>

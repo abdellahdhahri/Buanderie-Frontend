@@ -8,6 +8,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import { cat, apiCall } from "../collage/collecteUtils";
+import { getAgent, isAgentConnected } from "../../services/agentService";
 import Swal from "sweetalert2";
 import "../Linge/WorkflowList.css";
 
@@ -305,7 +306,7 @@ function ResumeUniforme({ res, onNouvelle, onTerminer }) {
 }
 
 export default function DistributionUniforme() {
-  const [etape, setEtape] = useState("AGENT");
+  const [etape, setEtape] = useState("PERSONNEL"); // ✅ Changé de "AGENT" à "PERSONNEL"
   const [agent, setAgent] = useState(null);
   const [personnel, setPersonnel] = useState(null);
   const [enPossession, setEnPossession] = useState([]);
@@ -322,6 +323,31 @@ export default function DistributionUniforme() {
 
   useEffect(() => { agentRef.current = agent; }, [agent]);
   useEffect(() => { personnelRef.current = personnel; }, [personnel]);
+
+  // ✅ Récupérer l'agent depuis localStorage au chargement
+  useEffect(() => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      setAgent(agentData);
+      setEtape("PERSONNEL");
+      setScanStatus({
+        loading: false,
+        success: { 
+          message: `👤 Agent ${agentData.nom}`, 
+          detail: `Connecté · ${agentData.matricule}` 
+        },
+        error: null
+      });
+      setTimeout(() => setScanStatus(null), 2000);
+    } else {
+      setEtape("PERSONNEL");
+      setScanStatus({
+        loading: false,
+        success: null,
+        error: "Aucun agent connecté — veuillez vous reconnecter"
+      });
+    }
+  }, []);
 
   // ─── Focus permanent ──────────────────────────────────────────────────
   useEffect(() => {
@@ -376,58 +402,23 @@ export default function DistributionUniforme() {
     return true;
   }, [distribues, personnel]);
 
-  // ─── Scan Agent ──────────────────────────────────────────────────────────
-  const handleAgent = useCallback(async code => {
-    setLoading(true);
-    setScanStatus({ loading: true, code });
-    try {
-      const ag = await fetch(`${API_URL}/api/agents/matricule/${code}`)
-        .then(r => r.ok ? r.json() : null);
-      if (!ag) {
-        setScanStatus({ loading: false, success: null, error: "Agent introuvable" });
-        await Swal.fire({
-          icon: 'error',
-          title: '❌ Agent introuvable',
-          text: code,
-          timer: 1500,
-          showConfirmButton: false
-        });
-        return;
-      }
-      setAgent({ nom: ag.nom, matricule: ag.matricule });
-      setEtape("PERSONNEL");
-      setScanStatus({
-        loading: false,
-        success: { message: "Agent identifié", detail: `${ag.nom} (${ag.matricule})` },
-        error: null
-      });
-      setTimeout(() => setScanStatus(null), 2000);
+  // ─── Scan Personnel ──────────────────────────────────────────────────────
+  const handlePersonnel = useCallback(async code => {
+    if (!agent) {
       await Swal.fire({
-        icon: 'success',
-        title: 'Agent identifié',
-        text: ag.nom,
+        icon: 'warning',
+        title: 'Agent non connecté',
+        text: 'Veuillez vous reconnecter.',
         timer: 1500,
         showConfirmButton: false
       });
-    } catch (e) {
-      setScanStatus({ loading: false, success: null, error: e.message });
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erreur réseau',
-        text: e.message
-      });
-    } finally {
-      setLoading(false);
+      return;
     }
-  }, []);
-
-  // ─── Scan Personnel ──────────────────────────────────────────────────────
-  const handlePersonnel = useCallback(async code => {
     setLoading(true);
     setScanStatus({ loading: true, code });
     try {
       const res = await fetch(
-        `${API_URL}/api/distribution/uniforme?codeBadge=${encodeURIComponent(code)}&matriculeAgent=${agentRef.current.matricule}`
+        `${API_URL}/api/distribution/uniforme?codeBadge=${encodeURIComponent(code)}&matriculeAgent=${agent.matricule}`
       );
       if (!res.ok) {
         const txt = await res.text();
@@ -466,7 +457,7 @@ export default function DistributionUniforme() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [agent]);
 
   // ─── Scan Uniforme ──────────────────────────────────────────────────────
   const handleScanUniforme = useCallback(async code => {
@@ -483,7 +474,7 @@ export default function DistributionUniforme() {
     setScanStatus({ loading: true, code });
     try {
       const res = await fetch(
-        `${API_URL}/api/distribution/uniforme?porteurId=${personnel.id}&porteurNom=${encodeURIComponent(personnel.nom)}&codeOuTag=${encodeURIComponent(code)}&matriculeAgent=${agentRef.current.matricule}`,
+        `${API_URL}/api/distribution/uniforme?porteurId=${personnel.id}&porteurNom=${encodeURIComponent(personnel.nom)}&codeOuTag=${encodeURIComponent(code)}&matriculeAgent=${agent.matricule}`,
         { method: "POST" }
       );
       if (!res.ok) {
@@ -521,7 +512,7 @@ export default function DistributionUniforme() {
     } finally {
       setLoading(false);
     }
-  }, [personnel]);
+  }, [personnel, agent]);
 
   // ─── Retirer un uniforme ──────────────────────────────────────────────
   const handleRetirer = useCallback(async (linge) => {
@@ -543,31 +534,27 @@ export default function DistributionUniforme() {
     if (!code || loading) return;
     setScanVal("");
 
-    if (etape === "AGENT") {
-      await handleAgent(code);
-      return;
-    }
-
+    // ✅ Étape PERSONNEL : scan directement le personnel
     if (etape === "PERSONNEL") {
       await handlePersonnel(code);
       return;
     }
 
+    // ✅ Étape DISTRIBUER : détecter agent pour clôturer
     if (etape === "DISTRIBUER") {
       const agentTrouve = await verifierSiAgent(code);
       if (agentTrouve) {
-        // Clôture automatique sans confirmation
         await cloturerDistribution();
       } else {
         await handleScanUniforme(code);
       }
       return;
     }
-  }, [etape, loading, handleAgent, handlePersonnel, handleScanUniforme, verifierSiAgent, cloturerDistribution]);
+  }, [etape, loading, handlePersonnel, handleScanUniforme, verifierSiAgent, cloturerDistribution]);
 
   // ─── Reset ──────────────────────────────────────────────────────────────
   const reset = useCallback(async () => {
-    if (etape !== "AGENT" && etape !== "RESUME") {
+    if (etape !== "PERSONNEL" && etape !== "RESUME") {
       const result = await Swal.fire({
         icon: 'warning',
         title: 'Réinitialiser',
@@ -586,17 +573,24 @@ export default function DistributionUniforme() {
     setDisponibles([]);
     setDistribues([]);
     setResume(null);
-    setEtape("AGENT");
+    setEtape("PERSONNEL");
     setScanVal("");
     setScanStatus(null);
   }, [etape]);
 
   // ─── Helpers ──────────────────────────────────────────────────────────
   const getPlaceholder = () => {
-    if (etape === "AGENT") return "👤 Scanner votre badge agent...";
+    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
     if (etape === "PERSONNEL") return "👔 Scanner le badge du personnel...";
     if (etape === "RESUME") return "✅ Distribution terminée";
     return "👕 Scanner un uniforme à distribuer...";
+  };
+
+  const getBorderColor = () => {
+    if (!agent) return "#dc2626";
+    if (etape === "PERSONNEL") return "#15803d";
+    if (etape === "DISTRIBUER") return "#7c3aed";
+    return "#e2e8f0";
   };
 
   const isCloturee = etape === "RESUME";
@@ -639,7 +633,7 @@ export default function DistributionUniforme() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Scannez votre badge pour commencer"}
+              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -701,7 +695,7 @@ export default function DistributionUniforme() {
             )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            {etape !== "AGENT" && etape !== "RESUME" && (
+            {etape !== "PERSONNEL" && etape !== "RESUME" && (
               <button
                 onClick={reset}
                 style={{
@@ -725,10 +719,30 @@ export default function DistributionUniforme() {
           </div>
         </div>
 
+        {/* ─── Message si agent non connecté ────────────────────────────── */}
+        {!agent && (
+          <div style={{
+            padding: "12px 16px",
+            borderRadius: "10px",
+            background: "#fef2f2",
+            border: "1px solid #fca5a5",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "13px",
+            color: "#dc2626"
+          }}>
+            <FaExclamationTriangle size={16} />
+            <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
+            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une distribution</span>
+          </div>
+        )}
+
         {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
-          border: `2px dashed ${isCloturee ? "#e2e8f0" : etape === "PERSONNEL" ? "#15803d" : etape === "DISTRIBUER" ? "#7c3aed" : "#e2e8f0"}`,
+          border: `2px dashed ${isCloturee ? "#e2e8f0" : getBorderColor()}`,
           background: isCloturee ? "#f8fafc" : "white",
           borderRadius: "16px"
         }}>
@@ -739,10 +753,10 @@ export default function DistributionUniforme() {
               value={scanVal}
               onChange={setScanVal}
               onSubmit={handleScan}
-              borderColor={isCloturee ? "#e2e8f0" : etape === "PERSONNEL" ? "#15803d" : etape === "DISTRIBUER" ? "#7c3aed" : "#e2e8f0"}
+              borderColor={isCloturee ? "#e2e8f0" : getBorderColor()}
               keepFocus={true}
               autoDebounce={true}
-              disabled={isCloturee || loading}
+              disabled={isCloturee || loading || !agent}
             />
             {scanStatus && <ScanStatus {...scanStatus} />}
           </CardContent>
@@ -768,19 +782,7 @@ export default function DistributionUniforme() {
         )}
 
         {/* ─── ÉTAPES VIDE ───────────────────────────────────────────────── */}
-        {etape === "AGENT" && (
-          <Card style={{ background: "#faf5ff", border: "1px solid #e9d5ff", marginBottom: "16px", borderRadius: "12px" }}>
-            <CardContent className="p-4">
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
-                <FaUser color="#7c3aed" size={16} />
-                <span style={{ fontWeight: 600, color: "#7c3aed" }}>Scannez votre badge agent</span>
-                <span style={{ color: "#64748b" }}>pour commencer la distribution</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {etape === "PERSONNEL" && (
+        {agent && etape === "PERSONNEL" && (
           <Card style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
@@ -914,7 +916,6 @@ export default function DistributionUniforme() {
           </div>
         )}
 
-        {/* ─── RÉSUMÉ ────────────────────────────────────────────────────── */}
         {etape === "RESUME" && resume && (
           <ResumeUniforme
             res={resume}

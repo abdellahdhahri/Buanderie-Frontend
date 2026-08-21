@@ -14,6 +14,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import ScanInput from "../../components/utils/shared/ScanInput";
+import { getAgent, isAgentConnected } from "../../services/agentService";
 import Swal from "sweetalert2";
 import "../Linge/WorkflowList.css";
 
@@ -233,7 +234,7 @@ function useRefMirror(v) {
 export default function LivraisonList() {
   const { services } = useContext(ServiceContext);
 
-  const [etape, setEtape] = useState("AGENT");
+  const [etape, setEtape] = useState("SERVICE");
   const [agent, setAgent] = useState(null);
   const [service, setService] = useState(null);
   const [distribution, setDistribution] = useState(null);
@@ -247,6 +248,31 @@ export default function LivraisonList() {
 
   const distributionRef = useRefMirror(distribution);
   const scanInputRef = useRef(null);
+
+  // ✅ Récupérer l'agent depuis localStorage au chargement
+  useEffect(() => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      setAgent(agentData);
+      setEtape("SERVICE");
+      setScanStatus({
+        loading: false,
+        success: { 
+          message: `👤 Agent ${agentData.nom}`, 
+          detail: `Connecté · ${agentData.matricule}` 
+        },
+        error: null
+      });
+      setTimeout(() => setScanStatus(null), 2000);
+    } else {
+      setEtape("SERVICE");
+      setScanStatus({
+        loading: false,
+        success: null,
+        error: "Aucun agent connecté — veuillez vous reconnecter"
+      });
+    }
+  }, []);
 
   // ─── Scan automatique ──────────────────────────────────────────────────
   useEffect(() => {
@@ -299,12 +325,11 @@ export default function LivraisonList() {
           timer: 2000,
           showConfirmButton: false
         });
-        setEtape("AGENT");
+        setEtape("SERVICE");
         setDistribution(null);
         setComparatif([]);
         setHistorique([]);
         setService(null);
-        setAgent(null);
       }
     } catch { }
   }, []);
@@ -372,7 +397,6 @@ export default function LivraisonList() {
       setComparatif([]);
       setHistorique([]);
       setService(null);
-      setAgent(null);
       setEtape("SERVICE");
       setScanStatus(null);
 
@@ -391,92 +415,62 @@ export default function LivraisonList() {
     }
   }, [distribution, service, stats.reste]);
 
-  // ─── Scan Agent ──────────────────────────────────────────────────────────
-  const execScanAgent = useCallback(async (code) => {
-    setLoading(true);
-    setScanStatus({ loading: true, code });
-    try {
-      const res = await fetch(`${API}/api/agents/matricule/${code}`);
-      if (!res.ok) {
-        await Swal.fire({
-          icon: 'error',
-          title: 'Agent introuvable',
-          text: code,
-          timer: 1500,
-          showConfirmButton: false
-        });
-        setScanStatus({ loading: false, success: null, error: "Agent introuvable" });
-        setLoading(false);
-        return;
-      }
-      const ag = await res.json();
-      setAgent(ag);
-      setEtape("SERVICE");
-      setScanStatus({
-        loading: false,
-        success: { message: "Agent identifié", detail: `${ag.nom} (${ag.matricule})` },
-        error: null
-      });
-      setTimeout(() => setScanStatus(null), 2000);
-      await Swal.fire({
-        icon: 'success',
-        title: 'Agent identifié',
-        text: ag.nom,
-        timer: 1500,
-        showConfirmButton: false
-      });
-    } catch (err) {
-      setScanStatus({ loading: false, success: null, error: err.message });
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erreur réseau',
-        text: err.message
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const execCreerDistribution = useCallback(async (svc) => {
+  // ─── Scan Service ──────────────────────────────────────────────────────
+  const execScanService = useCallback(async (code) => {
     if (!agent) {
       await Swal.fire({
         icon: 'warning',
         title: 'Agent requis',
-        text: 'Scannez d\'abord un agent'
+        text: 'Veuillez vous reconnecter'
       });
       return;
     }
 
     setLoading(true);
-    setScanStatus({ loading: true, code: `Création pour ${svc.code}` });
-
+    setScanStatus({ loading: true, code });
     try {
+      const res = await fetch(`${API}/api/sqlserver/services/ref/${encodeURIComponent(code)}`);
+      if (!res.ok) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Service introuvable',
+          text: code,
+          timer: 1500,
+          showConfirmButton: false
+        });
+        setScanStatus({ loading: false, success: null, error: "Service introuvable" });
+        setLoading(false);
+        return;
+      }
+      const svc = await res.json();
+      
+      // Créer la distribution
       const payload = {
         serviceId: svc.id,
         matriculeAgent: agent.matricule,
       };
 
-      const res = await fetch(`${API}/api/distributions`, {
+      const distRes = await fetch(`${API}/api/distributions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) {
-        const txt = await res.text();
+      if (!distRes.ok) {
+        const txt = await distRes.text();
         let msg = txt;
         try { msg = JSON.parse(txt).message || txt; } catch { }
         throw new Error(msg);
       }
 
-      const dist = await res.json();
+      const dist = await distRes.json();
       setService(svc);
       setDistribution(dist);
       await rafraichirComparatif(dist.id);
       setEtape("SCAN");
       setScanStatus({
         loading: false,
-        success: { message: `✅ ${svc.code}`, detail: `${comparatif.length} catégories` },
+        success: { message: `✅ ${svc.code}`, detail: `${dist.id}` },
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
@@ -497,38 +491,9 @@ export default function LivraisonList() {
     } finally {
       setLoading(false);
     }
-  }, [agent, comparatif.length, rafraichirComparatif]);
+  }, [agent, rafraichirComparatif]);
 
-  const execScanService = useCallback(async (code) => {
-    setLoading(true);
-    setScanStatus({ loading: true, code });
-    try {
-      const res = await fetch(`${API}/api/sqlserver/services/ref/${encodeURIComponent(code)}`);
-      if (!res.ok) {
-        await Swal.fire({
-          icon: 'error',
-          title: 'Service introuvable',
-          text: code,
-          timer: 1500,
-          showConfirmButton: false
-        });
-        setScanStatus({ loading: false, success: null, error: "Service introuvable" });
-        return;
-      }
-      const svc = await res.json();
-      await execCreerDistribution(svc);
-    } catch (e) {
-      setScanStatus({ loading: false, success: null, error: e.message });
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erreur réseau',
-        text: e.message
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [execCreerDistribution]);
-
+  // ─── Scan Linge ──────────────────────────────────────────────────────
   const execScanLinge = useCallback(async (code) => {
     const dist = distributionRef.current;
     if (!dist?.id) return;
@@ -583,28 +548,25 @@ export default function LivraisonList() {
   // ─── Gestion du scan ──────────────────────────────────────────────────
   const handleScan = useCallback(async (code) => {
     if (!code || loading) return;
+    setScanValue("");
 
-    if (etape === "AGENT") {
-      await execScanAgent(code);
-      return;
-    }
-
+    // Étape SERVICE : scan du service
     if (etape === "SERVICE") {
       await execScanService(code);
       return;
     }
 
+    // Étape SCAN : détecter agent pour clôturer
     if (etape === "SCAN") {
       const agentTrouve = await verifierSiAgent(code);
       if (agentTrouve) {
         await cloturerEtRetourner();
-        setEtape("SERVICE");
       } else {
         await execScanLinge(code);
       }
       return;
     }
-  }, [etape, loading, execScanAgent, execScanService, execScanLinge, verifierSiAgent, cloturerEtRetourner]);
+  }, [etape, loading, execScanService, execScanLinge, verifierSiAgent, cloturerEtRetourner]);
 
   // ─── Reset ──────────────────────────────────────────────────────────────
   const handleReset = async () => {
@@ -620,8 +582,6 @@ export default function LivraisonList() {
     });
     if (!result.isConfirmed) return;
 
-    setEtape("AGENT");
-    setAgent(null);
     setService(null);
     setDistribution(null);
     setComparatif([]);
@@ -629,6 +589,7 @@ export default function LivraisonList() {
     setScanValue("");
     setSearchSvc("");
     setScanStatus(null);
+    setEtape("SERVICE");
     await Swal.fire({
       icon: 'info',
       title: 'Réinitialisé',
@@ -639,10 +600,17 @@ export default function LivraisonList() {
 
   // ─── Helpers ──────────────────────────────────────────────────────────
   const getPlaceholder = () => {
-    if (etape === "AGENT") return "👤 Scanner votre badge agent...";
+    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
     if (etape === "SERVICE") return "🏢 Scanner le code du service...";
     if (etape === "SCAN") return "🏷️ Scanner les articles...";
     return "Scanner...";
+  };
+
+  const getBorderColor = () => {
+    if (!agent) return "#dc2626";
+    if (etape === "SERVICE") return "#0ea5e9";
+    if (etape === "SCAN") return "#0ea5e9";
+    return "#e2e8f0";
   };
 
   const isCloturee = etape === "RESUME";
@@ -691,7 +659,7 @@ export default function LivraisonList() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Scannez votre badge pour commencer"}
+              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -727,9 +695,9 @@ export default function LivraisonList() {
               }}>
                 <FaUser color="#7c3aed" size={16} />
                 <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>{agent.nom}</span>
-                {/* <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
+                <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
                   {agent.matricule}
-                </Badge> */}
+                </Badge>
               </div>
             )}
             {service && (
@@ -749,14 +717,9 @@ export default function LivraisonList() {
                 </Badge>
               </div>
             )}
-            {/* {distribution && (
-              <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "11px", padding: "4px 14px", borderRadius: "12px" }}>
-                📦 Dist #{distribution.id}
-              </Badge>
-            )} */}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            {etape !== "AGENT" && (
+            {etape !== "SERVICE" && (
               <Button
                 variant="outline"
                 size="sm"
@@ -777,10 +740,30 @@ export default function LivraisonList() {
           </div>
         </div>
 
+        {/* ─── Message si agent non connecté ────────────────────────────── */}
+        {!agent && (
+          <div style={{
+            padding: "12px 16px",
+            borderRadius: "10px",
+            background: "#fef2f2",
+            border: "1px solid #fca5a5",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "13px",
+            color: "#dc2626"
+          }}>
+            <FaExclamationTriangle size={16} />
+            <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
+            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une distribution</span>
+          </div>
+        )}
+
         {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
-          border: `2px dashed ${isCloturee ? "#e2e8f0" : "#0ea5e9"}`,
+          border: `2px dashed ${isCloturee ? "#e2e8f0" : getBorderColor()}`,
           background: isCloturee ? "#f8fafc" : "white",
           borderRadius: "16px"
         }}>
@@ -791,10 +774,10 @@ export default function LivraisonList() {
               value={scanValue}
               onChange={setScanValue}
               onSubmit={handleScan}
-              borderColor={isCloturee ? "#e2e8f0" : "#0ea5e9"}
+              borderColor={isCloturee ? "#e2e8f0" : getBorderColor()}
               keepFocus={true}
               autoDebounce={true}
-              disabled={isCloturee || loading}
+              disabled={isCloturee || loading || !agent}
             />
             {scanStatus && <ScanStatus {...scanStatus} />}
           </CardContent>
@@ -812,21 +795,8 @@ export default function LivraisonList() {
           </Card>
         )}
 
-        {/* ─── ÉTAPE AGENT : ATTENTE ────────────────────────────────────── */}
-        {etape === "AGENT" && (
-          <Card style={{ background: "#faf5ff", border: "1px solid #e9d5ff", marginBottom: "16px", borderRadius: "12px" }}>
-            <CardContent className="p-4">
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
-                <FaUser color="#7c3aed" size={16} />
-                <span style={{ fontWeight: 600, color: "#7c3aed" }}>Scannez votre badge agent</span>
-                <span style={{ color: "#64748b" }}>pour démarrer une distribution</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* ─── ÉTAPE SERVICE : LISTE ────────────────────────────────────── */}
-        {etape === "SERVICE" && (
+        {agent && etape === "SERVICE" && (
           <Card style={{ background: "#f0f9ff", border: "1px solid #bae6fd", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">
               <div style={{ fontSize: "13px", fontWeight: 600, color: "#0284c7", marginBottom: "10px" }}>
@@ -854,7 +824,10 @@ export default function LivraisonList() {
                 {servicesFiltres.map(svc => (
                   <button
                     key={svc.id}
-                    onClick={() => execCreerDistribution(svc)}
+                    onClick={() => {
+                      // Simuler un scan du code du service
+                      execScanService(svc.code);
+                    }}
                     disabled={loading}
                     style={{
                       padding: "6px 14px",
@@ -879,7 +852,7 @@ export default function LivraisonList() {
         )}
 
         {/* ─── STATUTS ────────────────────────────────────────────────────── */}
-        {(etape === "SCAN" || etape === "SERVICE") && (
+        {(etape === "SCAN" || etape === "SERVICE") && agent && (
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",

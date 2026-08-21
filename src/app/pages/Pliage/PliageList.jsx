@@ -1,7 +1,7 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
 import { LingeContext } from "../../contextes/LingeContext";
 import { useNavigate } from "react-router-dom";
-import { FaRss, FaBarcode, FaUser, FaCheckCircle, FaTimes } from "react-icons/fa";
+import { FaRss, FaBarcode, FaUser, FaCheckCircle, FaTimes, FaExclamationTriangle } from "react-icons/fa";
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -10,21 +10,55 @@ import { PliageProvider, usePliage } from "../../contextes/PliageContext";
 import ModeToggle from "../../components/utils/shared/ModeToggle";
 import EtapesStepper from "../../components/utils/shared/EtapesStepper";
 import ScanInput from "../../components/utils/shared/ScanInput";
+import { getAgent, isAgentConnected } from "../../services/agentService";
 import "../Linge/WorkflowList.css";
 
 function PliageInner() {
   const { getLingeByCode, isRfidMode, setIsRfidMode } = useContext(LingeContext);
   const navigate = useNavigate();
-  const { agent, dialogueItem, loading, scanAgent, deconnecterAgent, scanPliage, fermerDialogue } = usePliage();
+  const { 
+    agent: agentFromContext, 
+    dialogueItem, 
+    loading, 
+    scanAgent, 
+    deconnecterAgent, 
+    scanPliage, 
+    fermerDialogue 
+  } = usePliage();
 
   const [scanValue, setScanValue] = useState("");
   const [mode,      setMode]      = useState(isRfidMode ? "RFID" : "BARCODE");
+  const [agent,     setAgent]     = useState(null);
+
+  // ✅ Récupérer l'agent depuis localStorage au chargement
+  useEffect(() => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      setAgent(agentData);
+      // Synchroniser avec le contexte
+      if (scanAgent) {
+        scanAgent(agentData.matricule).catch(() => {});
+      }
+    }
+  }, []);
+
+  // ✅ Si l'agent du contexte change, mettre à jour l'agent local
+  useEffect(() => {
+    if (agentFromContext) {
+      setAgent(agentFromContext);
+    }
+  }, [agentFromContext]);
 
   const handleModeChange = (m) => { setMode(m); setIsRfidMode(m === "RFID"); };
 
   const handleScan = async (code) => {
     setScanValue("");
-    if (!agent) { await scanAgent(code); return; }
+    if (!agent) {
+      if (scanAgent) {
+        await scanAgent(code);
+      }
+      return;
+    }
     await scanPliage(code, getLingeByCode);
   };
 
@@ -34,80 +68,120 @@ function PliageInner() {
   ];
 
   const getPlaceholder = () => !agent
-    ? "Scanner votre badge agent..."
-    : mode === "RFID" ? "📡 Scanner tag RFID..." : "📦 Scanner un linge (état LAVE)...";
+    ? "👤 Agent non connecté — veuillez vous reconnecter"
+    : mode === "RFID" ? "📡 Scanner tag RFID..." : "📦 Scanner un linge (état SECHE)...";
+
+  const getBorderColor = () => !agent ? "#dc2626" : "#0ea5e9";
 
   return (
     <div className="collecte-container">
       {dialogueItem && (
-        <DialoguePliage item={dialogueItem} agent={agent} onFermer={fermerDialogue} onSuccess={() => { fermerDialogue(); }} />
+        <DialoguePliage 
+          item={dialogueItem} 
+          agent={agent} 
+          onFermer={fermerDialogue} 
+          onSuccess={() => { fermerDialogue(); }} 
+        />
       )}
 
-   <div style={{ marginBottom: "32px" }}>
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    marginBottom: "8px"
-  }}>
-    <div style={{
-      width: "52px",
-      height: "52px",
-      borderRadius: "16px",
-      background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      boxShadow: "0 4px 16px rgba(139, 92, 246, 0.25)"
-    }}>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        width="24" 
-        height="24" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <path d="M12 2L2 7l10 5 10-5-10-5z" />
-        <path d="M2 17l10 5 10-5" />
-        <path d="M2 12l10 5 10-5" />
-      </svg>
-    </div>
-    <div>
-      <h1 style={{
-        fontSize: "28px",
-        fontWeight: 800,
-        color: "#0f172a",
-        margin: 0
-      }}>
-        Pliage
-      </h1>
-      <p style={{
-        fontSize: "14px",
-        color: "#64748b",
-        margin: "2px 0 0 0"
-      }}>
-        Gérez les opérations de pliage
-      </p>
-    </div>
-  </div>
-</div>
+      {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
+      <div style={{ marginBottom: "32px" }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "8px"
+        }}>
+          <div style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "16px",
+            background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            boxShadow: "0 4px 16px rgba(139, 92, 246, 0.25)"
+          }}>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <div>
+            <h1 style={{
+              fontSize: "28px",
+              fontWeight: 800,
+              color: "#0f172a",
+              margin: 0
+            }}>
+              Pliage
+            </h1>
+            <p style={{
+              fontSize: "14px",
+              color: "#64748b",
+              margin: "2px 0 0 0"
+            }}>
+              {agent ? `Agent: ${agent.nom || agent.matricule}` : "Aucun agent connecté"}
+            </p>
+          </div>
+        </div>
+      </div>
 
-      <div className="collecte-panel-grand" style={{ background: "white", borderRadius: "20px", padding: "32px", border: "1px solid #e2e8f0", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
+      <div className="collecte-panel-grand" style={{ 
+        background: "white", 
+        borderRadius: "20px", 
+        padding: "32px", 
+        border: "1px solid #e2e8f0", 
+        boxShadow: "0 4px 16px rgba(0,0,0,0.06)" 
+      }}>
 
         {/* Barre supérieure */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center", 
+          marginBottom: "20px", 
+          flexWrap: "wrap", 
+          gap: "12px" 
+        }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             {agent ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 16px", background: "#f0fdf4", borderRadius: "10px", border: "1px solid #bbf7d0" }}>
+              <div style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "10px", 
+                padding: "8px 16px", 
+                background: "#f0fdf4", 
+                borderRadius: "10px", 
+                border: "1px solid #bbf7d0" 
+              }}>
                 <FaCheckCircle color="#22c55e" size={16} />
-                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>{agent.nom}</span>
+                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>{agent.nom || agent.matricule}</span>
                 <Badge variant="outline" style={{ fontSize: "11px" }}>{agent.matricule}</Badge>
-                <button onClick={deconnecterAgent} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}>
+                <button 
+                  onClick={() => { 
+                    deconnecterAgent(); 
+                    setAgent(null); 
+                  }} 
+                  style={{ 
+                    background: "none", 
+                    border: "none", 
+                    color: "#94a3b8", 
+                    cursor: "pointer" 
+                  }}
+                >
                   <FaTimes size={12} />
                 </button>
               </div>
@@ -117,25 +191,55 @@ function PliageInner() {
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <ModeToggle mode={mode} onChange={handleModeChange} />
-            <Button variant="outline" size="sm" onClick={() => { setScanValue(""); deconnecterAgent(); }}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => { 
+                setScanValue(""); 
+                deconnecterAgent(); 
+                setAgent(null); 
+              }}
+            >
               Reset
             </Button>
           </div>
         </div>
 
-       
+        {/* ─── Message si agent non connecté ──────────────────────────────── */}
+        {!agent && (
+          <div style={{
+            padding: "12px 16px",
+            borderRadius: "10px",
+            background: "#fef2f2",
+            border: "1px solid #fca5a5",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "13px",
+            color: "#dc2626"
+          }}>
+            <FaExclamationTriangle size={16} />
+            <span style={{ fontWeight: 600 }}>Aucun agent connecté</span>
+            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer des opérations de pliage</span>
+          </div>
+        )}
 
         {/* Zone scan */}
-        <Card style={{ marginBottom: "20px", border: `2px dashed ${!agent ? "#e2e8f0" : "#0ea5e9"}` }}>
+        <Card style={{ 
+          marginBottom: "20px", 
+          border: `2px dashed ${getBorderColor()}` 
+        }}>
           <CardContent className="p-5">
             <ScanInput
               placeholder={getPlaceholder()}
               value={scanValue}
               onChange={setScanValue}
               onSubmit={handleScan}
-              borderColor={!agent ? "#e2e8f0" : "#0ea5e9"}
+              borderColor={getBorderColor()}
               keepFocus={true}
               autoDebounce={true}
+              disabled={!agent}
             />
           </CardContent>
         </Card>
@@ -153,6 +257,13 @@ function PliageInner() {
           </Card>
         )}
       </div>
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

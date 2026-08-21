@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useModal } from "../../../contextes/ModalContext";
 import {
@@ -14,6 +13,7 @@ import ScanInput from "../../../components/utils/shared/ScanInput";
 import EtapesStepper from "../../../components/utils/shared/EtapesStepper";
 import DialogCategorie from "../../../components/utils/collecte/DialogCategorie";
 import { cat, ST_COLORS, apiCall } from "../collecteUtils";
+import { getAgent, isAgentConnected } from "../../../services/agentService";
 import "../../Linge/WorkflowList.css";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
@@ -553,7 +553,7 @@ function CarteLinge({ linge, bacBlanc, onBlanc, onPropre, onManquant }) {
 export default function CollageListService() {
   const { showAlert, showConfirm } = useModal();
 
-  const [etape, setEtape] = useState("AGENT");
+  const [etape, setEtape] = useState("SERVICE"); // ✅ Changé de "AGENT" à "SERVICE"
   const [agent, setAgent] = useState(null);
   const [collecte, setCollecte] = useState(null);
   const [bacBlanc, setBacBlanc] = useState(null);
@@ -570,6 +570,26 @@ export default function CollageListService() {
   const bacRef = useRef(null);
   const scanInputRef = useRef(null);
 
+  // ✅ Récupérer l'agent depuis localStorage au chargement
+  useEffect(() => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      setAgent(agentData);
+      setEtape("SERVICE");
+      setScanStatus({
+        loading: false,
+        success: { 
+          message: `👤 Agent ${agentData.nom}`, 
+          detail: `Connecté · ${agentData.matricule}` 
+        },
+        error: null
+      });
+      setTimeout(() => setScanStatus(null), 2000);
+    } else {
+      setEtape("AGENT");
+    }
+  }, []);
+
   useEffect(() => { agentRef.current = agent; }, [agent]);
   useEffect(() => { collecteRef.current = collecte; }, [collecte]);
   useEffect(() => { bacRef.current = bacBlanc; }, [bacBlanc]);
@@ -581,32 +601,13 @@ export default function CollageListService() {
     } : p);
   }, []);
 
-  const handleAgent = useCallback(async code => {
-    setLoading(true);
-    setScanStatus(null);
-    try {
-      const ag = await fetch(`${API_URL}/api/agents/matricule/${code}`)
-        .then(r => r.ok ? r.json() : null);
-      if (!ag) {
-        setScanStatus({ loading: false, success: null, error: "Agent introuvable" });
-        showAlert("❌ Agent introuvable", code, "error");
-        return;
-      }
-      setAgent({ nom: ag.nom, matricule: ag.matricule });
-      setEtape("SERVICE");
-      setScanStatus({
-        loading: false,
-        success: { message: "Agent identifié", detail: `${ag.nom} (${ag.matricule})` },
-        error: null
-      });
-      setTimeout(() => setScanStatus(null), 2000);
-    } catch (e) {
-      setScanStatus({ loading: false, success: null, error: e.message });
-      showAlert("❌ " + e.message, "", "error");
-    } finally { setLoading(false); }
-  }, [showAlert]);
+  // ✅ Suppression de handleAgent - on utilise l'agent du localStorage
 
   const handleService = useCallback(async code => {
+    if (!agent) {
+      showAlert("❌ Agent non connecté", "Veuillez vous reconnecter.", "error");
+      return;
+    }
     setLoading(true);
     setScanStatus(null);
     try {
@@ -621,7 +622,7 @@ export default function CollageListService() {
       }
 
       const res = await apiCall("/api/collecte/service/ouvrir", {
-        matriculeAgent: agentRef.current.matricule,
+        matriculeAgent: agent.matricule, // ✅ Utiliser agent du localStorage
         serviceId: svc.id
       });
       setCollecte({
@@ -645,7 +646,7 @@ export default function CollageListService() {
       setScanStatus({ loading: false, success: null, error: e.message });
       showAlert("❌ " + e.message, "", "error");
     } finally { setLoading(false); }
-  }, [showAlert]);
+  }, [agent, showAlert]);
 
   const handleBac = useCallback(async code => {
     setLoading(true);
@@ -735,7 +736,7 @@ export default function CollageListService() {
         {},
         "POST",
         {
-          matriculeAgent: agentRef.current.matricule,
+          matriculeAgent: agent.matricule, // ✅ Utiliser agent du localStorage
           serviceId: collecteRef.current.serviceId,
           bacId,
           items,
@@ -751,7 +752,7 @@ export default function CollageListService() {
         `${c?.quantiteDeclaree} ${c?.categorie?.toLowerCase() || "linge"}(s) infectés`,
         "warning");
     } catch (e) { showAlert("❌ " + e.message, "", "error"); } finally { setLoading(false); }
-  }, [showAlert]);
+  }, [agent, showAlert]);
 
   const handleCloturer = useCallback(async () => {
     const nbBlancs = collecte?.linges?.filter(l => l.statut === "BLANC").length || 0;
@@ -774,19 +775,18 @@ export default function CollageListService() {
 
   const handleScan = useCallback(async code => {
     setScanVal("");
-    if (etape === "AGENT") { await handleAgent(code); return; }
+    // ✅ Suppression de l'étape AGENT
     if (etape === "SERVICE") { await handleService(code); return; }
     if (etape === "BAC") { await handleBac(code); return; }
     if (etape === "SCAN") { await handleScanBlanc(code); }
-  }, [etape, handleAgent, handleService, handleBac, handleScanBlanc]);
+  }, [etape, handleService, handleBac, handleScanBlanc]);
 
   const reset = () => {
-    setAgent(null);
     setCollecte(null);
     setBacBlanc(null);
     setSacsDeclares([]);
     setResume(null);
-    setEtape("AGENT");
+    setEtape("SERVICE");
     setScanVal("");
     setScanStatus(null);
     setTimeout(() => scanInputRef.current?.focus(), 200);
@@ -799,14 +799,13 @@ export default function CollageListService() {
   const nbInfectes = sacsDeclares.reduce((s, sac) => s + (sac.quantite || 0), 0);
 
   const ETAPES = [
-    { id: "AGENT", label: "Agent", done: !!agent },
     { id: "SERVICE", label: "Service", done: !!collecte },
     { id: "BAC", label: "Bac ⬜", done: !!bacBlanc },
     { id: "SCAN", label: "Scan", done: etape === "RESUME" },
   ];
 
   const getPlaceholder = () => {
-    if (!agent) return "👤 Scanner votre badge agent...";
+    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
     if (!collecte) return "🏢 Scanner le code du service...";
     if (!bacBlanc) return "📦 Scanner le bac blanc...";
     if (etape === "RESUME") return "🔒 Collecte terminée";
@@ -857,7 +856,7 @@ export default function CollageListService() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Scannez votre badge pour commencer"}
+              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -871,7 +870,6 @@ export default function CollageListService() {
         boxShadow: "0 4px 20px rgba(0,0,0,0.06)"
       }}>
 
- 
         {/* ─── BARRE SUPÉRIEURE ─────────────────────────────────────────── */}
         <div style={{
           display: "flex",
@@ -959,13 +957,25 @@ export default function CollageListService() {
               borderColor={isCloturee ? "#e2e8f0" : "#7c3aed"}
               keepFocus={true}
               autoDebounce={true}
-              disabled={isCloturee || loading}
+              disabled={isCloturee || loading || !agent}
             />
             {scanStatus && <ScanStatus {...scanStatus} />}
           </CardContent>
         </Card>
 
         {/* ─── INFO AGENT ────────────────────────────────────────────────── */}
+        {!agent && (
+          <Card style={{ background: "#fef2f2", border: "1px solid #fca5a5", marginBottom: "16px", borderRadius: "12px" }}>
+            <CardContent className="p-4">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+                <FaExclamationTriangle color="#dc2626" size={16} />
+                <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
+                <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une collecte</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {agent && !collecte && (
           <Card style={{ background: "#faf5ff", border: "1px solid #e9d5ff", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">

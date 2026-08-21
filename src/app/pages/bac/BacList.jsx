@@ -41,7 +41,9 @@ export default function BacList() {
   const [selectedId, setSelectedId] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedLingeDetail, setSelectedLingeDetail] = useState(null);
-  const [number,setNumber] = useState();
+  
+  // ✅ Stocker le nombre de linges par bac
+  const [bacLingesCount, setBacLingesCount] = useState({});
 
   const [newRec, setNewRec] = useState({
     reference: "",
@@ -65,6 +67,7 @@ export default function BacList() {
       if (response.ok) {
         const data = await response.json();
         setBacs(data);
+        await fetchAllBacLingesCount(data);
       }
     } catch (err) {
       console.error("Erreur réseau:", err);
@@ -73,48 +76,52 @@ export default function BacList() {
     }
   };
 
+  const fetchAllBacLingesCount = async (bacsData) => {
+    const counts = {};
+    for (const bac of bacsData) {
+      try {
+        const response = await fetch(`http://localhost:8082/api/bacs/bacs/${bac.id}/linges`);
+        if (response.ok) {
+          const data = await response.json();
+          const linges = Array.isArray(data) ? data : data.content || [];
+          counts[bac.id] = linges.length;
+        } else {
+          counts[bac.id] = 0;
+        }
+      } catch (err) {
+        console.error(`Erreur chargement count pour bac ${bac.id}:`, err);
+        counts[bac.id] = 0;
+      }
+    }
+    setBacLingesCount(counts);
+  };
+
   const fetchBacLinges = async (bacId) => {
     setIsLingesLoading(true);
     try {
       const response = await fetch(`http://localhost:8082/api/bacs/bacs/${bacId}/linges`);
       if (response.ok) {
         const data = await response.json();
-        setBacLinges(Array.isArray(data) ? data : data.content || []);
+        const linges = Array.isArray(data) ? data : data.content || [];
+        setBacLinges(linges);
+        // ✅ Mettre à jour le compteur
+        setBacLingesCount(prev => ({ ...prev, [bacId]: linges.length }));
+        return linges;
       } else {
         setBacLinges([]);
+        setBacLingesCount(prev => ({ ...prev, [bacId]: 0 }));
+        return [];
       }
     } catch (err) {
       console.error("Erreur chargement linges:", err);
       setBacLinges([]);
+      setBacLingesCount(prev => ({ ...prev, [bacId]: 0 }));
+      return [];
     } finally {
       setIsLingesLoading(false);
     }
   };
 
-    const fetchBacLingesNumber= async (bacId) => {
-    setIsLingesLoading(true);
-    try {
-      const response = await fetch(`http://localhost:8082/api/bacs/bacs/${bacId}/linges`);
-      if (response.ok) {
-        const data = await response.json();
-        setBacLinges(Array.isArray(data) ? data : data.content || []);
-        setNumber(bacLinges.length())
-      } else {
-        setBacLinges([]);
-        
-      }
-    } catch (err) {
-      console.error("Erreur chargement linges:", err);
-      setBacLinges([]);
-    } finally {
-      setIsLingesLoading(false);
-    }
-  };
-
-
-  const fetchLingsBac = (bacId) =>{
-
-  }
   const handleOpenPanel = async (bac) => {
     if (selectedBacId === bac.id && panelOpen) {
       setPanelOpen(false);
@@ -315,6 +322,11 @@ export default function BacList() {
         });
         if (response.ok) {
           setBacs((prev) => prev.filter((r) => r.id !== id));
+          setBacLingesCount(prev => {
+            const newCount = { ...prev };
+            delete newCount[id];
+            return newCount;
+          });
           if (selectedBacId === id) {
             handleClosePanel();
           }
@@ -455,7 +467,7 @@ export default function BacList() {
             </div>
             <div style="display:flex; justify-content:space-between; padding:2px 0;">
               <span><strong>🧺 Nombre de linges:</strong></span>
-              <span>${bac.nombreLinges || 0}</span>
+              <span>${bacLingesCount[bac.id] || 0}</span>
             </div>
           </div>
           
@@ -496,60 +508,60 @@ export default function BacList() {
       >
         <div className="space-y-4">
           <div style={{ marginBottom: "32px" }}>
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    marginBottom: "8px"
-  }}>
-    <div style={{
-      width: "52px",
-      height: "52px",
-      borderRadius: "16px",
-      background: "linear-gradient(135deg, #f59e0b, #d97706)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      boxShadow: "0 4px 16px rgba(245, 158, 11, 0.25)"
-    }}>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        width="24" 
-        height="24" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <path d="M3 6h18" />
-        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-        <line x1="10" y1="11" x2="10" y2="17" />
-        <line x1="14" y1="11" x2="14" y2="17" />
-      </svg>
-    </div>
-    <div>
-      <h1 style={{
-        fontSize: "28px",
-        fontWeight: 800,
-        color: "#0f172a",
-        margin: 0
-      }}>
-        Gestion des Bacs
-      </h1>
-      <p style={{
-        fontSize: "14px",
-        color: "#64748b",
-        margin: "2px 0 0 0"
-      }}>
-        Gérez les bacs de stockage et de transport
-      </p>
-    </div>
-  </div>
-</div>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              marginBottom: "8px"
+            }}>
+              <div style={{
+                width: "52px",
+                height: "52px",
+                borderRadius: "16px",
+                background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                boxShadow: "0 4px 16px rgba(245, 158, 11, 0.25)"
+              }}>
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  width="24" 
+                  height="24" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <line x1="10" y1="11" x2="10" y2="17" />
+                  <line x1="14" y1="11" x2="14" y2="17" />
+                </svg>
+              </div>
+              <div>
+                <h1 style={{
+                  fontSize: "28px",
+                  fontWeight: 800,
+                  color: "#0f172a",
+                  margin: 0
+                }}>
+                  Gestion des Bacs
+                </h1>
+                <p style={{
+                  fontSize: "14px",
+                  color: "#64748b",
+                  margin: "2px 0 0 0"
+                }}>
+                  Gérez les bacs de stockage et de transport
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Barre d'outils */}
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
@@ -740,7 +752,8 @@ export default function BacList() {
                           <td className="py-3 px-4">
                             {getStatusBadge(bac.typeCollecte)}
                             <div className="text-xs text-muted-foreground mt-1">
-                              {bacLinges.length || 0} linges
+                              {/* ✅ Afficher le nombre de linges depuis bacLingesCount */}
+                              {bacLingesCount[bac.id] !== undefined ? bacLingesCount[bac.id] : '...'} linges
                             </div>
                           </td>
                           <td className="py-3 px-4">

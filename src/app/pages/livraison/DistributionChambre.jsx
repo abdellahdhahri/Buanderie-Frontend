@@ -7,6 +7,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import { cat, apiCall } from "../collage/collecteUtils";
+import { getAgent, isAgentConnected } from "../../services/agentService";
 import Swal from "sweetalert2";
 import "../Linge/WorkflowList.css";
 
@@ -264,7 +265,7 @@ function Resume({ res, onNouvelle, onTerminer }) {
 }
 
 export default function DistributionChambre() {
-  const [etape, setEtape] = useState("AGENT");
+  const [etape, setEtape] = useState("CHAMBRE"); // ✅ Changé de "AGENT" à "CHAMBRE"
   const [agent, setAgent] = useState(null);
   const [chambre, setChambre] = useState(null);
   const [litActif, setLitActif] = useState(null);
@@ -282,6 +283,31 @@ export default function DistributionChambre() {
   useEffect(() => { agentRef.current = agent; }, [agent]);
   useEffect(() => { chambreRef.current = chambre; }, [chambre]);
   useEffect(() => { litRef.current = litActif; }, [litActif]);
+
+  // ✅ Récupérer l'agent depuis localStorage au chargement
+  useEffect(() => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      setAgent(agentData);
+      setEtape("CHAMBRE");
+      setScanStatus({
+        loading: false,
+        success: { 
+          message: `👤 Agent ${agentData.nom}`, 
+          detail: `Connecté · ${agentData.matricule}` 
+        },
+        error: null
+      });
+      setTimeout(() => setScanStatus(null), 2000);
+    } else {
+      setEtape("CHAMBRE");
+      setScanStatus({
+        loading: false,
+        success: null,
+        error: "Aucun agent connecté — veuillez vous reconnecter"
+      });
+    }
+  }, []);
 
   // ─── Focus permanent ──────────────────────────────────────────────────
   useEffect(() => {
@@ -346,59 +372,24 @@ export default function DistributionChambre() {
     return true;
   }, [poses, chambre]);
 
-  // ─── Scan Agent ──────────────────────────────────────────────────────────
-  const handleAgent = useCallback(async code => {
-    setLoading(true);
-    setScanStatus({ loading: true, code });
-    try {
-      const ag = await fetch(`http://localhost:8082/api/agents/matricule/${code}`)
-        .then(r => r.ok ? r.json() : null);
-      if (!ag) {
-        setScanStatus({ loading: false, success: null, error: "Agent introuvable" });
-        await Swal.fire({
-          icon: 'error',
-          title: '❌ Agent introuvable',
-          text: code,
-          timer: 1500,
-          showConfirmButton: false
-        });
-        return;
-      }
-      setAgent({ nom: ag.nom, matricule: ag.matricule });
-      setEtape("CHAMBRE");
-      setScanStatus({
-        loading: false,
-        success: { message: "Agent identifié", detail: `${ag.nom} (${ag.matricule})` },
-        error: null
-      });
-      setTimeout(() => setScanStatus(null), 2000);
+  // ─── Scan Chambre ──────────────────────────────────────────────────────
+  const handleChambre = useCallback(async code => {
+    if (!agent) {
       await Swal.fire({
-        icon: 'success',
-        title: 'Agent identifié',
-        text: ag.nom,
+        icon: 'warning',
+        title: 'Agent non connecté',
+        text: 'Veuillez vous reconnecter.',
         timer: 1500,
         showConfirmButton: false
       });
-    } catch (e) {
-      setScanStatus({ loading: false, success: null, error: e.message });
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erreur réseau',
-        text: e.message
-      });
-    } finally {
-      setLoading(false);
+      return;
     }
-  }, []);
-
-  // ─── Scan Chambre ──────────────────────────────────────────────────────
-  const handleChambre = useCallback(async code => {
     setLoading(true);
     setScanStatus({ loading: true, code });
     try {
       const res = await apiCall("/api/distribution/chambre", {
         codeBarre: code,
-        matriculeAgent: agentRef.current.matricule
+        matriculeAgent: agent.matricule // ✅ Utiliser agent du localStorage
       }, "GET");
       setChambre({
         chambreId: res.chambreId,
@@ -432,7 +423,7 @@ export default function DistributionChambre() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [agent]);
 
   // ─── Scan Linge ──────────────────────────────────────────────────────
   const handleScanLinge = useCallback(async code => {
@@ -454,7 +445,7 @@ export default function DistributionChambre() {
         chambreId: c.chambreId,
         litId: lit.litId,
         codeOuTag: code,
-        matriculeAgent: agentRef.current.matricule
+        matriculeAgent: agent.matricule // ✅ Utiliser agent du localStorage
       });
       const linge = c.disponibles.find(l => l.codeBarre === code || l.lingeId === res.lingeId)
         || { lingeId: res.lingeId, codeBarre: res.codeBarre, categorie: res.categorie };
@@ -494,41 +485,34 @@ export default function DistributionChambre() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [agent]);
 
   // ─── Gestion scan ──────────────────────────────────────────────────────
   const handleScan = useCallback(async code => {
     if (!code || loading) return;
     setScanVal("");
 
-    // Étape AGENT
-    if (etape === "AGENT") {
-      await handleAgent(code);
-      return;
-    }
-
-    // Étape CHAMBRE
+    // ✅ Étape CHAMBRE : scan directement la chambre
     if (etape === "CHAMBRE") {
       await handleChambre(code);
       return;
     }
 
-    // Étape DISTRIBUER : détecter agent pour clôturer
+    // ✅ Étape DISTRIBUER : détecter agent pour clôturer
     if (etape === "DISTRIBUER") {
       const agentTrouve = await verifierSiAgent(code);
       if (agentTrouve) {
         await cloturerDistribution();
-        // Rester en DISTRIBUER mais afficher le résumé
       } else {
         await handleScanLinge(code);
       }
       return;
     }
-  }, [etape, loading, handleAgent, handleChambre, handleScanLinge, verifierSiAgent, cloturerDistribution]);
+  }, [etape, loading, handleChambre, handleScanLinge, verifierSiAgent, cloturerDistribution]);
 
   // ─── Reset ──────────────────────────────────────────────────────────────
   const reset = useCallback(async () => {
-    if (etape !== "AGENT" && etape !== "RESUME") {
+    if (etape !== "CHAMBRE" && etape !== "RESUME") {
       const result = await Swal.fire({
         icon: 'warning',
         title: 'Réinitialiser',
@@ -546,18 +530,26 @@ export default function DistributionChambre() {
     setLitActif(null);
     setPoses([]);
     setResume(null);
-    setEtape("AGENT");
+    setEtape("CHAMBRE");
     setScanVal("");
     setScanStatus(null);
   }, [etape]);
 
   // ─── Helpers ──────────────────────────────────────────────────────────
   const getPlaceholder = () => {
-    if (etape === "AGENT") return "👤 Scanner votre badge agent...";
+    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
     if (etape === "CHAMBRE") return "🚪 Scanner le code chambre...";
     if (etape === "RESUME") return "✅ Distribution terminée";
     if (litActif) return `🏷️ Scanner un linge → Lit ${litActif.codeLit}`;
     return "🛏️ Cliquez sur un lit pour le sélectionner";
+  };
+
+  const getBorderColor = () => {
+    if (!agent) return "#dc2626";
+    if (litActif) return litActif.estInfecte ? "#dc2626" : "#7c3aed";
+    if (etape === "CHAMBRE") return "#0d9488";
+    if (etape === "DISTRIBUER") return "#7c3aed";
+    return "#e2e8f0";
   };
 
   const nbPoses = poses.reduce((s, p) => s + p.nb, 0);
@@ -606,7 +598,7 @@ export default function DistributionChambre() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Scannez votre badge pour commencer"}
+              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -642,7 +634,9 @@ export default function DistributionChambre() {
               }}>
                 <FaUser color="#7c3aed" size={16} />
                 <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>{agent.nom}</span>
-                
+                <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
+                  {agent.matricule}
+                </Badge>
               </div>
             )}
             {chambre && (
@@ -657,17 +651,19 @@ export default function DistributionChambre() {
               }}>
                 <FaDoorOpen color="#0d9488" size={16} />
                 <span style={{ fontWeight: 700, color: "#0d9488", fontSize: "14px" }}>Chambre {chambre.codeChambre}</span>
-               
+                <Badge style={{ background: "#ccfbf1", color: "#0d9488", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
+                  {chambre.lits?.length || 0} lits
+                </Badge>
               </div>
             )}
-            {/* {etape === "DISTRIBUER" && litActif && (
+            {etape === "DISTRIBUER" && litActif && (
               <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "11px", padding: "4px 14px", borderRadius: "12px" }}>
                 🛏️ Lit {litActif.codeLit}
               </Badge>
-            )} */}
+            )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            {etape !== "AGENT" && etape !== "RESUME" && (
+            {etape !== "CHAMBRE" && etape !== "RESUME" && (
               <button
                 onClick={reset}
                 style={{
@@ -691,10 +687,30 @@ export default function DistributionChambre() {
           </div>
         </div>
 
+        {/* ─── Message si agent non connecté ────────────────────────────── */}
+        {!agent && (
+          <div style={{
+            padding: "12px 16px",
+            borderRadius: "10px",
+            background: "#fef2f2",
+            border: "1px solid #fca5a5",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "13px",
+            color: "#dc2626"
+          }}>
+            <FaExclamationTriangle size={16} />
+            <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
+            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une distribution</span>
+          </div>
+        )}
+
         {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
-          border: `2px dashed ${isCloturee ? "#e2e8f0" : litActif ? "#7c3aed" : etape === "CHAMBRE" ? "#0d9488" : "#e2e8f0"}`,
+          border: `2px dashed ${isCloturee ? "#e2e8f0" : getBorderColor()}`,
           background: isCloturee ? "#f8fafc" : "white",
           borderRadius: "16px"
         }}>
@@ -705,10 +721,10 @@ export default function DistributionChambre() {
               value={scanVal}
               onChange={setScanVal}
               onSubmit={handleScan}
-              borderColor={isCloturee ? "#e2e8f0" : litActif ? "#7c3aed" : etape === "CHAMBRE" ? "#0d9488" : "#e2e8f0"}
+              borderColor={isCloturee ? "#e2e8f0" : getBorderColor()}
               keepFocus={true}
               autoDebounce={true}
-              disabled={isCloturee || loading}
+              disabled={isCloturee || loading || !agent}
             />
             {scanStatus && <ScanStatus {...scanStatus} />}
           </CardContent>
@@ -734,19 +750,7 @@ export default function DistributionChambre() {
         )}
 
         {/* ─── ÉTAPES VIDE ───────────────────────────────────────────────── */}
-        {etape === "AGENT" && (
-          <Card style={{ background: "#faf5ff", border: "1px solid #e9d5ff", marginBottom: "16px", borderRadius: "12px" }}>
-            <CardContent className="p-4">
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
-                <FaUser color="#7c3aed" size={16} />
-                <span style={{ fontWeight: 600, color: "#7c3aed" }}>Scannez votre badge agent</span>
-                <span style={{ color: "#64748b" }}>pour commencer la distribution</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {etape === "CHAMBRE" && (
+        {agent && etape === "CHAMBRE" && (
           <Card style={{ background: "#f0fdfa", border: "1px solid #99f6e4", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>

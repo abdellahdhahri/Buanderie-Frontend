@@ -20,6 +20,7 @@ import ScanInput from "../../components/utils/shared/ScanInput";
 import EtapesStepper from "../../components/utils/shared/EtapesStepper";
 import DialogCategorie from "../../components/utils/collecte/DialogCategorie";
 import { cat, ST_COLORS, apiCall } from "./collecteUtils";
+import { getAgent, isAgentConnected } from "../../services/agentService";
 import "../Linge/WorkflowList.css";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
@@ -322,7 +323,7 @@ function CarteLit({ lit, onPropre, onManquant }) {
 // ─── PAGE ──────────────────────────────────────────────────────────────────
 export default function ColageList() {
   const { showAlert, showConfirm } = useModal();
-  const [etape, setEtape] = useState("AGENT");
+  const [etape, setEtape] = useState("CHAMBRE"); // ✅ Directement CHAMBRE
   const [agent, setAgent] = useState(null);
   const [collecte, setCollecte] = useState(null);
   const [litEnCours, setLitEnCours] = useState(null);
@@ -340,6 +341,31 @@ export default function ColageList() {
   useEffect(() => { agentRef.current = agent; }, [agent]);
   useEffect(() => { collecteRef.current = collecte; }, [collecte]);
 
+  // ✅ Récupérer l'agent depuis localStorage au chargement
+  useEffect(() => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      setAgent(agentData);
+      setEtape("CHAMBRE");
+      setScanStatus({
+        loading: false,
+        success: { 
+          message: `👤 Agent ${agentData.nom}`, 
+          detail: `Connecté · ${agentData.matricule}` 
+        },
+        error: null
+      });
+      setTimeout(() => setScanStatus(null), 2000);
+    } else {
+      setEtape("CHAMBRE");
+      setScanStatus({
+        loading: false,
+        success: null,
+        error: "Aucun agent connecté — veuillez vous reconnecter"
+      });
+    }
+  }, []);
+
   // ─── Scan automatique ──────────────────────────────────────────────────
   useEffect(() => {
     if (scanVal.trim().length < 2) return;
@@ -350,6 +376,7 @@ export default function ColageList() {
       handleScan(code);
     }, 300);
     return () => clearTimeout(scanTimeoutRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanVal]);
 
   // ─── Focus ─────────────────────────────────────────────────────────────
@@ -387,13 +414,12 @@ export default function ColageList() {
     } : p);
   }, []);
 
-  // ─── Vérifier si un code est un agent ──────────────────────────────────
+  // ─── Vérifier si un code est un agent (UNIQUEMENT pour la clôture en SCAN) ──
   const verifierSiAgent = useCallback(async (code) => {
     try {
       const res = await fetch(`${API_URL}/api/agents/matricule/${code}`);
       if (res.ok) {
-        const ag = await res.json();
-        return ag;
+        return await res.json();
       }
       return null;
     } catch {
@@ -401,20 +427,18 @@ export default function ColageList() {
     }
   }, []);
 
-  // ─── Clôturer automatiquement et retourner à CHAMBRE ──────────────────
-  const cloturerEtRetourner = useCallback(async (nouvelAgent) => {
+  // ─── Clôturer automatiquement ──────────────────────────────────────────
+  const cloturerEtRetourner = useCallback(async () => {
     if (!collecte) return;
     
     setLoading(true);
     try {
-      // Vérifier s'il y a des lits non traités
       const nonTr = collecte?.lits?.filter(l => !l.statut) || [];
       
-      // Si des lits non traités, demander confirmation
       if (nonTr.length > 0) {
         const ok = await showConfirm(
           "⚠️ Lits non traités",
-          `${nonTr.length} lit(s) non traité(s). Changer d'agent va clôturer la collecte. Continuer ?`,
+          `${nonTr.length} lit(s) non traité(s). Clôturer la collecte ?`,
           "question"
         );
         if (!ok) {
@@ -423,7 +447,6 @@ export default function ColageList() {
         }
       }
 
-      // Clôturer la collecte
       await apiCall(`/api/collecte/chambre/${collecte.id}/cloturer`);
       
       showAlert(
@@ -432,18 +455,15 @@ export default function ColageList() {
         "success"
       );
       
-      // Réinitialiser pour une nouvelle chambre mais garder l'agent
       setCollecte(null);
       setLitEnCours(null);
       setEtape("CHAMBRE");
-      
-      // Mettre à jour l'agent si un nouvel agent est passé
-      if (nouvelAgent) {
-        setAgent({ nom: nouvelAgent.nom, matricule: nouvelAgent.matricule });
-        showAlert("👤 Agent changé", `Nouvel agent: ${nouvelAgent.nom}`, "info");
-      }
-      
-      // Focus sur l'input
+      setScanStatus({
+        loading: false,
+        success: { message: "✅ Collecte clôturée", detail: `Chambre ${collecte.codeChambre}` },
+        error: null
+      });
+      setTimeout(() => setScanStatus(null), 2000);
       setTimeout(() => scanInputRef.current?.focus(), 300);
       
       return true;
@@ -455,94 +475,31 @@ export default function ColageList() {
     }
   }, [collecte, showAlert, showConfirm]);
 
-  // ─── Gestion du scan principal ──────────────────────────────────────────
-  const handleScan = useCallback(async (code) => {
-    if (!code) return;
-    
-    // 1. Vérifier si c'est un agent
-    const agentTrouve = await verifierSiAgent(code);
-    
-    // 2. Si c'est un agent et qu'on est en cours de collecte (SCAN)
-    if (agentTrouve && etape === "SCAN" && collecte) {
-      await cloturerEtRetourner(agentTrouve);
-      return;
-    }
-    
-    // 3. Si c'est un agent et qu'on est à l'étape AGENT (première connexion)
-    if (agentTrouve && etape === "AGENT") {
-      await handleAgent(code);
-      return;
-    }
-    
-    // 4. Si c'est un agent et qu'on est à l'étape CHAMBRE (changement d'agent avant collecte)
-    if (agentTrouve && etape === "CHAMBRE") {
-      setAgent({ nom: agentTrouve.nom, matricule: agentTrouve.matricule });
-      return;
-    }
-    
-    // 5. Sinon, traiter normalement selon l'étape
-    if (etape === "AGENT") {
-      showAlert("❌ Agent introuvable", "Scannez un badge agent valide", "error");
-      return;
-    }
-    
-    if (etape === "CHAMBRE") {
-      await handleChambre(code);
-      return;
-    }
-    
-    if (etape === "SCAN") {
-      if (litEnCours) {
-        await handleScanBac(code);
-        return;
-      }
-      handleScanLit(code);
-    }
-  }, [etape, collecte, litEnCours, verifierSiAgent, cloturerEtRetourner]);
-
-  // ─── Les handlers existants ────────────────────────────────────────────
-  const handleAgent = useCallback(async (code) => {
-    setLoading(true);
-    setScanStatus({ loading: true, code: code });
-    try {
-      const ag = await fetch(`${API_URL}/api/agents/matricule/${code}`)
-        .then(r => r.ok ? r.json() : null);
-      if (!ag) {
-        setScanStatus({ loading: false, success: null, error: "Agent introuvable" });
-        showAlert("❌ Agent introuvable", code, "error");
-        return;
-      }
-      setAgent({ nom: ag.nom, matricule: ag.matricule });
-      setEtape("CHAMBRE");
-      setScanStatus({
-        loading: false,
-        success: { message: "Agent identifié", detail: `${ag.nom} (${ag.matricule})` },
-        error: null
-      });
-      setTimeout(() => setScanStatus(null), 2000);
-      showAlert("✅ Agent identifié", ag.nom, "success");
-    } catch (e) {
-      setScanStatus({ loading: false, success: null, error: e.message });
-      showAlert("❌ Erreur", e.message, "error");
-    } finally { setLoading(false); }
-  }, [showAlert]);
-
+  // ─── Scan Chambre ──────────────────────────────────────────────────────
   const handleChambre = useCallback(async (code) => {
+    if (!agent) {
+      showAlert("Agent non connecté", "Veuillez vous reconnecter.", "error");
+      return;
+    }
     setLoading(true);
     setScanStatus({ loading: true, code: code });
     try {
-      const ch = await fetch(
-        `http://localhost:8082/api/sqlserver/chambres/code/{code}?code=${code}`
-       ).then(r => r.ok ? r.json() : null);
-      if (!ch) {
+      // ✅ URL CORRECTE
+const chRes = await fetch(
+  `${API_URL}/api/sqlserver/chambres/code/${encodeURIComponent(code)}?code=${encodeURIComponent(code)}`
+);      
+      if (!chRes.ok) {
         setScanStatus({ loading: false, success: null, error: "Chambre introuvable" });
         showAlert("❌ Chambre introuvable", code, "error");
         return;
       }
+      const ch = await chRes.json();
+      
       const res = await apiCall("/api/collecte/chambre/ouvrir", {
-        codeBarre: ch.codeBarre || code,
-        matriculeAgent: agentRef.current.matricule
+        codeBarre: ch.codeBarre || ch.code || code,
+        matriculeAgent: agent.matricule
       });
+      
       setCollecte({
         id: res.collecteId,
         codeChambre: res.codeChambre,
@@ -561,7 +518,37 @@ export default function ColageList() {
       setScanStatus({ loading: false, success: null, error: e.message });
       showAlert("❌ Erreur", e.message, "error");
     } finally { setLoading(false); }
-  }, [showAlert]);
+  }, [agent, showAlert]);
+
+  // ─── Gestion du scan principal ──────────────────────────────────────────
+  const handleScan = useCallback(async (code) => {
+    if (!code) return;
+    
+    // ✅ ÉTAPE CHAMBRE : on scanne directement la chambre (pas de vérification agent)
+    if (etape === "CHAMBRE") {
+      await handleChambre(code);
+      return;
+    }
+    
+    // ✅ ÉTAPE SCAN : on vérifie si c'est un agent pour clôturer
+    if (etape === "SCAN") {
+      // Vérifier si le code est un agent
+      const agentTrouve = await verifierSiAgent(code);
+      
+      if (agentTrouve && collecte) {
+        // Clôturer la collecte
+        await cloturerEtRetourner();
+        return;
+      }
+      
+      // Sinon, traiter le scan de lit ou de bac
+      if (litEnCours) {
+        await handleScanBac(code);
+        return;
+      }
+      handleScanLit(code);
+    }
+  }, [etape, collecte, litEnCours, verifierSiAgent, cloturerEtRetourner, handleChambre]);
 
   const handleScanLit = useCallback((code) => {
     const lit = collecteRef.current?.lits?.find(l => l.codeLit === code || String(l.litId) === code);
@@ -635,7 +622,7 @@ export default function ColageList() {
     setAgent(null);
     setCollecte(null);
     setLitEnCours(null);
-    setEtape("AGENT");
+    setEtape("CHAMBRE");
     setScanVal("");
     setScanStatus(null);
     setTimeout(() => scanInputRef.current?.focus(), 200);
@@ -648,15 +635,15 @@ export default function ColageList() {
   const nbInfectes = collecte?.lits?.filter(l => l.statut === "INFECTE").length || 0;
 
   const getPlaceholder = () => {
-    if (!agent) return "👤 Scanner le badge agent...";
+    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
     if (!collecte) return "🏢 Scanner le code chambre...";
     if (litEnCours) return `📦 Scanner le bac pour Lit ${litEnCours.codeLit}...`;
     return "🛏️ Scanner un lit (ou badge agent pour clôturer)";
   };
 
   const getBorderColor = () => {
+    if (!agent) return "#dc2626";
     if (litEnCours) return litEnCours.estInfecte ? "#dc2626" : "#7c3aed";
-    if (etape === "AGENT") return "#7c3aed";
     if (etape === "CHAMBRE") return "#7c3aed";
     if (etape === "SCAN") return "#7c3aed";
     return "#e2e8f0";
@@ -704,7 +691,7 @@ export default function ColageList() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Scannez votre badge pour commencer"}
+              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -764,7 +751,7 @@ export default function ColageList() {
             )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            {etape !== "AGENT" && (
+            {etape !== "CHAMBRE" && (
               <Button
                 variant="outline"
                 size="sm"
@@ -788,7 +775,7 @@ export default function ColageList() {
         {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
-          border: `2px dashed ${etape === "AGENT" || etape === "CHAMBRE" ? "#7c3aed" : "#7c3aed"}`,
+          border: `2px dashed ${getBorderColor()}`,
           background: "white",
           borderRadius: "16px"
         }}>
@@ -802,7 +789,7 @@ export default function ColageList() {
               borderColor={getBorderColor()}
               keepFocus={true}
               autoDebounce={true}
-              disabled={loading}
+              disabled={loading || !agent}
             />
             
             {/* ─── Indicateur de scan badge agent ─────────────────────────── */}
@@ -828,7 +815,20 @@ export default function ColageList() {
           </CardContent>
         </Card>
 
-        {/* ─── INFO AGENT ────────────────────────────────────────────────── */}
+        {/* ─── INFO ──────────────────────────────────────────────────────── */}
+
+        {!agent && (
+          <Card style={{ background: "#fef2f2", border: "1px solid #fca5a5", marginBottom: "16px", borderRadius: "12px" }}>
+            <CardContent className="p-4">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+                <FaExclamationTriangle color="#dc2626" size={16} />
+                <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
+                <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une collecte</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {agent && !collecte && (
           <Card style={{ background: "#faf5ff", border: "1px solid #e9d5ff", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">

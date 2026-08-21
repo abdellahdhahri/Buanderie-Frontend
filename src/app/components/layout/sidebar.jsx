@@ -14,6 +14,7 @@ export const NAV_ITEMS = [
       </svg>
     ),
   },
+
   {
     id: "params",
     label: "Parametrage",

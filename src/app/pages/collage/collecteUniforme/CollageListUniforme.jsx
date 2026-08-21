@@ -10,6 +10,7 @@ import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import ScanInput from "../../../components/utils/shared/ScanInput";
 import { cat, ST_COLORS, apiCall } from "../collecteUtils";
+import { getAgent, isAgentConnected } from "../../../services/agentService";
 import "../../Linge/WorkflowList.css";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
@@ -200,7 +201,7 @@ function CarteUniforme({ u, uniformeEnCours, onManquant }) {
 export default function CollageListUniforme() {
   const { showAlert, showConfirm } = useModal();
 
-  const [etape, setEtape] = useState("AGENT");
+  const [etape, setEtape] = useState("BADGE"); // ✅ Changé de "AGENT" à "BADGE"
   const [agent, setAgent] = useState(null);
   const [collecte, setCollecte] = useState(null);
   const [uniformeEnCours, setUniformeEnCours] = useState(null);
@@ -217,6 +218,31 @@ export default function CollageListUniforme() {
 
   useEffect(() => { agentRef.current = agent; }, [agent]);
   useEffect(() => { collecteRef.current = collecte; }, [collecte]);
+
+  // ✅ Récupérer l'agent depuis localStorage au chargement
+  useEffect(() => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      setAgent(agentData);
+      setEtape("BADGE");
+      setScanStatus({
+        loading: false,
+        success: { 
+          message: `👤 Agent ${agentData.nom}`, 
+          detail: `Connecté · ${agentData.matricule}` 
+        },
+        error: null
+      });
+      setTimeout(() => setScanStatus(null), 2000);
+    } else {
+      setEtape("BADGE");
+      setScanStatus({
+        loading: false,
+        success: null,
+        error: "Aucun agent connecté — veuillez vous reconnecter"
+      });
+    }
+  }, []);
 
   // ─── Scan automatique ──────────────────────────────────────────────────
   useEffect(() => {
@@ -249,41 +275,20 @@ export default function CollageListUniforme() {
     } : p);
   }, []);
 
-  // ─── ÉTAPE 1 : Agent ──────────────────────────────────────────────────
-  const handleAgent = useCallback(async (code) => {
-    setLoading(true);
-    setScanStatus(null);
-    try {
-      const ag = await fetch(`${API_URL}/api/agents/matricule/${code}`)
-        .then(r => r.ok ? r.json() : null);
-      if (!ag) {
-        setScanStatus({ loading: false, success: null, error: "Agent introuvable" });
-        showAlert("Agent introuvable", code, "error");
-        return;
-      }
-      setAgent({ nom: ag.nom, matricule: ag.matricule });
-      setEtape("BADGE");
-      setScanStatus({
-        loading: false,
-        success: { message: "Agent identifié", detail: `${ag.nom} (${ag.matricule})` },
-        error: null
-      });
-      setTimeout(() => setScanStatus(null), 2000);
-    } catch (e) {
-      setScanStatus({ loading: false, success: null, error: e.message });
-      showAlert("Erreur", e.message, "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [showAlert]);
+  // ─── ÉTAPE 1 : Agent (SUPPRIMÉE) ──────────────────────────────────────
+  // ✅ L'agent est récupéré depuis localStorage
 
   // ─── ÉTAPE 2 : Badge médecin ─────────────────────────────────────────
   const handleBadge = useCallback(async (code) => {
+    if (!agent) {
+      showAlert("Agent non connecté", "Veuillez vous reconnecter.", "error");
+      return;
+    }
     setLoading(true);
     setScanStatus(null);
     try {
       const res = await apiCall("/api/collecte/uniforme/ouvrir", {
-        matriculeAgent: agentRef.current.matricule,
+        matriculeAgent: agent.matricule, // ✅ Utiliser agent du localStorage
         codeBadge: code
       });
       setCollecte({
@@ -319,7 +324,7 @@ export default function CollageListUniforme() {
     } finally {
       setLoading(false);
     }
-  }, [showAlert]);
+  }, [agent, showAlert]);
 
   // ─── ÉTAPE 3 : Scanner uniforme ──────────────────────────────────────
   const handleScanUniforme = useCallback((code) => {
@@ -419,7 +424,7 @@ export default function CollageListUniforme() {
 
   const handleScan = useCallback(async (code) => {
     setScanVal("");
-    if (etape === "AGENT") { await handleAgent(code); return; }
+    // ✅ Suppression de l'étape AGENT
     if (etape === "BADGE") { await handleBadge(code); return; }
     if (etape === "SCAN") {
       if (uniformeEnCours) {
@@ -428,14 +433,13 @@ export default function CollageListUniforme() {
       }
       handleScanUniforme(code);
     }
-  }, [etape, uniformeEnCours, handleAgent, handleBadge, handleScanUniforme, handleScanBac]);
+  }, [etape, uniformeEnCours, handleBadge, handleScanUniforme, handleScanBac]);
 
   const reset = () => {
-    setAgent(null);
     setCollecte(null);
     setResume(null);
     setUniformeEnCours(null);
-    setEtape("AGENT");
+    setEtape("BADGE");
     setScanVal("");
     setScanStatus(null);
     setTimeout(() => scanInputRef.current?.focus(), 200);
@@ -449,7 +453,7 @@ export default function CollageListUniforme() {
   const manquants = collecte?.uniformes?.filter(u => u.statut === "MANQUANT").length || 0;
 
   const getPlaceholder = () => {
-    if (!agent) return "👤 Scanner votre badge agent...";
+    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
     if (!collecte) return "🩺 Scanner le badge du médecin...";
     if (uniformeEnCours) return "📦 Scanner le bac...";
     if (etape === "RESUME") return "🔒 Collecte terminée";
@@ -497,7 +501,7 @@ export default function CollageListUniforme() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Scannez votre badge pour commencer"}
+              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -637,7 +641,7 @@ export default function CollageListUniforme() {
               borderColor={isCloturee ? "#e2e8f0" : "#0ea5e9"}
               keepFocus={true}
               autoDebounce={true}
-              disabled={isCloturee || loading}
+              disabled={isCloturee || loading || !agent}
             />
             {scanStatus && (
               <div style={{ marginTop: "12px" }}>
@@ -648,6 +652,19 @@ export default function CollageListUniforme() {
         </Card>
 
         {/* ─── INFO ──────────────────────────────────────────────────────── */}
+
+        {!agent && (
+          <Card style={{ background: "#fef2f2", border: "1px solid #fca5a5", marginBottom: "16px", borderRadius: "12px" }}>
+            <CardContent className="p-4">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+                <FaExclamationTriangle color="#dc2626" size={16} />
+                <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
+                <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une collecte</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {agent && !collecte && (
           <Card style={{ background: "#faf5ff", border: "1px solid #e9d5ff", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">
