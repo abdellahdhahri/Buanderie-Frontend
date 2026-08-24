@@ -1,22 +1,272 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   FaSoap, FaFilter, FaCheckCircle, FaBiohazard,
   FaCalendarAlt, FaBoxes, FaSpinner, FaPlay, FaStop,
-  FaUser, FaExclamationTriangle
+  FaUser, FaExclamationTriangle, FaTshirt, FaRedo,
+  FaCheckDouble, FaClock, FaHistory
 } from "react-icons/fa";
 import { LavageProvider, useLavage } from "../../contextes/LavageContext";
 import { getAgent, isAgentConnected } from "../../services/agentService";
+import Swal from "sweetalert2";
+import { Badge } from "../../components/ui/badge";
 
 import ScanInput              from "../../components/utils/ScanInput";
 import CarteLot               from "../../components/utils/CarteLot";
-import CarteSacInfecte        from "../../components/utils/CarteSacInfecte";
 import LotInfoDialog          from "../../components/utils/LotInfoDialog";
 import ScanLingesPropresModal from "../../components/utils/ScanLingesPropresModal";
 import RecapChargement        from "../../components/utils/RecapChargement";
-import GuideSacInfecte        from "../../components/utils/GuideSacInfecte";
 
 import "../Linge/WorkflowList.css";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+
+// ─── StatutCard ──────────────────────────────────────────────────────────────
+function StatutCard({ label, value, icon, color, bg, subValue }) {
+  return (
+    <div style={{
+      padding: "16px 18px",
+      borderRadius: "14px",
+      background: bg,
+      border: `1px solid ${color}25`,
+      flex: 1,
+      minWidth: "100px",
+      transition: "all 0.2s ease"
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{
+          width: "40px",
+          height: "40px",
+          borderRadius: "12px",
+          background: `${color}15`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "20px"
+        }}>
+          {icon}
+        </div>
+        <div>
+          <p style={{ fontSize: "10px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px", margin: 0 }}>
+            {label}
+          </p>
+          <p style={{ fontSize: "24px", fontWeight: 700, color: color, margin: 0, lineHeight: 1.2 }}>
+            {value}
+          </p>
+          {subValue && (
+            <p style={{ fontSize: "10px", color: "#94a3b8", margin: 0 }}>{subValue}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── RecapChargementInfecte ──────────────────────────────────────────────
+function RecapChargementInfecte({ 
+  sacsSelectionnes, 
+  poidsTotal, 
+  onRetirer, 
+  onTerminer,
+  onArreter,
+  onNouveauCycle,
+  estTermine,
+  estEnLavage,
+  tempsEcoule 
+}) {
+  return (
+    <div style={{
+      background: "#f8fafc",
+      borderRadius: "14px",
+      padding: "16px",
+      border: "1px solid #e2e8f0",
+      position: "sticky",
+      top: "20px",
+      alignSelf: "start"
+    }}>
+      <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+        <FaBoxes color="#dc2626" />
+        Sacs en lavage
+        <Badge style={{ background: "#fee2e2", color: "#dc2626", marginLeft: "auto" }}>
+          {sacsSelectionnes.length}
+        </Badge>
+      </div>
+
+      {sacsSelectionnes.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "20px", color: "#94a3b8", fontSize: "13px" }}>
+          <FaBiohazard size={28} style={{ opacity: 0.2, marginBottom: "8px" }} />
+          <div>Aucun sac sélectionné</div>
+          <div style={{ fontSize: "11px", marginTop: "4px" }}>Scannez des sacs infectés</div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "300px", overflowY: "auto" }}>
+          {sacsSelectionnes.map((sac, index) => (
+            <div
+              key={sac.id || index}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: "white",
+                border: "1px solid #fca5a5"
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 600, fontSize: "13px", color: "#dc2626" }}>
+                  {sac.numeroSac}
+                </div>
+                <div style={{ fontSize: "11px", color: "#64748b" }}>
+                  {sac.quantiteDeclaree || 0} articles
+                </div>
+              </div>
+              {!estTermine && !estEnLavage && (
+                <button
+                  onClick={() => onRetirer(sac)}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: "6px",
+                    border: "1px solid #fca5a5",
+                    background: "#fff5f5",
+                    color: "#dc2626",
+                    cursor: "pointer",
+                    fontSize: "11px"
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{
+        marginTop: "12px",
+        paddingTop: "12px",
+        borderTop: "1px solid #e2e8f0"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "4px" }}>
+          <span style={{ color: "#64748b" }}>Total articles</span>
+          <span style={{ fontWeight: 700, color: "#0f172a" }}>{poidsTotal}</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+          <span style={{ color: "#64748b" }}>Sacs</span>
+          <span style={{ fontWeight: 700, color: "#0f172a" }}>{sacsSelectionnes.length}</span>
+        </div>
+        {tempsEcoule > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginTop: "4px", paddingTop: "4px", borderTop: "1px solid #e2e8f0" }}>
+            <span style={{ color: "#64748b" }}>
+              <FaClock size={12} style={{ display: "inline", marginRight: "4px" }} />
+              Temps
+            </span>
+            <span style={{ fontWeight: 600, color: "#0f172a" }}>
+              {Math.floor(tempsEcoule / 60)}m {tempsEcoule % 60}s
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Boutons */}
+      {!estTermine && !estEnLavage && (
+        <button
+          onClick={onTerminer}
+          disabled={sacsSelectionnes.length === 0}
+          style={{
+            marginTop: "12px",
+            width: "100%",
+            padding: "10px",
+            borderRadius: "8px",
+            border: "none",
+            background: sacsSelectionnes.length === 0 ? "#e2e8f0" : "linear-gradient(135deg, #10b981, #059669)",
+            color: sacsSelectionnes.length === 0 ? "#94a3b8" : "white",
+            fontWeight: 700,
+            cursor: sacsSelectionnes.length === 0 ? "not-allowed" : "pointer",
+            fontSize: "13px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px"
+          }}
+        >
+          <FaPlay size={14} /> 
+          {sacsSelectionnes.length === 0 ? "Aucun sac sélectionné" : "Lancer le cycle infecté"}
+        </button>
+      )}
+
+      {estEnLavage && !estTermine && (
+        <>
+          <button
+            onClick={onTerminer}
+            style={{
+              marginTop: "12px",
+              width: "100%",
+              padding: "10px",
+              borderRadius: "8px",
+              border: "none",
+              background: "linear-gradient(135deg, #10b981, #059669)",
+              color: "white",
+              fontWeight: 700,
+              cursor: "pointer",
+              fontSize: "13px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px"
+            }}
+          >
+            <FaCheckDouble size={14} /> Terminer le cycle infecté
+          </button>
+          <button
+            onClick={onArreter}
+            style={{
+              marginTop: "8px",
+              width: "100%",
+              padding: "10px",
+              borderRadius: "8px",
+              border: "none",
+              background: "linear-gradient(135deg, #ef4444, #dc2626)",
+              color: "white",
+              fontWeight: 700,
+              cursor: "pointer",
+              fontSize: "13px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px"
+            }}
+          >
+            <FaStop size={14} /> Arrêter le cycle
+          </button>
+        </>
+      )}
+
+      {estTermine && (
+        <button
+          onClick={onNouveauCycle}
+          style={{
+            marginTop: "12px",
+            width: "100%",
+            padding: "10px",
+            borderRadius: "8px",
+            border: "none",
+            background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+            color: "white",
+            fontWeight: 700,
+            cursor: "pointer",
+            fontSize: "13px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px"
+          }}
+        >
+          <FaRedo size={14} /> Nouveau cycle
+        </button>
+      )}
+    </div>
+  );
+}
 
 function LavageInner() {
   const {
@@ -27,57 +277,447 @@ function LavageInner() {
     scannerMachine, chargerLots, scannerLot,
     confirmerAjoutLot, retirerLot, nouveauCycleBlanc,
     sacsInfectes, loadingSacs,
-    chargerSacsInfectes, scannerSacInfecte,
-    loading, resetAll,
+    chargerSacsInfectes,
+    loading, resetAll, finishCycle,
   } = useLavage();
 
-  const [onglet,    setOnglet]    = useState("BLANC");
-  const [scanVal,   setScanVal]   = useState("");
+  const [scanVal, setScanVal] = useState("");
   const [searchLot, setSearchLot] = useState("");
-  const [agent,     setAgent]     = useState(null);
+  const [agent, setAgent] = useState(null);
+  
+  // ─── États pour les infectés ──────────────────────────────────────────────
+  const [machineInfecte, setMachineInfecte] = useState(null);
+  const [sacsSelectionnes, setSacsSelectionnes] = useState([]);
+  const [etapeInfecte, setEtapeInfecte] = useState("MACHINE");
+  const [modeLavage, setModeLavage] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [cycleTermineInfecte, setCycleTermineInfecte] = useState(false);
+  const [cycleEnCours, setCycleEnCours] = useState(false);
+  const [tempsEcoule, setTempsEcoule] = useState(0);
+  const [timerInterval, setTimerInterval] = useState(null);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
+  const scanInputRef = useRef(null);
+
+  //  Récupérer l'agent depuis localStorage
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
       setAgent(agentData);
-      // Si le contexte a une méthode pour définir l'agent, l'utiliser
       if (identifierAgent) {
-        // On appelle identifierAgent avec le matricule pour synchroniser le contexte
         identifierAgent(agentData.matricule).catch(() => {});
       }
     }
   }, []);
 
-  // ✅ Si l'agent du contexte change, mettre à jour l'agent local
+  //  Si l'agent du contexte change
   useEffect(() => {
     if (agentFromContext) {
       setAgent(agentFromContext);
     }
   }, [agentFromContext]);
 
+  // Charger les lots et sacs selon le mode
   useEffect(() => {
     if (!agent) return;
-    if (onglet === "BLANC" && etapeBlanc === "LOTS") chargerLots();
-    if (onglet === "INFECTE") chargerSacsInfectes();
-  }, [onglet, agent, etapeBlanc, chargerLots, chargerSacsInfectes]);
+    
+    if (modeLavage === "NORMAL" && etapeBlanc === "LOTS") {
+      chargerLots();
+    }
+    
+    if (modeLavage === "INFECTE") {
+      chargerSacsInfectes();
+    }
+  }, [modeLavage, agent, etapeBlanc, chargerLots, chargerSacsInfectes]);
 
-  const handleScan = async (code) => {
+  // Timer pour le lavage infecté
+  useEffect(() => {
+    if (cycleEnCours && !cycleTermineInfecte) {
+      const interval = setInterval(() => {
+        setTempsEcoule(prev => prev + 1);
+      }, 1000);
+      setTimerInterval(interval);
+      return () => clearInterval(interval);
+    } else {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+    }
+  }, [cycleEnCours, cycleTermineInfecte]);
+
+  // ─── Scanner Machine ──────────────────────────────────────────────────────
+  const scannerMachineUnifie = useCallback(async (code) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/machines/code/${encodeURIComponent(code)}`);
+      if (!res.ok) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Machine introuvable',
+          text: code,
+          timer: 1500,
+          showConfirmButton: false
+        });
+        return;
+      }
+      const mach = await res.json();
+      
+      if (mach.categorie === "LINGES_INFECTE") {
+        setModeLavage("INFECTE");
+        setMachineInfecte(mach);
+        setEtapeInfecte("SACS");
+        setSacsSelectionnes([]);
+        setCycleTermineInfecte(false);
+        setCycleEnCours(false);
+        setTempsEcoule(0);
+        await chargerSacsInfectes();
+        
+        await Swal.fire({
+          icon: 'success',
+          title: '🔴 Machine linges infectés',
+          text: `${mach.code} - ${mach.marque}`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        setModeLavage("NORMAL");
+        await scannerMachine(code);
+        setEtapeInfecte(null);
+        setMachineInfecte(null);
+        setSacsSelectionnes([]);
+        setCycleTermineInfecte(false);
+        setCycleEnCours(false);
+        setTempsEcoule(0);
+        
+        await Swal.fire({
+          icon: 'success',
+          title: '✅ Machine linges normaux',
+          text: `${mach.code} - ${mach.marque}`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+      }
+    } catch (err) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: err.message
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [scannerMachine, chargerSacsInfectes]);
+
+  // ─── Scanner Sac Infecté (comme scanner un lot) ──────────────────────
+  const scannerSacInfecte = useCallback(async (code) => {
+    if (!machineInfecte) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Scannez d\'abord la machine',
+        text: 'Veuillez scanner une machine infectée avant de scanner des sacs.',
+        timer: 2000,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    if (cycleTermineInfecte || cycleEnCours) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Cycle en cours ou terminé',
+        text: 'Vous ne pouvez plus ajouter de sacs.',
+        timer: 1500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    const sac = sacsInfectes?.find(s => s.numeroSac === code || s.code === code);
+    if (!sac) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Sac introuvable',
+        text: code,
+        timer: 1500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    if (sacsSelectionnes.find(s => s.numeroSac === sac.numeroSac)) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Sac déjà ajouté',
+        text: sac.numeroSac,
+        timer: 1500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    if (sac.etat === "EN_LAVAGE") {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Sac déjà en lavage',
+        text: sac.numeroSac,
+        timer: 1500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    setSacsSelectionnes(prev => [...prev, sac]);
+    
+    await Swal.fire({
+      icon: 'success',
+      title: '✅ Sac ajouté',
+      text: `${sac.numeroSac} - ${sac.quantiteDeclaree || 0} articles`,
+      timer: 1000,
+      showConfirmButton: false
+    });
+  }, [machineInfecte, sacsInfectes, sacsSelectionnes, cycleTermineInfecte, cycleEnCours]);
+
+  // ─── Retirer un sac ──────────────────────────────────────────────────────
+  const retirerSac = useCallback((sac) => {
+    setSacsSelectionnes(prev => prev.filter(s => s.numeroSac !== sac.numeroSac));
+  }, []);
+
+  // ─── Lancer le cycle infecté ──────────────────────────────────────────────
+  const lancerCycleInfecte = useCallback(async () => {
+    if (sacsSelectionnes.length === 0) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Aucun sac sélectionné',
+        text: 'Scannez au moins un sac avant de continuer.',
+        timer: 1500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      for (const sac of sacsSelectionnes) {
+        const res = await fetch(
+          `${API_URL}/api/sacs-infectes/laver?numeroSac=${encodeURIComponent(sac.numeroSac)}&matricule=${agent.matricule}&codeMachine=${machineInfecte.code}`,
+          { method: "PUT" }
+        );
+
+        if (!res.ok) {
+          const txt = await res.text();
+          let msg = txt;
+          try { msg = JSON.parse(txt).message || txt; } catch {}
+          throw new Error(`Erreur pour ${sac.numeroSac}: ${msg}`);
+        }
+      }
+
+      setEtapeInfecte("LAVAGE");
+      setCycleEnCours(true);
+      setTempsEcoule(0);
+      await chargerSacsInfectes();
+
+      await Swal.fire({
+        icon: 'success',
+        title: '🔴 Cycle infecté lancé !',
+        text: `${sacsSelectionnes.length} sac(s) en lavage`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (err) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: err.message
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sacsSelectionnes, machineInfecte, agent, chargerSacsInfectes]);
+
+  // ─── Terminer le cycle infecté ──────────────────────────────────────────
+  const terminerCycleInfecte = useCallback(async () => {
+    if (sacsSelectionnes.length === 0) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Aucun sac à terminer',
+        text: 'Scannez au moins un sac avant de terminer.',
+        timer: 1500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      icon: 'question',
+      title: 'Terminer le cycle infecté ?',
+      text: `${sacsSelectionnes.length} sac(s) seront terminés.`,
+      showCancelButton: true,
+      confirmButtonColor: '#7c3aed',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Oui, terminer',
+      cancelButtonText: 'Annuler'
+    });
+
+    if (!result.isConfirmed) return;
+
+    setIsLoading(true);
+    try {
+      for (const sac of sacsSelectionnes) {
+        await fetch(
+          `${API_URL}/api/sacs-infectes/terminer-lavage?numeroSac=${sac.numeroSac}&matricule=${agent.matricule}`,
+          { method: "PUT" }
+        );
+      }
+
+      setEtapeInfecte("TERMINE");
+      setCycleTermineInfecte(true);
+      setCycleEnCours(false);
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+      await chargerSacsInfectes();
+
+      await Swal.fire({
+        icon: 'success',
+        title: '✅ Cycle infecté terminé !',
+        text: `${sacsSelectionnes.length} sac(s) lavés avec succès`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (err) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: err.message
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sacsSelectionnes, agent, chargerSacsInfectes, timerInterval]);
+
+  const arreterCycleInfecte = useCallback(async () => {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Arrêter le cycle infecté ?',
+      text: `${sacsSelectionnes.length} sac(s) seront arrêtés.`,
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Oui, arrêter',
+      cancelButtonText: 'Annuler'
+    });
+
+    if (!result.isConfirmed) return;
+
+    setIsLoading(true);
+    try {
+      for (const sac of sacsSelectionnes) {
+        await fetch(
+          `${API_URL}/api/sacs-infectes/arreter-lavage?numeroSac=${sac.numeroSac}&matricule=${agent.matricule}`,
+          { method: "PUT" }
+        );
+      }
+
+      setEtapeInfecte("SACS");
+      setCycleEnCours(false);
+      setCycleTermineInfecte(false);
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+      setTempsEcoule(0);
+      await chargerSacsInfectes();
+
+      await Swal.fire({
+        icon: 'info',
+        title: '⏹️ Cycle infecté arrêté',
+        text: `${sacsSelectionnes.length} sac(s) ont été arrêtés`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (err) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: err.message
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sacsSelectionnes, agent, chargerSacsInfectes, timerInterval]);
+
+  // ─── Nouveau cycle infecté ─────────────────────────────────────────────
+  const nouveauCycleInfecte = useCallback(() => {
+    setMachineInfecte(null);
+    setSacsSelectionnes([]);
+    setEtapeInfecte("MACHINE");
+    setCycleTermineInfecte(false);
+    setCycleEnCours(false);
+    setModeLavage(null);
+    setTempsEcoule(0);
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      setTimerInterval(null);
+    }
+    setScanVal("");
+    setTimeout(() => scanInputRef.current?.focus(), 200);
+  }, [timerInterval]);
+
+  // ─── Reset tout ─────────────────────────────────────────────────────────
+  const handleResetAll = useCallback(() => {
+    resetAll();
+    setModeLavage(null);
+    setMachineInfecte(null);
+    setSacsSelectionnes([]);
+    setEtapeInfecte("MACHINE");
+    setCycleTermineInfecte(false);
+    setCycleEnCours(false);
+    setTempsEcoule(0);
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      setTimerInterval(null);
+    }
+    setScanVal("");
+  }, [resetAll, timerInterval]);
+
+  // ─── Scan général ──────────────────────────────────────────────────────
+  const handleScan = useCallback(async (code) => {
     setScanVal("");
     if (!agent) {
-      // ✅ Si pas d'agent, on essaie de l'identifier via le contexte
       if (identifierAgent) {
         await identifierAgent(code);
       }
       return;
     }
-    if (onglet === "BLANC" && etapeBlanc === "MACHINE") { await scannerMachine(code);   return; }
-    if (onglet === "BLANC" && etapeBlanc === "LOTS")    {
-      await scannerLot(code, poidsTotal);
+
+    if (!modeLavage) {
+      await scannerMachineUnifie(code);
       return;
     }
-    if (onglet === "INFECTE")                          { await scannerSacInfecte(code); return; }
-  };
+
+    if (modeLavage === "NORMAL") {
+      if (etapeBlanc === "MACHINE") {
+        await scannerMachineUnifie(code);
+        return;
+      }
+      if (etapeBlanc === "LOTS") {
+        await scannerLot(code, poidsTotal);
+        return;
+      }
+    }
+
+    if (modeLavage === "INFECTE") {
+      if (etapeInfecte === "MACHINE") {
+        await scannerMachineUnifie(code);
+        return;
+      }
+      if (etapeInfecte === "SACS" || etapeInfecte === "LAVAGE") {
+        await scannerSacInfecte(code);
+        return;
+      }
+    }
+  }, [agent, identifierAgent, modeLavage, etapeBlanc, etapeInfecte, scannerMachineUnifie, scannerLot, scannerSacInfecte, poidsTotal]);
 
   const lotsFiltres = useMemo(() => {
     const ids = new Set(lotsSelectionnes.map(ls => ls.lot.id));
@@ -91,27 +731,54 @@ function LavageInner() {
   }, [lotsDisponibles, lotsSelectionnes, searchLot]);
 
   const getPlaceholder = () => {
-    if (!agent)                                        return "👤 Agent non connecté — veuillez vous reconnecter";
-    if (onglet === "BLANC" && etapeBlanc === "MACHINE") return "🔧 Scanner le code de la machine...";
-    if (onglet === "BLANC" && etapeBlanc === "LOTS")    return "📦 Scanner un lot...";
-    if (onglet === "INFECTE")                           return "🔴 Scanner un sac infecté...";
+    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
+    
+    if (!modeLavage) return "🔧 Scanner le code de la machine...";
+    
+    if (modeLavage === "NORMAL") {
+      if (etapeBlanc === "MACHINE") return "🔧 Scanner le code de la machine...";
+      if (etapeBlanc === "LOTS") return "📦 Scanner un lot...";
+    }
+    
+    if (modeLavage === "INFECTE") {
+      if (etapeInfecte === "MACHINE") return "🔧 Scanner le code de la machine...";
+      if (etapeInfecte === "SACS") return "🔴 Scanner un sac infecté...";
+      if (etapeInfecte === "LAVAGE") return "🔴 Scanner un autre sac...";
+      if (etapeInfecte === "TERMINE") return "✅ Cycle terminé";
+    }
     return "Scanner...";
   };
 
   const getBorderColor = () => {
-    if (!agent)               return "#dc2626";
-    if (onglet === "INFECTE") return "#ef4444";
+    if (!agent) return "#dc2626";
+    if (modeLavage === "INFECTE") return "#dc2626";
+    if (modeLavage === "NORMAL") return "#0ea5e9";
     return "#0ea5e9";
   };
+
+  const getModeLabel = () => {
+    if (!modeLavage) return "En attente";
+    if (modeLavage === "NORMAL") return "⬜ Linge Normal";
+    return "🔴 Linge Infecté";
+  };
+
+  const getModeColor = () => {
+    if (!modeLavage) return "#64748b";
+    if (modeLavage === "NORMAL") return "#0ea5e9";
+    return "#dc2626";
+  };
+
+  // Filtrer les sacs disponibles
+  const sacsDisponibles = sacsInfectes?.filter(s => s.etat === "RECEPTIONNE" || s.etat === "RECEPTION") || [];
+  const totalArticles = sacsSelectionnes.reduce((sum, s) => sum + (s.quantiteDeclaree || 0), 0);
 
   return (
     <div className="collecte-container">
 
-      {/* Dialogs et modals */}
       <LotInfoDialog />
       <ScanLingesPropresModal />
 
-      {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
+      {/* ─── EN-TeTE ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "32px" }}>
         <div style={{
           display: "flex",
@@ -173,7 +840,7 @@ function LavageInner() {
         border: "1px solid #e2e8f0", boxShadow: "0 4px 16px rgba(0,0,0,0.06)"
       }}>
 
-        {/* Barre agent + reset */}
+        {/* Barre agent + info mode */}
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
           marginBottom: "20px", flexWrap: "wrap", gap: "12px"
@@ -194,9 +861,14 @@ function LavageInner() {
                 <FaCalendarAlt size={10} />
                 {new Date().toLocaleDateString("fr-FR")}{" "}
                 {new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                {machine && (
+                {machine && modeLavage === "NORMAL" && (
                   <span style={{ fontWeight: 600, color: "#0ea5e9", marginLeft: "6px" }}>
                     · Machine : {machine.code} ({machine.capaciteKg} kg)
+                  </span>
+                )}
+                {machineInfecte && modeLavage === "INFECTE" && (
+                  <span style={{ fontWeight: 600, color: "#dc2626", marginLeft: "6px" }}>
+                    · Machine infectée : {machineInfecte.code}
                   </span>
                 )}
                 {!agent && (
@@ -207,17 +879,28 @@ function LavageInner() {
               </div>
             </div>
           </div>
-          <button onClick={resetAll} style={{
-            padding: "8px 16px", border: "1px solid #e2e8f0",
-            borderRadius: "10px", background: "white", color: "#64748b",
-            cursor: "pointer", fontSize: "13px", fontWeight: 500,
-            display: "flex", alignItems: "center", gap: "6px"
-          }}>
-            <FaFilter size={12} /> Réinitialiser
-          </button>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{
+              padding: "4px 14px",
+              borderRadius: "10px",
+              background: modeLavage ? (modeLavage === "NORMAL" ? "#dbeafe" : "#fee2e2") : "#f1f5f9",
+              color: getModeColor(),
+              fontSize: "12px",
+              fontWeight: 600
+            }}>
+              {getModeLabel()}
+            </span>
+            <button onClick={handleResetAll} style={{
+              padding: "8px 16px", border: "1px solid #e2e8f0",
+              borderRadius: "10px", background: "white", color: "#64748b",
+              cursor: "pointer", fontSize: "13px", fontWeight: 500,
+              display: "flex", alignItems: "center", gap: "6px"
+            }}>
+              <FaFilter size={12} /> Réinitialiser
+            </button>
+          </div>
         </div>
 
-        {/* ─── Message si agent non connecté ──────────────────────────────── */}
         {!agent && (
           <div style={{
             padding: "12px 16px",
@@ -237,13 +920,14 @@ function LavageInner() {
           </div>
         )}
 
-        {/* ── Zone de scan — focus permanent ────────────────────────────────── */}
+        {/* ── Zone de scan ── */}
         <div style={{
           marginBottom: "20px", padding: "18px 20px",
           background: "#f8fafc", borderRadius: "14px",
           border: `2px dashed ${getBorderColor()}`
         }}>
           <ScanInput
+            ref={scanInputRef}
             placeholder={getPlaceholder()}
             value={scanVal}
             onChange={setScanVal}
@@ -251,47 +935,33 @@ function LavageInner() {
             borderColor={getBorderColor()}
             keepFocus={true}
             autoDebounce={true}
-            disabled={!agent}
+            disabled={!agent || isLoading || etapeInfecte === "TERMINE"}
           />
+          {modeLavage && (
+            <div style={{ marginTop: "8px", fontSize: "11px", color: "#94a3b8" }}>
+              {modeLavage === "NORMAL" && etapeBlanc === "LOTS" && (
+                <span>📦 {lotsDisponibles.length} lots disponibles · {lotsSelectionnes.length} sélectionnés</span>
+              )}
+              {modeLavage === "INFECTE" && etapeInfecte === "SACS" && (
+                <span>🔴 {sacsDisponibles.length} sacs disponibles · {sacsSelectionnes.length} sélectionnés</span>
+              )}
+              {modeLavage === "INFECTE" && etapeInfecte === "LAVAGE" && (
+                <span>🔄 {sacsSelectionnes.length} sac(s) en lavage · {Math.floor(tempsEcoule / 60)}m {tempsEcoule % 60}s</span>
+              )}
+              {modeLavage === "INFECTE" && etapeInfecte === "TERMINE" && (
+                <span>✅ Cycle terminé - {sacsSelectionnes.length} sac(s) lavés</span>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* ── Onglets (si agent identifié) ──────────────────────────────────── */}
+        {/* ─── Contenu selon le mode ──────────────────────────────────────── */}
         {agent && (
           <>
-            <div style={{
-              display: "flex", gap: "8px", marginBottom: "20px",
-              background: "#f1f5f9", padding: "5px", borderRadius: "14px"
-            }}>
-              {[
-                { id: "BLANC",   emoji: "⬜", label: "Linge Blanc",   sub: "Lots triés",    color: "#10b981" },
-                { id: "INFECTE", emoji: "🔴", label: "Linge Infecté", sub: "Sacs infectés", color: "#dc2626" },
-              ].map(t => (
-                <button key={t.id} onClick={() => setOnglet(t.id)} style={{
-                  flex: 1, padding: "11px 16px", borderRadius: "10px",
-                  border: "none", cursor: "pointer",
-                  background: onglet === t.id ? "white" : "transparent",
-                  transition: "all 0.2s",
-                  boxShadow: onglet === t.id ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: "10px"
-                }}>
-                  <span style={{ fontSize: "18px" }}>{t.emoji}</span>
-                  <div style={{ textAlign: "left" }}>
-                    <div style={{ fontWeight: 700, fontSize: "13px", color: onglet === t.id ? t.color : "#64748b" }}>
-                      {t.label}
-                    </div>
-                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>{t.sub}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* ══ ONGLET BLANC ══════════════════════════════════════════════════ */}
-            {onglet === "BLANC" && (
+            {/* ─── MODE NORMAL──────────────────────────── */}
+            {modeLavage === "NORMAL" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px" }}>
-
-                {/* Colonne gauche */}
                 <div>
-                  {/* Attente machine */}
                   {etapeBlanc === "MACHINE" && (
                     <div style={{
                       textAlign: "center", padding: "40px",
@@ -308,7 +978,6 @@ function LavageInner() {
                     </div>
                   )}
 
-                  {/* Liste des lots */}
                   {(etapeBlanc === "LOTS" || etapeBlanc === "EN_COURS") && (
                     <div style={{
                       background: "#f8fafc", borderRadius: "14px",
@@ -385,7 +1054,6 @@ function LavageInner() {
                     </div>
                   )}
 
-                  {/* Écran terminé */}
                   {etapeBlanc === "TERMINE" && (
                     <div style={{
                       textAlign: "center", padding: "48px 20px",
@@ -409,103 +1077,180 @@ function LavageInner() {
                     </div>
                   )}
                 </div>
-
-                {/* Colonne droite : RecapChargement */}
                 <RecapChargement />
               </div>
             )}
 
-            {/* ══ ONGLET INFECTÉ ════════════════════════════════════════════════ */}
-            {onglet === "INFECTE" && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "20px" }}>
+            {/* ─── MODE INFECTE──────────────────── */}
+            {modeLavage === "INFECTE" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px" }}>
 
-                {/* Colonne gauche : liste sacs */}
+                {/* Colonne gauche */}
                 <div>
-                  <div style={{
-                    display: "flex", justifyContent: "space-between",
-                    alignItems: "center", marginBottom: "14px"
-                  }}>
+                  {etapeInfecte === "MACHINE" && (
                     <div style={{
-                      fontWeight: 600, fontSize: "14px", color: "#dc2626",
-                      display: "flex", alignItems: "center", gap: "8px"
-                    }}>
-                      <FaBiohazard /> Sacs infectés
-                      <span style={{
-                        background: "#fee2e2", padding: "2px 8px",
-                        borderRadius: "10px", fontSize: "11px", color: "#dc2626", fontWeight: 500
-                      }}>
-                        {sacsInfectes.length}
-                      </span>
-                    </div>
-                    <button onClick={chargerSacsInfectes} style={{
-                      padding: "6px 12px", borderRadius: "8px",
-                      border: "1px solid #e2e8f0", background: "white",
-                      color: "#64748b", cursor: "pointer", fontSize: "12px"
-                    }}>
-                      ↻ Actualiser
-                    </button>
-                  </div>
-
-                  {loadingSacs ? (
-                    <div style={{ textAlign: "center", padding: "30px", color: "#94a3b8" }}>
-                      <FaSpinner style={{ animation: "spin 1s linear infinite" }} /> Chargement...
-                    </div>
-                  ) : sacsInfectes.length === 0 ? (
-                    <div style={{
-                      textAlign: "center", padding: "48px 20px",
+                      textAlign: "center", padding: "40px",
                       background: "#f8fafc", borderRadius: "14px",
-                      border: "2px dashed #fca5a5", color: "#94a3b8"
+                      border: "2px dashed #e2e8f0", color: "#94a3b8"
                     }}>
-                      <FaBiohazard size={36} style={{ opacity: 0.2, marginBottom: "10px" }} />
-                      <div style={{ fontSize: "14px" }}>Aucun sac infecté en attente</div>
+                      <FaSoap size={36} style={{ opacity: 0.3, marginBottom: "12px" }} />
+                      <div style={{ fontSize: "14px", fontWeight: 500 }}>
+                        En attente du scan de la machine
+                      </div>
                       <div style={{ fontSize: "12px", marginTop: "4px" }}>
-                        Scannez un sac ou actualisez la liste
+                        Scannez le code de la machine dans le champ ci-dessus
                       </div>
                     </div>
-                  ) : (
-                    sacsInfectes.map(sac => (
-                      <CarteSacInfecte key={sac.numeroSac} sac={sac} />
-                    ))
+                  )}
+
+                  {(etapeInfecte === "SACS" || etapeInfecte === "LAVAGE") && (
+                    <div style={{
+                      background: "#f8fafc", borderRadius: "14px",
+                      padding: "16px", border: "1px solid #e2e8f0"
+                    }}>
+                      <div style={{
+                        display: "flex", justifyContent: "space-between",
+                        alignItems: "center", marginBottom: "14px"
+                      }}>
+                        <div style={{
+                          fontWeight: 700, fontSize: "14px",
+                          display: "flex", alignItems: "center", gap: "8px",
+                          color: "#dc2626"
+                        }}>
+                          <FaBiohazard size={14} /> Sacs disponibles
+                          <span style={{
+                            background: "#fee2e2", padding: "2px 8px",
+                            borderRadius: "10px", fontSize: "11px", fontWeight: 500,
+                            color: "#dc2626"
+                          }}>
+                            {sacsDisponibles.length}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          {machineInfecte && (
+                            <span style={{
+                              fontSize: "11px",
+                              color: "#64748b",
+                              background: "#f1f5f9",
+                              padding: "2px 10px",
+                              borderRadius: "10px"
+                            }}>
+                              {machineInfecte.code}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {loadingSacs ? (
+                        <div style={{ textAlign: "center", padding: "24px", color: "#94a3b8" }}>
+                          <FaSpinner style={{ animation: "spin 1s linear infinite" }} /> Chargement...
+                        </div>
+                      ) : sacsDisponibles.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "30px", color: "#94a3b8", fontSize: "13px" }}>
+                          <FaBoxes size={30} style={{ opacity: 0.2, marginBottom: "8px" }} />
+                          <div>Aucun sac disponible</div>
+                        </div>
+                      ) : (
+                        <div style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fill, minmax(210px,1fr))",
+                          gap: "10px", maxHeight: "380px", overflowY: "auto"
+                        }}>
+                          {sacsDisponibles.map(sac => {
+                            const estSelectionne = sacsSelectionnes.find(s => s.numeroSac === sac.numeroSac);
+                            return (
+                              <div
+                                key={sac.id}
+                                onClick={() => {
+                                  if (!estSelectionne && (etapeInfecte === "SACS" || etapeInfecte === "LAVAGE") && !cycleTermineInfecte && !cycleEnCours) {
+                                    scannerSacInfecte(sac.numeroSac);
+                                  }
+                                }}
+                                style={{
+                                  padding: "12px 14px",
+                                  borderRadius: "10px",
+                                  border: `2px solid ${estSelectionne ? "#dc2626" : "#e2e8f0"}`,
+                                  background: estSelectionne ? "#fef2f2" : "white",
+                                  cursor: (etapeInfecte === "SACS" || etapeInfecte === "LAVAGE") && !estSelectionne && !cycleTermineInfecte && !cycleEnCours ? "pointer" : "not-allowed",
+                                  transition: "all 0.15s",
+                                  opacity: estSelectionne ? 0.7 : 1,
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "4px"
+                                }}
+                                onMouseEnter={e => {
+                                  if (!estSelectionne && (etapeInfecte === "SACS" || etapeInfecte === "LAVAGE") && !cycleTermineInfecte && !cycleEnCours) {
+                                    e.currentTarget.style.borderColor = "#dc2626";
+                                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(220,38,38,0.15)";
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  if (!estSelectionne) {
+                                    e.currentTarget.style.borderColor = "#e2e8f0";
+                                    e.currentTarget.style.boxShadow = "none";
+                                  }
+                                }}
+                              >
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                  <span style={{ fontWeight: 700, fontSize: "13px", color: "#dc2626" }}>
+                                    {sac.numeroSac}
+                                  </span>
+                                  {estSelectionne && (
+                                    <Badge style={{ background: "#dc2626", color: "white", fontSize: "9px" }}>
+                                      ✓ Sélectionné
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: "11px", color: "#64748b" }}>
+                                  {sac.quantiteDeclaree || 0} articles
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Écran terminé infecté */}
+                  {etapeInfecte === "TERMINE" && cycleTermineInfecte && (
+                    <div style={{
+                      textAlign: "center", padding: "48px 20px",
+                      background: "#f0fdf4", borderRadius: "16px",
+                      border: "2px solid #22c55e"
+                    }}>
+                      <div style={{ fontSize: "56px", marginBottom: "12px" }}>✅</div>
+                      <div style={{ fontWeight: 800, fontSize: "20px", marginBottom: "8px", color: "#15803d" }}>
+                        Cycle infecté terminé !
+                      </div>
+                      <div style={{ color: "#64748b", marginBottom: "24px", fontSize: "14px" }}>
+                        {sacsSelectionnes.length} sac(s) lavés avec succès
+                      </div>
+                      <button onClick={nouveauCycleInfecte} style={{
+                        padding: "12px 28px", borderRadius: "10px", border: "none",
+                        background: "linear-gradient(135deg,#10b981,#059669)",
+                        color: "white", fontWeight: 700, cursor: "pointer", fontSize: "15px"
+                      }}>
+                        Nouveau cycle →
+                      </button>
+                    </div>
                   )}
                 </div>
 
-                {/* Colonne droite : GuideSacInfecte */}
-                <GuideSacInfecte />
+                {/* Colonne droite - Recap avec timer et boutons */}
+                <RecapChargementInfecte
+                  sacsSelectionnes={sacsSelectionnes}
+                  poidsTotal={totalArticles}
+                  onRetirer={retirerSac}
+                  onTerminer={etapeInfecte === "SACS" ? lancerCycleInfecte : terminerCycleInfecte}
+                  onArreter={arreterCycleInfecte}
+                  onNouveauCycle={nouveauCycleInfecte}
+                  estTermine={cycleTermineInfecte}
+                  estEnLavage={cycleEnCours}
+                  tempsEcoule={tempsEcoule}
+                />
               </div>
             )}
-
-            {/* Footer */}
-            <div style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              marginTop: "16px", paddingTop: "16px",
-              borderTop: "1px solid #e2e8f0",
-              fontSize: "12px", color: "#64748b", flexWrap: "wrap", gap: "8px"
-            }}>
-              <div style={{ display: "flex", gap: "16px" }}>
-                {onglet === "BLANC" && (
-                  <>
-                    <span>⬜ Lots : <strong style={{ color: "#10b981" }}>{lotsSelectionnes.length}</strong></span>
-                    <span>⚖️ Poids : <strong style={{ color: "#10b981" }}>{poidsTotal.toFixed(1)} kg</strong></span>
-                  </>
-                )}
-                {onglet === "INFECTE" && (
-                  <>
-                    <span>🔴 Sacs : <strong style={{ color: "#dc2626" }}>{sacsInfectes.length}</strong></span>
-                    <span>🫧 En lavage : <strong style={{ color: "#7c3aed" }}>
-                      {sacsInfectes.filter(s => s.etat === "EN_LAVAGE").length}
-                    </strong></span>
-                  </>
-                )}
-              </div>
-              <span style={{
-                padding: "2px 10px", borderRadius: "8px",
-                background: onglet === "BLANC" ? "#dbeafe" : "#fee2e2",
-                color: onglet === "BLANC" ? "#0ea5e9" : "#dc2626",
-                fontSize: "11px", fontWeight: 700
-              }}>
-                {onglet === "BLANC" ? "⬜ Linge Blanc" : "🔴 Linge Infecté"}
-              </span>
-            </div>
           </>
         )}
       </div>
@@ -515,8 +1260,6 @@ function LavageInner() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Export wrappé dans LavageProvider
 // ─────────────────────────────────────────────────────────────────────────────
 export default function LavageList() {
   return (

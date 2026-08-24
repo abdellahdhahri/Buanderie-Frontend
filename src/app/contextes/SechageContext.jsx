@@ -58,7 +58,8 @@ export function SechageProvider({ children }) {
       const r = await fetch(`${API_URL}/api/lots`);
       if (r.ok) {
         const tous = await r.json();
-        setLotsDisponibles(tous.filter(l => l.etat === "LAVE" || l.etat === "EN_TRI"));
+        setLotsDisponibles(tous.filter(l => l.etat === "LAVE" || l.etat === "EN_TRI" || l.etat === "PRET_SECHAGE"));
+      console.log("la liste de slots disponible est ================= ",tous)
       }
     } catch {} finally { setLoadingLots(false); }
   }, []);

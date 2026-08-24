@@ -43,15 +43,19 @@ function ReceptionInner() {
   const rfidTagsRef = useRef(null);
   const isMounted = useRef(true);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
+  // ✅ Récupérer l'agent depuis localStorage et le synchroniser avec le contexte
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
       setAgent(agentData);
+      // ✅ Synchroniser avec le contexte en appelant scanAgent
+      scanAgent(agentData.matricule).catch(() => {
+        console.warn("Impossible de synchroniser l'agent avec le contexte");
+      });
     } else {
       setAgent(null);
     }
-  }, []);
+  }, [scanAgent]);
 
   // ✅ Si l'agent du contexte change, mettre à jour l'agent local
   useEffect(() => {
@@ -251,7 +255,7 @@ function ReceptionInner() {
           </div>
         )}
 
-        {/* ─── Zone scan ── */}
+        {/* ── Zone scan ── */}
         <div style={{ display: "flex", gap: "16px", marginBottom: "24px", flexWrap: "wrap", padding: "20px", background: "#f8fafc", borderRadius: "12px", border: agent ? "2px solid #22c55e" : "2px dashed #e2e8f0" }}>
           <div style={{ flex: 1, minWidth: "300px" }}>
             {mode === "BARCODE" ? (
