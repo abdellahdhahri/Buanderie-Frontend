@@ -1,3 +1,4 @@
+// pages/Distribution/DistributionChambre.js
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   FaUser, FaBed, FaRedo, FaSpinner, FaCheckDouble,
@@ -6,8 +7,14 @@ import {
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import ScanInput from "../../components/utils/shared/ScanInput";
-import { cat, apiCall } from "../collage/collecteUtils";
-import { getAgent, isAgentConnected } from "../../services/agentService";
+import {
+  getAgentFromStorage,
+  isAgentConnected,
+  fetchChambre,
+  poserLinge,
+  fetchAgentByCode,
+  getCategorie
+} from "../../services/distributionChambreService";
 import Swal from "sweetalert2";
 import "../Linge/WorkflowList.css";
 
@@ -178,7 +185,7 @@ function CarteLit({ lit, actif, onClick }) {
       {nb > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 4 }}>
           {lit.lingesPoses.map((l, i) => {
-            const c = cat(l.categorie);
+            const c = getCategorie(l.categorie);
             return (
               <span key={i} style={{
                 fontSize: 10,
@@ -264,8 +271,9 @@ function Resume({ res, onNouvelle, onTerminer }) {
   );
 }
 
+// ─── COMPOSANT PRINCIPAL ──────────────────────────────────────────────────
 export default function DistributionChambre() {
-  const [etape, setEtape] = useState("CHAMBRE"); // ✅ Changé de "AGENT" à "CHAMBRE"
+  const [etape, setEtape] = useState("CHAMBRE");
   const [agent, setAgent] = useState(null);
   const [chambre, setChambre] = useState(null);
   const [litActif, setLitActif] = useState(null);
@@ -284,22 +292,25 @@ export default function DistributionChambre() {
   useEffect(() => { chambreRef.current = chambre; }, [chambre]);
   useEffect(() => { litRef.current = litActif; }, [litActif]);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
   useEffect(() => {
-    const agentData = getAgent();
-    if (agentData && isAgentConnected()) {
+    console.log("🔍 Recherche de l'agent dans le stockage...");
+    const agentData = getAgentFromStorage();
+    
+    if (agentData) {
+      console.log("✅ Agent trouvé:", agentData);
       setAgent(agentData);
       setEtape("CHAMBRE");
       setScanStatus({
         loading: false,
-        success: { 
-          message: `👤 Agent ${agentData.nom}`, 
-          detail: `Connecté · ${agentData.matricule}` 
+        success: {
+          message: `👤 Agent ${agentData.nom}`,
+          detail: `Connecté · ${agentData.codeBarre || agentData.matricule}`
         },
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
     } else {
+      console.warn("⚠️ Aucun agent trouvé dans le stockage");
       setEtape("CHAMBRE");
       setScanStatus({
         loading: false,
@@ -309,7 +320,6 @@ export default function DistributionChambre() {
     }
   }, []);
 
-  // ─── Focus permanent ──────────────────────────────────────────────────
   useEffect(() => {
     const keepFocus = () => {
       if (scanInputRef.current && !document.querySelector('[data-modal="true"]')) {
@@ -321,20 +331,6 @@ export default function DistributionChambre() {
     return () => clearInterval(id);
   }, []);
 
-  // ─── Vérifier si un code est un agent ──────────────────────────────────
-  const verifierSiAgent = useCallback(async (code) => {
-    try {
-      const res = await fetch(`http://localhost:8082/api/agents/matricule/${code}`);
-      if (res.ok) {
-        return await res.json();
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  // ─── Clôturer la distribution ──────────────────────────────────────────
   const cloturerDistribution = useCallback(async () => {
     if (poses.length === 0) {
       await Swal.fire({
@@ -372,7 +368,6 @@ export default function DistributionChambre() {
     return true;
   }, [poses, chambre]);
 
-  // ─── Scan Chambre ──────────────────────────────────────────────────────
   const handleChambre = useCallback(async code => {
     if (!agent) {
       await Swal.fire({
@@ -387,10 +382,8 @@ export default function DistributionChambre() {
     setLoading(true);
     setScanStatus({ loading: true, code });
     try {
-      const res = await apiCall("/api/distribution/chambre", {
-        codeBarre: code,
-        matriculeAgent: agent.matricule // ✅ Utiliser agent du localStorage
-      }, "GET");
+      const res = await fetchChambre(code);
+      
       setChambre({
         chambreId: res.chambreId,
         codeChambre: res.codeChambre,
@@ -425,7 +418,6 @@ export default function DistributionChambre() {
     }
   }, [agent]);
 
-  // ─── Scan Linge ──────────────────────────────────────────────────────
   const handleScanLinge = useCallback(async code => {
     const lit = litRef.current;
     if (!lit) {
@@ -441,12 +433,8 @@ export default function DistributionChambre() {
     setScanStatus({ loading: true, code });
     try {
       const c = chambreRef.current;
-      const res = await apiCall("/api/distribution/chambre/lit", {
-        chambreId: c.chambreId,
-        litId: lit.litId,
-        codeOuTag: code,
-        matriculeAgent: agent.matricule // ✅ Utiliser agent du localStorage
-      });
+      const res = await poserLinge(c.chambreId, lit.litId, code);
+      
       const linge = c.disponibles.find(l => l.codeBarre === code || l.lingeId === res.lingeId)
         || { lingeId: res.lingeId, codeBarre: res.codeBarre, categorie: res.categorie };
 
@@ -485,30 +473,42 @@ export default function DistributionChambre() {
     } finally {
       setLoading(false);
     }
-  }, [agent]);
+  }, []);
 
   // ─── Gestion scan ──────────────────────────────────────────────────────
   const handleScan = useCallback(async code => {
     if (!code || loading) return;
     setScanVal("");
 
-    // ✅ Étape CHAMBRE : scan directement la chambre
+    console.log("🔍 Scan reçu:", code, "Étape:", etape);
+
+    // Étape CHAMBRE : scan directement la chambre
     if (etape === "CHAMBRE") {
+      console.log("🏢 Scan chambre:", code);
       await handleChambre(code);
       return;
     }
 
-    // ✅ Étape DISTRIBUER : détecter agent pour clôturer
+    // Étape DISTRIBUER
     if (etape === "DISTRIBUER") {
-      const agentTrouve = await verifierSiAgent(code);
-      if (agentTrouve) {
-        await cloturerDistribution();
-      } else {
-        await handleScanLinge(code);
+      // ✅ Vérifier si c'est un matricule agent avec la bonne API
+      try {
+        const agentTrouve = await fetchAgentByCode(code.trim());
+        if (agentTrouve) {
+          console.log("🔄 Agent trouvé, clôture de la distribution");
+          await cloturerDistribution();
+          return;
+        }
+      } catch (e) {
+        // Ce n'est pas un agent, continuer comme un linge
+        console.log("❌ Ce n'est pas un agent valide:", e.message);
       }
-      return;
+      
+      // Si ce n'est pas un agent, c'est un linge
+      console.log("👕 Pose du linge:", code);
+      await handleScanLinge(code);
     }
-  }, [etape, loading, handleChambre, handleScanLinge, verifierSiAgent, cloturerDistribution]);
+  }, [etape, loading, handleChambre, handleScanLinge, cloturerDistribution]);
 
   // ─── Reset ──────────────────────────────────────────────────────────────
   const reset = useCallback(async () => {
@@ -525,7 +525,6 @@ export default function DistributionChambre() {
       });
       if (!result.isConfirmed) return;
     }
-    setAgent(null);
     setChambre(null);
     setLitActif(null);
     setPoses([]);
@@ -635,7 +634,7 @@ export default function DistributionChambre() {
                 <FaUser color="#7c3aed" size={16} />
                 <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>{agent.nom}</span>
                 <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {agent.matricule}
+                  {agent.codeBarre || agent.matricule}
                 </Badge>
               </div>
             )}

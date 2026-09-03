@@ -114,7 +114,6 @@ function useDashboard() {
   return { data, loading, error, lastUpdate, refresh: fetchData };
 }
 
-// ─── KPI CARD ──────────────────────────────────────────────────────────────
 function KpiCard({ label, value, icon, color, trend, trendValue }) {
   const isUp = trend === 'up';
   return (

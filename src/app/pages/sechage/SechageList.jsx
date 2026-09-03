@@ -23,19 +23,16 @@ function SechageInner() {
   const [searchLot, setSearchLot] = useState("");
   const [agent,     setAgent]     = useState(null);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
       setAgent(agentData);
-      // Synchroniser avec le contexte
       if (identifierAgent) {
-        identifierAgent(agentData.matricule).catch(() => {});
+        identifierAgent(agentData.codeBarre).catch(() => {});
       }
     }
   }, []);
 
-  // ✅ Si l'agent du contexte change, mettre à jour l'agent local
   useEffect(() => {
     if (agentFromContext) {
       setAgent(agentFromContext);
@@ -49,7 +46,6 @@ function SechageInner() {
   const handleScan = async (code) => {
     setScanVal("");
     if (!agent) {
-      // ✅ Si pas d'agent, on essaie de l'identifier via le contexte
       if (identifierAgent) {
         await identifierAgent(code);
       }
@@ -80,7 +76,6 @@ function SechageInner() {
     <div className="collecte-container">
       <LotInfoDialogSechage />
 
-      {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "32px" }}>
         <div style={{
           display: "flex",
@@ -184,7 +179,6 @@ function SechageInner() {
           </button>
         </div>
 
-        {/* ─── Message si agent non connecté ──────────────────────────────── */}
         {!agent && (
           <div style={{
             padding: "12px 16px",

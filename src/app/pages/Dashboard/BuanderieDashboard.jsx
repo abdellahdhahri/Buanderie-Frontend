@@ -53,8 +53,11 @@ export default function DashboardBuanderie() {
                                 {/* Front Content */}
                                 <div className="card-front">
                                     <div className="icon-wrapper">
-                                        {React.cloneElement(item.icon, { width: 40, height: 40 })}
-                                    </div>
+{item.icon &&
+  React.cloneElement(item.icon, {
+    width: 40,
+    height: 40,
+  })}                                    </div>
                                     <h3>{item.label}</h3>
                                     {/* <p className="card-description">
                                         Gérer les {item.label.toLowerCase()} de la buanderie
@@ -69,10 +72,11 @@ export default function DashboardBuanderie() {
 >                                        {item.children?.map((child, idx) => (
                                             <Link key={idx} to={child.path || '#'} className="sub-module-item">
                                                 <div className="sub-module-icon">
-                                                    {React.cloneElement(child.icon, {
-                                                        width: item.children?.length > 4 ? 14 : 18,
-                                                        height: item.children?.length > 4 ? 14 : 18
-                                                    })}
+                                                   {child.icon &&
+  React.cloneElement(child.icon, {
+    width: item.children?.length > 4 ? 14 : 18,
+    height: item.children?.length > 4 ? 14 : 18,
+  })}
                                                 </div>
                                                 <span>{child.label}</span>
                                             </Link>

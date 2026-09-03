@@ -323,7 +323,7 @@ function CarteLit({ lit, onPropre, onManquant }) {
 // ─── PAGE ──────────────────────────────────────────────────────────────────
 export default function ColageList() {
   const { showAlert, showConfirm } = useModal();
-  const [etape, setEtape] = useState("CHAMBRE"); // ✅ Directement CHAMBRE
+  const [etape, setEtape] = useState("CHAMBRE");
   const [agent, setAgent] = useState(null);
   const [collecte, setCollecte] = useState(null);
   const [litEnCours, setLitEnCours] = useState(null);
@@ -350,8 +350,8 @@ export default function ColageList() {
       setScanStatus({
         loading: false,
         success: { 
-          message: `👤 Agent ${agentData.nom}`, 
-          detail: `Connecté · ${agentData.matricule}` 
+          message: `👤 ${agentData.nomPrenom || agentData.nom}`, 
+          detail: `Connecté · ${agentData.codeBarre || agentData.matricule}` 
         },
         error: null
       });
@@ -414,19 +414,6 @@ export default function ColageList() {
     } : p);
   }, []);
 
-  // ─── Vérifier si un code est un agent (UNIQUEMENT pour la clôture en SCAN) ──
-  const verifierSiAgent = useCallback(async (code) => {
-    try {
-      const res = await fetch(`${API_URL}/api/agents/matricule/${code}`);
-      if (res.ok) {
-        return await res.json();
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }, []);
-
   // ─── Clôturer automatiquement ──────────────────────────────────────────
   const cloturerEtRetourner = useCallback(async () => {
     if (!collecte) return;
@@ -484,10 +471,10 @@ export default function ColageList() {
     setLoading(true);
     setScanStatus({ loading: true, code: code });
     try {
-      // ✅ URL CORRECTE
-const chRes = await fetch(
-  `${API_URL}/api/sqlserver/chambres/code/${encodeURIComponent(code)}?code=${encodeURIComponent(code)}`
-);      
+      const chRes = await fetch(
+          `${API_URL}/api/sqlserver/chambres/code/${encodeURIComponent(code)}`
+      );
+      
       if (!chRes.ok) {
         setScanStatus({ loading: false, success: null, error: "Chambre introuvable" });
         showAlert("❌ Chambre introuvable", code, "error");
@@ -497,7 +484,7 @@ const chRes = await fetch(
       
       const res = await apiCall("/api/collecte/chambre/ouvrir", {
         codeBarre: ch.codeBarre || ch.code || code,
-        matriculeAgent: agent.matricule
+        matriculeAgent: agent.codeBarre || agent.matricule
       });
       
       setCollecte({
@@ -520,54 +507,7 @@ const chRes = await fetch(
     } finally { setLoading(false); }
   }, [agent, showAlert]);
 
-  // ─── Gestion du scan principal ──────────────────────────────────────────
-  const handleScan = useCallback(async (code) => {
-    if (!code) return;
-    
-    // ✅ ÉTAPE CHAMBRE : on scanne directement la chambre (pas de vérification agent)
-    if (etape === "CHAMBRE") {
-      await handleChambre(code);
-      return;
-    }
-    
-    // ✅ ÉTAPE SCAN : on vérifie si c'est un agent pour clôturer
-    if (etape === "SCAN") {
-      // Vérifier si le code est un agent
-      const agentTrouve = await verifierSiAgent(code);
-      
-      if (agentTrouve && collecte) {
-        // Clôturer la collecte
-        await cloturerEtRetourner();
-        return;
-      }
-      
-      // Sinon, traiter le scan de lit ou de bac
-      if (litEnCours) {
-        await handleScanBac(code);
-        return;
-      }
-      handleScanLit(code);
-    }
-  }, [etape, collecte, litEnCours, verifierSiAgent, cloturerEtRetourner, handleChambre]);
-
-  const handleScanLit = useCallback((code) => {
-    const lit = collecteRef.current?.lits?.find(l => l.codeLit === code || String(l.litId) === code);
-    if (!lit) {
-      showAlert("❌ Lit introuvable", code, "error");
-      return;
-    }
-    if (lit.statut) {
-      showAlert("⚠️ Lit déjà traité", lit.codeLit, "info");
-      return;
-    }
-    setLitEnCours(lit);
-    showAlert(
-      "📋 Lit scanné",
-      lit.estInfecte ? "⚠️ Infecté — scannez un bac ROUGE" : "Scannez le bac",
-      lit.estInfecte ? "warning" : "success"
-    );
-  }, [showAlert]);
-
+  // ─── Scan Bac ──────────────────────────────────────────────────────────
   const handleScanBac = useCallback(async (code) => {
     if (!litEnCours) return;
     setLoading(true);
@@ -598,6 +538,57 @@ const chRes = await fetch(
       showAlert("❌ Erreur", e.message, "error");
     } finally { setLoading(false); }
   }, [litEnCours, showAlert, majLit]);
+
+  // ─── Gestion du scan principal ──────────────────────────────────────────
+  const handleScan = useCallback(async (code) => {
+    if (!code) return;
+    
+    // ✅ ÉTAPE CHAMBRE : on scanne directement la chambre
+    if (etape === "CHAMBRE") {
+      await handleChambre(code);
+      return;
+    }
+    
+    // ✅ ÉTAPE SCAN
+    if (etape === "SCAN") {
+      // 1. Vérifier si c'est un lit
+      const lit = collecteRef.current?.lits?.find(
+        l => l.codeLit === code || String(l.litId) === code
+      );
+      
+      if (lit && !lit.statut) {
+        setLitEnCours(lit);
+        showAlert(
+          "📋 Lit scanné",
+          lit.estInfecte ? "⚠️ Infecté — scannez un bac ROUGE" : "Scannez le bac",
+          lit.estInfecte ? "warning" : "success"
+        );
+        return;
+      }
+      
+      // 2. Vérifier si c'est un agent (pour clôturer)
+      try {
+        const res = await fetch(`${API_URL}/api/agents/matricule/${code}`);
+        if (res.ok) {
+          const agentTrouve = await res.json();
+          if (agentTrouve && collecte) {
+            await cloturerEtRetourner();
+            return;
+          }
+        }
+      } catch {
+        // Ignorer l'erreur si ce n'est pas un agent
+      }
+      
+      // 3. Si on a un lit en cours, c'est un bac
+      if (litEnCours) {
+        await handleScanBac(code);
+        return;
+      }
+      
+      showAlert("❌ Code non reconnu", "Scannez un lit, un bac ou un badge agent", "error");
+    }
+  }, [etape, collecte, litEnCours, cloturerEtRetourner, handleChambre, handleScanBac]);
 
   const handlePropre = useCallback(async (linge) => {
     setLoading(true);
@@ -691,7 +682,7 @@ const chRes = await fetch(
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
+              {agent ? `Agent: ${agent.nomPrenom || agent.nom}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -726,9 +717,11 @@ const chRes = await fetch(
                 border: "1px solid #e9d5ff"
               }}>
                 <FaUser color="#7c3aed" size={16} />
-                <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>{agent.nom}</span>
+                <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>
+                  {agent.nomPrenom || agent.nom}
+                </span>
                 <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {agent.matricule}
+                  {agent.codeBarre || agent.matricule}
                 </Badge>
               </div>
             )}

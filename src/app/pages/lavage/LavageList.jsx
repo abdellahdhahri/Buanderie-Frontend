@@ -298,25 +298,34 @@ function LavageInner() {
 
   const scanInputRef = useRef(null);
 
-  //  Récupérer l'agent depuis localStorage
+  // ✅ Récupérer l'agent depuis localStorage
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
-      setAgent(agentData);
+      // ✅ Utiliser les données du localStorage
+      const ag = {
+        matricule: agentData.codeBarre || agentData.matricule,
+        nom: agentData.nom || "Inconnu",
+        prenom: agentData.prenom || "",
+        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+        codeBarre: agentData.codeBarre || agentData.matricule,
+        id: agentData.id,
+        poste: agentData.poste || "AGENT_LAVAGE"
+      };
+      setAgent(ag);
       if (identifierAgent) {
-        identifierAgent(agentData.matricule).catch(() => {});
+        identifierAgent(ag.codeBarre || ag.matricule).catch(() => {});
       }
     }
   }, []);
 
-  //  Si l'agent du contexte change
+  // ✅ Si l'agent du contexte change
   useEffect(() => {
     if (agentFromContext) {
       setAgent(agentFromContext);
     }
   }, [agentFromContext]);
 
-  // Charger les lots et sacs selon le mode
   useEffect(() => {
     if (!agent) return;
     
@@ -329,7 +338,6 @@ function LavageInner() {
     }
   }, [modeLavage, agent, etapeBlanc, chargerLots, chargerSacsInfectes]);
 
-  // Timer pour le lavage infecté
   useEffect(() => {
     if (cycleEnCours && !cycleTermineInfecte) {
       const interval = setInterval(() => {
@@ -408,7 +416,7 @@ function LavageInner() {
     }
   }, [scannerMachine, chargerSacsInfectes]);
 
-  // ─── Scanner Sac Infecté (comme scanner un lot) ──────────────────────
+  // ─── Scanner Sac Infecté ──────────────────────────────────────────────
   const scannerSacInfecte = useCallback(async (code) => {
     if (!machineInfecte) {
       await Swal.fire({
@@ -499,7 +507,7 @@ function LavageInner() {
     try {
       for (const sac of sacsSelectionnes) {
         const res = await fetch(
-          `${API_URL}/api/sacs-infectes/laver?numeroSac=${encodeURIComponent(sac.numeroSac)}&matricule=${agent.matricule}&codeMachine=${machineInfecte.code}`,
+          `${API_URL}/api/sacs-infectes/laver?numeroSac=${encodeURIComponent(sac.numeroSac)}&matricule=${agent.codeBarre || agent.matricule}&codeMachine=${machineInfecte.code}`,
           { method: "PUT" }
         );
 
@@ -564,7 +572,7 @@ function LavageInner() {
     try {
       for (const sac of sacsSelectionnes) {
         await fetch(
-          `${API_URL}/api/sacs-infectes/terminer-lavage?numeroSac=${sac.numeroSac}&matricule=${agent.matricule}`,
+          `${API_URL}/api/sacs-infectes/terminer-lavage?numeroSac=${sac.numeroSac}&matricule=${agent.codeBarre || agent.matricule}`,
           { method: "PUT" }
         );
       }
@@ -614,7 +622,7 @@ function LavageInner() {
     try {
       for (const sac of sacsSelectionnes) {
         await fetch(
-          `${API_URL}/api/sacs-infectes/arreter-lavage?numeroSac=${sac.numeroSac}&matricule=${agent.matricule}`,
+          `${API_URL}/api/sacs-infectes/arreter-lavage?numeroSac=${sac.numeroSac}&matricule=${agent.codeBarre || agent.matricule}`,
           { method: "PUT" }
         );
       }
@@ -778,7 +786,7 @@ function LavageInner() {
       <LotInfoDialog />
       <ScanLingesPropresModal />
 
-      {/* ─── EN-TeTE ─────────────────────────────────────────────────────── */}
+      {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "32px" }}>
         <div style={{
           display: "flex",
@@ -829,7 +837,7 @@ function LavageInner() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom || agent.matricule}` : "Aucun agent connecté"}
+              {agent ? `Agent: ${agent.nomPrenom || agent.nom || agent.matricule}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -855,7 +863,7 @@ function LavageInner() {
             </div>
             <div>
               <span style={{ fontWeight: 700, color: "#1e3a8a", fontSize: "18px" }}>
-                {agent ? `${agent.nom} (${agent.matricule})` : "Station de Lavage"}
+                {agent ? `${agent.nomPrenom || agent.nom} (${agent.codeBarre || agent.matricule})` : "Station de Lavage"}
               </span>
               <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <FaCalendarAlt size={10} />
@@ -901,6 +909,7 @@ function LavageInner() {
           </div>
         </div>
 
+        {/* ─── Message si agent non connecté ──────────────────────────────── */}
         {!agent && (
           <div style={{
             padding: "12px 16px",
@@ -958,7 +967,7 @@ function LavageInner() {
         {/* ─── Contenu selon le mode ──────────────────────────────────────── */}
         {agent && (
           <>
-            {/* ─── MODE NORMAL──────────────────────────── */}
+            {/* ─── MODE NORMAL - NE PAS TOUCHER ──────────────────────────── */}
             {modeLavage === "NORMAL" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px" }}>
                 <div>
@@ -1081,7 +1090,7 @@ function LavageInner() {
               </div>
             )}
 
-            {/* ─── MODE INFECTE──────────────────── */}
+            {/* ─── MODE INFECTE - MÊME STYLE QUE BLANC ──────────────────── */}
             {modeLavage === "INFECTE" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px" }}>
 
@@ -1260,7 +1269,6 @@ function LavageInner() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 export default function LavageList() {
   return (
     <LavageProvider>

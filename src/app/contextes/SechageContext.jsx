@@ -22,15 +22,30 @@ export function SechageProvider({ children }) {
   const [lotDialog,        setLotDialog]        = useState(null);
   const [loading,          setLoading]          = useState(false);
 
-  const identifierAgent = useCallback(async (code) => {
-    setLoading(true);
-    try {
-      const r = await fetch(`${API_URL}/api/agents/matricule/${code}`);
-      if (r.ok) { setAgent(await r.json()); return true; }
-      showAlert("❌ Agent introuvable", code, "error"); return false;
-    } catch { showAlert("Erreur réseau", "", "error"); return false; }
-    finally { setLoading(false); }
-  }, [showAlert]);
+ const identifierAgent = useCallback(async (code) => {
+  setLoading(true);
+
+  try {
+    const r = await fetch(
+      `${API_URL}/api/sqlserver/personnel/code/${code}?code=${encodeURIComponent(code)}`
+    );
+
+    if (r.ok) {
+      setAgent(await r.json());
+      return true;
+    }
+
+    showAlert("❌ Agent introuvable", code, "error");
+    return false;
+
+  } catch {
+    showAlert("Erreur réseau", "", "error");
+    return false;
+
+  } finally {
+    setLoading(false);
+  }
+}, [showAlert]);
 
   const scannerMachine = useCallback(async (code) => {
     setLoading(true);

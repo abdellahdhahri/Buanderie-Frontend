@@ -553,7 +553,7 @@ function CarteLinge({ linge, bacBlanc, onBlanc, onPropre, onManquant }) {
 export default function CollageListService() {
   const { showAlert, showConfirm } = useModal();
 
-  const [etape, setEtape] = useState("SERVICE"); // ✅ Changé de "AGENT" à "SERVICE"
+  const [etape, setEtape] = useState("SERVICE");
   const [agent, setAgent] = useState(null);
   const [collecte, setCollecte] = useState(null);
   const [bacBlanc, setBacBlanc] = useState(null);
@@ -579,8 +579,8 @@ export default function CollageListService() {
       setScanStatus({
         loading: false,
         success: { 
-          message: `👤 Agent ${agentData.nom}`, 
-          detail: `Connecté · ${agentData.matricule}` 
+          message: `👤 ${agentData.nomPrenom || agentData.nom}`, 
+          detail: `Connecté · ${agentData.codeBarre || agentData.matricule}` 
         },
         error: null
       });
@@ -601,8 +601,6 @@ export default function CollageListService() {
     } : p);
   }, []);
 
-  // ✅ Suppression de handleAgent - on utilise l'agent du localStorage
-
   const handleService = useCallback(async code => {
     if (!agent) {
       showAlert("❌ Agent non connecté", "Veuillez vous reconnecter.", "error");
@@ -622,7 +620,7 @@ export default function CollageListService() {
       }
 
       const res = await apiCall("/api/collecte/service/ouvrir", {
-        matriculeAgent: agent.matricule, // ✅ Utiliser agent du localStorage
+        matriculeAgent: agent.codeBarre || agent.matricule,
         serviceId: svc.id
       });
       setCollecte({
@@ -736,7 +734,7 @@ export default function CollageListService() {
         {},
         "POST",
         {
-          matriculeAgent: agent.matricule, // ✅ Utiliser agent du localStorage
+          matriculeAgent: agent.codeBarre || agent.matricule,
           serviceId: collecteRef.current.serviceId,
           bacId,
           items,
@@ -775,7 +773,6 @@ export default function CollageListService() {
 
   const handleScan = useCallback(async code => {
     setScanVal("");
-    // ✅ Suppression de l'étape AGENT
     if (etape === "SERVICE") { await handleService(code); return; }
     if (etape === "BAC") { await handleBac(code); return; }
     if (etape === "SCAN") { await handleScanBlanc(code); }
@@ -856,7 +853,7 @@ export default function CollageListService() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
+              {agent ? `Agent: ${agent.nomPrenom || agent.nom}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -891,9 +888,11 @@ export default function CollageListService() {
                 border: "1px solid #e9d5ff"
               }}>
                 <FaUser color="#7c3aed" size={16} />
-                <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>{agent.nom}</span>
+                <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>
+                  {agent.nomPrenom || agent.nom}
+                </span>
                 <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {agent.matricule}
+                  {agent.codeBarre || agent.matricule}
                 </Badge>
               </div>
             )}

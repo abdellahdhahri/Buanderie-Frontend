@@ -43,21 +43,26 @@ function ReceptionInner() {
   const rfidTagsRef = useRef(null);
   const isMounted = useRef(true);
 
-  // ✅ Récupérer l'agent depuis localStorage et le synchroniser avec le contexte
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
-      setAgent(agentData);
-      // ✅ Synchroniser avec le contexte en appelant scanAgent
-      scanAgent(agentData.matricule).catch(() => {
-        console.warn("Impossible de synchroniser l'agent avec le contexte");
-      });
+      // ✅ Utiliser directement les données du localStorage sans appeler scanAgent
+      const ag = {
+        matricule: agentData.codeBarre || agentData.matricule,
+        nom: agentData.nom || "Inconnu",
+        prenom: agentData.prenom || "",
+        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+        codeBarre: agentData.codeBarre || agentData.matricule,
+        id: agentData.id,
+        poste: agentData.poste || "AGENT_RECEPTION"
+      };
+      setAgent(ag);
     } else {
       setAgent(null);
     }
-  }, [scanAgent]);
+  }, []);
 
-  // ✅ Si l'agent du contexte change, mettre à jour l'agent local
+  //  Si l'agent du contexte change, mettre à jour l'agent local
   useEffect(() => {
     if (agentFromContext) {
       setAgent(agentFromContext);
@@ -81,43 +86,79 @@ function ReceptionInner() {
     return () => clearInterval(id);
   }, [mode]);
 
-  useEffect(() => {
-    if (mode !== "BARCODE" || scanValue.trim().length < 3) return;
-    const t = setTimeout(() => {
-      const code = scanValue.trim();
-      setScanValue("");
-
-      if (!agent) {
-        scanAgent(code);
-      } else {
-        scanReception(code);
-      }
-    }, 400);
-    return () => clearTimeout(t);
-  }, [scanValue, mode, agent, scanAgent, scanReception]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
+useEffect(() => {
+  if (mode !== "BARCODE" || scanValue.trim().length < 3) return;
+  const t = setTimeout(() => {
     const code = scanValue.trim();
-    if (!code) return;
     setScanValue("");
 
     if (!agent) {
-      scanAgent(code);
+      const agentData = getAgent();
+      if (agentData && isAgentConnected()) {
+        const ag = {
+          matricule: agentData.codeBarre || agentData.matricule,
+          nom: agentData.nom || "Inconnu",
+          prenom: agentData.prenom || "",
+          nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+          codeBarre: agentData.codeBarre || agentData.matricule,
+          id: agentData.id,
+          poste: agentData.poste || "AGENT_RECEPTION"
+        };
+        setAgent(ag);
+        // ✅ Passer l'agent en paramètre
+        scanReception(code, ag);
+      } else {
+        scanAgent(code);
+      }
     } else {
-      scanReception(code);
+      // ✅ Passer l'agent en paramètre
+      scanReception(code, agent);
     }
-  };
+  }, 400);
+  return () => clearTimeout(t);
+}, [scanValue, mode, agent, scanAgent, scanReception]);
 
-  const handlePortique = async () => {
-    const tags = rfidTags.split(/[\s,;\n]+/).map(t => t.trim()).filter(Boolean);
-    setRfidLoading(true);
-    await passagePortique(rfidCodeBac.trim(), tags);
-    setRfidCodeBac("");
-    setRfidTags("");
-    setRfidLoading(false);
-  };
 
+
+ const handleSubmit = (e) => {
+  e.preventDefault();
+  const code = scanValue.trim();
+  if (!code) return;
+  setScanValue("");
+
+  if (!agent) {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      const ag = {
+        matricule: agentData.codeBarre || agentData.matricule,
+        nom: agentData.nom || "Inconnu",
+        prenom: agentData.prenom || "",
+        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+        codeBarre: agentData.codeBarre || agentData.matricule,
+        id: agentData.id,
+        poste: agentData.poste || "AGENT_RECEPTION"
+      };
+      setAgent(ag);
+      // Passer l'agent en paramètre
+      scanReception(code, ag);
+    } else {
+      scanAgent(code);
+    }
+  } else {
+    // Passer l'agent en paramètre
+    scanReception(code, agent);
+  }
+};
+
+const handlePortique = async () => {
+  const tags = rfidTags.split(/[\s,;\n]+/).map(t => t.trim()).filter(Boolean);
+  setRfidLoading(true);
+  // Passer l'agent en paramètre
+  await passagePortique(rfidCodeBac.trim(), tags, agent);
+  setRfidCodeBac("");
+  setRfidTags("");
+  setRfidLoading(false);
+};
   const handleReset = () => {
     setScanValue("");
     setRfidCodeBac("");
@@ -199,7 +240,7 @@ function ReceptionInner() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom || agent.matricule}` : "Aucun agent connecté"}
+              {agent ? `Agent: ${agent.nomPrenom || agent.nom || agent.matricule}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -227,7 +268,7 @@ function ReceptionInner() {
               <div style={{ fontWeight: 700, color: "#1e3a8a", fontSize: "20px" }}>Réception automatique</div>
               <div style={{ fontSize: "13px", color: "#64748b" }}>
                 {agent
-                  ? <span>Agent: <strong>{agent.nom || agent.matricule}</strong></span>
+                  ? <span>Agent: <strong>{agent.nomPrenom || agent.nom || agent.matricule}</strong></span>
                   : "Aucun agent connecté"
                 }
               </div>
@@ -749,8 +790,8 @@ function ReceptionInner() {
           <div style={{ display: "flex", gap: "20px", fontSize: "13px", color: "#64748b" }}>
             {agent && (
               <>
-                <span>Agent: <strong style={{ color: "#0f172a" }}>{agent.nom || agent.matricule}</strong></span>
-                <span>Matricule: <strong style={{ color: "#0f172a" }}>{agent.matricule}</strong></span>
+                <span>Agent: <strong style={{ color: "#0f172a" }}>{agent.nomPrenom || agent.nom || agent.matricule}</strong></span>
+                <span>Matricule: <strong style={{ color: "#0f172a" }}>{agent.codeBarre || agent.matricule}</strong></span>
               </>
             )}
             {!agent && (

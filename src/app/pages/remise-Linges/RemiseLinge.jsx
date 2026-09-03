@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+// pages/RemiseLinge/RemiseLinge.js
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 import {
@@ -11,10 +12,11 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import EtapesStepper from "../../components/utils/shared/EtapesStepper";
-import { getAgent, isAgentConnected } from "../../services/agentService";
+import { RemiseLingeProvider, useRemiseLinge } from "../../contextes/RemiseLingeContext";
+import { getCategorieInfo, formatDate, getRemiseStatutConfig } from "../../services/remiseLingeService";
 import "../Linge/WorkflowList.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+// ─── COMPOSANTS STATISTIQUES ────────────────────────────────────────────
 
 function ProgressionBar({ value, label }) {
   const pct = Math.min(Math.max(value, 0), 100);
@@ -46,7 +48,6 @@ function ProgressionBar({ value, label }) {
   );
 }
 
-// ─── COMPOSANT : Carte de statut ──────────────────────────────────────────
 function StatutCard({ label, value, icon, color, bg, subValue }) {
   return (
     <div style={{
@@ -87,10 +88,10 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
   );
 }
 
-// ─── COMPOSANT : Détail catégorie ─────────────────────────────────────────
 function CategorieRow({ categorie, collecte, livre, reste }) {
   const isComplete = reste === 0 && collecte > 0;
   const pct = collecte > 0 ? Math.round((livre / collecte) * 100) : 0;
+  const info = getCategorieInfo(categorie);
 
   return (
     <div style={{
@@ -105,8 +106,8 @@ function CategorieRow({ categorie, collecte, livre, reste }) {
       transition: "all 0.2s ease"
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
-        <span style={{ fontSize: "20px" }}>{categorie.emoji || '👕'}</span>
-        <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "14px" }}>{categorie.label || categorie}</span>
+        <span style={{ fontSize: "20px" }}>{info.emoji}</span>
+        <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "14px" }}>{info.label}</span>
         {isComplete ? (
           <Badge style={{ background: "#dcfce7", color: "#15803d", fontSize: "9px", padding: "2px 10px", borderRadius: "12px" }}>
             ✓ Complète
@@ -139,9 +140,10 @@ function CategorieRow({ categorie, collecte, livre, reste }) {
   );
 }
 
-// ─── COMPOSANT : Scan Status ──────────────────────────────────────────────
-function ScanStatus({ loading, success, error, code }) {
-  if (loading) {
+function ScanStatusComponent({ status }) {
+  if (!status) return null;
+
+  if (status.loading) {
     return (
       <div style={{
         padding: "14px 18px",
@@ -157,13 +159,13 @@ function ScanStatus({ loading, success, error, code }) {
         <FaSpinner className="animate-spin" color="#3b82f6" size={22} />
         <div>
           <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "14px", margin: 0 }}>Scan en cours...</p>
-          <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{code}</p>
+          <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{status.code}</p>
         </div>
       </div>
     );
   }
 
-  if (success) {
+  if (status.success) {
     return (
       <div style={{
         padding: "14px 18px",
@@ -190,14 +192,14 @@ function ScanStatus({ loading, success, error, code }) {
         <div>
           <p style={{ fontWeight: 600, color: "#15803d", fontSize: "14px", margin: 0 }}>✓ Linge livré avec succès</p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>
-            <strong>{success.codeBarre}</strong> · {success.categorie}
+            <strong>{status.success.codeBarre}</strong> · {status.success.categorie}
           </p>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (status.error) {
     return (
       <div style={{
         padding: "14px 18px",
@@ -223,7 +225,7 @@ function ScanStatus({ loading, success, error, code }) {
         </div>
         <div>
           <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "14px", margin: 0 }}>Erreur</p>
-          <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{error}</p>
+          <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{status.error}</p>
         </div>
       </div>
     );
@@ -232,37 +234,36 @@ function ScanStatus({ loading, success, error, code }) {
   return null;
 }
 
-// ─── PAGE PRINCIPALE ──────────────────────────────────────────────────────
-export default function RemiseLinge() {
+// ─── COMPOSANT PRINCIPAL ──────────────────────────────────────────────────
+
+function RemiseLingeInner() {
   const navigate = useNavigate();
+  const {
+    agentRemise,
+    agentCollecte,
+    remise,
+    collecteId,
+    statut,
+    remises,
+    loading,
+    scanStatus,
+    etape,
+    isCloturee,
+    scanAgentRemise,
+    scanAgentCollecte,
+    scanLinge,
+    chargerStatut,
+    chargerHistorique,
+    rafraichir,
+    resetAll,
+    clearScanStatus
+  } = useRemiseLinge();
 
-  // États principaux
-  const [etape, setEtape] = useState("AGENT_REMISE");
-  const [agentRemise, setAgentRemise] = useState(null);
-  const [agentCollecte, setAgentCollecte] = useState(null);
-  const [remise, setRemise] = useState(null);
-  const [collecteId, setCollecteId] = useState(null);
-  const [statut, setStatut] = useState(null);
-  const [remises, setRemises] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [scanValue, setScanValue] = useState("");
-  const [scanStatus, setScanStatus] = useState(null);
   const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
-
   const scanInputRef = useRef(null);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
-  useEffect(() => {
-    const agentData = getAgent();
-    if (agentData && isAgentConnected()) {
-      // Si l'agent est déjà connecté, on peut le définir comme agent de remise
-      setAgentRemise(agentData);
-      setEtape("AGENT_COLLECTE");
-      showAlert("Agent chargé", `✅ ${agentData.nom} (${agentData.matricule})`, "success", 1500);
-    }
-  }, []);
-
-  // ─── Alerte SweetAlert ──────────────────────────────────────────────────
+  // ─── Alertes ─────────────────────────────────────────────────────────────
   const showAlert = useCallback((title, text, icon = "info", timer = null) => {
     return Swal.fire({
       title,
@@ -277,257 +278,92 @@ export default function RemiseLinge() {
     });
   }, []);
 
-  // ─── Scan Agent Remise ──────────────────────────────────────────────────
-  const scanAgentRemise = useCallback(async (code) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/api/agents/matricule/${code}`);
-      if (res.ok) {
-        const ag = await res.json();
-        setAgentRemise(ag);
-        setEtape("AGENT_COLLECTE");
-        await showAlert("Agent identifié", `✅ ${ag.nom} (${ag.matricule})`, "success", 1500);
-        setTimeout(() => scanInputRef.current?.focus(), 200);
-        return true;
-      }
-      await showAlert("Agent introuvable", `❌ L'agent [${code}] n'existe pas.`, "error");
-      return false;
-    } catch {
-      await showAlert("Erreur réseau", "Veuillez vérifier votre connexion.", "error");
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [showAlert]);
-
-  // ─── Scan Agent Collecte et création remise ─────────────────────────────
-  const scanAgentCollecte = useCallback(async (code) => {
-    setLoading(true);
-    try {
-      // Vérifier l'agent de collecte
-      const res = await fetch(`${API_URL}/api/agents/matricule/${code}`);
-      if (!res.ok) {
-        await showAlert("Agent introuvable", `❌ L'agent [${code}] n'existe pas.`, "error");
-        return false;
-      }
-      const ag = await res.json();
-      setAgentCollecte(ag);
-
-      // Créer la remise avec les paramètres en query params
-      const createRes = await fetch(
-        `${API_URL}/api/remises-linge?matriculeAgentRemise=${agentRemise.matricule}&matriculeAgentCollecte=${ag.matricule}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
-        }
-      );
-
-      if (!createRes.ok) {
-        const txt = await createRes.text();
-        let msg = txt;
-        try { 
-          const json = JSON.parse(txt);
-          msg = json.message || json.error || txt;
-        } catch {}
-        
-        // Aucune collecte disponible → simple avertissement
-        if (msg.includes("Aucune collecte") || msg.includes("non clôturée")) {
-          await showAlert(
-            "Aucune collecte disponible",
-            `L'agent ${ag.nom} n'a pas de collecte non clôturée.`,
-            "info"
-          );
-          setAgentCollecte(null);
-          setEtape("AGENT_COLLECTE");
-          setTimeout(() => scanInputRef.current?.focus(), 200);
-          return false;
-        }
-        await showAlert("❌ Erreur", msg, "error");
-        return false;
-      }
-
-      const data = await createRes.json();
-      setRemise(data);
-      setCollecteId(data.collecte?.id);
-
-      await chargerStatut(data.collecte?.id);
-      await chargerHistorique(data.collecte?.id);
-
-      setEtape("SCAN");
-      await showAlert(
-        "✅ Remise créée",
-        `Remise ${data.numeroLivraison} · ${data.collecte?.numeroCollecte}`,
-        "success",
-        2000
-      );
-
-      setTimeout(() => scanInputRef.current?.focus(), 200);
-      return true;
-
-    } catch (err) {
-      await showAlert("❌ Erreur", err.message || "Erreur lors de la création", "error");
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [agentRemise, showAlert]);
-
-  // ─── Charger le statut de la collecte ───────────────────────────────────
-  const chargerStatut = useCallback(async (id) => {
-    if (!id) return;
-    try {
-      const res = await fetch(`${API_URL}/api/remises-linge/collecte/${id}/statut`);
-      if (res.ok) {
-        const data = await res.json();
-        setStatut(data);
-        return data;
-      }
-    } catch (err) {
-      console.error("Erreur chargement statut:", err);
-    }
-    return null;
-  }, []);
-
-  // ─── Charger l'historique des remises ──────────────────────────────────
-  const chargerHistorique = useCallback(async (id) => {
-    if (!id) return;
-    try {
-      const res = await fetch(`${API_URL}/api/remises-linge/collecte/${id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRemises(Array.isArray(data) ? data : []);
-      }
-    } catch (err) {
-      console.error("Erreur chargement historique:", err);
-    }
-  }, []);
-
-  // ─── Scanner un linge ────────────────────────────────────────────────────
+  // ─── Handlers ────────────────────────────────────────────────────────────
   const handleScan = useCallback(async (code) => {
-    if (!code?.trim() || !remise?.id || !collecteId) {
-      setScanValue("");
-      return;
-    }
-
-    if (statut?.statut === "CLOTUREE" || statut?.totalRestant === 0) {
-      await showAlert("Collecte terminée", "Cette collecte est déjà clôturée.", "info");
-      setScanValue("");
-      return;
-    }
+    if (!code?.trim()) return;
 
     setScanValue("");
-    setScanStatus({ loading: true, code: code.trim() });
 
     try {
-      const res = await fetch(
-        `${API_URL}/api/remises-linge/${remise.id}/scanner?codeBarre=${encodeURIComponent(code.trim())}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
+      // Étape 1: Scan Agent Remise
+      if (etape === "AGENT_REMISE") {
+        const agent = await scanAgentRemise(code.trim());
+        await showAlert(
+          "Agent identifié",
+          `✅ ${agent.nom} (${agent.matricule})`,
+          "success",
+          1500
+        );
+        setTimeout(() => scanInputRef.current?.focus(), 200);
+        return;
+      }
+
+      // Étape 2: Scan Agent Collecte
+      if (etape === "AGENT_COLLECTE") {
+        const result = await scanAgentCollecte(code.trim(), agentRemise);
+        await showAlert(
+          "✅ Remise créée",
+          `Remise ${result.remise.numeroLivraison} · ${result.remise.collecte?.numeroCollecte}`,
+          "success",
+          2000
+        );
+        setTimeout(() => scanInputRef.current?.focus(), 200);
+        return;
+      }
+
+      // Étape 3: Scan Linge
+      if (etape === "SCAN") {
+        const result = await scanLinge(code.trim());
+
+        if (result.isComplete) {
+          await Swal.fire({
+            title: "✅ Collecte terminée !",
+            text: "Tous les linges ont été livrés.",
+            icon: "success",
+            timer: 2500,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            confirmButtonColor: "#0d9488"
+          });
         }
-      );
 
-      if (!res.ok) {
-        const txt = await res.text();
-        let msg = txt;
-        try { 
-          const json = JSON.parse(txt);
-          msg = json.message || json.error || txt;
-        } catch {}
-        throw new Error(msg);
+        setTimeout(() => {
+          clearScanStatus();
+        }, 2000);
+        return;
       }
-
-      const data = await res.json();
-
-      setScanStatus({
-        loading: false,
-        success: { 
-          codeBarre: code.trim(), 
-          categorie: data.categorie,
-          quantiteRemise: data.quantiteRemise,
-          quantiteRestante: data.quantiteRestante
-        },
-        error: null,
-      });
-
-      if (data.remise) {
-        setRemise(data.remise);
-      }
-
-      // Recharger le statut après chaque scan réussi
-      const nouveauStatut = await chargerStatut(collecteId);
-      await chargerHistorique(collecteId);
-
-      if (nouveauStatut?.statut === "CLOTUREE" || nouveauStatut?.totalRestant === 0) {
-        await Swal.fire({
-          title: "✅ Collecte terminée !",
-          text: "Tous les linges ont été livrés.",
-          icon: "success",
-          timer: 2500,
-          timerProgressBar: true,
-          showConfirmButton: false,
-          confirmButtonColor: "#0d9488"
-        });
-      }
-
+    } catch (error) {
+      await showAlert("Erreur", error.message, "error");
       setTimeout(() => {
-        setScanStatus(null);
-      }, 2000);
-
-    } catch (err) {
-      setScanStatus({
-        loading: false,
-        success: null,
-        error: err.message || "Erreur lors du scan",
-      });
-
-      setTimeout(() => {
-        setScanStatus(null);
+        clearScanStatus();
       }, 3000);
     }
 
     setTimeout(() => scanInputRef.current?.focus(), 100);
-  }, [remise, collecteId, statut, chargerStatut, chargerHistorique, showAlert]);
-
-  // ─── Déconnecter ─────────────────────────────────────────────────────────
-  const resetAll = useCallback(() => {
-    setAgentRemise(null);
-    setAgentCollecte(null);
-    setRemise(null);
-    setCollecteId(null);
-    setStatut(null);
-    setRemises([]);
-    setScanValue("");
-    setScanStatus(null);
-    setEtape("AGENT_REMISE");
-    setTimeout(() => scanInputRef.current?.focus(), 200);
-  }, []);
-
-  // ─── Rafraîchir ──────────────────────────────────────────────────────────
-  const rafraichir = useCallback(async () => {
-    if (collecteId) {
-      await chargerStatut(collecteId);
-      await chargerHistorique(collecteId);
-      await showAlert("✅ Actualisé", "Les données ont été mises à jour.", "success", 1000);
-    }
-  }, [collecteId, chargerStatut, chargerHistorique, showAlert]);
+  }, [etape, agentRemise, scanAgentRemise, scanAgentCollecte, scanLinge, clearScanStatus, showAlert]);
 
   // ─── RENDU ──────────────────────────────────────────────────────────────
 
   const ETAPES = [
     { id: "AGENT_REMISE", label: "Agent remise", done: !!agentRemise },
     { id: "AGENT_COLLECTE", label: "Agent collecte", done: !!agentCollecte },
-    { id: "SCAN", label: "Scan", done: statut?.statut === "CLOTUREE" },
+    { id: "SCAN", label: "Scan", done: isCloturee },
   ];
 
   const getPlaceholder = () => {
     if (!agentRemise) return "👤 Scanner badge agent de remise...";
     if (!agentCollecte) return "👤 Scanner badge agent de collecte...";
-    if (statut?.statut === "CLOTUREE") return "🔒 Collecte terminée";
+    if (isCloturee) return "🔒 Collecte terminée";
     return "📦 Scanner le code-barres du linge...";
   };
 
-  const isCloturee = statut?.statut === "CLOTUREE" || statut?.totalRestant === 0;
+  const getBorderColor = () => {
+    if (!agentRemise || (etape === "AGENT_COLLECTE" && !agentCollecte)) return "#dc2626";
+    if (isCloturee) return "#e2e8f0";
+    return "#0ea5e9";
+  };
+
+  const isDisabled = isCloturee || loading || !agentRemise;
 
   return (
     <div className="collecte-container">
@@ -580,6 +416,7 @@ export default function RemiseLinge() {
         boxShadow: "0 4px 20px rgba(0,0,0,0.06)"
       }}>
 
+        {/* ─── BARRE SUPÉRIEURE ─────────────────────────────────────────── */}
         <div style={{
           display: "flex",
           justifyContent: "space-between",
@@ -643,6 +480,7 @@ export default function RemiseLinge() {
                   borderRadius: "10px",
                   padding: "6px 14px"
                 }}
+                disabled={loading}
               >
                 <FaSpinner className={loading ? 'animate-spin' : ''} size={10} />
                 Rafraîchir
@@ -670,7 +508,7 @@ export default function RemiseLinge() {
         {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
-          border: `2px dashed ${!agentRemise || (etape === "AGENT_COLLECTE" && !agentCollecte) ? "#dc2626" : isCloturee ? "#e2e8f0" : "#0ea5e9"}`,
+          border: `2px dashed ${getBorderColor()}`,
           background: isCloturee ? "#f8fafc" : "white",
           borderRadius: "16px"
         }}>
@@ -680,26 +518,17 @@ export default function RemiseLinge() {
               placeholder={getPlaceholder()}
               value={scanValue}
               onChange={setScanValue}
-              onSubmit={(code) => {
-                if (!agentRemise) {
-                  scanAgentRemise(code);
-                } else if (!agentCollecte) {
-                  scanAgentCollecte(code);
-                } else {
-                  handleScan(code);
-                }
-              }}
-              borderColor={!agentRemise || (etape === "AGENT_COLLECTE" && !agentCollecte) ? "#dc2626" : isCloturee ? "#e2e8f0" : "#0ea5e9"}
+              onSubmit={handleScan}
+              borderColor={getBorderColor()}
               keepFocus={true}
               autoDebounce={true}
-              disabled={isCloturee || loading || !agentRemise}
+              disabled={isDisabled}
             />
-            {scanStatus && <ScanStatus {...scanStatus} />}
+            <ScanStatusComponent status={scanStatus} />
           </CardContent>
         </Card>
 
-        {/* ─── INFO AGENT ────────────────────────────────────────────────── */}
-
+        {/* ─── MESSAGES D'INFO ──────────────────────────────────────────── */}
         {!agentRemise && (
           <Card style={{ background: "#fef2f2", border: "1px solid #fca5a5", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">
@@ -737,9 +566,9 @@ export default function RemiseLinge() {
         )}
 
         {/* ─── TABLEAU DE BORD ──────────────────────────────────────────── */}
-        {etape === "SCAN" && (
+        {etape === "SCAN" && statut && (
           <>
-            {/* ─── BANNIÈRE CLÔTURE ─────────────────────────────────────── */}
+            {/* Bannière clôture */}
             {isCloturee && (
               <div style={{
                 padding: "20px",
@@ -764,14 +593,14 @@ export default function RemiseLinge() {
                   <div>
                     <p style={{ fontSize: "20px", fontWeight: 700, color: "#15803d", margin: 0 }}>✓ COLLECTE TERMINÉE</p>
                     <p style={{ fontSize: "14px", color: "#059669", margin: 0 }}>
-                      {statut?.totalLivre || 0} / {statut?.totalCollecte || 0} linges livrés · 100%
+                      {statut.totalLivre || 0} / {statut.totalCollecte || 0} linges livrés · 100%
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ─── STATUTS ───────────────────────────────────────────────── */}
+            {/* Cartes de statut */}
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
@@ -780,7 +609,7 @@ export default function RemiseLinge() {
             }}>
               <StatutCard
                 label="Total collecté"
-                value={statut?.totalCollecte || 0}
+                value={statut.totalCollecte || 0}
                 icon="📦"
                 color="#0ea5e9"
                 bg="#f0f9ff"
@@ -788,38 +617,38 @@ export default function RemiseLinge() {
               />
               <StatutCard
                 label="Total livré"
-                value={statut?.totalLivre || 0}
+                value={statut.totalLivre || 0}
                 icon="✅"
                 color="#059669"
                 bg="#f0fdf4"
-                subValue={`${statut?.pourcentage || 0}% du total`}
+                subValue={`${statut.pourcentage || 0}% du total`}
               />
               <StatutCard
                 label="Reste à livrer"
-                value={statut?.totalRestant || 0}
+                value={statut.totalRestant || 0}
                 icon="⏳"
-                color={statut?.totalRestant === 0 ? "#059669" : "#d97706"}
-                bg={statut?.totalRestant === 0 ? "#f0fdf4" : "#fffbeb"}
-                subValue={statut?.totalRestant === 0 ? "✓ Terminé" : "En attente"}
+                color={statut.totalRestant === 0 ? "#059669" : "#d97706"}
+                bg={statut.totalRestant === 0 ? "#f0fdf4" : "#fffbeb"}
+                subValue={statut.totalRestant === 0 ? "✓ Terminé" : "En attente"}
               />
               <StatutCard
                 label="Statut"
-                value={statut?.statut || '—'}
-                icon={statut?.statut === "CLOTUREE" ? "🏁" : "🔄"}
-                color={statut?.statut === "CLOTUREE" ? "#059669" : "#0ea5e9"}
-                bg={statut?.statut === "CLOTUREE" ? "#f0fdf4" : "#f0f9ff"}
-                subValue={statut?.statut === "CLOTUREE" ? "Collecte clôturée" : "En cours"}
+                value={statut.statut || '—'}
+                icon={statut.statut === "CLOTUREE" ? "🏁" : "🔄"}
+                color={statut.statut === "CLOTUREE" ? "#059669" : "#0ea5e9"}
+                bg={statut.statut === "CLOTUREE" ? "#f0fdf4" : "#f0f9ff"}
+                subValue={statut.statut === "CLOTUREE" ? "Collecte clôturée" : "En cours"}
               />
             </div>
 
-            {/* ─── BARRE DE PROGRESSION ────────────────────────────────── */}
+            {/* Barre de progression */}
             <ProgressionBar
-              value={statut?.pourcentage || 0}
+              value={statut.pourcentage || 0}
               label="Progression de la collecte"
             />
 
-            {/* ─── DÉTAIL PAR CATÉGORIE ────────────────────────────────── */}
-            {statut?.categories && statut.categories.length > 0 && (
+            {/* Détail par catégorie */}
+            {statut.categories && statut.categories.length > 0 && (
               <div style={{ marginBottom: "20px" }}>
                 <div style={{
                   display: "flex",
@@ -841,30 +670,20 @@ export default function RemiseLinge() {
                   </Badge>
                 </div>
                 <div>
-                  {statut.categories.map((cat, i) => {
-                    const categorieInfo = {
-                      label: cat.categorie,
-                      emoji: cat.categorie === 'DRAP' ? '🛏️' :
-                             cat.categorie === 'BLOUSE' ? '👔' :
-                             cat.categorie === 'PANTALON' ? '👖' :
-                             cat.categorie === 'SERVIETTE' ? '🧻' :
-                             cat.categorie === 'TAIE' ? '🛌' : '👕'
-                    };
-                    return (
-                      <CategorieRow
-                        key={i}
-                        categorie={categorieInfo}
-                        collecte={cat.quantiteCollectee}
-                        livre={cat.quantiteLivree}
-                        reste={cat.quantiteRestante}
-                      />
-                    );
-                  })}
+                  {statut.categories.map((cat, i) => (
+                    <CategorieRow
+                      key={i}
+                      categorie={cat.categorie}
+                      collecte={cat.quantiteCollectee}
+                      livre={cat.quantiteLivree}
+                      reste={cat.quantiteRestante}
+                    />
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* ─── HISTORIQUE ───────────────────────────────────────────── */}
+            {/* Historique */}
             <div>
               <button
                 onClick={() => setHistoriqueOuvert(!historiqueOuvert)}
@@ -913,12 +732,7 @@ export default function RemiseLinge() {
                   ) : (
                     <div style={{ maxHeight: "200px", overflowY: "auto" }}>
                       {remises.map((r, i) => {
-                        const statutConfig = {
-                          COMPLETEE: { bg: "#f0fdf4", text: "#15803d", icon: "✅" },
-                          PARTIELLE: { bg: "#fffbeb", text: "#d97706", icon: "⏳" },
-                          EN_COURS: { bg: "#eff6ff", text: "#1d4ed8", icon: "🔄" },
-                        }[r.etat] || { bg: "#f1f5f9", text: "#64748b", icon: "📦" };
-
+                        const config = getRemiseStatutConfig(r.etat);
                         return (
                           <div key={i} style={{
                             display: "flex",
@@ -935,18 +749,18 @@ export default function RemiseLinge() {
                                 {r.numeroLivraison || r.id}
                               </span>
                               <Badge style={{
-                                background: statutConfig.bg,
-                                color: statutConfig.text,
+                                background: config.bg,
+                                color: config.text,
                                 fontSize: "10px",
                                 padding: "2px 12px",
                                 borderRadius: "12px"
                               }}>
-                                {statutConfig.icon} {r.etat || '—'}
+                                {config.icon} {config.label}
                               </Badge>
                             </div>
                             <div style={{ display: "flex", gap: "16px", fontSize: "11px", color: "#94a3b8" }}>
                               <span>{r.agentRemiseNom || 'Agent'}</span>
-                              <span>{r.dateRemise ? new Date(r.dateRemise).toLocaleDateString('fr-FR') : '—'}</span>
+                              <span>{formatDate(r.dateRemise)}</span>
                               <span style={{ fontWeight: 600, color: "#0f172a" }}>{r.nbLinges || 0} linges</span>
                             </div>
                           </div>
@@ -975,5 +789,13 @@ export default function RemiseLinge() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function RemiseLinge() {
+  return (
+    <RemiseLingeProvider>
+      <RemiseLingeInner />
+    </RemiseLingeProvider>
   );
 }

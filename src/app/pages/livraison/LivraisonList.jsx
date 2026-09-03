@@ -1,12 +1,14 @@
+// pages/Livraison/LivraisonList.js
 import React, {
-  useState, useContext, useRef, useEffect,
+  useState, useRef, useEffect,
   useCallback, useMemo
 } from "react";
+import { useContext } from "react";
 import { ServiceContext } from "../../contextes/ServiceContext";
 import { useModal } from "../../contextes/ModalContext";
 import {
-  FaTruck, FaBarcode, FaUser, FaCheck, FaTimes,
-  FaSpinner, FaBoxes, FaHistory, FaWarehouse,
+  FaTruck, FaUser, FaCheck, FaTimes,
+  FaSpinner, FaBoxes, FaHistory, 
   FaCheckCircle, FaClock, FaSearch, FaBuilding, FaRedo,
   FaExclamationTriangle
 } from "react-icons/fa";
@@ -14,24 +16,21 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import ScanInput from "../../components/utils/shared/ScanInput";
-import { getAgent, isAgentConnected } from "../../services/agentService";
+import {
+  getAgentFromStorage,
+  isAgentConnected,
+  fetchAgentByMatricule,
+  fetchServiceByReference,
+  createDistribution,
+  fetchComparatifDistribution,
+  scanArticleForDistribution,
+  cloturerDistribution,
+  calculerStats,
+  isDistributionComplete,
+  getCategorie
+} from "../../services/distributionService";
 import Swal from "sweetalert2";
 import "../Linge/WorkflowList.css";
-
-const API = "http://localhost:8082";
-
-const CAT = {
-  DRAP: { label: "Drap", emoji: "🛏️", color: "#dc2626", bg: "#fee2e2", border: "#fca5a5" },
-  TAIE_OREILLER: { label: "Taie Oreiller", emoji: "💤", color: "#ea580c", bg: "#ffedd5", border: "#fdba74" },
-  SERVIETTE_BAIN: { label: "Serv. Bain", emoji: "🛁", color: "#d97706", bg: "#fef3c7", border: "#fcd34d" },
-  SERVIETTE_VISAGE: { label: "Serv. Visage", emoji: "🧻", color: "#65a30d", bg: "#ecfccb", border: "#a3e635" },
-  PEIGNOIR: { label: "Peignoir", emoji: "🥼", color: "#0891b2", bg: "#cffafe", border: "#67e8f9" },
-  NAPPE: { label: "Nappe", emoji: "🍽️", color: "#7c3aed", bg: "#ede9fe", border: "#c4b5fd" },
-  SERVIETTE_TABLE: { label: "Serv. Table", emoji: "🍴", color: "#be185d", bg: "#fce7f3", border: "#f9a8d4" },
-  UNIFORME: { label: "Uniforme", emoji: "👔", color: "#0f766e", bg: "#ccfbf1", border: "#5eead4" },
-  AUTRE: { label: "Autre", emoji: "📦", color: "#475569", bg: "#f1f5f9", border: "#cbd5e1" },
-};
-const cat = (id) => CAT[id] || { label: id, emoji: "📦", color: "#64748b", bg: "#f1f5f9", border: "#e2e8f0" };
 
 // ─── ScanStatus ──────────────────────────────────────────────────────────────
 function ScanStatus({ loading, success, error, code }) {
@@ -167,7 +166,7 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
 
 // ─── LigneComparatif ──────────────────────────────────────────────────────────
 function LigneComparatif({ item }) {
-  const c = cat(item.categorie);
+  const c = getCategorie(item.categorie);
   const livree = Number(item.quantiteLivree || 0);
   const demande = Number(item.quantiteDemandee || 0);
   const reste = Math.max(0, demande - livree);
@@ -249,31 +248,32 @@ export default function LivraisonList() {
   const distributionRef = useRefMirror(distribution);
   const scanInputRef = useRef(null);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
-  useEffect(() => {
-    const agentData = getAgent();
-    if (agentData && isAgentConnected()) {
-      setAgent(agentData);
-      setEtape("SERVICE");
-      setScanStatus({
-        loading: false,
-        success: { 
-          message: `👤 Agent ${agentData.nom}`, 
-          detail: `Connecté · ${agentData.matricule}` 
-        },
-        error: null
-      });
-      setTimeout(() => setScanStatus(null), 2000);
-    } else {
-      setEtape("SERVICE");
-      setScanStatus({
-        loading: false,
-        success: null,
-        error: "Aucun agent connecté — veuillez vous reconnecter"
-      });
-    }
-  }, []);
-
+ useEffect(() => {
+  
+  const agentData = getAgentFromStorage();
+  
+  if (agentData) {
+    setAgent(agentData);
+    setEtape("SERVICE");
+    setScanStatus({
+      loading: false,
+      success: { 
+        message: `👤 Agent ${agentData.nomPrenom || agentData.nom}`, 
+        detail: `Connecté · ${agentData.codeBarre || agentData.matricule}` 
+      },
+      error: null
+    });
+    setTimeout(() => setScanStatus(null), 2000);
+  } else {
+    console.warn("⚠️ Aucun agent trouvé dans le stockage");
+    setEtape("SERVICE");
+    setScanStatus({
+      loading: false,
+      success: null,
+      error: "Aucun agent connecté — veuillez vous reconnecter"
+    });
+  }
+}, []);
   // ─── Scan automatique ──────────────────────────────────────────────────
   useEffect(() => {
     if (scanValue.trim().length < 2) return;
@@ -298,26 +298,16 @@ export default function LivraisonList() {
   }, []);
 
   // ─── Calcul stats ──────────────────────────────────────────────────────
-  const stats = useMemo(() => {
-    const demande = comparatif.reduce((s, c) => s + Number(c.quantiteDemandee || 0), 0);
-    const livree = comparatif.reduce((s, c) => s + Number(c.quantiteLivree || 0), 0);
-    const reste = Math.max(0, demande - livree);
-    const pct = demande > 0 ? Math.round((livree / demande) * 100) : 0;
-    return { demande, livree, reste, pct };
-  }, [comparatif]);
+  const stats = useMemo(() => calculerStats(comparatif), [comparatif]);
 
-  // ─── Rafraîchissement périodique ──────────────────────────────────────
+  // ─── Rafraîchir comparatif ──────────────────────────────────────────────
   const rafraichirComparatif = useCallback(async (distId) => {
     if (!distId) return;
     try {
-      const res = await fetch(`${API}/api/distributions/${distId}/comparatif`);
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await fetchComparatifDistribution(distId);
       setComparatif(data);
 
-      const dem = data.reduce((s, c) => s + Number(c.quantiteDemandee || 0), 0);
-      const liv = data.reduce((s, c) => s + Number(c.quantiteLivree || 0), 0);
-      if (dem > 0 && liv >= dem) {
+      if (isDistributionComplete(data)) {
         await Swal.fire({
           icon: 'success',
           title: 'Distribution terminée',
@@ -331,9 +321,12 @@ export default function LivraisonList() {
         setHistorique([]);
         setService(null);
       }
-    } catch { }
+    } catch (error) {
+      console.error("Erreur rafraîchissement:", error);
+    }
   }, []);
 
+  // ─── Auto-refresh ──────────────────────────────────────────────────────
   useEffect(() => {
     if (etape !== "SCAN" || !distribution?.id) return;
     const id = setInterval(() => rafraichirComparatif(distribution.id), 3000);
@@ -343,11 +336,7 @@ export default function LivraisonList() {
   // ─── Vérifier si un code est un agent ──────────────────────────────────
   const verifierSiAgent = useCallback(async (code) => {
     try {
-      const res = await fetch(`${API}/api/agents/matricule/${code}`);
-      if (res.ok) {
-        return await res.json();
-      }
-      return null;
+      return await fetchAgentByMatricule(code);
     } catch {
       return null;
     }
@@ -380,10 +369,7 @@ export default function LivraisonList() {
         }
       }
 
-      await fetch(`${API}/api/distributions/${distribution.id}/cloturer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-      });
+      await cloturerDistribution(distribution.id);
 
       await Swal.fire({
         icon: 'success',
@@ -402,11 +388,11 @@ export default function LivraisonList() {
 
       setTimeout(() => scanInputRef.current?.focus(), 300);
       return true;
-    } catch (e) {
+    } catch (error) {
       await Swal.fire({
         icon: 'error',
         title: 'Erreur',
-        text: e.message || 'Erreur lors de la clôture'
+        text: error.message || 'Erreur lors de la clôture'
       });
       setScanStatus(null);
       return false;
@@ -429,41 +415,10 @@ export default function LivraisonList() {
     setLoading(true);
     setScanStatus({ loading: true, code });
     try {
-      const res = await fetch(`${API}/api/sqlserver/services/ref/${encodeURIComponent(code)}`);
-      if (!res.ok) {
-        await Swal.fire({
-          icon: 'error',
-          title: 'Service introuvable',
-          text: code,
-          timer: 1500,
-          showConfirmButton: false
-        });
-        setScanStatus({ loading: false, success: null, error: "Service introuvable" });
-        setLoading(false);
-        return;
-      }
-      const svc = await res.json();
+      const svc = await fetchServiceByReference(code);
       
-      // Créer la distribution
-      const payload = {
-        serviceId: svc.id,
-        matriculeAgent: agent.matricule,
-      };
-
-      const distRes = await fetch(`${API}/api/distributions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!distRes.ok) {
-        const txt = await distRes.text();
-        let msg = txt;
-        try { msg = JSON.parse(txt).message || txt; } catch { }
-        throw new Error(msg);
-      }
-
-      const dist = await distRes.json();
+      const dist = await createDistribution(svc.id, agent.matricule);
+      
       setService(svc);
       setDistribution(dist);
       await rafraichirComparatif(dist.id);
@@ -481,12 +436,12 @@ export default function LivraisonList() {
         timer: 1500,
         showConfirmButton: false
       });
-    } catch (err) {
-      setScanStatus({ loading: false, success: null, error: err.message });
+    } catch (error) {
+      setScanStatus({ loading: false, success: null, error: error.message });
       await Swal.fire({
         icon: 'error',
         title: 'Erreur',
-        text: err.message
+        text: error.message
       });
     } finally {
       setLoading(false);
@@ -494,56 +449,63 @@ export default function LivraisonList() {
   }, [agent, rafraichirComparatif]);
 
   // ─── Scan Linge ──────────────────────────────────────────────────────
-  const execScanLinge = useCallback(async (code) => {
-    const dist = distributionRef.current;
-    if (!dist?.id) return;
-    setLoading(true);
-    setScanStatus({ loading: true, code });
+ // Dans LivraisonList.js, remplacer execScanLinge
 
-    try {
-      const res = await fetch(
-        `${API}/api/distributions/${dist.id}/scan?codeOuTag=${encodeURIComponent(code)}`,
-        { method: "POST" }
-      );
+// ─── Scan Linge ──────────────────────────────────────────────────────
+const execScanLinge = useCallback(async (code) => {
+  const dist = distributionRef.current;
+  if (!dist?.id) return;
+  setLoading(true);
+  setScanStatus({ loading: true, code });
 
-      const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  try {
+    const result = await scanArticleForDistribution(dist.id, code);
 
-      if (!res.ok) {
-        const txt = await res.text();
-        let msg = txt;
-        try { msg = JSON.parse(txt).message || txt; } catch { }
-        setHistorique(prev => [{ code, ok: false, msg, heure }, ...prev.slice(0, 49)]);
-        setScanStatus({ loading: false, success: null, error: msg });
-        await Swal.fire({
-          icon: 'error',
-          title: 'Scan refusé',
-          text: msg,
-          timer: 1500,
-          showConfirmButton: false
-        });
-        setTimeout(() => setScanStatus(null), 2000);
-        return;
-      }
-
-      setHistorique(prev => [{ code, ok: true, heure }, ...prev.slice(0, 49)]);
-      setScanStatus({
-        loading: false,
-        success: { message: "✓ Article livré", detail: code },
-        error: null
-      });
-      setTimeout(() => setScanStatus(null), 1500);
-      await rafraichirComparatif(dist.id);
-    } catch (err) {
-      setScanStatus({ loading: false, success: null, error: err.message });
-      await Swal.fire({
-        icon: 'error',
-        title: 'Erreur réseau',
-        text: err.message
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [distributionRef, rafraichirComparatif]);
+    const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    
+    // Utiliser le résultat pour l'historique
+    setHistorique(prev => [{ 
+      code, 
+      ok: true, 
+      msg: result.message || "Livré",
+      heure 
+    }, ...prev.slice(0, 49)]);
+    
+    setScanStatus({
+      loading: false,
+      success: { 
+        message: result.message || "✓ Article livré", 
+        detail: code 
+      },
+      error: null
+    });
+    setTimeout(() => setScanStatus(null), 1500);
+    await rafraichirComparatif(dist.id);
+  } catch (error) {
+    const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setHistorique(prev => [{ 
+      code, 
+      ok: false, 
+      msg: error.message, 
+      heure 
+    }, ...prev.slice(0, 49)]);
+    setScanStatus({ 
+      loading: false, 
+      success: null, 
+      error: error.message 
+    });
+    await Swal.fire({
+      icon: 'error',
+      title: 'Scan refusé',
+      text: error.message,
+      timer: 1500,
+      showConfirmButton: false
+    });
+    setTimeout(() => setScanStatus(null), 2000);
+  } finally {
+    setLoading(false);
+  }
+}, [distributionRef, rafraichirComparatif]);
 
   // ─── Gestion du scan ──────────────────────────────────────────────────
   const handleScan = useCallback(async (code) => {
@@ -621,6 +583,7 @@ export default function LivraisonList() {
     [services, searchSvc]
   );
 
+  // ─── RENDU ──────────────────────────────────────────────────────────────
   return (
     <div className="collecte-container">
 
@@ -825,8 +788,7 @@ export default function LivraisonList() {
                   <button
                     key={svc.id}
                     onClick={() => {
-                      // Simuler un scan du code du service
-                      execScanService(svc.code);
+                      execScanService(svc.reference);
                     }}
                     disabled={loading}
                     style={{

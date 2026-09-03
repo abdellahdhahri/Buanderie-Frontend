@@ -1,16 +1,24 @@
-import React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router";
 import logoSoftSys from "../../../assets/logo_SoftSys.png";
+import { useAuth } from "../../contextes/Authentication/AuthContext";
+import { useNavigate } from 'react-router-dom';
+
+
 
 export const NAV_ITEMS = [
   {
     id: "rh",
     label: "Tableau de Bord",
     path: "/",
+    privilege: "LIG09",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+        />
       </svg>
     ),
   },
@@ -18,16 +26,26 @@ export const NAV_ITEMS = [
   {
     id: "params",
     label: "Parametrage",
+    privilege: "LIG12",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 001.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+        />
       </svg>
     ),
     children: [
       {
         label: "Bacs",
         path: "/bac",
+        privilege: "LIG1201",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
@@ -35,9 +53,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
         label: "Lots",
         path: "/lot",
+        privilege: "LIG1202",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -46,19 +66,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
-      {
-        label: "Agents",
-        path: "/Agents",
-        icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-        ),
-      },
+
       {
         label: "Machines",
         path: "/machine",
+        privilege: "LIG1203",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="3" />
@@ -66,9 +78,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
         label: "Programmes",
         path: "/programme",
+        privilege: "LIG1204",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M21 12a9 9 0 1 1-6.219-8.56" />
@@ -76,9 +90,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
         label: "Stock",
         path: "/arsenal",
+        privilege: "LIG1205",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -88,11 +104,25 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
+      {
+        label: "Agents",
+        path: "/Agents",
+        privilege: "LIG1206",
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        ),
+      },
     ],
   },
+
   {
     id: "suivi",
     label: "Suivi",
+    privilege: "LIG13",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <circle cx="11" cy="11" r="8" />
@@ -104,6 +134,7 @@ export const NAV_ITEMS = [
       {
         label: "Tracking",
         path: "/tracking",
+        privilege: "LIG1301",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" />
@@ -111,30 +142,37 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
-        label: "Linges",
-        path: "/Linges",
+        label: "Cycles Lavages",
+        path: "/cycleLavage",
+        privilege: "LIG1302",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <path d="M16 10a4 4 0 0 1-8 0" />
+            <path d="M23 4v6h-6" />
+            <path d="M1 20v-6h6" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
+            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
           </svg>
         ),
       },
+
       {
-        label: "Inventaire",
-        path: "/inventaire",
+        label: "Chambres",
+        path: "/chambre",
+        privilege: "LIG1303",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
         ),
       },
+
       {
         label: "Matériel",
         path: "/immo",
+        privilege: "LIG1304",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <rect x="2" y="2" width="20" height="20" rx="2" ry="2" />
@@ -145,33 +183,38 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
-        label: "Chambres",
-        path: "/chambre",
+        label: "Inventaire",
+        path: "/inventaire",
+        privilege: "LIG1305",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
           </svg>
         ),
       },
+
       {
-        label: "Cycles Lavages",
-        path: "/cycleLavage",
+        label: "Linges",
+        path: "/Linges",
+        privilege: "LIG02",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M23 4v6h-6" />
-            <path d="M1 20v-6h6" />
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
-            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
           </svg>
         ),
       },
     ],
   },
+
   {
     id: "presences",
     label: "Zone Sale",
+    privilege: "LIG15",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
@@ -184,6 +227,7 @@ export const NAV_ITEMS = [
       {
         label: "Collecte",
         path: "/collecteList",
+        privilege: "LIG1501",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -194,9 +238,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
         label: "Réception",
         path: "/Receptions",
+        privilege: "LIG1502",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -205,9 +251,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
         label: "Tri",
         path: "/tri",
+        privilege: "LIG1503",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
@@ -215,9 +263,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
         label: "Lavage",
         path: "/Lavages",
+        privilege: "LIG1504",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" />
@@ -230,9 +280,11 @@ export const NAV_ITEMS = [
       },
     ],
   },
+
   {
     id: "paie",
     label: "Zone Propre",
+    privilege: "LIG16",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -245,6 +297,7 @@ export const NAV_ITEMS = [
       {
         label: "Séchage",
         path: "/Sechages",
+        privilege: "LIG1601",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M12 2v4" />
@@ -259,9 +312,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
         label: "Pliage",
         path: "/Pliages",
+        privilege: "LIG1602",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
@@ -270,9 +325,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
         label: "Stockage",
         path: "/stockage",
+        privilege: "LIG1603",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
@@ -280,9 +337,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
-         {
+
+      {
         label: "Livraison",
         path: "/remise",
+        privilege: "LIG1604",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
@@ -294,9 +353,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
         label: "distribution",
         path: "/distribution",
+        privilege: "LIG1605",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M1 3h5l2 9h13l4-7h-9" />
@@ -306,12 +367,13 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
-   
     ],
   },
+
   {
     id: "conges",
     label: "Reporting",
+    privilege: "LIG14",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z" />
@@ -321,6 +383,7 @@ export const NAV_ITEMS = [
       {
         label: "Historique",
         path: "/Historiques",
+        privilege: "LIG1401",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" />
@@ -328,9 +391,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
         label: "Statistiques",
         path: "/Statistiques",
+        privilege: "LIG1402",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M21 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7" />
@@ -339,9 +404,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+
       {
         label: "Réclamations",
         path: "/Reclamations",
+        privilege: "LIG1403",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" />
@@ -350,19 +417,11 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
-      {
-        label: "Process",
-        path: "/process",
-        icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            <polyline points="21 3 12 12 9 9" />
-          </svg>
-        ),
-      },
+
       {
         label: "Historique collectes",
         path: "/collecte",
+        privilege: "LIG1404",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -375,141 +434,136 @@ export const NAV_ITEMS = [
     ],
   },
 ];
-const POSTE_TO_MENU = {
-  AGENT_COLLECTE: [
-    "/collecteList",
-    "/Reclamations"
-  ],
 
-  AGENT_RECEPTION: [
-    "/Receptions",
-        "/Reclamations"
 
-  ],
-
-  AGENT_TRI: [
-    "/tri",
-        "/Reclamations"
-
-  ],
-
-  AGENT_LAVAGE: [
-    "/Lavages",
-        "/Reclamations"
-
-  ],
-
-  AGENT_SECHAGE: [
-    "/Sechages",
-        "/Reclamations"
-
-  ],
-
-  AGENT_PLIAGE: [
-    "/Pliages",
-        "/Reclamations"
-
-  ],
-
-  AGENT_STOCKAGE: [
-    "/stockage",
-        "/Reclamations"
-
-  ],
-
-  AGENT_LIVRAISON: [
-    "/remise",
-        "/Reclamations"
-
-  ],
-
-  CHEF_EQUIPE: [
-    "/collecteList",
-    "/Receptions",
-    "/tri",
-    "/Lavages",
-    "/Sechages",
-    "/Pliages",
-    "/stockage",
-    "/remise",
-    "/distribution",
-  ],
-
-  ADMIN: "ALL",
-};
 
 export function Sidebar({ sidebarOpen, setSidebarOpen }) {
+
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const [activePopup, setActivePopup] = useState(null);
-const [agent, setAgent] = useState(null);
+  const navigate = useNavigate();
+
   const location = useLocation();
   const currentPath = location.pathname;
+  const handleLogout = () => {
+    logout();
+    navigate('/process');
+  };
+  const {
+    privileges = [],
+    logout
+  } = useAuth();
 
-  const activeNavItem = NAV_ITEMS.find(
+
+ 
+
+  const hasFullAccess =
+    privileges.includes("ADMIN") || privileges.includes("ALL");
+
+  const hasPrivilege = (code) => {
+
+    if (!code) {
+      return true;
+    }
+
+    if (hasFullAccess) {
+      return true;
+    }
+
+    return privileges.includes(code);
+  };
+
+
+
+
+  const filteredNavItems = NAV_ITEMS
+    .map((item) => {
+
+
+      if (item.children) {
+
+        if (!hasPrivilege(item.privilege)) {
+          return null;
+        }
+
+        const filteredChildren = item.children.filter(
+          (child) => hasPrivilege(child.privilege)
+        );
+
+        if (filteredChildren.length === 0) {
+          return null;
+        }
+
+        return {
+          ...item,
+          children: filteredChildren,
+        };
+      }
+
+
+
+
+      if (!hasPrivilege(item.privilege)) {
+        return null;
+      }
+
+      return item;
+
+    })
+    .filter(Boolean);
+
+
+  // ============================================================
+  // Menu actif
+  // ============================================================
+
+  const activeNavItem = filteredNavItems.find(
     (item) =>
       item.path === currentPath ||
-      item.children?.some((child) => child.path === currentPath)
+      item.children?.some(
+        (child) => child.path === currentPath
+      )
   );
-  useEffect(() => {
-    const savedAgent = localStorage.getItem("agent");
-
-    if (savedAgent) {
-      try {
-        const parsedAgent = JSON.parse(savedAgent);
-        setAgent(parsedAgent);
-      } catch (error) {
-        console.error("Erreur lecture agent :", error);
-        localStorage.removeItem("agent");
-      }
-    }
-  }, []);
-
-  // Filtrer les menus selon le poste
-  const allowedPaths = POSTE_TO_MENU[agent?.poste];
-
-  const filteredNavItems =
-    allowedPaths === "ALL"
-      ? NAV_ITEMS
-      : NAV_ITEMS
-          .map((item) => {
-            // Cas d'un menu avec sous-menus
-            if (item.children) {
-              const filteredChildren = item.children.filter((child) =>
-                allowedPaths?.includes(child.path)
-              );
-
-              if (filteredChildren.length === 0) {
-                return null;
-              }
-
-              return {
-                ...item,
-                children: filteredChildren,
-              };
-            }
-
-            if (allowedPaths?.includes(item.path)) {
-              return item;
-            }
-
-            return null;
-          })
-          .filter(Boolean);
 
 
-
+  // ============================================================
+  // Ouvrir automatiquement le sous-menu actif
+  // ============================================================
 
   useEffect(() => {
-    if (activeNavItem && sidebarOpen && activeNavItem.children) {
+
+    if (
+      activeNavItem &&
+      sidebarOpen &&
+      activeNavItem.children
+    ) {
       setOpenSubmenu(activeNavItem.id);
     }
+
   }, [activeNavItem, sidebarOpen]);
 
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+
   return (
-    <aside className={`sidebar ${sidebarOpen ? "sidebar--open" : "sidebar--closed"}`}>
+    <aside
+      className={`sidebar ${
+        sidebarOpen
+          ? "sidebar--open"
+          : "sidebar--closed"
+      }`}
+    >
+
+      {/* HEADER */}
+
       <div className="sidebar__header">
+
         {sidebarOpen ? (
+
           <React.Fragment>
+
             <Link
               to="/"
               onClick={() => {
@@ -518,16 +572,39 @@ const [agent, setAgent] = useState(null);
               }}
               className="sidebar__logo-link"
             >
-              <img src={logoSoftSys} className="sidebar__logo" alt="SoftSys" />
+              <img
+                src={logoSoftSys}
+                className="sidebar__logo"
+                alt="SoftSys"
+              />
             </Link>
-            <button className="sidebar__close-btn" onClick={() => setSidebarOpen(false)}>
-              <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+
+            <button
+              className="sidebar__close-btn"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <svg
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
+
           </React.Fragment>
+
         ) : (
-          <button className="sidebar__menu-btn" onClick={() => setSidebarOpen(true)}>
+
+          <button
+            className="sidebar__menu-btn"
+            onClick={() => setSidebarOpen(true)}
+          >
             <svg fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
@@ -536,141 +613,326 @@ const [agent, setAgent] = useState(null);
               />
             </svg>
           </button>
+
         )}
+
       </div>
 
+
+      {/* SEARCH */}
+
       {sidebarOpen && (
+
         <div className="sidebar__search">
-          <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+
+          <svg
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z"
             />
           </svg>
-          <input placeholder="Rechercher..." readOnly />
+
+          <input
+            placeholder="Rechercher..."
+            readOnly
+          />
+
         </div>
+
       )}
 
+
+      {/* NAVIGATION */}
+
       <nav className="sidebar__nav">
-        {sidebarOpen && <span className="sidebar__section-label">Menu principal</span>}
+
+        {sidebarOpen && (
+          <span className="sidebar__section-label">
+            Menu principal
+          </span>
+        )}
+
+
         {filteredNavItems.map((item) => (
-          <div key={item.id} className="nav-item-wrap">
+
+          <div
+            key={item.id}
+            className="nav-item-wrap"
+          >
+
+            {/* ===============================
+                MENU AVEC SOUS-MENUS
+            =============================== */}
+
             {item.children ? (
+
               <button
                 className={`nav-item nav-item--${item.id} ${
-                  activeNavItem?.id === item.id ? "nav-item--active" : ""
-                } ${!sidebarOpen ? "nav-item--icon-only" : ""}`}
+                  activeNavItem?.id === item.id
+                    ? "nav-item--active"
+                    : ""
+                } ${
+                  !sidebarOpen
+                    ? "nav-item--icon-only"
+                    : ""
+                }`}
                 onClick={() => {
+
                   if (!sidebarOpen) {
-                    setActivePopup((p) => (p === item.id ? null : item.id));
+
+                    setActivePopup(
+                      (p) =>
+                        p === item.id
+                          ? null
+                          : item.id
+                    );
+
                   } else {
-                    setOpenSubmenu((p) => (p === item.id ? null : item.id));
+
+                    setOpenSubmenu(
+                      (p) =>
+                        p === item.id
+                          ? null
+                          : item.id
+                    );
+
                   }
+
                 }}
               >
-                <span className="nav-item__icon">{item.icon}</span>
-                {sidebarOpen && <span className="nav-item__label">{item.label}</span>}
+
+                <span className="nav-item__icon">
+                  {item.icon}
+                </span>
+
                 {sidebarOpen && (
+                  <span className="nav-item__label">
+                    {item.label}
+                  </span>
+                )}
+
+                {sidebarOpen && (
+
                   <svg
                     className={`nav-item__chevron--${item.id} ${
-                      openSubmenu === item.id ? "nav-item__chevron--open" : ""
+                      openSubmenu === item.id
+                        ? "nav-item__chevron--open"
+                        : ""
                     }`}
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2.5"
                     viewBox="0 0 24 24"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m6 9 6 6 6-6"
+                    />
                   </svg>
+
                 )}
+
               </button>
+
             ) : (
+
+              /* ===============================
+                 MENU SIMPLE
+              =============================== */
+
               <Link
                 to={item.path || "/"}
                 className={`nav-item nav-item--${item.id} ${
-                  currentPath === item.path ? "nav-item--active" : ""
-                } ${!sidebarOpen ? "nav-item--icon-only" : ""}`}
+                  currentPath === item.path
+                    ? "nav-item--active"
+                    : ""
+                } ${
+                  !sidebarOpen
+                    ? "nav-item--icon-only"
+                    : ""
+                }`}
                 onClick={() => {
                   setActivePopup(null);
                   setOpenSubmenu(null);
                 }}
               >
-                <span className="nav-item__icon">{item.icon}</span>
-                {sidebarOpen && <span className="nav-item__label">{item.label}</span>}
-              </Link>
-            )}
 
-            {!sidebarOpen && activePopup === item.id && (
-              <div className="nav-popup">
-                <span className="nav-popup__title">{item.label}</span>
-                {item.children ? (
-                  <div
-                    className={`nav-popup__grid ${
-                      item.children.length > 3 ? "nav-popup__grid--many" : "nav-popup__grid--few"
-                    }`}
-                  >
-                    {item.children.map((child) => (
-                      <Link
-                        key={child.label}
-                        to={child.path}
-                        className="nav-popup__card"
-                        onClick={() => setActivePopup(null)}
-                      >
-                        <div className={`nav-popup__card-icon nav-popup__card-icon--${item.id}`}>
-                          {child.icon}
-                        </div>
-                        <span className="nav-popup__card-label">{child.label}</span>
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="nav-popup__simple">
-                    <Link
-                      to={item.path || "/"}
-                      className={`nav-popup__simple-link nav-popup__simple-link--${item.id}`}
-                      onClick={() => setActivePopup(null)}
-                    >
-                      <div className={`nav-popup__card-icon nav-popup__card-icon--${item.id}`}>
-                        {item.icon}
-                      </div>
-                      <span>{item.label}</span>
-                    </Link>
-                  </div>
+                <span className="nav-item__icon">
+                  {item.icon}
+                </span>
+
+                {sidebarOpen && (
+                  <span className="nav-item__label">
+                    {item.label}
+                  </span>
                 )}
-              </div>
+
+              </Link>
+
             )}
 
-            {sidebarOpen && item.children && (
-              <div
-                className={`submenu ${openSubmenu === item.id ? "submenu--open" : ""}`}
-                style={{
-                  maxHeight: openSubmenu === item.id ? `${item.children.length * 42}px` : "0",
-                }}
-              >
-                {item.children.map((child) => (
-                  <Link
-                    key={child.label}
-                    to={child.path}
-                    className={`submenu__link--${item.id} ${
-                      currentPath === child.path ? "submenu__link--active" : ""
-                    }`}
-                  >
-                    <span className={`submenu__link-icon submenu__link-icon--${item.id}`}>
-                      {child.icon}
-                    </span>
-                    {child.label}
-                  </Link>
-                ))}
-              </div>
-            )}
+
+            {/* ===============================
+                POPUP SIDEBAR FERMÉ
+            =============================== */}
+
+            {!sidebarOpen &&
+              activePopup === item.id && (
+
+                <div className="nav-popup">
+
+                  <span className="nav-popup__title">
+                    {item.label}
+                  </span>
+
+                  {item.children ? (
+
+                    <div
+                      className={`nav-popup__grid ${
+                        item.children.length > 3
+                          ? "nav-popup__grid--many"
+                          : "nav-popup__grid--few"
+                      }`}
+                    >
+
+                      {item.children.map((child) => (
+
+                        <Link
+                          key={child.label}
+                          to={child.path}
+                          className="nav-popup__card"
+                          onClick={() =>
+                            setActivePopup(null)
+                          }
+                        >
+
+                          <div
+                            className={`nav-popup__card-icon nav-popup__card-icon--${item.id}`}
+                          >
+                            {child.icon}
+                          </div>
+
+                          <span className="nav-popup__card-label">
+                            {child.label}
+                          </span>
+
+                        </Link>
+
+                      ))}
+
+                    </div>
+
+                  ) : (
+
+                    <div className="nav-popup__simple">
+
+                      <Link
+                        to={item.path || "/"}
+                        className={`nav-popup__simple-link nav-popup__simple-link--${item.id}`}
+                        onClick={() =>
+                          setActivePopup(null)
+                        }
+                      >
+
+                        <div
+                          className={`nav-popup__card-icon nav-popup__card-icon--${item.id}`}
+                        >
+                          {item.icon}
+                        </div>
+
+                        <span>
+                          {item.label}
+                        </span>
+
+                      </Link>
+
+                    </div>
+
+                  )}
+
+                </div>
+
+              )}
+
+
+            {/* ===============================
+                SOUS-MENU SIDEBAR OUVERT
+            =============================== */}
+
+            {sidebarOpen &&
+              item.children && (
+
+                <div
+                  className={`submenu ${
+                    openSubmenu === item.id
+                      ? "submenu--open"
+                      : ""
+                  }`}
+                  style={{
+                    maxHeight:
+                      openSubmenu === item.id
+                        ? `${item.children.length * 42}px`
+                        : "0",
+                  }}
+                >
+
+                  {item.children.map((child) => (
+
+                    <Link
+                      key={child.label}
+                      to={child.path}
+                      className={`submenu__link--${item.id} ${
+                        currentPath === child.path
+                          ? "submenu__link--active"
+                          : ""
+                      }`}
+                    >
+
+                      <span
+                        className={`submenu__link-icon submenu__link-icon--${item.id}`}
+                      >
+                        {child.icon}
+                      </span>
+
+                      {child.label}
+
+                    </Link>
+
+                  ))}
+
+                </div>
+
+              )}
+
           </div>
+
         ))}
+
       </nav>
 
+
+      {/* FOOTER */}
+
       <div className="sidebar__footer">
-        <button className={`nav-item nav-item--logout ${!sidebarOpen ? "nav-item--icon-only" : ""}`}>
+
+        <button
+          className={`nav-item nav-item--logout ${
+            !sidebarOpen
+              ? "nav-item--icon-only"
+              : ""
+          }`}
+          onClick={handleLogout}
+        >
+
           <span className="nav-item__icon">
+
             <svg
               className="nav-icon-svg"
               fill="none"
@@ -684,10 +946,19 @@ const [agent, setAgent] = useState(null);
                 d="M16 12H4m12 0-4 4m4-4-4-4m3-4h2a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-2"
               />
             </svg>
+
           </span>
-          {sidebarOpen && <span className="nav-item__label">Déconnexion</span>}
+
+          {sidebarOpen && (
+            <span className="nav-item__label">
+              Déconnexion
+            </span>
+          )}
+
         </button>
+
       </div>
+
     </aside>
   );
 }

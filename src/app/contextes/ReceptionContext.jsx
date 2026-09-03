@@ -1,4 +1,3 @@
-// ReceptionContext.jsx
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { useModal } from "./ModalContext";
 import Swal from "sweetalert2";
@@ -27,13 +26,22 @@ export function ReceptionProvider({ children }) {
   const scanAgent = useCallback(async (code) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/agents/matricule/${code}`);
+      const res = await fetch(`${API_URL}/api/sqlserver/personnel/code?code=${encodeURIComponent(code)}`);
       if (res.ok) {
-        const ag = await res.json();
+        const personnel = await res.json();
+        const ag = {
+          matricule: personnel.codeBarre || code,
+          nom: personnel.nom || "Inconnu",
+          prenom: personnel.prenom || "",
+          nomPrenom: personnel.nomPrenom || personnel.nom || "Inconnu",
+          codeBarre: personnel.codeBarre || code,
+          id: personnel.id,
+          poste: personnel.fonction || "AGENT_RECEPTION"
+        };
         if (isMounted.current) setAgent(ag);
         Swal.fire({ 
           title: "Agent identifié", 
-          text: `${ag.nom} (${ag.matricule})`, 
+          text: `${ag.nomPrenom || ag.nom} (${ag.codeBarre || ag.matricule})`, 
           icon: "success", 
           timer: 1200, 
           showConfirmButton: false 
@@ -41,7 +49,7 @@ export function ReceptionProvider({ children }) {
         return true;
       }
       Swal.fire({ 
-        title: "Agent introuvable", 
+        title: "Personnel introuvable", 
         text: `[${code}]`, 
         icon: "error" 
       });
@@ -60,49 +68,23 @@ export function ReceptionProvider({ children }) {
     setSacsInfectes([]);
   }, []);
 
-  // ─── Récupérer les linges d'un bac ──────────────────────────────────────
   const fetchLingesDuBac = useCallback(async (bacId) => {
-    if (!bacId) {
-      console.warn("⚠️ fetchLingesDuBac: pas de bacId");
-      return [];
-    }
-    
-    console.log("🔍 Récupération des linges pour le bac ID:", bacId);
+    if (!bacId) return [];
     setLoadingLinges(true);
-    
     try {
-      // ✅ Endpoint correct
-      const url = `${API_URL}/api/linges/bac/${bacId}`;
-      console.log("📡 Appel API:", url);
-      
-      const res = await fetch(url);
-      console.log("📡 Réponse status:", res.status);
-      
+      const res = await fetch(`${API_URL}/api/linges/bac/${bacId}`);
       if (res.ok) {
         const data = await res.json();
-        console.log("📦 Linges reçus:", data);
         const linges = Array.isArray(data) ? data : data.content || [];
-        console.log(`✅ ${linges.length} linges trouvés`);
-        
         if (isMounted.current) {
           setLingesAffichés(linges);
           setAfficherLinges(true);
         }
         return linges;
-      } else {
-        console.warn(`⚠️ Aucun linge trouvé pour le bac ${bacId}`);
-        if (isMounted.current) {
-          setLingesAffichés([]);
-          setAfficherLinges(true);
-        }
-        return [];
       }
+      return [];
     } catch (err) {
       console.error("❌ Erreur fetchLingesDuBac:", err);
-      if (isMounted.current) {
-        setLingesAffichés([]);
-        setAfficherLinges(true);
-      }
       return [];
     } finally {
       if (isMounted.current) setLoadingLinges(false);
@@ -124,19 +106,17 @@ export function ReceptionProvider({ children }) {
     }
   }, []);
 
-  // ─── Scan Réception (modifié) ──────────────────────────────────────────
-  const scanReception = useCallback(async (code) => {
-    if (!agent) {
-      showAlert("Agent requis", "Scannez votre badge d'abord.", "warning");
-      return;
-    }
+  // ─── Scan Réception ──────────────────────────────────────────────────────
+  const scanReception = useCallback(async (code, agentParam) => {
+    const agentUtilise = agentParam || agent;
+    
     setLoading(true);
     try {
       const codeUpper = code.toUpperCase().trim();
       const estInfecte = codeUpper.startsWith("SAC");
 
       if (!estInfecte) {
-        // ✅ ÉTAPE 1: Récupérer le bac
+        // Récupérer le bac
         const bac = await getBacByCode(codeUpper);
         if (!bac) {
           Swal.fire({ 
@@ -147,30 +127,28 @@ export function ReceptionProvider({ children }) {
           return;
         }
 
-        console.log("📦 Bac trouvé:", bac);
-
-        // ✅ ÉTAPE 2: Récupérer les linges du bac AVANT réception
-        console.log("🔄 Étape 1: Récupération des linges avant réception...");
+        // Récupérer les linges AVANT réception
         const linges = await fetchLingesDuBac(bac.id);
-        console.log(`✅ ${linges.length} linges récupérés avant réception`);
 
-        // ✅ ÉTAPE 3: Afficher les linges immédiatement
         setBacEnCours({ 
           id: bac.id, 
           code: codeUpper,
           ...bac 
         });
 
-        // ✅ ÉTAPE 4: Appeler la réception (vider le bac)
-        console.log("🔄 Étape 2: Appel de la réception...");
-        const res = await fetch(`${API_URL}/api/reception?matricule=${agent.matricule}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            codesBac: [codeUpper], 
-            numerosSacsInfectes: [] 
-          })
-        });
+        const codeBarre = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
+
+        const res = await fetch(
+  `${API_URL}/api/reception?matricule=${encodeURIComponent(codeBarre)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              codesBac: [codeUpper], 
+              numerosSacsInfectes: [] 
+            })
+          }
+        );
         
         if (!res.ok) {
           const txt = await res.text();
@@ -180,8 +158,6 @@ export function ReceptionProvider({ children }) {
         }
         
         const data = await res.json();
-        console.log("📦 Réponse réception:", data);
-        
         const bacRecu = data.bacsRecus?.[0];
         
         if (bacRecu && isMounted.current) {
@@ -192,9 +168,6 @@ export function ReceptionProvider({ children }) {
             data: bacRecu 
           });
           
-          // ✅ Les linges sont déjà affichés, on les garde
-          // On ne les recharge pas pour éviter de perdre l'affichage
-          
           Swal.fire({ 
             title: "✅ Bac reçu", 
             html: `<b>${codeUpper}</b><br/>${linges.length} linge(s) réceptionné(s)`, 
@@ -204,10 +177,12 @@ export function ReceptionProvider({ children }) {
           });
         }
       } else {
-        // ─── Sac infecté ──────────────────────────────────────────────────
-        const res = await fetch(`${API_URL}/api/sacs-infectes/recevoir?numeroSac=${codeUpper}&matricule=${agent.matricule}`, { 
-          method: "PUT" 
-        });
+        const codeBarre = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
+        
+        const res = await fetch(
+          `${API_URL}/api/sacs-infectes/recevoir?numeroSac=${codeUpper}&code=${encodeURIComponent(codeBarre)}`,
+          { method: "PUT" }
+        );
         
         if (!res.ok) {
           const txt = await res.text();
@@ -248,14 +223,12 @@ export function ReceptionProvider({ children }) {
     } finally {
       if (isMounted.current) setLoading(false);
     }
-  }, [agent, getBacByCode, fetchLingesDuBac, showAlert]);
+  }, [agent, getBacByCode, fetchLingesDuBac]);
 
-  // ─── Passage RFID (modifié) ────────────────────────────────────────────
-  const passagePortique = useCallback(async (codeBac, tags) => {
-    if (!agent) {
-      Swal.fire({ title: "Agent requis", icon: "warning" });
-      return;
-    }
+  // ─── Passage RFID ──────────────────────────────────────────────────────
+  const passagePortique = useCallback(async (codeBac, tags, agentParam) => {
+    const agentUtilise = agentParam || agent;
+    
     if (!codeBac) {
       Swal.fire({ title: "Code bac manquant", icon: "warning" });
       return;
@@ -267,7 +240,6 @@ export function ReceptionProvider({ children }) {
 
     setLoading(true);
     try {
-      // ✅ ÉTAPE 1: Récupérer le bac
       const bac = await getBacByCode(codeBac);
       if (!bac) {
         Swal.fire({ 
@@ -278,27 +250,21 @@ export function ReceptionProvider({ children }) {
         return;
       }
 
-      console.log("📦 Bac trouvé:", bac);
-
-      // ✅ ÉTAPE 2: Récupérer les linges du bac AVANT réception
-      console.log("🔄 Étape 1: Récupération des linges avant réception...");
       const linges = await fetchLingesDuBac(bac.id);
-      console.log(`✅ ${linges.length} linges récupérés avant réception`);
 
-      // ✅ ÉTAPE 3: Afficher les linges immédiatement
       setBacEnCours({ 
         id: bac.id, 
         code: codeBac,
         ...bac 
       });
 
-      // ✅ ÉTAPE 4: Appeler la réception RFID
-      console.log("🔄 Étape 2: Appel de la réception RFID...");
+      const codeBarre = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
+
       const res = await fetch(`${API_URL}/api/reception/receptionRfid`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          matriculeAgent: agent.matricule, 
+          code: codeBarre, 
           codeBac, 
           rfidTags: tags 
         })
@@ -312,7 +278,6 @@ export function ReceptionProvider({ children }) {
       }
       
       const resultat = await res.json();
-      console.log("📦 Résultat RFID:", resultat);
 
       const typeBacNorm = (resultat.typeBac || "")
         .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -328,8 +293,6 @@ export function ReceptionProvider({ children }) {
           data: r 
         });
       }
-
-      // ✅ Les linges sont déjà affichés, on les garde
 
       if (estInfecte) {
         await Swal.fire({

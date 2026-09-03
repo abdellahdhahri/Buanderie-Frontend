@@ -1,156 +1,152 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+// Authentification.jsx
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  FaUser, FaSpinner, FaCheckCircle, FaTimes,
-  FaBarcode, FaBuilding, FaShieldAlt, FaHospital
+import {
+  FaUser,
+  FaSpinner,
+  FaCheckCircle,
+  FaTimes,
+  FaShieldAlt,
+  FaLock,
+  FaIdBadge,
+  FaQrcode
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModal } from "../../contextes/ModalContext";
+import { useAuth } from "../../contextes/Authentication/AuthContext";
 import "../Linge/WorkflowList.css";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
-
-// ─── Mapping poste → route ──────────────────────────────────────────────────
-const POSTE_TO_ROUTE = {
-  AGENT_COLLECTE: "/collecte",
-  AGENT_RECEPTION: "/receptions",
-  AGENT_TRI: "/tri",
-  AGENT_LAVAGE: "/lavages",
-  AGENT_SECHAGE: "/sechages",
-  AGENT_PLIAGE: "/pliage",
-  AGENT_STOCKAGE: "/stockage",
-  AGENT_LIVRAISON: "/livraisons",
-  CHEF_EQUIPE: "/collecte",
-  ADMIN: "/"
-};
 
 export default function Authentification() {
   const navigate = useNavigate();
   const { showAlert } = useModal();
-  
-  const [scanValue, setScanValue] = useState("");
-  const [agent, setAgent] = useState(null);
+  const { login, loginWithBadge, auth, isAuthenticated } = useAuth();
+
+  // ─── États ──────────────────────────────────────────────────────────────
+  const [loginMode, setLoginMode] = useState("CREDENTIALS");
+  const [loginValue, setLoginValue] = useState("");
+  const [password, setPassword] = useState("");
+  const [badgeCode, setBadgeCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isFocused, setIsFocused] = useState(true);
   const [redirecting, setRedirecting] = useState(false);
-  
-  const scanInputRef = useRef(null);
-  const scanTimeoutRef = useRef(null);
+  const [loginFocused, setLoginFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [badgeFocused, setBadgeFocused] = useState(false);
 
-  // ─── Vérifier si un agent est déjà connecté ──────────────────────────────
+  const loginInputRef = useRef(null);
+  const badgeInputRef = useRef(null);
+
+  // ─── Vérification session ──────────────────────────────────────────────
   useEffect(() => {
-    const savedAgent = localStorage.getItem("agent");
-    if (savedAgent) {
-      try {
-        const parsed = JSON.parse(savedAgent);
-        setAgent(parsed);
-        setTimeout(() => {
-          const route = POSTE_TO_ROUTE[parsed.poste] || "/collecte";
-          navigate(route);
-        }, 2000);
-      } catch (e) {
-        localStorage.removeItem("agent");
+    if (!isAuthenticated || !auth) return;
+    console.log("🔐 UTILISATEUR AUTHENTIFIÉ:", auth.login);
+  }, [isAuthenticated, auth]);
+
+  // ─── Focus automatique ──────────────────────────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loginMode === "CREDENTIALS" && loginInputRef.current) {
+        loginInputRef.current.focus();
+        setLoginFocused(true);
+      } else if (loginMode === "BADGE" && badgeInputRef.current) {
+        badgeInputRef.current.focus();
+        setBadgeFocused(true);
       }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [loginMode]);
+
+  // ─── Login par identifiants ─────────────────────────────────────────────
+  const handleLoginCredentials = async () => {
+    if (!loginValue.trim()) {
+      setError("Veuillez saisir votre login");
+      showAlert("Login requis", "Veuillez saisir votre login", "warning");
+      return;
     }
-  }, [navigate]);
+    if (!password.trim()) {
+      setError("Veuillez saisir votre mot de passe");
+      showAlert("Mot de passe requis", "Veuillez saisir votre mot de passe", "warning");
+      return;
+    }
 
-  // ─── Focus ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    setTimeout(() => {
-      if (scanInputRef.current) {
-        scanInputRef.current.focus();
-        setIsFocused(true);
-      }
-    }, 300);
-  }, []);
-
-  // ─── Scan automatique ──────────────────────────────────────────────────────
-  useEffect(() => {
-    if (scanValue.trim().length < 2) return;
-    
-    clearTimeout(scanTimeoutRef.current);
-    scanTimeoutRef.current = setTimeout(() => {
-      const code = scanValue.trim();
-      setScanValue("");
-      handleScan(code);
-    }, 300);
-
-    return () => clearTimeout(scanTimeoutRef.current);
-  }, [scanValue]);
-
-  // ─── Authentification ──────────────────────────────────────────────────────
-  const handleScan = useCallback(async (code) => {
-    if (!code) return;
     setLoading(true);
     setError(null);
-    setRedirecting(false);
-    
+
     try {
-      const res = await fetch(`${API_URL}/api/agents/matricule/${code}`);
+      // ✅ Utiliser la méthode du contexte
+      const authData = await login(loginValue.trim(), password);
       
-      if (!res.ok) {
-        setError("Matricule non reconnu");
-        showAlert("Agent introuvable", "Vérifiez votre matricule", "error");
-        setLoading(false);
-        return;
+      if (!authData?.token) {
+        throw new Error("Aucun token JWT reçu");
       }
-      
-      const ag = await res.json();
-      
-      if (!ag.poste || !POSTE_TO_ROUTE[ag.poste]) {
-        setError("Poste non configuré");
-        showAlert("Poste non configuré", `${ag.nom} n'a pas de poste attribué.`, "warning");
-        setLoading(false);
-        return;
-      }
-      
-      const agentData = {
-        matricule: ag.matricule,
-        nom: ag.nom,
-        poste: ag.poste
-      };
-      localStorage.setItem("agent", JSON.stringify(agentData));
-      
-      setAgent(agentData);
+
       setRedirecting(true);
-      //showAlert("Authentifié", `Bienvenue ${ag.nom}`, "success");
-      
-      setTimeout(() => {
-        const route = POSTE_TO_ROUTE[ag.poste];
-        navigate(route);
-      }, 1500);
-      
+      showAlert("Authentification réussie", "Bienvenue " + authData.login, "success");
+      navigate("/", { replace: true });
     } catch (error) {
-      setError("Erreur de connexion");
-      showAlert("Erreur réseau", "Impossible de contacter le serveur", "error");
-      console.error("Erreur scan:", error);
+      setError(error.message || "Login ou mot de passe incorrect");
+      showAlert("Échec de connexion", error.message || "Login ou mot de passe incorrect", "error");
     } finally {
       setLoading(false);
     }
-  }, [showAlert, navigate]);
-
-  // ─── Déconnexion ──────────────────────────────────────────────────────────
-  const handleLogout = () => {
-    localStorage.removeItem("agent");
-    setAgent(null);
-    setScanValue("");
-    setError(null);
-    setRedirecting(false);
-    showAlert("Déconnecté", "Vous avez été déconnecté", "info");
-    setTimeout(() => scanInputRef.current?.focus(), 200);
   };
 
-  // ─── Redirection si agent déjà connecté ──────────────────────────────────
-  if (agent && !redirecting) {
-    const route = POSTE_TO_ROUTE[agent.poste] || "/collecte";
+  // ─── Login par badge ────────────────────────────────────────────────────
+  const handleLoginBadge = async () => {
+    if (!badgeCode.trim()) {
+      setError("Veuillez scanner votre badge");
+      showAlert("Badge requis", "Veuillez scanner votre badge", "warning");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // ✅ Utiliser la méthode du contexte
+      const authData = await loginWithBadge(badgeCode.trim());
+
+      if (!authData?.token) {
+        throw new Error("Aucun token JWT reçu");
+      }
+
+      setRedirecting(true);
+      showAlert("Authentification réussie", "Bienvenue " + authData.login, "success");
+      navigate("/", { replace: true });
+    } catch (error) {
+      setError(error.message || "Badge invalide");
+      showAlert("Échec de connexion", error.message || "Badge invalide", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Gestion des touches ────────────────────────────────────────────────
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      if (loginMode === "CREDENTIALS") {
+        handleLoginCredentials();
+      } else {
+        handleLoginBadge();
+      }
+    }
+  };
+
+  // ─── Logout ──────────────────────────────────────────────────────────────
+  const handleLogout = () => {
+    localStorage.removeItem("auth");
+    window.location.reload();
+  };
+
+  // ─── Écran de redirection ───────────────────────────────────────────────
+  if (isAuthenticated && redirecting) {
     return (
       <div style={{
         minHeight: "100vh",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        backgroundImage: "url('https://images.unsplash.com/photo-1582735689369-4fe89db7114c?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
+        backgroundImage: "url('https://images.unsplash.com/photo-1582735689369-4fe89db7114c?q=80&w=1170&auto=format&fit=crop')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         padding: "24px",
@@ -165,23 +161,41 @@ export default function Authentification() {
           background: "rgba(15, 23, 42, 0.6)",
           backdropFilter: "blur(4px)"
         }} />
-        <div style={{
-          maxWidth: "420px",
-          width: "100%",
-          background: "white",
-          borderRadius: "24px",
-          padding: "40px",
-          textAlign: "center",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-          position: "relative",
-          zIndex: 1
-        }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>👤</div>
-          <h2 style={{ fontSize: "22px", fontWeight: 700, color: "#0f172a", marginBottom: "4px" }}>
-            {agent.nom}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          style={{
+            maxWidth: "420px",
+            width: "100%",
+            background: "white",
+            borderRadius: "24px",
+            padding: "40px",
+            textAlign: "center",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            position: "relative",
+            zIndex: 1
+          }}
+        >
+          <div style={{
+            width: "70px",
+            height: "70px",
+            margin: "0 auto 20px",
+            borderRadius: "50%",
+            background: "#dcfce7",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}>
+            <FaCheckCircle size={38} color="#16a34a" />
+          </div>
+          <h2 style={{ fontSize: "22px", fontWeight: 700, color: "#0f172a", marginBottom: "8px" }}>
+            Authentification réussie
           </h2>
           <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "8px" }}>
-            {agent.matricule} · {agent.poste?.replace("AGENT_", "") || "Poste"}
+            Bienvenue {auth?.login}
+          </p>
+          <p style={{ color: "#94a3b8", fontSize: "13px", marginBottom: "20px" }}>
+            {auth?.privileges?.length || 0} privilèges chargés
           </p>
           <div style={{
             padding: "10px",
@@ -192,7 +206,7 @@ export default function Authentification() {
             fontWeight: 600,
             marginBottom: "20px"
           }}>
-            Redirection en cours...
+            Redirection vers le tableau de bord...
           </div>
           <button
             onClick={handleLogout}
@@ -209,25 +223,24 @@ export default function Authentification() {
           >
             Se déconnecter
           </button>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
+  // ─── Page Login ──────────────────────────────────────────────────────────
   return (
     <div style={{
       minHeight: "100vh",
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
-      backgroundImage: "url('https://images.unsplash.com/photo-1582735689369-4fe89db7114c?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
+      backgroundImage: "url('https://images.unsplash.com/photo-1582735689369-4fe89db7114c?q=80&w=1170&auto=format&fit=crop')",
       backgroundSize: "cover",
       backgroundPosition: "center",
       padding: "24px",
       position: "relative"
     }}>
-      
-      {/* ─── Overlay sombre ──────────────────────────────────────────────────── */}
       <div style={{
         position: "absolute",
         top: 0,
@@ -237,8 +250,7 @@ export default function Authentification() {
         background: "rgba(15, 23, 42, 0.5)",
         backdropFilter: "blur(3px)"
       }} />
-      
-      {/* ─── Carte de login ────────────────────────────────────────────────── */}
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -254,13 +266,8 @@ export default function Authentification() {
           background: "white"
         }}
       >
-        {/* ─── Contenu ───────────────────────────────────────────────────────── */}
-        <div style={{
-          padding: "40px 36px",
-          background: "white"
-        }}>
-
-          {/* ─── Logo centré ────────────────────────────────────────────────── */}
+        <div style={{ padding: "40px 36px", background: "white" }}>
+          {/* Logo */}
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
             <div style={{
               display: "flex",
@@ -268,35 +275,12 @@ export default function Authentification() {
               alignItems: "center",
               marginBottom: "14px"
             }}>
-              <img 
+              <img
                 src="https://cdn.polyclinique-ibnkhaldoun.com.tn/wp-content/uploads/2019/01/LOGO-ibnkhaldoun.jpg"
                 alt="Polyclinique Ibn Khaldoun Sfax"
-                style={{
-                  maxWidth: "200px",
-                  height: "auto",
-                  display: "block"
-                }}
-                onError={(e) => {
-                  e.target.style.display = "none";
-                  const fallback = document.createElement("div");
-                  fallback.style.cssText = `
-                    fontSize: 52px;
-                    display: flex;
-                    justifyContent: center;
-                    alignItems: center;
-                    width: 80px;
-                    height: 80px;
-                    margin: 0 auto;
-                    background: linear-gradient(135deg, #1e3a5f, #2d6a9f);
-                    borderRadius: 20px;
-                    color: white;
-                  `;
-                  fallback.textContent = "🏥";
-                  e.target.parentNode.insertBefore(fallback, e.target);
-                }}
+                style={{ maxWidth: "200px", height: "auto", display: "block" }}
               />
             </div>
-            
             <h1 style={{
               fontSize: "22px",
               fontWeight: 700,
@@ -306,139 +290,310 @@ export default function Authentification() {
             }}>
               Authentification
             </h1>
-            <p style={{
-              fontSize: "14px",
-              color: "#64748b",
-              margin: 0,
-              fontWeight: 400
-            }}>
-              Scannez votre badge agent
+            <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
+              {loginMode === "CREDENTIALS" 
+                ? "Connectez-vous avec vos identifiants" 
+                : "Connectez-vous avec votre badge"}
             </p>
           </div>
 
-          {/* ─── Zone de scan ────────────────────────────────────────────────── */}
-          <div style={{ marginBottom: "20px" }}>
-            <div style={{
-              position: "relative",
-              background: "#f8fafc",
-              borderRadius: "14px",
-              border: `2px solid ${error ? "#ef4444" : isFocused ? "#2563eb" : "#e2e8f0"}`,
-              transition: "all 0.2s",
-              boxShadow: isFocused ? "0 0 0 4px rgba(37,99,235,0.08)" : "none"
-            }}>
-              <div style={{
-                position: "absolute",
-                left: "14px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: isFocused ? "#2563eb" : "#94a3b8"
-              }}>
-                <FaBarcode size={18} />
-              </div>
-              <input
-                ref={scanInputRef}
-                type="text"
-                placeholder="Scanner votre badge..."
-                value={scanValue}
-                onChange={(e) => setScanValue(e.target.value)}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                disabled={loading}
-                style={{
-                  width: "100%",
-                  padding: "16px 16px 16px 46px",
-                  borderRadius: "12px",
-                  border: "none",
-                  fontSize: "16px",
-                  background: "transparent",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  color: "#0f172a",
-                  cursor: loading ? "not-allowed" : "text"
-                }}
-                autoFocus
-              />
-              {scanValue && !loading && (
-                <button
-                  type="button"
-                  onClick={() => setScanValue("")}
-                  style={{
-                    position: "absolute",
-                    right: "14px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "#94a3b8",
-                    padding: "4px"
-                  }}
-                >
-                  <FaTimes size={16} />
-                </button>
-              )}
-              {loading && (
-                <div style={{
-                  position: "absolute",
-                  right: "14px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "#2563eb"
-                }}>
-                  <FaSpinner style={{ animation: "spin 1s linear infinite" }} size={18} />
-                </div>
-              )}
-            </div>
-
-            {/* ─── Statut ────────────────────────────────────────────────────── */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              marginTop: "10px",
-              fontSize: "13px",
-              color: error ? "#dc2626" : "#64748b",
-              minHeight: "24px"
-            }}>
-              {error ? (
-                <>
-                  <FaTimes size={14} color="#dc2626" />
-                  <span>{error}</span>
-                </>
-              ) : loading ? (
-                <>
-                  <FaSpinner style={{ animation: "spin 1s linear infinite" }} size={14} color="#2563eb" />
-                  <span style={{ color: "#2563eb" }}>Vérification...</span>
-                </>
-              ) : (
-                <span style={{ fontSize: "12px", color: "#94a3b8" }}>
-                  {isFocused ? "📷 Lecteur prêt" : "Cliquez pour activer le scan"}
-                </span>
-              )}
-            </div>
+          {/* ─── Bascule entre les modes ────────────────────────────────── */}
+          <div style={{
+            display: "flex",
+            gap: "6px",
+            marginBottom: "24px",
+            background: "#f1f5f9",
+            padding: "5px",
+            borderRadius: "14px"
+          }}>
+            <button
+              onClick={() => {
+                setLoginMode("CREDENTIALS");
+                setError(null);
+              }}
+              style={{
+                flex: 1,
+                padding: "10px 14px",
+                borderRadius: "10px",
+                border: "none",
+                background: loginMode === "CREDENTIALS" ? "white" : "transparent",
+                boxShadow: loginMode === "CREDENTIALS" ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                fontSize: "13px",
+                fontWeight: loginMode === "CREDENTIALS" ? 700 : 500,
+                color: loginMode === "CREDENTIALS" ? "#1e3a5f" : "#64748b"
+              }}
+            >
+              <FaUser size={14} />
+              Identifiants
+            </button>
+            <button
+              onClick={() => {
+                setLoginMode("BADGE");
+                setError(null);
+              }}
+              style={{
+                flex: 1,
+                padding: "10px 14px",
+                borderRadius: "10px",
+                border: "none",
+                background: loginMode === "BADGE" ? "white" : "transparent",
+                boxShadow: loginMode === "BADGE" ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                fontSize: "13px",
+                fontWeight: loginMode === "BADGE" ? 700 : 500,
+                color: loginMode === "BADGE" ? "#1e3a5f" : "#64748b"
+              }}
+            >
+              <FaIdBadge size={14} />
+              Badge
+            </button>
           </div>
 
-          {/* ─── Bouton manuel ──────────────────────────────────────────────── */}
+          {/* ─── Formulaire Credentials ────────────────────────────────── */}
+          {loginMode === "CREDENTIALS" && (
+            <>
+              <div style={{ marginBottom: "16px" }}>
+                <div style={{
+                  position: "relative",
+                  background: "#f8fafc",
+                  borderRadius: "14px",
+                  border: `2px solid ${error ? "#ef4444" : loginFocused ? "#2563eb" : "#e2e8f0"}`,
+                  transition: "all 0.2s",
+                  boxShadow: loginFocused ? "0 0 0 4px rgba(37,99,235,0.08)" : "none"
+                }}>
+                  <div style={{
+                    position: "absolute",
+                    left: "14px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: loginFocused ? "#2563eb" : "#94a3b8"
+                  }}>
+                    <FaUser size={17} />
+                  </div>
+                  <input
+                    ref={loginInputRef}
+                    type="text"
+                    placeholder="Login"
+                    value={loginValue}
+                    onChange={(e) => setLoginValue(e.target.value)}
+                    onFocus={() => setLoginFocused(true)}
+                    onBlur={() => setLoginFocused(false)}
+                    onKeyDown={handleKeyDown}
+                    disabled={loading}
+                    style={{
+                      width: "100%",
+                      padding: "16px 16px 16px 46px",
+                      borderRadius: "12px",
+                      border: "none",
+                      fontSize: "16px",
+                      background: "transparent",
+                      outline: "none",
+                      boxSizing: "border-box",
+                      color: "#0f172a"
+                    }}
+                  />
+                  {loginValue && !loading && (
+                    <button
+                      type="button"
+                      onClick={() => setLoginValue("")}
+                      style={{
+                        position: "absolute",
+                        right: "14px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "#94a3b8",
+                        padding: "4px"
+                      }}
+                    >
+                      <FaTimes size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <div style={{
+                  position: "relative",
+                  background: "#f8fafc",
+                  borderRadius: "14px",
+                  border: `2px solid ${error ? "#ef4444" : passwordFocused ? "#2563eb" : "#e2e8f0"}`,
+                  transition: "all 0.2s",
+                  boxShadow: passwordFocused ? "0 0 0 4px rgba(37,99,235,0.08)" : "none"
+                }}>
+                  <div style={{
+                    position: "absolute",
+                    left: "14px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: passwordFocused ? "#2563eb" : "#94a3b8"
+                  }}>
+                    <FaLock size={17} />
+                  </div>
+                  <input
+                    type="password"
+                    placeholder="Mot de passe"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
+                    onKeyDown={handleKeyDown}
+                    disabled={loading}
+                    style={{
+                      width: "100%",
+                      padding: "16px 16px 16px 46px",
+                      borderRadius: "12px",
+                      border: "none",
+                      fontSize: "16px",
+                      background: "transparent",
+                      outline: "none",
+                      boxSizing: "border-box",
+                      color: "#0f172a"
+                    }}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ─── Formulaire Badge ───────────────────────────────────────── */}
+          {loginMode === "BADGE" && (
+            <div style={{ marginBottom: "24px" }}>
+              <div style={{
+                position: "relative",
+                background: "#f8fafc",
+                borderRadius: "14px",
+                border: `2px solid ${error ? "#ef4444" : badgeFocused ? "#2563eb" : "#e2e8f0"}`,
+                transition: "all 0.2s",
+                boxShadow: badgeFocused ? "0 0 0 4px rgba(37,99,235,0.08)" : "none"
+              }}>
+                <div style={{
+                  position: "absolute",
+                  left: "14px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: badgeFocused ? "#2563eb" : "#94a3b8"
+                }}>
+                  <FaIdBadge size={17} />
+                </div>
+                <input
+                  ref={badgeInputRef}
+                  type="text"
+                  placeholder="Scanner votre badge..."
+                  value={badgeCode}
+                  onChange={(e) => setBadgeCode(e.target.value)}
+                  onFocus={() => setBadgeFocused(true)}
+                  onBlur={() => setBadgeFocused(false)}
+                  onKeyDown={handleKeyDown}
+                  disabled={loading}
+                  style={{
+                    width: "100%",
+                    padding: "16px 16px 16px 46px",
+                    borderRadius: "12px",
+                    border: "none",
+                    fontSize: "16px",
+                    background: "transparent",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    color: "#0f172a"
+                  }}
+                />
+                {badgeCode && !loading && (
+                  <button
+                    type="button"
+                    onClick={() => setBadgeCode("")}
+                    style={{
+                      position: "absolute",
+                      right: "14px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#94a3b8",
+                      padding: "4px"
+                    }}
+                  >
+                    <FaTimes size={15} />
+                  </button>
+                )}
+              </div>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginTop: "8px",
+                fontSize: "12px",
+                color: "#94a3b8"
+              }}>
+                <FaQrcode size={12} />
+                <span>Scannez votre badge ou saisissez le code</span>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Erreur ──────────────────────────────────────────────────── */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            marginBottom: "12px",
+            fontSize: "13px",
+            color: "#dc2626",
+            minHeight: "20px"
+          }}>
+            {error && (
+              <>
+                <FaTimes size={14} />
+                <span>{error}</span>
+              </>
+            )}
+          </div>
+
+          {/* ─── Bouton Login ───────────────────────────────────────────── */}
           <button
-            onClick={() => {
-              if (scanValue.trim()) {
-                handleScan(scanValue.trim());
-              }
-            }}
-            disabled={loading || !scanValue.trim()}
+            onClick={loginMode === "CREDENTIALS" ? handleLoginCredentials : handleLoginBadge}
+            disabled={
+              loading ||
+              (loginMode === "CREDENTIALS" && (!loginValue.trim() || !password.trim())) ||
+              (loginMode === "BADGE" && !badgeCode.trim())
+            }
             style={{
               width: "100%",
               padding: "14px",
               borderRadius: "12px",
               border: "none",
-              background: loading || !scanValue.trim()
+              background: loading ||
+                (loginMode === "CREDENTIALS" && (!loginValue.trim() || !password.trim())) ||
+                (loginMode === "BADGE" && !badgeCode.trim())
                 ? "#e2e8f0"
                 : "linear-gradient(135deg, #1e3a5f, #2d6a9f)",
-              color: loading || !scanValue.trim() ? "#94a3b8" : "white",
+              color: loading ||
+                (loginMode === "CREDENTIALS" && (!loginValue.trim() || !password.trim())) ||
+                (loginMode === "BADGE" && !badgeCode.trim())
+                ? "#94a3b8"
+                : "white",
               fontWeight: 600,
               fontSize: "15px",
-              cursor: loading || !scanValue.trim() ? "not-allowed" : "pointer",
+              cursor: loading ||
+                (loginMode === "CREDENTIALS" && (!loginValue.trim() || !password.trim())) ||
+                (loginMode === "BADGE" && !badgeCode.trim())
+                ? "not-allowed"
+                : "pointer",
               transition: "all 0.2s",
               display: "flex",
               alignItems: "center",
@@ -446,10 +601,25 @@ export default function Authentification() {
               gap: "8px"
             }}
           >
-            {loading ? "..." : <><FaShieldAlt size={16} /> S'authentifier</>}
+            {loading ? (
+              <>
+                <FaSpinner style={{ animation: "spin 1s linear infinite" }} />
+                Connexion...
+              </>
+            ) : loginMode === "CREDENTIALS" ? (
+              <>
+                <FaShieldAlt size={16} />
+                S'authentifier
+              </>
+            ) : (
+              <>
+                <FaIdBadge size={16} />
+                Se connecter avec le badge
+              </>
+            )}
           </button>
 
-          {/* ─── Footer ──────────────────────────────────────────────────────── */}
+          {/* ─── Footer ──────────────────────────────────────────────────── */}
           <div style={{
             marginTop: "20px",
             paddingTop: "16px",
@@ -466,7 +636,7 @@ export default function Authentification() {
             <span>Sfax</span>
           </div>
 
-          {/* ─── Message de redirection ──────────────────────────────────────── */}
+          {/* ─── Redirection message ────────────────────────────────────── */}
           <AnimatePresence>
             {redirecting && (
               <motion.div
@@ -490,22 +660,23 @@ export default function Authentification() {
                     Authentification réussie
                   </div>
                   <div style={{ fontSize: "12px", color: "#64748b" }}>
-                    Redirection vers votre poste...
+                    Chargement de vos accès...
                   </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-
         </div>
       </motion.div>
 
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+      <style>
+        {`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}
+      </style>
     </div>
   );
 }
