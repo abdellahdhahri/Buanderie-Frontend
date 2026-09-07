@@ -1,17 +1,26 @@
+// pages/Distribution/DistributionChambre.js
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   FaUser, FaBed, FaRedo, FaSpinner, FaCheckDouble,
-  FaCheck, FaDoorOpen, FaCheckCircle, FaExclamationTriangle
+  FaCheck, FaDoorOpen, FaCheckCircle, FaExclamationTriangle,
+  FaPlus, FaMinus, FaTrash, FaLayerGroup, FaClock,
+  FaCircle, FaDotCircle
 } from "react-icons/fa";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import ScanInput from "../../components/utils/shared/ScanInput";
-import { cat, apiCall } from "../collage/collecteUtils";
-import { getAgent, isAgentConnected } from "../../services/agentService";
+import {
+  getAgentFromStorage,
+  isAgentConnected,
+  fetchChambre,
+  poserLinge,
+  fetchAgentByCode,
+  getCategorie
+} from "../../services/distributionChambreService";
 import Swal from "sweetalert2";
+import { motion, AnimatePresence } from "framer-motion";
 import "../Linge/WorkflowList.css";
 
-// ─── ScanStatus ──────────────────────────────────────────────────────────────
 function ScanStatus({ loading, success, error, code }) {
   if (loading) {
     return (
@@ -102,7 +111,6 @@ function ScanStatus({ loading, success, error, code }) {
   return null;
 }
 
-// ─── StatutCard ──────────────────────────────────────────────────────────────
 function StatutCard({ label, value, icon, color, bg, subValue }) {
   return (
     <div style={{
@@ -143,129 +151,300 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
   );
 }
 
-// ─── CarteLit ──────────────────────────────────────────────────────────────
 function CarteLit({ lit, actif, onClick }) {
   const complet = !lit.litVide;
   const infecte = lit.estInfecte;
-  const bg = actif ? "#ede9fe" : complet ? "#f0fdf4" : infecte ? "#fff5f5" : "#f8fafc";
-  const border = actif ? "#a78bfa" : complet ? "#bbf7d0" : infecte ? "#fca5a5" : "#e2e8f0";
   const nb = lit.lingesPoses?.length || 0;
+  
+  const statusConfig = complet 
+    ? { label: "Complété", color: "#10b981", bg: "#dcfce7", icon: "✅" }
+    : infecte 
+      ? { label: "Infecté", color: "#dc2626", bg: "#fee2e2", icon: "⚠️" }
+      : nb > 0 
+        ? { label: "En cours", color: "#7c3aed", bg: "#ede9fe", icon: "●" }
+        : { label: "Vide", color: "#94a3b8", bg: "#f1f5f9", icon: "○" };
 
   return (
-    <div onClick={onClick} style={{
-      borderRadius: 13,
-      border: `2px solid ${border}`,
-      background: bg,
-      padding: "12px 14px",
-      cursor: "pointer",
-      transition: "all .18s",
-      boxShadow: actif ? "0 0 0 3px #c4b5fd" : "none",
-    }}
-    onMouseEnter={e => { if (!actif) e.currentTarget.style.borderColor = "#a78bfa"; }}
-    onMouseLeave={e => { if (!actif) e.currentTarget.style.borderColor = border; }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <FaBed size={13} color={infecte ? "#dc2626" : "#7c3aed"} />
-          <span style={{ fontWeight: 800, fontSize: 13, color: infecte ? "#dc2626" : "#1e293b" }}>
-            Lit {lit.codeLit}
-          </span>
+    <motion.div
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      onClick={onClick}
+      style={{
+        borderRadius: "16px",
+        cursor: "pointer",
+        background: actif ? "white" : "white",
+        border: `2px solid ${actif ? "#7c3aed" : complet ? "#10b981" : infecte ? "#dc2626" : "#e2e8f0"}`,
+        boxShadow: actif 
+          ? "0 0 0 4px rgba(124, 58, 237, 0.15), 0 8px 24px rgba(124, 58, 237, 0.12)" 
+          : complet 
+            ? "0 2px 8px rgba(16, 185, 129, 0.1)" 
+            : "0 2px 8px rgba(0,0,0,0.04)",
+        transition: "all 0.3s ease",
+        position: "relative",
+        overflow: "hidden"
+      }}
+    >
+      <div style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: "3px",
+        background: actif ? "#7c3aed" : complet ? "#10b981" : infecte ? "#dc2626" : "#e2e8f0",
+        opacity: actif ? 1 : 0.5
+      }} />
+
+      <div style={{
+        padding: "16px 18px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "12px",
+            background: actif ? "#ede9fe" : complet ? "#dcfce7" : infecte ? "#fee2e2" : "#f8fafc",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "18px",
+            transition: "all 0.3s"
+          }}>
+            <FaBed color={actif ? "#7c3aed" : complet ? "#10b981" : infecte ? "#dc2626" : "#94a3b8"} size={16} />
+          </div>
+          <div>
+            <div style={{
+              fontWeight: 700,
+              fontSize: "16px",
+              color: "#0f172a",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}>
+              Lit {lit.codeLit}
+              <span style={{
+                fontSize: "10px",
+                fontWeight: 600,
+                color: statusConfig.color,
+                background: statusConfig.bg,
+                padding: "2px 10px",
+                borderRadius: "12px"
+              }}>
+                {statusConfig.icon} {statusConfig.label}
+              </span>
+            </div>
+            <div style={{
+              fontSize: "12px",
+              color: "#94a3b8",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              marginTop: "2px"
+            }}>
+              <span>{nb} linge{nb > 1 ? 's' : ''}</span>
+              {nb > 0 && (
+                <>
+                  <span style={{ width: "3px", height: "3px", borderRadius: "50%", background: "#d1d5db" }} />
+                  <span>{lit.lingesPoses?.map(l => l.categorie).join(", ")}</span>
+                </>
+              )}
+            </div>
+          </div>
         </div>
-        {infecte && <Badge style={{ background: "#fee2e2", color: "#dc2626", fontSize: 9 }}>⚠️ Infecté</Badge>}
-        {complet && <Badge style={{ background: "#dcfce7", color: "#15803d", fontSize: 9 }}>✅ Fait</Badge>}
-        {actif && <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: 9 }}>● Sélectionné</Badge>}
+        
+        {actif && (
+          <div style={{
+            padding: "4px 12px",
+            borderRadius: "20px",
+            background: "#ede9fe",
+            color: "#7c3aed",
+            fontSize: "10px",
+            fontWeight: 700
+          }}>
+            ● En cours
+          </div>
+        )}
       </div>
 
       {nb > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 4 }}>
+        <div style={{
+          padding: "0 18px 16px",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "6px"
+        }}>
           {lit.lingesPoses.map((l, i) => {
-            const c = cat(l.categorie);
+            const c = getCategorie(l.categorie);
             return (
-              <span key={i} style={{
-                fontSize: 10,
-                padding: "2px 7px",
-                borderRadius: 20,
-                background: c.bg,
-                color: c.color,
-                fontWeight: 600
-              }}>
-                {c.emoji} {l.categorie}
-              </span>
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 10px",
+                  borderRadius: "8px",
+                  background: `${c.color}12`,
+                  border: `1px solid ${c.color}25`,
+                  fontSize: "11px",
+                  fontWeight: 500,
+                  color: c.color
+                }}
+              >
+                <span style={{ fontSize: "14px" }}>{c.emoji}</span>
+                {l.categorie}
+              </div>
             );
           })}
         </div>
       )}
-      <div style={{ fontSize: 10, color: "#94a3b8" }}>
-        {nb > 0 ? `${nb} linge${nb > 1 ? "s" : ""} posé${nb > 1 ? "s" : ""}` : "Lit vide — à équiper"}
-      </div>
-    </div>
+
+      {nb === 0 && !complet && !infecte && (
+        <div style={{
+          padding: "0 18px 16px",
+          fontSize: "12px",
+          color: "#94a3b8",
+          fontStyle: "italic"
+        }}>
+          Aucun linge posé
+        </div>
+      )}
+    </motion.div>
   );
 }
 
-// ─── Resume ──────────────────────────────────────────────────────────────
 function Resume({ res, onNouvelle, onTerminer }) {
   return (
-    <div style={{
-      background: "#f0fdf4",
-      borderRadius: 18,
-      padding: 28,
-      border: "2px solid #22c55e",
-      textAlign: "center"
-    }}>
-      <div style={{ fontSize: 44, marginBottom: 10 }}>✅</div>
-      <div style={{ fontWeight: 900, fontSize: 18, color: "#15803d", marginBottom: 6 }}>
-        Chambre {res.codeChambre} équipée
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.3 }}
+      style={{
+        background: "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
+        borderRadius: "20px",
+        padding: "36px",
+        border: "2px solid #86efac",
+        boxShadow: "0 8px 32px rgba(16, 185, 129, 0.12)"
+      }}
+    >
+      <div style={{ textAlign: "center", marginBottom: "24px" }}>
+        <div style={{
+          width: "64px",
+          height: "64px",
+          borderRadius: "50%",
+          background: "#dcfce7",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto 12px",
+          fontSize: "32px"
+        }}>
+          ✅
+        </div>
+        <h2 style={{
+          fontSize: "24px",
+          fontWeight: 800,
+          color: "#15803d",
+          margin: 0
+        }}>
+          Chambre {res.codeChambre} équipée
+        </h2>
+        <p style={{
+          fontSize: "14px",
+          color: "#64748b",
+          marginTop: "4px"
+        }}>
+          {res.nbLinges} linge{res.nbLinges > 1 ? "s" : ""} distribué{res.nbLinges > 1 ? "s" : ""} 
+          sur {res.nbLits} lit{res.nbLits > 1 ? "s" : ""}
+        </p>
       </div>
-      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>
-        {res.nbLinges} linge{res.nbLinges > 1 ? "s" : ""} distribué{res.nbLinges > 1 ? "s" : ""} sur {res.nbLits} lit{res.nbLits > 1 ? "s" : ""}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 22 }}>
+
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+        gap: "12px",
+        marginBottom: "24px"
+      }}>
         {res.litsEquipes?.map((l, i) => (
           <div key={i} style={{
             background: "white",
-            borderRadius: 10,
-            padding: "9px 12px",
+            borderRadius: "12px",
+            padding: "14px 16px",
             border: "1px solid #bbf7d0",
-            fontSize: 11
+            display: "flex",
+            alignItems: "center",
+            gap: "12px"
           }}>
-            <div style={{ fontWeight: 700, color: "#15803d" }}>🛏️ Lit {l.codeLit}</div>
-            <div style={{ color: "#64748b" }}>{l.nb} linge{l.nb > 1 ? "s" : ""}</div>
+            <div style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "8px",
+              background: "#dcfce7",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#15803d"
+            }}>
+              <FaBed size={14} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: "13px", color: "#0f172a" }}>
+                Lit {l.codeLit}
+              </div>
+              <div style={{ fontSize: "11px", color: "#64748b" }}>
+                {l.nb} linge{l.nb > 1 ? "s" : ""}
+              </div>
+            </div>
           </div>
         ))}
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={onNouvelle} style={{
-          flex: 1,
-          padding: "11px",
-          borderRadius: 10,
-          border: "none",
-          background: "linear-gradient(135deg,#7c3aed,#6d28d9)",
-          color: "white",
-          fontWeight: 700,
-          fontSize: 13,
-          cursor: "pointer"
-        }}>
+
+      <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+        <button
+          onClick={onNouvelle}
+          style={{
+            padding: "12px 28px",
+            borderRadius: "12px",
+            border: "none",
+            background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+            color: "white",
+            fontWeight: 700,
+            fontSize: "14px",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            boxShadow: "0 4px 16px rgba(124, 58, 237, 0.25)"
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.03)"}
+          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+        >
           Autre chambre
         </button>
-        <button onClick={onTerminer} style={{
-          flex: 1,
-          padding: "11px",
-          borderRadius: 10,
-          border: "1px solid #e2e8f0",
-          background: "white",
-          color: "#64748b",
-          fontWeight: 600,
-          fontSize: 13,
-          cursor: "pointer"
-        }}>
+        <button
+          onClick={onTerminer}
+          style={{
+            padding: "12px 28px",
+            borderRadius: "12px",
+            border: "1px solid #e2e8f0",
+            background: "white",
+            color: "#64748b",
+            fontWeight: 600,
+            fontSize: "14px",
+            cursor: "pointer",
+            transition: "all 0.2s"
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
+          onMouseLeave={e => e.currentTarget.style.background = "white"}
+        >
           Terminer
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 export default function DistributionChambre() {
-  const [etape, setEtape] = useState("CHAMBRE"); // ✅ Changé de "AGENT" à "CHAMBRE"
+  const [etape, setEtape] = useState("CHAMBRE");
   const [agent, setAgent] = useState(null);
   const [chambre, setChambre] = useState(null);
   const [litActif, setLitActif] = useState(null);
@@ -284,17 +463,16 @@ export default function DistributionChambre() {
   useEffect(() => { chambreRef.current = chambre; }, [chambre]);
   useEffect(() => { litRef.current = litActif; }, [litActif]);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
   useEffect(() => {
-    const agentData = getAgent();
-    if (agentData && isAgentConnected()) {
+    const agentData = getAgentFromStorage();
+    if (agentData) {
       setAgent(agentData);
       setEtape("CHAMBRE");
       setScanStatus({
         loading: false,
-        success: { 
-          message: `👤 Agent ${agentData.nom}`, 
-          detail: `Connecté · ${agentData.matricule}` 
+        success: {
+          message: `👤 Agent ${agentData.nom}`,
+          detail: `Connecté · ${agentData.codeBarre || agentData.matricule}`
         },
         error: null
       });
@@ -309,7 +487,6 @@ export default function DistributionChambre() {
     }
   }, []);
 
-  // ─── Focus permanent ──────────────────────────────────────────────────
   useEffect(() => {
     const keepFocus = () => {
       if (scanInputRef.current && !document.querySelector('[data-modal="true"]')) {
@@ -321,20 +498,6 @@ export default function DistributionChambre() {
     return () => clearInterval(id);
   }, []);
 
-  // ─── Vérifier si un code est un agent ──────────────────────────────────
-  const verifierSiAgent = useCallback(async (code) => {
-    try {
-      const res = await fetch(`http://localhost:8082/api/agents/matricule/${code}`);
-      if (res.ok) {
-        return await res.json();
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  // ─── Clôturer la distribution ──────────────────────────────────────────
   const cloturerDistribution = useCallback(async () => {
     if (poses.length === 0) {
       await Swal.fire({
@@ -372,7 +535,6 @@ export default function DistributionChambre() {
     return true;
   }, [poses, chambre]);
 
-  // ─── Scan Chambre ──────────────────────────────────────────────────────
   const handleChambre = useCallback(async code => {
     if (!agent) {
       await Swal.fire({
@@ -387,10 +549,8 @@ export default function DistributionChambre() {
     setLoading(true);
     setScanStatus({ loading: true, code });
     try {
-      const res = await apiCall("/api/distribution/chambre", {
-        codeBarre: code,
-        matriculeAgent: agent.matricule // ✅ Utiliser agent du localStorage
-      }, "GET");
+      const res = await fetchChambre(code);
+      
       setChambre({
         chambreId: res.chambreId,
         codeChambre: res.codeChambre,
@@ -425,7 +585,6 @@ export default function DistributionChambre() {
     }
   }, [agent]);
 
-  // ─── Scan Linge ──────────────────────────────────────────────────────
   const handleScanLinge = useCallback(async code => {
     const lit = litRef.current;
     if (!lit) {
@@ -441,16 +600,11 @@ export default function DistributionChambre() {
     setScanStatus({ loading: true, code });
     try {
       const c = chambreRef.current;
-      const res = await apiCall("/api/distribution/chambre/lit", {
-        chambreId: c.chambreId,
-        litId: lit.litId,
-        codeOuTag: code,
-        matriculeAgent: agent.matricule // ✅ Utiliser agent du localStorage
-      });
+      const res = await poserLinge(c.chambreId, lit.litId, code);
+      
       const linge = c.disponibles.find(l => l.codeBarre === code || l.lingeId === res.lingeId)
         || { lingeId: res.lingeId, codeBarre: res.codeBarre, categorie: res.categorie };
 
-      // Mettre à jour l'état local
       setChambre(p => p ? {
         ...p,
         disponibles: p.disponibles.filter(l => l.lingeId !== linge.lingeId),
@@ -485,32 +639,30 @@ export default function DistributionChambre() {
     } finally {
       setLoading(false);
     }
-  }, [agent]);
+  }, []);
 
-  // ─── Gestion scan ──────────────────────────────────────────────────────
   const handleScan = useCallback(async code => {
     if (!code || loading) return;
     setScanVal("");
 
-    // ✅ Étape CHAMBRE : scan directement la chambre
     if (etape === "CHAMBRE") {
       await handleChambre(code);
       return;
     }
 
-    // ✅ Étape DISTRIBUER : détecter agent pour clôturer
     if (etape === "DISTRIBUER") {
-      const agentTrouve = await verifierSiAgent(code);
-      if (agentTrouve) {
-        await cloturerDistribution();
-      } else {
-        await handleScanLinge(code);
-      }
-      return;
+      try {
+        const agentTrouve = await fetchAgentByCode(code.trim());
+        if (agentTrouve) {
+          await cloturerDistribution();
+          return;
+        }
+      } catch (e) {}
+      
+      await handleScanLinge(code);
     }
-  }, [etape, loading, handleChambre, handleScanLinge, verifierSiAgent, cloturerDistribution]);
+  }, [etape, loading, handleChambre, handleScanLinge, cloturerDistribution]);
 
-  // ─── Reset ──────────────────────────────────────────────────────────────
   const reset = useCallback(async () => {
     if (etape !== "CHAMBRE" && etape !== "RESUME") {
       const result = await Swal.fire({
@@ -525,7 +677,6 @@ export default function DistributionChambre() {
       });
       if (!result.isConfirmed) return;
     }
-    setAgent(null);
     setChambre(null);
     setLitActif(null);
     setPoses([]);
@@ -535,7 +686,6 @@ export default function DistributionChambre() {
     setScanStatus(null);
   }, [etape]);
 
-  // ─── Helpers ──────────────────────────────────────────────────────────
   const getPlaceholder = () => {
     if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
     if (etape === "CHAMBRE") return "🚪 Scanner le code chambre...";
@@ -557,13 +707,10 @@ export default function DistributionChambre() {
   const litsVides = chambre?.lits?.filter(l => l.litVide).length || 0;
   const nbTotal = nbPoses + nbDispo;
   const pctAvancement = nbTotal > 0 ? Math.round((nbPoses / nbTotal) * 100) : 0;
-
   const isCloturee = etape === "RESUME";
 
   return (
     <div className="collecte-container">
-
-      {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "32px" }}>
         <div style={{
           display: "flex",
@@ -612,7 +759,6 @@ export default function DistributionChambre() {
         boxShadow: "0 4px 20px rgba(0,0,0,0.06)"
       }}>
 
-        {/* ─── BARRE SUPÉRIEURE ─────────────────────────────────────────── */}
         <div style={{
           display: "flex",
           justifyContent: "space-between",
@@ -635,7 +781,7 @@ export default function DistributionChambre() {
                 <FaUser color="#7c3aed" size={16} />
                 <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>{agent.nom}</span>
                 <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {agent.matricule}
+                  {agent.codeBarre || agent.matricule}
                 </Badge>
               </div>
             )}
@@ -687,7 +833,6 @@ export default function DistributionChambre() {
           </div>
         </div>
 
-        {/* ─── Message si agent non connecté ────────────────────────────── */}
         {!agent && (
           <div style={{
             padding: "12px 16px",
@@ -707,7 +852,6 @@ export default function DistributionChambre() {
           </div>
         )}
 
-        {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
           border: `2px dashed ${isCloturee ? "#e2e8f0" : getBorderColor()}`,
@@ -730,7 +874,6 @@ export default function DistributionChambre() {
           </CardContent>
         </Card>
 
-        {/* ─── INDICATEUR SCAN AGENT ────────────────────────────────────── */}
         {etape === "DISTRIBUER" && chambre && !isCloturee && (
           <div style={{
             padding: "8px 16px",
@@ -749,7 +892,6 @@ export default function DistributionChambre() {
           </div>
         )}
 
-        {/* ─── ÉTAPES VIDE ───────────────────────────────────────────────── */}
         {agent && etape === "CHAMBRE" && (
           <Card style={{ background: "#f0fdfa", border: "1px solid #99f6e4", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">
@@ -762,7 +904,6 @@ export default function DistributionChambre() {
           </Card>
         )}
 
-        {/* ─── STATUTS ────────────────────────────────────────────────────── */}
         {etape === "DISTRIBUER" && chambre && !isCloturee && (
           <div style={{
             display: "grid",
@@ -802,12 +943,11 @@ export default function DistributionChambre() {
           </div>
         )}
 
-        {/* ─── DISTRIBUER : LITS ────────────────────────────────────────── */}
         {etape === "DISTRIBUER" && chambre && !isCloturee && (
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-            gap: "10px"
+            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+            gap: "14px"
           }}>
             {chambre.lits.map(lit => (
               <CarteLit
@@ -822,7 +962,6 @@ export default function DistributionChambre() {
           </div>
         )}
 
-        {/* ─── RÉSUMÉ ────────────────────────────────────────────────────── */}
         {etape === "RESUME" && resume && (
           <Resume
             res={resume}
@@ -839,7 +978,6 @@ export default function DistributionChambre() {
           />
         )}
 
-        {/* ─── FOOTER ────────────────────────────────────────────────────── */}
         <div style={{
           display: "flex",
           justifyContent: "space-between",

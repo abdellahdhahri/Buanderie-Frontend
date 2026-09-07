@@ -1,27 +1,36 @@
+// src/components/linges/LingeList.jsx
+
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { LingeContext, CATEGORIES } from "../../contextes/LingeContext";
 import { ServiceContext } from "../../contextes/ServiceContext";
-import { FaTrash, FaEye, FaPlus, FaHistory, FaPrint, FaEdit, FaBarcode, FaRss, FaWifi, FaMicrophone } from "react-icons/fa";
+import { 
+  FaTrash, FaEye, FaPlus, FaHistory, FaPrint, FaEdit, 
+  FaBarcode, FaRss, FaWifi, FaMicrophone 
+} from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useModal } from "../../contextes/ModalContext";
 import { useReactToPrint } from "react-to-print";
-import BarcodeLabel from "./BarcodeLabel";
+import BarcodeLabel from "../../components/BarcodeLabel";
 import "./WorkflowList.css";
 import "./LingeList.css";
-import { FaSearch } from "react-icons/fa";
 import { Modal } from "../../components/ui/modal";
 import { Input } from "../../components/ui/input";
-import { Select } from "../../components/ui/select";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import printJS from "print-js";
-import Swal from 'sweetalert2'
-import { Plus, Eye, Trash2, Edit, History, Barcode, RefreshCw, Search, Filter, X, Tag, User as UserIcon, Calendar, Loader2 } from "lucide-react";
+import Swal from 'sweetalert2';
+import { 
+  Plus, Eye, Trash2, Edit, History, Barcode, RefreshCw, 
+  Search, Filter, X, Tag, User as UserIcon, Calendar, 
+  Loader2, Upload, Check, CheckSquare, Square, Package 
+} from "lucide-react";
+import { LingeImportModal } from "./LingeImportModal";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
+// ─── MODE TOGGLE ──────────────────────────────────────────────────────────
 function ModeToggle({ mode, onChange }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px", background: "#f1f5f9", borderRadius: "12px" }}>
@@ -54,13 +63,7 @@ function ModeToggle({ mode, onChange }) {
 }
 
 export default function LingeList() {
-  const [filters, setFilters] = useState({
-    categorie: "",
-    etat: "",
-    serviceId: "",
-    search: "",
-  });
-
+  // ─── CONTEXTES ──────────────────────────────────────────────────────────
   const { 
     linges, 
     addLinge, 
@@ -73,12 +76,23 @@ export default function LingeList() {
     checkCodeExists, 
     associerTagRfid,
     pagedData,
-    setPagedData
+    setPagedData,
+    // Import
+    setIsImportModalOpen,
+    setImportType,
   } = useContext(LingeContext);
   
   const { services } = useContext(ServiceContext);
   const navigate = useNavigate();
   const { showAlert, showConfirm } = useModal();
+
+  // ─── ÉTATS ──────────────────────────────────────────────────────────────
+  const [filters, setFilters] = useState({
+    categorie: "",
+    etat: "",
+    serviceId: "",
+    search: "",
+  });
 
   const [showPopup, setShowPopup] = useState(false);
   const [selectedLingeForPrint, setSelectedLingeForPrint] = useState(null);
@@ -89,18 +103,30 @@ export default function LingeList() {
   const [showRfidPopup, setShowRfidPopup] = useState(false);
   const [rfidCode, setRfidCode] = useState("");
   const [selectedLingeForRfid, setSelectedLingeForRfid] = useState(null);
-  const [filterService, setFilterService] = useState("");
   const [displayMode, setDisplayMode] = useState(isRfidMode ? "RFID" : "BARCODE");
   const [personnel, setPersonnel] = useState([]);
   const [isPersonnelLoading, setIsPersonnelLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [creationMode, setCreationMode] = useState("auto");
 
   const printRef = React.useRef(null);
 
-  const [currentPage, setCurrentPage] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  // ─── ÉTAT DU FORMULAIRE ────────────────────────────────────────────────
+  const [newLinge, setNewLinge] = useState({
+    categorie: "",
+    poids: 0,
+    serviceId: "",
+    codebarre: "",
+    rfidTag: "",
+    dureVie: "",
+    porteurId: "",
+    etat: "SALE",
+    observations: ""
+  });
 
+  // ─── CHARGEMENT PERSONNEL ──────────────────────────────────────────────
   const fetchPersonnel = async () => {
     setIsPersonnelLoading(true);
     try {
@@ -120,6 +146,7 @@ export default function LingeList() {
     fetchPersonnel();
   }, []);
 
+  // ─── CHARGEMENT PAGINÉ ─────────────────────────────────────────────────
   const loadPage = async (page) => {
     if (!fetchLingesPaged) return;
     setIsLoading(true);
@@ -146,6 +173,7 @@ export default function LingeList() {
     loadPage(0);
   }, [filters]);
 
+  // ─── MODE CHANGE ──────────────────────────────────────────────────────
   const handleModeChange = (mode) => {
     const newMode = mode === "RFID";
     setIsRfidMode(newMode);
@@ -153,12 +181,14 @@ export default function LingeList() {
     loadPage(0);
   };
 
+  // ─── PAGINATION ─────────────────────────────────────────────────────────
   const handlePageChange = (newPage) => {
     if (newPage >= 0 && newPage < pagedData.totalPages) {
       loadPage(newPage);
     }
   };
 
+  // ─── DÉTECTION FORMAT CODE-BARRES ─────────────────────────────────────
   const detectFormat = (value) => {
     if (!value) return "code128";
     const cleanValue = value.replace(/\s+/g, "");
@@ -168,6 +198,7 @@ export default function LingeList() {
     return "code128";
   };
 
+  // ─── IMPRESSION ÉTIQUETTE ─────────────────────────────────────────────
   const handlePrint = () => {
     if (!selectedLingeForPrint) return;
     const { id, codebarre, categorie, serviceNom } = selectedLingeForPrint || {};
@@ -193,29 +224,7 @@ export default function LingeList() {
     setSelectedLingeForPrint(null);
   };
 
-  const [newLinge, setNewLinge] = useState({
-    categorie: "",
-    poids: 0,
-    serviceId: "",
-    codebarre: "",
-    rfidTag: "",
-    dureVie: "",
-    porteurId: "",
-    etat: "SALE",
-    observations: ""
-  });
-
-  const [creationMode, setCreationMode] = useState("auto");
-
-  useEffect(() => {
-    if (!showPopup || creationMode === "auto") return;
-    const handleGlobalScan = (e) => {
-      if (e.target.tagName === "INPUT" && e.target.placeholder !== "Scanner le code ici...") return;
-    };
-    document.addEventListener("keydown", handleGlobalScan);
-    return () => document.removeEventListener("keydown", handleGlobalScan);
-  }, [showPopup, creationMode]);
-
+  // ─── SAUVEGARDE ─────────────────────────────────────────────────────────
   const handleSave = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -233,8 +242,6 @@ export default function LingeList() {
           observations: newLinge.observations?.trim() || null
         };
 
-        console.log('📤 Update payload:', JSON.stringify(updatePayload, null, 2));
-
         const response = await fetch(`${API_URL}/api/linges/${lingeToEdit.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -248,7 +255,6 @@ export default function LingeList() {
 
         const updated = await response.json();
         
-        // Mettre à jour la liste locale
         const updatedLinges = (pagedData.content || []).map(l => 
           l.id === updated.id ? updated : l
         );
@@ -268,7 +274,7 @@ export default function LingeList() {
         return;
       }
 
-      // ✅ CRÉATION
+      // Création
       if (creationMode === "manual") {
         const codeToCheck = newLinge.codebarre.trim();
         if (!codeToCheck) {
@@ -279,7 +285,7 @@ export default function LingeList() {
         if (checkCodeExists) {
           const exists = await checkCodeExists(codeToCheck);
           if (exists) {
-            showAlert("Code Existant", `L'article avec le code "${codeToCheck}" existe déjà dans l'inventaire. L'ajout est bloqué.`, "error");
+            showAlert("Code Existant", `L'article avec le code "${codeToCheck}" existe déjà.`, "error");
             setIsSaving(false);
             return;
           }
@@ -304,8 +310,6 @@ export default function LingeList() {
       if (!payload.serviceId && services.length > 0) {
         payload.serviceId = services[0].id;
       }
-
-      console.log('📤 Payload envoyé:', JSON.stringify(payload, null, 2));
 
       const created = await addLinge(payload);
       if (created) {
@@ -333,6 +337,7 @@ export default function LingeList() {
     }
   };
 
+  // ─── ASSOCIATION RFID ──────────────────────────────────────────────────
   const handleAssocierRfid = async () => {
     if (!selectedLingeForRfid) {
       showAlert("Erreur", "Aucun linge sélectionné.", "error");
@@ -357,6 +362,7 @@ export default function LingeList() {
     }
   };
 
+  // ─── DÉTAILS ────────────────────────────────────────────────────────────
   const handleDetail = (id) => {
     let l = displayedLinges.find(item => item.id === id);
     if (!l && linges && linges.length > 0) {
@@ -372,6 +378,7 @@ export default function LingeList() {
     }
   };
 
+  // ─── ÉDITION ────────────────────────────────────────────────────────────
   const handleEdit = (linge) => {
     if (!linge && selectedId) {
       const l = displayedLinges.find(item => item.id === selectedId) ||
@@ -399,24 +406,13 @@ export default function LingeList() {
     setShowPopup(true);
   };
 
-  const displayedLinges = pagedData.content || [];
-  const selectedLinge = displayedLinges.find((l) => l.id === selectedId);
-
-  const handleRowClick = (id) => {
-    setSelectedId((prev) => (prev === id ? null : id));
+  // ─── OUVERTURE IMPORT ──────────────────────────────────────────────────
+  const handleOpenImport = () => {
+    setImportType('LINGE');
+    setIsImportModalOpen(true);
   };
 
-  const [chambres, setChambres] = useState([]);
-  useEffect(() => {
-    fetch(`${API_URL}/api/chambres`)
-      .then(res => res.json())
-      .then(data => {
-        const chambresData = Array.isArray(data) ? data : data.content || [];
-        setChambres(chambresData);
-      })
-      .catch(err => console.error("Erreur chambres :", err));
-  }, []);
-
+  // ─── RÉINITIALISATION FILTRES ──────────────────────────────────────────
   const resetFilters = () => {
     setFilters({
       categorie: "",
@@ -424,14 +420,39 @@ export default function LingeList() {
       serviceId: "",
       search: "",
     });
-    setFilterService("");
     loadPage(0);
   };
 
-  // ─── Badges ────────────────────────────────────────────────────────────────
+  // ─── ROW CLICK ─────────────────────────────────────────────────────────
+  const handleRowClick = (id) => {
+    setSelectedId((prev) => (prev === id ? null : id));
+  };
+
+  // ─── DONNÉES AFFICHÉES ─────────────────────────────────────────────────
+  const displayedLinges = pagedData.content || [];
+  const selectedLinge = displayedLinges.find((l) => l.id === selectedId);
+
+  // ─── GET SERVICE NAME ──────────────────────────────────────────────────
+  const getServiceName = (serviceId) => {
+    if (!serviceId) return "Non assigné";
+    const service = services.find(s => s.id === serviceId);
+    return service ? service.code : "Non assigné";
+  };
+
+  // ─── GET PORTEUR NAME ──────────────────────────────────────────────────
+  const getPorteurName = (porteurId) => {
+    if (!porteurId) return "Non assigné";
+    const porteur = personnel.find(p => p.id === porteurId);
+    if (porteur) {
+      return `${porteur.prenom} ${porteur.nom}`;
+    }
+    return "Non assigné";
+  };
+
+  // ─── BADGE ÉTAT ────────────────────────────────────────────────────────
   const getEtatBadge = (etat) => {
     const etatColors = {
-      SALE: "danger",
+      SALE: "destructive",
       EN_LAVAGE: "info",
       LAVE: "success",
       EN_SECHAGE: "info",
@@ -444,10 +465,10 @@ export default function LingeList() {
       HORS_SERVICE: "destructive",
       EN_TRI: "info",
       RECEPTION: "info",
-      INFECTE_COLLECTE: "danger",
-      INFECTE_EN_LAVAGE: "danger",
-      INFECTE_LAVE: "danger",
-      INFECTE_ECART: "danger",
+      INFECTE_COLLECTE: "destructive",
+      INFECTE_EN_LAVAGE: "destructive",
+      INFECTE_LAVE: "destructive",
+      INFECTE_ECART: "destructive",
       PROPRE: "success",
       MANQUANT: "destructive"
     };
@@ -455,96 +476,79 @@ export default function LingeList() {
     return <Badge variant={variant}>{etat}</Badge>;
   };
 
-  // Obtenir le nom du service à partir de l'ID
-  const getServiceName = (serviceId) => {
-    if (!serviceId) return "Non assigné";
-    const service = services.find(s => s.id === serviceId);
-    return service ? service.code : "Non assigné";
-  };
-
-  const getPorteurName = (porteurId) => {
-    if (!porteurId) return "Non assigné";
-    const porteur = personnel.find(p => p.id === porteurId);
-    if (porteur) {
-      return `${porteur.prenom} ${porteur.nom}`;
-    }
-    return "Non assigné";
-  };
-
-  // Vérifier si la catégorie est UNIFORME
+  // ─── VÉRIFICATION UNIFORME ─────────────────────────────────────────────
   const isUniforme = newLinge.categorie === "UNIFORME";
 
   return (
     <div className="space-y-8">
-      <div className="space-y-2">
-       <div style={{ marginBottom: "32px" }}>
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    marginBottom: "8px"
-  }}>
-    <div style={{
-      width: "52px",
-      height: "52px",
-      borderRadius: "16px",
-      background: displayMode === "RFID" 
-        ? "linear-gradient(135deg, #8b5cf6, #7c3aed)" 
-        : "linear-gradient(135deg, #14b8a6, #0d9488)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      boxShadow: displayMode === "RFID"
-        ? "0 4px 16px rgba(139, 92, 246, 0.25)"
-        : "0 4px 16px rgba(20, 184, 166, 0.25)"
-    }}>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        width="24" 
-        height="24" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-        <line x1="3" y1="6" x2="21" y2="6" />
-        <path d="M16 10a4 4 0 0 1-8 0" />
-        {displayMode === "RFID" && (
-          <>
-            <circle cx="12" cy="14" r="2" />
-            <path d="M10 18a4 4 0 0 1 4 0" />
-          </>
-        )}
-      </svg>
-    </div>
-    <div>
-      <h1 style={{
-        fontSize: "28px",
-        fontWeight: 800,
-        color: "#0f172a",
-        margin: 0
-      }}>
-        {displayMode === "RFID" ? "Gestion des Linges RFID" : "Gestion des Linges"}
-      </h1>
-      <p style={{
-        fontSize: "14px",
-        color: "#64748b",
-        margin: "2px 0 0 0"
-      }}>
-        {displayMode === "RFID" 
-          ? "Suivi et traçabilité des linges par puce RFID" 
-          : "Gestion et suivi des linges"}
-      </p>
-    </div>
-  </div>
-</div>
+      {/* ─── EN-TÊTE ────────────────────────────────────────────────────── */}
+      <div style={{ marginBottom: "32px" }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "8px"
+        }}>
+          <div style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "16px",
+            background: displayMode === "RFID" 
+              ? "linear-gradient(135deg, #8b5cf6, #7c3aed)" 
+              : "linear-gradient(135deg, #14b8a6, #0d9488)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            boxShadow: displayMode === "RFID"
+              ? "0 4px 16px rgba(139, 92, 246, 0.25)"
+              : "0 4px 16px rgba(20, 184, 166, 0.25)"
+          }}>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+              {displayMode === "RFID" && (
+                <>
+                  <circle cx="12" cy="14" r="2" />
+                  <path d="M10 18a4 4 0 0 1 4 0" />
+                </>
+              )}
+            </svg>
+          </div>
+          <div>
+            <h1 style={{
+              fontSize: "28px",
+              fontWeight: 800,
+              color: "#0f172a",
+              margin: 0
+            }}>
+              {displayMode === "RFID" ? "Gestion des Linges RFID" : "Gestion des Linges"}
+            </h1>
+            <p style={{
+              fontSize: "14px",
+              color: "#64748b",
+              margin: "2px 0 0 0"
+            }}>
+              {displayMode === "RFID" 
+                ? "Suivi et traçabilité des linges par puce RFID" 
+                : "Gestion et suivi des linges"}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Mode Toggle */}
+      {/* ─── BARRE D'OUTILS ────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
         <ModeToggle mode={displayMode} onChange={handleModeChange} />
         
@@ -559,6 +563,17 @@ export default function LingeList() {
         >
           <Plus className="w-4 h-4 stroke-[2.5]" /> Nouvel Article
         </button>
+
+        {/* ─── BOUTON IMPORTER ──────────────────────────────────────────── */}
+        <button
+          onClick={handleOpenImport}
+          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-[14px] text-sm font-bold text-indigo-700 hover:from-indigo-100 hover:to-purple-100 transition-all shadow-[0_2px_8px_rgba(99,102,241,0.15)] hover:shadow-[0_4px_16px_rgba(99,102,241,0.25)] hover:scale-[1.02]"
+        >
+          <Upload className="w-4 h-4 stroke-[2.5]" /> Importer des linges
+        </button>
+
+        <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
+
         <button
           onClick={() => {
             if (!selectedId) {
@@ -583,6 +598,7 @@ export default function LingeList() {
         >
           <Tag className="w-4 h-4 stroke-[2.5]" /> Associer RFID
         </button>
+
         <button
           disabled={!selectedId}
           onClick={() => selectedId && handleDetail(selectedId)}
@@ -590,6 +606,7 @@ export default function LingeList() {
         >
           <Eye className="w-4 h-4 stroke-[2.5]" /> Détails
         </button>
+
         <button
           disabled={!selectedId}
           onClick={() => selectedId && handleEdit(selectedLinge)}
@@ -597,6 +614,7 @@ export default function LingeList() {
         >
           <Edit className="w-4 h-4 stroke-[2.5]" /> Modifier
         </button>
+
         <button
           disabled={!selectedId}
           onClick={async () => {
@@ -613,6 +631,7 @@ export default function LingeList() {
         >
           <Trash2 className="w-4 h-4 stroke-[2.5]" /> Supprimer
         </button>
+
         <button
           disabled={!selectedId}
           onClick={() => {
@@ -625,6 +644,7 @@ export default function LingeList() {
         >
           <Barcode className="w-4 h-4 stroke-[2.5]" /> Étiquette
         </button>
+
         <button
           disabled={!selectedId}
           onClick={() => selectedId && navigate(`/tracking?code=${selectedLinge?.codebarre}`)}
@@ -632,14 +652,16 @@ export default function LingeList() {
         >
           <History className="w-4 h-4 stroke-[2.5]" /> Historique
         </button>
+
         <button
           onClick={() => loadPage(currentPage)}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
         >
-          <RefreshCw className="w-4 h-4" /> Actualiser
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Actualiser
         </button>
       </div>
 
+      {/* ─── FILTRES ────────────────────────────────────────────────────── */}
       <Card className="mb-6">
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -719,6 +741,7 @@ export default function LingeList() {
         </CardContent>
       </Card>
 
+      {/* ─── TABLEAU ────────────────────────────────────────────────────── */}
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -782,19 +805,19 @@ export default function LingeList() {
                         <td className="text-center font-bold">{l.poids} kg</td>
                         <td className="text-center">{getEtatBadge(l.etat)}</td>
                         <td className="text-center">{serviceName}</td>
-                       <td className="text-center">
-  {isUniformeRow ? (
-    l.porteurNom ? (
-      <span className="text-xs font-medium text-blue-600 flex items-center justify-center gap-1">
-        <UserIcon className="w-3 h-3" /> {l.porteurNom}
-      </span>
-    ) : (
-      <span className="text-xs text-slate-400">Non assigné</span>
-    )
-  ) : (
-    <span className="text-xs text-slate-400">—</span>
-  )}
-</td>
+                        <td className="text-center">
+                          {isUniformeRow ? (
+                            l.porteurNom ? (
+                              <span className="text-xs font-medium text-blue-600 flex items-center justify-center gap-1">
+                                <UserIcon className="w-3 h-3" /> {l.porteurNom}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400">Non assigné</span>
+                            )
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                        </td>
                         <td className="text-center">
                           {hasRfid ? (
                             <Badge variant="success" className="text-xs">
@@ -840,6 +863,7 @@ export default function LingeList() {
         </CardContent>
       </Card>
 
+      {/* ─── PAGINATION ──────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mt-6">
         <div className="text-sm text-muted-foreground">
           Affichage de {displayedLinges.length > 0 ? currentPage * 10 + 1 : 0} à {Math.min((currentPage + 1) * 10, pagedData.totalElements)} sur {pagedData.totalElements} articles
@@ -867,7 +891,7 @@ export default function LingeList() {
         </div>
       </div>
 
-      {/* ─── Modal Création/Modification ──────────────────────────────────── */}
+      {/* ─── MODAL CRÉATION/MODIFICATION ────────────────────────────────── */}
       <Modal
         isOpen={showPopup}
         onClose={() => setShowPopup(false)}
@@ -1083,7 +1107,7 @@ export default function LingeList() {
         </form>
       </Modal>
 
-      {/* Modal Association RFID */}
+      {/* ─── MODAL ASSOCIATION RFID ────────────────────────────────────── */}
       <Modal
         isOpen={showRfidPopup}
         onClose={() => {
@@ -1141,7 +1165,7 @@ export default function LingeList() {
         </div>
       </Modal>
 
-      {/* Modal Détails */}
+      {/* ─── MODAL DÉTAILS ──────────────────────────────────────────────── */}
       <Modal
         isOpen={!!selectedLingeDetail}
         onClose={() => setSelectedLingeDetail(null)}
@@ -1216,7 +1240,7 @@ export default function LingeList() {
         </div>
       </Modal>
 
-      {/* Modal Impression */}
+      {/* ─── MODAL IMPRESSION ───────────────────────────────────────────── */}
       <Modal
         isOpen={!!lingeToPrint}
         onClose={() => setLingeToPrint(null)}
@@ -1240,6 +1264,10 @@ export default function LingeList() {
         </div>
       </Modal>
 
+      {/* ─── MODAL D'IMPORT ─────────────────────────────────────────────── */}
+      <LingeImportModal />
+
+      {/* ─── ZONE D'IMPRESSION ──────────────────────────────────────────── */}
       <div className="print-only">
         <BarcodeLabel linge={selectedLingeForPrint} />
       </div>

@@ -1,14 +1,14 @@
-import React, { useState, useContext, useRef, useEffect } from "react";
+// pages/Stockage/StockageList.js
+import React, { useState, useContext, useEffect } from "react";
 import { LingeContext } from "../../contextes/LingeContext";
 import { useNavigate } from "react-router-dom";
-import { FaBarcode, FaWarehouse, FaUser, FaCheckCircle, FaTimes, FaExclamationTriangle } from "react-icons/fa";
+import { FaWarehouse, FaUser, FaCheckCircle, FaTimes, FaExclamationTriangle } from "react-icons/fa";
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import DialogueControleQualite from "../../components/dialogues/DialogueControleQualite";
 import { StockageProvider, useStockage } from "../../contextes/StockageContext";
 import ModeToggle from "../../components/utils/shared/ModeToggle";
-import EtapesStepper from "../../components/utils/shared/EtapesStepper";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import { getAgent, isAgentConnected } from "../../services/agentService";
 import "../Linge/WorkflowList.css";
@@ -18,23 +18,38 @@ function StockageInner() {
   const navigate = useNavigate();
   const {
     agent: agentFromContext,
-    dialogueItem, reclamationCreee, messageStatut, loading, isConfirming,
-    scanAgent, deconnecterAgent, scanStockage, confirmerControle, fermerDialogue,
+    dialogueItem,
+    reclamationCreee,
+    messageStatut,
+    loading,
+    isConfirming,
+    scanAgent,
+    deconnecterAgent,
+    scanStockage,
+    confirmerControle,
+    fermerDialogue,
   } = useStockage();
 
   const [scanValue, setScanValue] = useState("");
-  const [mode,      setMode]      = useState(isRfidMode ? "RFID" : "BARCODE");
-  const [agent,     setAgent]     = useState(null);
+  const [mode, setMode] = useState(isRfidMode ? "RFID" : "BARCODE");
+  const [agent, setAgent] = useState(null);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
+  // ✅ Récupérer l'agent depuis localStorage
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
-      setAgent(agentData);
-      // Synchroniser avec le contexte
-      if (scanAgent) {
-        scanAgent(agentData.matricule).catch(() => {});
-      }
+      const ag = {
+        matricule: agentData.codeBarre || agentData.matricule,
+        nom: agentData.nom || "Inconnu",
+        prenom: agentData.prenom || "",
+        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+        codeBarre: agentData.codeBarre || agentData.matricule,
+        id: agentData.id,
+        poste: agentData.poste || "AGENT_STOCKAGE"
+      };
+      setAgent(ag);
+    } else {
+      setAgent(null);
     }
   }, []);
 
@@ -45,7 +60,10 @@ function StockageInner() {
     }
   }, [agentFromContext]);
 
-  const handleModeChange = (m) => { setMode(m); setIsRfidMode(m === "RFID"); };
+  const handleModeChange = (m) => {
+    setMode(m);
+    setIsRfidMode(m === "RFID");
+  };
 
   const handleScan = async (code) => {
     setScanValue("");
@@ -58,17 +76,12 @@ function StockageInner() {
     await scanStockage(code, getLingeByCode);
   };
 
-  const ETAPES = [
-    { id: "AGENT",    label: "Agent",     done: !!agent },
-    { id: "CONTROLE", label: "Contrôle",  done: !!reclamationCreee },
-    { id: "STOCKAGE", label: "Stockage",  done: false },
-  ];
+  const getPlaceholder = () => {
+    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
+    return mode === "RFID" ? "📡 Scanner tag RFID..." : "📦 Scanner un linge (état PLIE)...";
+  };
 
-  const getPlaceholder = () => !agent
-    ? "👤 Agent non connecté — veuillez vous reconnecter"
-    : mode === "RFID" ? "📡 Scanner tag RFID..." : "📦 Scanner un linge (état SECHE)...";
-
-  const getBorderColor = () => !agent ? "#dc2626" : "#0ea5e9";
+  const getBorderColor = () => !agent ? "#dc2626" : "#3b82f6";
 
   return (
     <div className="collecte-container">
@@ -82,7 +95,7 @@ function StockageInner() {
         />
       )}
 
-      {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
+      {/* En-tête */}
       <div style={{ marginBottom: "32px" }}>
         <div style={{
           display: "flex",
@@ -130,12 +143,13 @@ function StockageInner() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom || agent.matricule}` : "Aucun agent connecté"}
+              {agent ? `Agent: ${agent.nomPrenom || agent.nom || agent.matricule}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
       </div>
 
+      {/* Panneau principal */}
       <div className="collecte-panel-grand" style={{ 
         background: "white", 
         borderRadius: "20px", 
@@ -165,13 +179,17 @@ function StockageInner() {
                 border: "1px solid #bbf7d0" 
               }}>
                 <FaCheckCircle color="#22c55e" size={16} />
-                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>{agent.nom || agent.matricule}</span>
-                <Badge variant="outline" style={{ fontSize: "11px" }}>{agent.matricule}</Badge>
+                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
+                  {agent.nomPrenom || agent.nom || agent.matricule}
+                </span>
+                <Badge variant="outline" style={{ fontSize: "11px" }}>
+                  {agent.codeBarre || agent.matricule}
+                </Badge>
                 <button 
-                  onClick={() => { 
-                    deconnecterAgent(); 
-                    setAgent(null); 
-                  }} 
+                  onClick={() => {
+                    deconnecterAgent();
+                    setAgent(null);
+                  }}
                   style={{ 
                     background: "none", 
                     border: "none", 
@@ -183,7 +201,10 @@ function StockageInner() {
                 </button>
               </div>
             ) : (
-              <div style={{ fontSize: "13px", color: "#94a3b8" }}>Aucun agent connecté</div>
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>
+                <FaUser style={{ marginRight: "6px" }} />
+                Aucun agent connecté
+              </div>
             )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
@@ -191,10 +212,10 @@ function StockageInner() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => { 
-                setScanValue(""); 
-                deconnecterAgent(); 
-                setAgent(null); 
+              onClick={() => {
+                setScanValue("");
+                deconnecterAgent();
+                setAgent(null);
               }}
             >
               Reset
@@ -202,7 +223,7 @@ function StockageInner() {
           </div>
         </div>
 
-        {/* ─── Message si agent non connecté ──────────────────────────────── */}
+        {/* Message si agent non connecté */}
         {!agent && (
           <div style={{
             padding: "12px 16px",
@@ -241,7 +262,7 @@ function StockageInner() {
           </CardContent>
         </Card>
 
-        {/* Statut */}
+        {/* Message de statut */}
         {messageStatut && (
           <Card style={{ 
             background: reclamationCreee ? "#fefce8" : "#f0fdf4", 
@@ -249,20 +270,25 @@ function StockageInner() {
             marginBottom: "16px" 
           }}>
             <CardContent className="p-3">
-              <p style={{ fontSize: "13px", fontWeight: 600, color: reclamationCreee ? "#92400e" : "#15803d" }}>
+              <p style={{ 
+                fontSize: "13px", 
+                fontWeight: 600, 
+                color: reclamationCreee ? "#92400e" : "#15803d"
+              }}>
                 {messageStatut}
               </p>
             </CardContent>
           </Card>
         )}
 
+        {/* État prêt */}
         {agent && !dialogueItem && (
           <Card style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaWarehouse color="#22c55e" />
                 <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt pour contrôle</span>
-                <span style={{ color: "#64748b" }}>Scannez un linge en état SECHE</span>
+                <span style={{ color: "#64748b" }}>Scannez un linge en état PLIE</span>
               </div>
             </CardContent>
           </Card>

@@ -30,15 +30,23 @@ function PliageInner() {
   const [mode,      setMode]      = useState(isRfidMode ? "RFID" : "BARCODE");
   const [agent,     setAgent]     = useState(null);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
+  // ✅ Récupérer l'agent depuis localStorage
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
-      setAgent(agentData);
-      // Synchroniser avec le contexte
-      if (scanAgent) {
-        scanAgent(agentData.matricule).catch(() => {});
-      }
+      // ✅ Utiliser les données du localStorage sans appeler scanAgent
+      const ag = {
+        matricule: agentData.codeBarre || agentData.matricule,
+        nom: agentData.nom || "Inconnu",
+        prenom: agentData.prenom || "",
+        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+        codeBarre: agentData.codeBarre || agentData.matricule,
+        id: agentData.id,
+        poste: agentData.poste || "AGENT_PLIAGE"
+      };
+      setAgent(ag);
+    } else {
+      setAgent(null);
     }
   }, []);
 
@@ -55,17 +63,13 @@ function PliageInner() {
     setScanValue("");
     if (!agent) {
       if (scanAgent) {
+        // Fallback: si pas d'agent, essayer de scanner
         await scanAgent(code);
       }
       return;
     }
     await scanPliage(code, getLingeByCode);
   };
-
-  const ETAPES = [
-    { id: "AGENT",   label: "Agent",  done: !!agent },
-    { id: "PLIAGE",  label: "Pliage", done: !!dialogueItem },
-  ];
 
   const getPlaceholder = () => !agent
     ? "👤 Agent non connecté — veuillez vous reconnecter"
@@ -133,7 +137,7 @@ function PliageInner() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom || agent.matricule}` : "Aucun agent connecté"}
+              {agent ? `Agent: ${agent.nomPrenom || agent.nom || agent.matricule}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -168,8 +172,12 @@ function PliageInner() {
                 border: "1px solid #bbf7d0" 
               }}>
                 <FaCheckCircle color="#22c55e" size={16} />
-                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>{agent.nom || agent.matricule}</span>
-                <Badge variant="outline" style={{ fontSize: "11px" }}>{agent.matricule}</Badge>
+                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
+                  {agent.nomPrenom || agent.nom || agent.matricule}
+                </span>
+                <Badge variant="outline" style={{ fontSize: "11px" }}>
+                  {agent.codeBarre || agent.matricule}
+                </Badge>
                 <button 
                   onClick={() => { 
                     deconnecterAgent(); 

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { useModal } from "./ModalContext";
+import { getAgent, isAgentConnected } from "../services/agentService";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
 const API = `${API_BASE_URL}/api`;
@@ -28,18 +29,49 @@ export function LavageProvider({ children }) {
 
   const [loading, setLoading] = useState(false);
 
-  const identifierAgent = useCallback(async (code) => {
-    setLoading(true);
-    try {
-      const r = await fetch(`${API_BASE_URL}/api/agents/matricule/${code}`);
-      if (r.ok) { setAgent(await r.json()); return true; }
-      showAlert("❌ Agent introuvable", code, "error");
-      return false;
-    } catch {
-      showAlert("Erreur réseau", "", "error");
-      return false;
-    } finally { setLoading(false); }
+  // ✅ Récupérer l'agent depuis localStorage (pas d'appel API)
+  const identifierAgent = useCallback(async () => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      const ag = {
+        matricule: agentData.codeBarre || agentData.matricule,
+        nom: agentData.nom || "Inconnu",
+        prenom: agentData.prenom || "",
+        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+        codeBarre: agentData.codeBarre || agentData.matricule,
+        id: agentData.id,
+        poste: agentData.poste || "AGENT_LAVAGE"
+      };
+      setAgent(ag);
+      return ag;
+    }
+    showAlert("❌ Agent non connecté", "Veuillez vous connecter.", "error");
+    return null;
   }, [showAlert]);
+
+  // ✅ Initialiser l'agent au chargement du contexte
+  const initAgent = useCallback(() => {
+    const agentData = getAgent();
+    if (agentData && isAgentConnected()) {
+      const ag = {
+        matricule: agentData.codeBarre || agentData.matricule,
+        nom: agentData.nom || "Inconnu",
+        prenom: agentData.prenom || "",
+        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+        codeBarre: agentData.codeBarre || agentData.matricule,
+        id: agentData.id,
+        poste: agentData.poste || "AGENT_LAVAGE"
+      };
+      setAgent(ag);
+      return ag;
+    }
+    return null;
+  }, []);
+
+  // Appeler initAgent au chargement
+  React.useEffect(() => {
+    initAgent();
+  }, []);
 
   const scannerMachine = useCallback(async (code) => {
     setLoading(true);
@@ -86,7 +118,7 @@ export function LavageProvider({ children }) {
       }
       const [rInfo, rLinges] = await Promise.all([
         fetch(`${API}/lavage/scan-lot/${code}`),
-        fetch(`${API_BASE_URL}/api/linges/lot/${code}`)
+        fetch(`${API_BASE_URL}/api/linges/lots/${encodeURIComponent(code)}/linges`)
       ]);
       const lotInfo = rInfo.ok ? await rInfo.json() : null;
       const linges = rLinges.ok ? await rLinges.json() : [];
@@ -106,26 +138,54 @@ export function LavageProvider({ children }) {
   }, []);
 
   const demarrerLavage = useCallback(async (poidsTotal) => {
+    // ✅ Vérifier que l'agent existe
+    if (!agent) {
+      showAlert("❌ Agent non connecté", "Veuillez vous reconnecter.", "error");
+      return;
+    }
+
     if (!lotsSelectionnes.length) {
       showAlert("⚠️ Aucun lot", "Sélectionnez au moins un lot.", "warning");
       return;
     }
+
+    if (!machine) {
+      showAlert("⚠️ Aucune machine", "Scannez une machine d'abord.", "warning");
+      return;
+    }
+
     const ok = await showConfirm(
       "Démarrer le lavage",
       `${lotsSelectionnes.length} lot(s) — ${poidsTotal.toFixed(1)} kg\nMachine : ${machine?.code}`,
       "question"
     );
     if (!ok) return;
+
     setLoading(true);
     try {
       const p = lotsSelectionnes[0];
+      const matricule = agent.codeBarre || agent.matricule;
+      
+      // ✅ Vérifier que le matricule existe
+      if (!matricule) {
+        throw new Error("Matricule de l'agent introuvable");
+      }
+
       const r = await fetch(
-        `${API}/lavage/start?codeMachine=${machine.code}&codeLot=${p.lot.codeLot}&matriculeAgent=${agent.matricule}&poidsCharge=${p.lot.poidsActuel || 0}`,
+        `${API}/lavage/start?codeMachine=${machine.code}&codeLot=${p.lot.codeLot}&matriculeAgent=${encodeURIComponent(matricule)}&poidsCharge=${p.lot.poidsActuel || 0}`,
         { method: "POST" }
       );
-      if (!r.ok) throw new Error((await r.json()).message || "Erreur démarrage");
+      
+      if (!r.ok) {
+        const errorText = await r.text();
+        let msg = errorText;
+        try { msg = JSON.parse(errorText).message || errorText; } catch {}
+        throw new Error(msg || "Erreur démarrage");
+      }
+      
       const cycle = await r.json();
       setCycleId(cycle.id);
+      
       const premiereInfo = lotsSelectionnes[0]?.scanInfo;
       setCycleInfo({
         dateDebut: new Date().toISOString(),
@@ -134,6 +194,7 @@ export function LavageProvider({ children }) {
         temperature: premiereInfo?.temperature || "—",
         vitesse: premiereInfo?.vitesse || "—",
       });
+      
       for (let i = 1; i < lotsSelectionnes.length; i++) {
         const ls = lotsSelectionnes[i];
         await fetch(
@@ -141,29 +202,42 @@ export function LavageProvider({ children }) {
           { method: "POST" }
         );
       }
+      
       setEtapeBlanc("EN_COURS");
       showAlert("🚀 Lavage démarré", `Cycle #${cycle.id} en cours`, "success");
     } catch (err) {
-      showAlert("❌ Erreur", err.message, "error");
-    } finally { setLoading(false); }
+      showAlert("❌ Erreur", err.message || "Erreur lors du démarrage", "error");
+    } finally {
+      setLoading(false);
+    }
   }, [lotsSelectionnes, machine, agent, showAlert, showConfirm]);
 
-
-
-  
   const terminerLavage = useCallback(async () => {
+    if (!cycleId) {
+      showAlert("⚠️ Aucun cycle", "Aucun cycle en cours.", "warning");
+      return;
+    }
+    
     const ok = await showConfirm("Fin du lavage", `Terminer le cycle #${cycleId} ?`, "question");
     if (!ok) return;
+    
     setLoading(true);
     try {
       const r = await fetch(`${API}/lavage/${cycleId}/finish`, { method: "PUT" });
-      if (!r.ok) throw new Error("Erreur fin de cycle");
+      if (!r.ok) {
+        const errorText = await r.text();
+        let msg = errorText;
+        try { msg = JSON.parse(errorText).message || errorText; } catch {}
+        throw new Error(msg || "Erreur fin de cycle");
+      }
       setEtapeBlanc("TERMINE");
       setCycleInfo(null);
       showAlert("✅ Lavage terminé", `Cycle #${cycleId} terminé.`, "success");
     } catch (err) {
       showAlert("❌ Erreur", err.message, "error");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, [cycleId, showAlert, showConfirm]);
 
   const nouveauCycleBlanc = useCallback(() => {
@@ -197,54 +271,116 @@ export function LavageProvider({ children }) {
     } catch { showAlert("Erreur réseau", "", "error"); }
   }, [showAlert]);
 
-
-
-
   const laverSac = useCallback(async (numeroSac) => {
+    if (!agent) {
+      showAlert("❌ Agent non connecté", "Veuillez vous reconnecter.", "error");
+      return;
+    }
+    
     setLoading(true);
     try {
+      const matricule = agent.codeBarre || agent.matricule;
+      if (!matricule) {
+        throw new Error("Matricule de l'agent introuvable");
+      }
+      
       const r = await fetch(
-        `${API}/sacs-infectes/laver?numeroSac=${numeroSac}&matricule=${agent.matricule}`,
+        `${API}/sacs-infectes/laver?numeroSac=${encodeURIComponent(numeroSac)}&matricule=${encodeURIComponent(matricule)}`,
         { method: "PUT" }
       );
-      if (!r.ok) throw new Error((await r.json()).message || "Erreur");
+      
+      if (!r.ok) {
+        const errorText = await r.text();
+        let msg = errorText;
+        try { msg = JSON.parse(errorText).message || errorText; } catch {}
+        throw new Error(msg || "Erreur");
+      }
+      
       const sac = await r.json();
       setSacsInfectes(prev => prev.map(s => s.numeroSac === numeroSac ? sac : s));
       showAlert("✅ Sac en lavage", `${numeroSac} vidé dans la machine`, "success");
     } catch (err) {
       showAlert("❌ Erreur", err.message, "error");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, [agent, showAlert]);
 
   const verifierSac = useCallback(async (numeroSac, itemsComptes) => {
+    if (!agent) {
+      showAlert("❌ Agent non connecté", "Veuillez vous reconnecter.", "error");
+      return;
+    }
+    
     setLoading(true);
     try {
+      const matricule = agent.codeBarre || agent.matricule;
+      if (!matricule) {
+        throw new Error("Matricule de l'agent introuvable");
+      }
+      
       const r = await fetch(`${API}/sacs-infectes/verifier`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ numeroSac, matriculeAgent: agent.matricule, itemsComptes })
+        body: JSON.stringify({ 
+          numeroSac, 
+          matriculeAgent: matricule, 
+          itemsComptes 
+        })
       });
-      if (!r.ok) throw new Error((await r.json()).message || "Erreur");
+      
+      if (!r.ok) {
+        const errorText = await r.text();
+        let msg = errorText;
+        try { msg = JSON.parse(errorText).message || errorText; } catch {}
+        throw new Error(msg || "Erreur");
+      }
+      
       const sac = await r.json();
       setSacsInfectes(prev => prev.map(s => s.numeroSac === numeroSac ? sac : s));
-      if (sac.ecart === 0)
+      
+      if (sac.ecart === 0) {
         showAlert("✅ Concordance parfaite", `${numeroSac} — écart : 0`, "success");
-      else
+      } else {
         showAlert("⚠️ Écart détecté", `${numeroSac} — écart : ${sac.ecart}`, "warning");
+      }
     } catch (err) {
       showAlert("❌ Erreur", err.message, "error");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, [agent, showAlert]);
 
   const affecterLingesPropres = useCallback(async (numeroSac, codesLinges) => {
+    if (!agent) {
+      showAlert("❌ Agent non connecté", "Veuillez vous reconnecter.", "error");
+      return;
+    }
+    
     setLoading(true);
     try {
+      const matricule = agent.codeBarre || agent.matricule;
+      if (!matricule) {
+        throw new Error("Matricule de l'agent introuvable");
+      }
+      
       const r = await fetch(`${API}/sacs-infectes/affecter-linges-propres`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ numeroSac, matriculeAgent: agent.matricule, codesLinges })
+        body: JSON.stringify({ 
+          numeroSac, 
+          matriculeAgent: matricule, 
+          codesLinges 
+        })
       });
-      if (!r.ok) throw new Error((await r.json()).message || "Erreur");
+      
+      if (!r.ok) {
+        const errorText = await r.text();
+        let msg = errorText;
+        try { msg = JSON.parse(errorText).message || errorText; } catch {}
+        throw new Error(msg || "Erreur");
+      }
+      
       const sac = await r.json();
       setSacsInfectes(prev => prev.map(s => s.numeroSac === numeroSac ? sac : s));
       setScanPropresNumerosac(null);
@@ -255,7 +391,9 @@ export function LavageProvider({ children }) {
       );
     } catch (err) {
       showAlert("❌ Erreur", err.message, "error");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, [agent, showAlert]);
 
   const resetAll = useCallback(() => {

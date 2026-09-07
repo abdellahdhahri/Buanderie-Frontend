@@ -1,12 +1,14 @@
+// pages/Reception/ReceptionList.js
 import { useState, useRef, useCallback, useEffect } from "react";
 import React from "react";
-import { User, CheckCircle, XCircle, RotateCcw, Package, ShieldAlert, Wifi, Eye } from "lucide-react";
+import { User, CheckCircle, XCircle, RotateCcw, Package, ShieldAlert, Wifi, Eye,  } from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { ReceptionProvider, useReception } from "../../contextes/ReceptionContext";
 import ModeToggle from "../../components/utils/shared/ModeToggle";
 import PanneauLinges from "../../components/utils/reception/PanneauLinges";
+import ScanInput from "../../components/utils/shared/ScanInput";
 import { getAgent, isAgentConnected } from "../../services/agentService";
 import Swal from "sweetalert2";
 
@@ -43,19 +45,24 @@ function ReceptionInner() {
   const rfidTagsRef = useRef(null);
   const isMounted = useRef(true);
 
-  // ✅ Récupérer l'agent depuis localStorage et le synchroniser avec le contexte
+  // ✅ Récupérer l'agent depuis localStorage
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
-      setAgent(agentData);
-      // ✅ Synchroniser avec le contexte en appelant scanAgent
-      scanAgent(agentData.matricule).catch(() => {
-        console.warn("Impossible de synchroniser l'agent avec le contexte");
-      });
+      const ag = {
+        matricule: agentData.codeBarre || agentData.matricule,
+        nom: agentData.nom || "Inconnu",
+        prenom: agentData.prenom || "",
+        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+        codeBarre: agentData.codeBarre || agentData.matricule,
+        id: agentData.id,
+        poste: agentData.poste || "AGENT_RECEPTION"
+      };
+      setAgent(ag);
     } else {
       setAgent(null);
     }
-  }, [scanAgent]);
+  }, []);
 
   // ✅ Si l'agent du contexte change, mettre à jour l'agent local
   useEffect(() => {
@@ -88,9 +95,24 @@ function ReceptionInner() {
       setScanValue("");
 
       if (!agent) {
-        scanAgent(code);
+        const agentData = getAgent();
+        if (agentData && isAgentConnected()) {
+          const ag = {
+            matricule: agentData.codeBarre || agentData.matricule,
+            nom: agentData.nom || "Inconnu",
+            prenom: agentData.prenom || "",
+            nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+            codeBarre: agentData.codeBarre || agentData.matricule,
+            id: agentData.id,
+            poste: agentData.poste || "AGENT_RECEPTION"
+          };
+          setAgent(ag);
+          scanReception(code, ag);
+        } else {
+          scanAgent(code);
+        }
       } else {
-        scanReception(code);
+        scanReception(code, agent);
       }
     }, 400);
     return () => clearTimeout(t);
@@ -103,16 +125,31 @@ function ReceptionInner() {
     setScanValue("");
 
     if (!agent) {
-      scanAgent(code);
+      const agentData = getAgent();
+      if (agentData && isAgentConnected()) {
+        const ag = {
+          matricule: agentData.codeBarre || agentData.matricule,
+          nom: agentData.nom || "Inconnu",
+          prenom: agentData.prenom || "",
+          nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+          codeBarre: agentData.codeBarre || agentData.matricule,
+          id: agentData.id,
+          poste: agentData.poste || "AGENT_RECEPTION"
+        };
+        setAgent(ag);
+        scanReception(code, ag);
+      } else {
+        scanAgent(code);
+      }
     } else {
-      scanReception(code);
+      scanReception(code, agent);
     }
   };
 
   const handlePortique = async () => {
     const tags = rfidTags.split(/[\s,;\n]+/).map(t => t.trim()).filter(Boolean);
     setRfidLoading(true);
-    await passagePortique(rfidCodeBac.trim(), tags);
+    await passagePortique(rfidCodeBac.trim(), tags, agent);
     setRfidCodeBac("");
     setRfidTags("");
     setRfidLoading(false);
@@ -146,6 +183,11 @@ function ReceptionInner() {
   const getPlaceholder = () => {
     if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
     return "📦 Scanner un bac ou un sac infecté...";
+  };
+
+  const getBorderColor = () => {
+    if (!agent) return "#dc2626";
+    return "#10b981";
   };
 
   return (
@@ -199,7 +241,7 @@ function ReceptionInner() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom || agent.matricule}` : "Aucun agent connecté"}
+              {agent ? `Agent: ${agent.nomPrenom || agent.nom || agent.matricule}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -217,88 +259,118 @@ function ReceptionInner() {
         }}
       >
 
-        {/* ── Barre d'info et actions ── */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ background: "#dbeafe", width: "48px", height: "48px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {agent ? <Package size={18} /> : <User size={18} />}
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, color: "#1e3a8a", fontSize: "20px" }}>Réception automatique</div>
-              <div style={{ fontSize: "13px", color: "#64748b" }}>
-                {agent
-                  ? <span>Agent: <strong>{agent.nom || agent.matricule}</strong></span>
-                  : "Aucun agent connecté"
-                }
+        {/* ── Barre supérieure ── */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "20px",
+          flexWrap: "wrap",
+          gap: "12px"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {agent ? (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "8px 16px",
+                background: "#f0fdf4",
+                borderRadius: "10px",
+                border: "1px solid #bbf7d0"
+              }}>
+                <CheckCircle color="#22c55e" size={16} />
+                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
+                  {agent.nomPrenom || agent.nom || agent.matricule}
+                </span>
+                <Badge variant="outline" style={{ fontSize: "11px" }}>
+                  {agent.codeBarre || agent.matricule}
+                </Badge>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#94a3b8",
+                    cursor: "pointer"
+                  }}
+                >
+                  <XCircle size={12} />
+                </button>
               </div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <ModeToggle mode={mode} onChange={setMode} />
-            {agent && (
-              <button onClick={handleLogout} style={btnStyle}>
-                <User size={14} /> Changer d'agent
-              </button>
+            ) : (
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>Aucun agent connecté</div>
             )}
-            <button onClick={handleReset} style={btnStyle}>
-              <RotateCcw size={14} /> Réinitialiser
-            </button>
+          </div>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+            <ModeToggle mode={mode} onChange={setMode} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReset}
+            >
+              <RotateCcw size={12} style={{ marginRight: "4px" }} />
+              Reset
+            </Button>
           </div>
         </div>
 
-        {/* ── Stats ── */}
+        {/* ─── Message si agent non connecté ── */}
+        {!agent && (
+          <div style={{
+            padding: "12px 16px",
+            borderRadius: "10px",
+            background: "#fef2f2",
+            border: "1px solid #fca5a5",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "13px",
+            color: "#dc2626"
+          }}>
+            <XCircle size={16} />
+            <span style={{ fontWeight: 600 }}>Aucun agent connecté</span>
+            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une réception</span>
+          </div>
+        )}
+
+        {/* ─── STATS ── */}
         {agent && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "20px", padding: "16px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", 
+            gap: "12px", 
+            marginBottom: "20px", 
+            padding: "16px", 
+            background: "#f8fafc", 
+            borderRadius: "12px", 
+            border: "1px solid #e2e8f0" 
+          }}>
             <StatCard value={bacsRecus.length || 0} label="Bacs reçus" color="#0ea5e9" />
             <StatCard value={sacsInfectes.length || 0} label="Sacs infectés" color="#ef4444" />
             <StatCard value={dernierRecu ? (dernierRecu.type === "BAC" ? "Bac" : "Sac") : "-"} label="Dernier reçu" color="#8b5cf6" />
           </div>
         )}
 
-        {/* ── Zone scan ── */}
-        <div style={{ display: "flex", gap: "16px", marginBottom: "24px", flexWrap: "wrap", padding: "20px", background: "#f8fafc", borderRadius: "12px", border: agent ? "2px solid #22c55e" : "2px dashed #e2e8f0" }}>
-          <div style={{ flex: 1, minWidth: "300px" }}>
+        {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
+        <Card style={{
+          marginBottom: "20px",
+          border: `2px dashed ${getBorderColor()}`
+        }}>
+          <CardContent className="p-5">
             {mode === "BARCODE" ? (
-              <form onSubmit={handleSubmit} style={{ margin: 0 }}>
-                <div style={{ position: "relative", width: "100%" }}>
-                  <div style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }}>
-                    {!agent ? <User size={18} /> : <Package size={18} />}
-                  </div>
-                  <input
-                    ref={scanInputRef}
-                    type="text"
-                    placeholder={getPlaceholder()}
-                    value={scanValue}
-                    onChange={e => setScanValue(e.target.value)}
-                    onFocus={() => setIsFocused(true)}
-                    onBlur={() => setIsFocused(false)}
-                    disabled={loading || !agent}
-                    style={{
-                      width: "100%",
-                      padding: "16px 16px 16px 48px",
-                      borderRadius: "10px",
-                      border: `2px solid ${isFocused ? "#0ea5e9" : "#e2e8f0"}`,
-                      fontSize: "16px",
-                      background: loading || !agent ? "#f1f5f9" : "white",
-                      transition: "all 0.2s",
-                      outline: "none",
-                      boxShadow: isFocused ? "0 0 0 3px rgba(14,165,233,0.1)" : "none",
-                      cursor: loading || !agent ? "not-allowed" : "text",
-                      boxSizing: "border-box"
-                    }}
-                    autoFocus
-                  />
-                  {scanValue && (
-                    <button
-                      type="button"
-                      onClick={() => setScanValue("")}
-                      style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: "8px" }}
-                    >
-                      <XCircle size={16} />
-                    </button>
-                  )}
-                </div>
-              </form>
+              <ScanInput
+                ref={scanInputRef}
+                placeholder={getPlaceholder()}
+                value={scanValue}
+                onChange={setScanValue}
+                onSubmit={handleSubmit}
+                borderColor={getBorderColor()}
+                keepFocus={true}
+                autoDebounce={true}
+                disabled={!agent || loading}
+              />
             ) : (
               /* ── Zone RFID ── */
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -402,47 +474,32 @@ function ReceptionInner() {
                 )}
               </div>
             )}
+          </CardContent>
+        </Card>
 
-            <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "#94a3b8" }}>
-              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: isFocused && agent ? "#10b981" : "#9ca3af", transition: "background 0.3s" }} />
-              <span>Lecteur: {isFocused && agent ? "Prêt" : "Inactif"}</span>
-              {loading && <span style={{ marginLeft: "16px", color: "#0ea5e9" }}>⏳ Traitement...</span>}
-              <span style={{ marginLeft: "16px" }}>{agent ? "📦 Scan bac/sac" : "👤 En attente"}</span>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-            <div style={{ padding: "8px 16px", borderRadius: "10px", background: agent ? "#dcfce7" : "#f1f5f9", color: agent ? "#15803d" : "#94a3b8", fontSize: "14px", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px" }}>
-              {agent ? <CheckCircle size={16} color="#22c55e" /> : <XCircle size={16} />}
-              {agent ? "Agent connecté" : "Agent non connecté"}
-            </div>
-            <div style={{ padding: "8px 16px", borderRadius: "10px", background: "#f1f5f9", color: "#64748b", fontSize: "13px", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}>
-              {mode === "RFID" ? "📡 RFID" : "📷 Code-barres"}
-            </div>
-          </div>
-        </div>
-
-        {/* ─── Message si agent non connecté ── */}
-        {!agent && (
-          <Card style={{ background: "#fef2f2", border: "1px solid #fca5a5", marginBottom: "16px", borderRadius: "12px" }}>
+        {/* ─── INFO AGENT ── */}
+        {agent && (
+          <Card style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", marginBottom: "16px" }}>
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
-                <XCircle color="#dc2626" size={16} />
-                <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
-                <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une réception</span>
+                <Package color="#22c55e" size={16} />
+                <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt pour la réception</span>
+                <span style={{ color: "#64748b" }}>
+                  {mode === "BARCODE" ? "Scannez un bac ou un sac infecté" : "Saisissez le code bac et les tags RFID"}
+                </span>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* ── Dernier reçu ── */}
+        {/* ─── DERNIER REÇU ── */}
         {dernierRecu && agent && (
           <div style={{
             background: dernierRecu.type === "BAC" ? "linear-gradient(135deg, #dbeafe, #eff6ff)" : "linear-gradient(135deg, #fee2e2, #fef2f2)",
             borderRadius: "12px",
             padding: "16px",
             border: `2px solid ${dernierRecu.type === "BAC" ? "#3b82f6" : "#dc2626"}`,
-            marginBottom: "20px"
+            marginBottom: "16px"
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
               {dernierRecu.type === "BAC"
@@ -518,14 +575,14 @@ function ReceptionInner() {
           </div>
         )}
 
-        {/* ─── Panneau linges ── */}
+        {/* ─── PANNEAU LINGES ── */}
         {afficherLinges && agent && (
           <div style={{
             background: "#f0f9ff",
             borderRadius: "12px",
             padding: "16px",
             border: "2px solid #0ea5e9",
-            marginBottom: "20px"
+            marginBottom: "16px"
           }}>
             <div style={{
               display: "flex",
@@ -684,7 +741,7 @@ function ReceptionInner() {
             borderRadius: "12px",
             padding: "16px",
             border: "2px solid #fcd34d",
-            marginBottom: "20px",
+            marginBottom: "16px",
             textAlign: "center",
             color: "#92400e"
           }}>
@@ -694,10 +751,24 @@ function ReceptionInner() {
           </div>
         )}
 
-        {/* ── Historique / Résumé ── */}
+        {/* ─── RÉSUMÉ ── */}
         {agent && (bacsRecus.length > 0 || sacsInfectes.length > 0) && (
-          <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "16px", border: "1px solid #e2e8f0", marginTop: "16px" }}>
-            <div style={{ fontWeight: 600, fontSize: "14px", color: "#1e293b", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ 
+            background: "#f8fafc", 
+            borderRadius: "12px", 
+            padding: "16px", 
+            border: "1px solid #e2e8f0", 
+            marginTop: "16px" 
+          }}>
+            <div style={{ 
+              fontWeight: 600, 
+              fontSize: "14px", 
+              color: "#1e293b", 
+              marginBottom: "12px", 
+              display: "flex", 
+              alignItems: "center", 
+              gap: "8px" 
+            }}>
               <Package size={16} />
               Résumé des réceptions
             </div>
@@ -744,13 +815,22 @@ function ReceptionInner() {
           </div>
         )}
 
-        {/* ── Footer ── */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e2e8f0", flexWrap: "wrap", gap: "8px" }}>
-          <div style={{ display: "flex", gap: "20px", fontSize: "13px", color: "#64748b" }}>
+        {/* ─── FOOTER ── */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: "16px",
+          paddingTop: "16px",
+          borderTop: "1px solid #e2e8f0",
+          flexWrap: "wrap",
+          gap: "8px"
+        }}>
+          <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#64748b" }}>
             {agent && (
               <>
-                <span>Agent: <strong style={{ color: "#0f172a" }}>{agent.nom || agent.matricule}</strong></span>
-                <span>Matricule: <strong style={{ color: "#0f172a" }}>{agent.matricule}</strong></span>
+                <span>Agent: <strong style={{ color: "#0f172a" }}>{agent.nomPrenom || agent.nom || agent.matricule}</strong></span>
+                <span>Matricule: <strong style={{ color: "#0f172a" }}>{agent.codeBarre || agent.matricule}</strong></span>
               </>
             )}
             {!agent && (
@@ -807,20 +887,6 @@ function StatCard({ value, label, color }) {
     </div>
   );
 }
-
-const btnStyle = {
-  padding: "8px 20px",
-  border: "1px solid #e2e8f0",
-  borderRadius: "10px",
-  background: "white",
-  color: "#64748b",
-  cursor: "pointer",
-  fontSize: "13px",
-  fontWeight: 500,
-  display: "flex",
-  alignItems: "center",
-  gap: "6px"
-};
 
 export default function ReceptionList() {
   return <ReceptionProvider><ReceptionInner /></ReceptionProvider>;

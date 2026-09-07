@@ -68,7 +68,6 @@ const ETATS = {
   HORS_SERVICE: { label: "Hors service", color: "#64748b", bg: "#f1f5f9", icon: "🗑️" },
 };
 
-// ─── HOOK ──────────────────────────────────────────────────────────────────
 function useDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -114,7 +113,6 @@ function useDashboard() {
   return { data, loading, error, lastUpdate, refresh: fetchData };
 }
 
-// ─── KPI CARD ──────────────────────────────────────────────────────────────
 function KpiCard({ label, value, icon, color, trend, trendValue }) {
   const isUp = trend === 'up';
   return (

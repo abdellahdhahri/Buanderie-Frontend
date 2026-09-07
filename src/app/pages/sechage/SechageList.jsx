@@ -1,11 +1,15 @@
+// pages/Sechage/SechageList.js
 import React, { useState, useEffect, useMemo } from "react";
-import { FaWind, FaFilter, FaBoxes, FaSpinner, FaPlay, FaUser, FaExclamationTriangle } from "react-icons/fa";
+import { FaWind, FaFilter, FaBoxes, FaSpinner, FaPlay, FaUser, FaCheckCircle, FaTimes, FaExclamationTriangle } from "react-icons/fa";
 import { SechageProvider, useSechage } from "../../contextes/SechageContext";
 import { getAgent, isAgentConnected } from "../../services/agentService";
-import ScanInput            from "../../components/utils/shared/ScanInput";
-import CarteLot             from "../../components/utils/CarteLot";
+import ScanInput from "../../components/utils/shared/ScanInput";
+import CarteLot from "../../components/utils/CarteLot";
 import LotInfoDialogSechage from "../../components/utils/LotInfoDialogSechage";
-import RecapSechage         from "../../components/utils/RecapSechage";
+import RecapSechage from "../../components/utils/RecapSechage";
+import { Card, CardContent } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
 import "../Linge/WorkflowList.css";
 
 function SechageInner() {
@@ -19,19 +23,29 @@ function SechageInner() {
     loading, resetAll,
   } = useSechage();
 
-  const [scanVal,   setScanVal]   = useState("");
+  const [scanVal, setScanVal] = useState("");
   const [searchLot, setSearchLot] = useState("");
-  const [agent,     setAgent]     = useState(null);
+  const [agent, setAgent] = useState(null);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
+  // ✅ Récupérer l'agent depuis localStorage
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
-      setAgent(agentData);
-      // Synchroniser avec le contexte
+      const ag = {
+        matricule: agentData.codeBarre || agentData.matricule,
+        nom: agentData.nom || "Inconnu",
+        prenom: agentData.prenom || "",
+        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+        codeBarre: agentData.codeBarre || agentData.matricule,
+        id: agentData.id,
+        poste: agentData.poste || "AGENT_SECHAGE"
+      };
+      setAgent(ag);
       if (identifierAgent) {
-        identifierAgent(agentData.matricule).catch(() => {});
+        identifierAgent(agentData.codeBarre).catch(() => {});
       }
+    } else {
+      setAgent(null);
     }
   }, []);
 
@@ -49,14 +63,13 @@ function SechageInner() {
   const handleScan = async (code) => {
     setScanVal("");
     if (!agent) {
-      // ✅ Si pas d'agent, on essaie de l'identifier via le contexte
       if (identifierAgent) {
         await identifierAgent(code);
       }
       return;
     }
-    if (etape === "MACHINE") { await scannerMachine(code);           return; }
-    if (etape === "LOTS")    { await scannerLot(code, poidsTotal);   return; }
+    if (etape === "MACHINE") { await scannerMachine(code); return; }
+    if (etape === "LOTS") { await scannerLot(code, poidsTotal); return; }
   };
 
   const lotsFiltres = useMemo(() => {
@@ -69,12 +82,17 @@ function SechageInner() {
     );
   }, [lotsDisponibles, lotsSelectionnes, searchLot]);
 
-  const placeholder = !agent ? "👤 Agent non connecté — veuillez vous reconnecter"
-    : etape === "MACHINE" ? "🌬️ Scanner le code du séchoir..."
-    : etape === "LOTS"    ? "📦 Scanner un lot (LAVE)..."
-    : "Scanner...";
+  const getPlaceholder = () => {
+    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
+    if (etape === "MACHINE") return "🌬️ Scanner le code du séchoir...";
+    if (etape === "LOTS") return "📦 Scanner un lot (état LAVE)...";
+    return "Scanner...";
+  };
 
-  const borderColor = !agent ? "#dc2626" : "#0ea5e9";
+  const getBorderColor = () => {
+    if (!agent) return "#dc2626";
+    return "#0ea5e9";
+  };
 
   return (
     <div className="collecte-container">
@@ -135,7 +153,7 @@ function SechageInner() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom || agent.matricule}` : "Aucun agent connecté"}
+              {agent ? `Agent: ${agent.nomPrenom || agent.nom || agent.matricule}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -147,41 +165,71 @@ function SechageInner() {
         boxShadow: "0 4px 16px rgba(0,0,0,0.06)"
       }}>
 
-        {/* Barre agent */}
+        {/* Barre supérieure */}
+
         <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          marginBottom: "20px", flexWrap: "wrap", gap: "12px"
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "20px",
+          flexWrap: "wrap",
+          gap: "12px"
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{
-              background: "#e0f2fe", width: "48px", height: "48px", borderRadius: "12px",
-              display: "flex", alignItems: "center", justifyContent: "center"
-            }}>
-              {agent ? <FaWind size={22} color="#0ea5e9"/> : <FaUser size={22} color="#94a3b8"/>}
-            </div>
-            <div>
-              <span style={{ fontWeight: 700, color: "#1e3a8a", fontSize: "18px" }}>
-                {agent ? `${agent.nom} (${agent.matricule})` : "Station de Séchage"}
-              </span>
-              {machine && (
-                <div style={{ fontSize: "12px", color: "#0ea5e9", marginTop: "2px" }}>
-                  Séchoir : {machine.code} · {machine.capaciteKg} kg · {machine.type}
-                </div>
-              )}
-              {!agent && (
-                <div style={{ fontSize: "12px", color: "#dc2626", marginTop: "2px" }}>
-                  ⚠️ Agent non connecté
-                </div>
-              )}
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {agent ? (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "8px 16px",
+                background: "#f0fdf4",
+                borderRadius: "10px",
+                border: "1px solid #bbf7d0"
+              }}>
+                <FaCheckCircle color="#22c55e" size={16} />
+                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
+                  {agent.nomPrenom || agent.nom || agent.matricule}
+                </span>
+                <Badge variant="outline" style={{ fontSize: "11px" }}>
+                  {agent.codeBarre || agent.matricule}
+                </Badge>
+                <button
+                  onClick={() => {
+                    resetAll();
+                    setAgent(null);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#94a3b8",
+                    cursor: "pointer"
+                  }}
+                >
+                  <FaTimes size={12} />
+                </button>
+              </div>
+            ) : (
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>Aucun agent connecté</div>
+            )}
           </div>
-          <button onClick={resetAll} style={{
-            padding: "8px 16px", border: "1px solid #e2e8f0",
-            borderRadius: "10px", background: "white", color: "#64748b", cursor: "pointer",
-            fontSize: "13px", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px"
-          }}>
-            <FaFilter size={12}/> Réinitialiser
-          </button>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            {machine && (
+              <Badge style={{ background: "#e0f2fe", color: "#0369a1", fontSize: "11px", padding: "4px 12px" }}>
+                🌬️ {machine.code}
+              </Badge>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setScanVal("");
+                resetAll();
+                setAgent(null);
+              }}
+            >
+              Reset
+            </Button>
+          </div>
         </div>
 
         {/* ─── Message si agent non connecté ──────────────────────────────── */}
@@ -200,29 +248,47 @@ function SechageInner() {
           }}>
             <FaExclamationTriangle size={16} />
             <span style={{ fontWeight: 600 }}>Aucun agent connecté</span>
-            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour utiliser la station de séchage</span>
+            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer des opérations de séchage</span>
           </div>
         )}
 
-        {/* Zone scan */}
-        <div style={{
-          marginBottom: "20px", padding: "18px 20px", background: "#f8fafc",
-          borderRadius: "14px", border: `2px dashed ${borderColor}`
+        {/* ─── ZONE DE SCAN (exactement comme Pliage) ────────────────────── */}
+        <Card style={{
+          marginBottom: "20px",
+          border: `2px dashed ${getBorderColor()}`
         }}>
-          <ScanInput
-            placeholder={placeholder}
-            value={scanVal}
-            onChange={setScanVal}
-            onSubmit={handleScan}
-            borderColor={borderColor}
-            keepFocus
-            autoDebounce
-            disabled={!agent}
-          />
-        </div>
+          <CardContent className="p-5">
+            <ScanInput
+              placeholder={getPlaceholder()}
+              value={scanVal}
+              onChange={setScanVal}
+              onSubmit={handleScan}
+              borderColor={getBorderColor()}
+              keepFocus={true}
+              autoDebounce={true}
+              disabled={!agent}
+            />
+          </CardContent>
+        </Card>
 
+        {/* ─── INFO AGENT (exactement comme Pliage) ───────────────────────── */}
         {agent && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px" }}>
+          <Card style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+            <CardContent className="p-4">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+                <FaWind color="#22c55e" size={16} />
+                <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt pour le séchage</span>
+                <span style={{ color: "#64748b" }}>
+                  {etape === "MACHINE" ? "Scannez un séchoir" : "Scannez un lot (état LAVE)"}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ─── CONTENU PRINCIPAL ────────────────────────────────────────── */}
+        {agent && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px", marginTop: "16px" }}>
 
             {/* Colonne gauche */}
             <div>
@@ -341,6 +407,7 @@ function SechageInner() {
           </div>
         )}
 
+        {/* ─── FOOTER ────────────────────────────────────────────────────── */}
         {agent && (
           <div style={{
             display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -350,6 +417,7 @@ function SechageInner() {
             <div style={{ display: "flex", gap: "16px" }}>
               <span>🌬️ Lots : <strong style={{ color: "#0ea5e9" }}>{lotsSelectionnes.length}</strong></span>
               <span>⚖️ Poids : <strong style={{ color: "#0ea5e9" }}>{poidsTotal.toFixed(1)} kg</strong></span>
+              {machine && <span>🔧 Séchoir : <strong style={{ color: "#0ea5e9" }}>{machine.code}</strong></span>}
             </div>
             <span style={{
               padding: "2px 10px", borderRadius: "8px",

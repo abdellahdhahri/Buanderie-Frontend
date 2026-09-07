@@ -1,3 +1,4 @@
+// pages/Distribution/DistributionUniforme.js
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   FaUser, FaRedo, FaSpinner, FaCheckDouble,
@@ -7,13 +8,16 @@ import {
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import ScanInput from "../../components/utils/shared/ScanInput";
-import { cat, apiCall } from "../collage/collecteUtils";
-import { getAgent, isAgentConnected } from "../../services/agentService";
+import {
+  getAgentFromStorage,
+  isAgentConnected,
+  fetchAgentByCode,
+  fetchUniformesPersonnel,
+  distribuerUniforme,
+  getCategorie
+} from "../../services/distributionUniformeService";
 import Swal from "sweetalert2";
 import "../Linge/WorkflowList.css";
-
-// ─── Variables d'environnement ──────────────────────────────────────────
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 // ─── ScanStatus ──────────────────────────────────────────────────────────────
 function ScanStatus({ loading, success, error, code }) {
@@ -149,7 +153,7 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
 
 // ─── CarteUniforme ──────────────────────────────────────────────────────────
 function CarteUniforme({ linge, onRetirer, personnelNom }) {
-  const c = cat(linge.categorie);
+  const c = getCategorie(linge.categorie);
   return (
     <div style={{
       display: "flex",
@@ -191,7 +195,7 @@ function CarteUniforme({ linge, onRetirer, personnelNom }) {
 
 // ─── CarteUniformeDispo ──────────────────────────────────────────────────────
 function CarteUniformeDispo({ linge, onDistribuer, personnelNom }) {
-  const c = cat(linge.categorie);
+  const c = getCategorie(linge.categorie);
   return (
     <div style={{
       display: "flex",
@@ -210,7 +214,7 @@ function CarteUniformeDispo({ linge, onDistribuer, personnelNom }) {
         </div>
       </div>
       <button
-        onClick={() => onDistribuer(linge)}
+        onClick={() => onDistribuer(linge.codeBarre)}
         style={{
           padding: "4px 10px",
           borderRadius: "6px",
@@ -255,7 +259,7 @@ function ResumeUniforme({ res, onNouvelle, onTerminer }) {
         marginBottom: 22
       }}>
         {res.uniformes?.map((u, i) => {
-          const c = cat(u.categorie);
+          const c = getCategorie(u.categorie);
           return (
             <div key={i} style={{
               background: "white",
@@ -305,8 +309,9 @@ function ResumeUniforme({ res, onNouvelle, onTerminer }) {
   );
 }
 
+// ─── COMPOSANT PRINCIPAL ──────────────────────────────────────────────────
 export default function DistributionUniforme() {
-  const [etape, setEtape] = useState("PERSONNEL"); // ✅ Changé de "AGENT" à "PERSONNEL"
+  const [etape, setEtape] = useState("PERSONNEL");
   const [agent, setAgent] = useState(null);
   const [personnel, setPersonnel] = useState(null);
   const [enPossession, setEnPossession] = useState([]);
@@ -324,22 +329,26 @@ export default function DistributionUniforme() {
   useEffect(() => { agentRef.current = agent; }, [agent]);
   useEffect(() => { personnelRef.current = personnel; }, [personnel]);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
+  // ✅ Récupérer l'agent depuis localStorage (clé 'auth')
   useEffect(() => {
-    const agentData = getAgent();
-    if (agentData && isAgentConnected()) {
+    console.log("🔍 Recherche de l'agent dans le stockage...");
+    const agentData = getAgentFromStorage();
+    
+    if (agentData) {
+      console.log("✅ Agent trouvé:", agentData);
       setAgent(agentData);
       setEtape("PERSONNEL");
       setScanStatus({
         loading: false,
-        success: { 
-          message: `👤 Agent ${agentData.nom}`, 
-          detail: `Connecté · ${agentData.matricule}` 
+        success: {
+          message: `👤 Agent ${agentData.nom}`,
+          detail: `Connecté · ${agentData.codeBarre || agentData.matricule}`
         },
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
     } else {
+      console.warn("⚠️ Aucun agent trouvé dans le stockage");
       setEtape("PERSONNEL");
       setScanStatus({
         loading: false,
@@ -361,20 +370,7 @@ export default function DistributionUniforme() {
     return () => clearInterval(id);
   }, []);
 
-  // ─── Vérifier si un code est un agent ──────────────────────────────────
-  const verifierSiAgent = useCallback(async (code) => {
-    try {
-      const res = await fetch(`${API_URL}/api/agents/matricule/${code}`);
-      if (res.ok) {
-        return await res.json();
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  // ─── Clôturer la distribution (sans confirmation) ──────────────────────
+  // ─── Clôturer la distribution ──────────────────────────────────────────
   const cloturerDistribution = useCallback(async () => {
     if (distribues.length === 0) {
       await Swal.fire({
@@ -417,14 +413,8 @@ export default function DistributionUniforme() {
     setLoading(true);
     setScanStatus({ loading: true, code });
     try {
-      const res = await fetch(
-        `${API_URL}/api/distribution/uniforme?codeBadge=${encodeURIComponent(code)}&matriculeAgent=${agent.matricule}`
-      );
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || "Personnel introuvable");
-      }
-      const data = await res.json();
+      const data = await fetchUniformesPersonnel(code, agent.matricule);
+      
       setPersonnel({
         id: data.personnelId,
         nom: data.personnelNom,
@@ -436,14 +426,14 @@ export default function DistributionUniforme() {
       setEtape("DISTRIBUER");
       setScanStatus({
         loading: false,
-        success: { message: `✅ ${data.personnelNom}`, detail: `${data.nbDisponibles} uniforme(s) disponible(s)` },
+        success: { message: `✅ ${data.personnelNom}`, detail: `${data.disponibles?.length || 0} uniforme(s) disponible(s)` },
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
       await Swal.fire({
         icon: 'success',
         title: `✅ ${data.personnelNom}`,
-        text: `${data.nbDisponibles} uniforme(s) disponible(s) · ${data.nbEnPossession} en possession`,
+        text: `${data.disponibles?.length || 0} uniforme(s) disponible(s) · ${data.enPossession?.length || 0} en possession`,
         timer: 1500,
         showConfirmButton: false
       });
@@ -473,15 +463,12 @@ export default function DistributionUniforme() {
     setLoading(true);
     setScanStatus({ loading: true, code });
     try {
-      const res = await fetch(
-        `${API_URL}/api/distribution/uniforme?porteurId=${personnel.id}&porteurNom=${encodeURIComponent(personnel.nom)}&codeOuTag=${encodeURIComponent(code)}&matriculeAgent=${agent.matricule}`,
-        { method: "POST" }
+      const data = await distribuerUniforme(
+        personnel.id,
+        personnel.nom,
+        code,
+        agent.matricule
       );
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || "Erreur lors de la distribution");
-      }
-      const data = await res.json();
 
       setDisponibles(prev => prev.filter(l => l.lingeId !== data.lingeId));
       setEnPossession(prev => [...prev, data]);
@@ -534,23 +521,35 @@ export default function DistributionUniforme() {
     if (!code || loading) return;
     setScanVal("");
 
-    // ✅ Étape PERSONNEL : scan directement le personnel
+    console.log("🔍 Scan reçu:", code, "Étape:", etape);
+
+    // Étape PERSONNEL : scan directement le personnel
     if (etape === "PERSONNEL") {
+      console.log("👔 Scan personnel:", code);
       await handlePersonnel(code);
       return;
     }
 
-    // ✅ Étape DISTRIBUER : détecter agent pour clôturer
+    // Étape DISTRIBUER
     if (etape === "DISTRIBUER") {
-      const agentTrouve = await verifierSiAgent(code);
-      if (agentTrouve) {
-        await cloturerDistribution();
-      } else {
-        await handleScanUniforme(code);
+      // ✅ Vérifier si c'est un matricule agent avec la bonne API
+      try {
+        const agentTrouve = await fetchAgentByCode(code.trim());
+        if (agentTrouve) {
+          console.log("🔄 Agent trouvé, clôture de la distribution");
+          await cloturerDistribution();
+          return;
+        }
+      } catch (e) {
+        // Ce n'est pas un agent, continuer comme un uniforme
+        console.log("❌ Ce n'est pas un agent valide:", e.message);
       }
-      return;
+      
+      // Si ce n'est pas un agent, c'est un uniforme
+      console.log("👕 Distribution de l'uniforme:", code);
+      await handleScanUniforme(code);
     }
-  }, [etape, loading, handlePersonnel, handleScanUniforme, verifierSiAgent, cloturerDistribution]);
+  }, [etape, loading, handlePersonnel, handleScanUniforme, cloturerDistribution]);
 
   // ─── Reset ──────────────────────────────────────────────────────────────
   const reset = useCallback(async () => {
@@ -567,7 +566,6 @@ export default function DistributionUniforme() {
       });
       if (!result.isConfirmed) return;
     }
-    setAgent(null);
     setPersonnel(null);
     setEnPossession([]);
     setDisponibles([]);
@@ -576,6 +574,7 @@ export default function DistributionUniforme() {
     setEtape("PERSONNEL");
     setScanVal("");
     setScanStatus(null);
+    // Ne pas réinitialiser l'agent
   }, [etape]);
 
   // ─── Helpers ──────────────────────────────────────────────────────────
@@ -670,7 +669,7 @@ export default function DistributionUniforme() {
                 <FaUser color="#7c3aed" size={16} />
                 <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>{agent.nom}</span>
                 <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {agent.matricule}
+                  {agent.codeBarre || agent.matricule}
                 </Badge>
               </div>
             )}

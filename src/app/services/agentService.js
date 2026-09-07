@@ -1,7 +1,6 @@
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
 
-const STORAGE_KEY = 'agent';
 
 export const POSTE_TO_ROUTE = {
   AGENT_COLLECTE: '/collecte',
@@ -15,17 +14,23 @@ export const POSTE_TO_ROUTE = {
   CHEF_EQUIPE: '/collecte'
 };
 
-export const getAgent = () => {
+const STORAGE_KEY = "auth";
+
+  export const getAgent = () => {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
+
     if (!data) return null;
-    return JSON.parse(data);
+
+    const auth = JSON.parse(data);
+
+    return auth?.agent || null;
+
   } catch (error) {
-    console.error('Erreur lors de la récupération de l\'agent:', error);
+    console.error("Erreur lors de la récupération de l'agent :", error);
     return null;
   }
 };
-
 export const getAgentMatricule = () => {
   const agent = getAgent();
   return agent?.matricule || null;
@@ -45,12 +50,10 @@ export const authenticateAgent = async (matricule) => {
     
     const agent = await response.json();
     
-    // Vérifier si l'agent a un poste configuré
     if (!agent.poste || !POSTE_TO_ROUTE[agent.poste]) {
       throw new Error(`Poste non configuré pour ${agent.nom}`);
     }
     
-    // Sauvegarder l'agent
     const agentData = {
       matricule: agent.matricule,
       nom: agent.nom,

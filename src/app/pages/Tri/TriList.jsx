@@ -1,3 +1,4 @@
+// pages/Tri/TriList.js
 import React, { useState, useContext, useRef, useEffect, useCallback } from "react";
 import { LingeContext } from "../../contextes/LingeContext";
 import { useNavigate } from "react-router-dom";
@@ -47,14 +48,22 @@ function TriInner() {
   const resetTimeoutRef = useRef(null);
   const scanTimeoutRef  = useRef(null);
 
-  // ✅ Récupérer l'agent depuis localStorage au chargement
+  // ✅ Récupérer l'agent depuis localStorage
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
-      setAgentScanne(agentData);
+      const ag = {
+        matricule: agentData.codeBarre || agentData.matricule,
+        nom: agentData.nom || "Inconnu",
+        prenom: agentData.prenom || "",
+        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+        codeBarre: agentData.codeBarre || agentData.matricule,
+        id: agentData.id,
+        poste: agentData.poste || "AGENT_TRI"
+      };
+      setAgentScanne(ag);
       // Charger les statistiques de l'agent
-      chargerStatistiques(agentData.matricule);
-      showAlert("Agent chargé", `✅ ${agentData.nom || agentData.matricule}`, "success");
+      chargerStatistiques(ag.matricule);
     }
   }, []);
 
@@ -492,14 +501,15 @@ function TriInner() {
     );
   };
 
-  const scanPlaceholder = agentScanne
-    ? `📦 Scanner un article (${modeScan === MODE_RFID ? "RFID" : "Code-barres"})...`
-    : "👤 Scanner votre badge agent...";
+  const getPlaceholder = () => {
+    if (!agentScanne) return "👤 Agent non connecté — veuillez vous reconnecter";
+    return modeScan === MODE_RFID ? "📡 Scanner tag RFID..." : "📦 Scanner un article (état RECEPTION)...";
+  };
 
-  const agentStep = agentScanne ? STYLES.stepCompleted : STYLES.stepActive;
-  const triStep   = agentScanne
-    ? (lotSuggere ? STYLES.stepCompleted : STYLES.stepActive)
-    : STYLES.stepIdle;
+  const getBorderColor = () => {
+    if (!agentScanne) return "#dc2626";
+    return "#f59e0b";
+  };
 
   return (
     <div className="collecte-container">
@@ -557,7 +567,7 @@ function TriInner() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agentScanne ? `Agent: ${agentScanne.nom || agentScanne.matricule}` : "Aucun agent connecté"}
+              {agentScanne ? `Agent: ${agentScanne.nomPrenom || agentScanne.nom || agentScanne.matricule}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -575,61 +585,80 @@ function TriInner() {
         }}
       >
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ background: "#dbeafe", width: "48px", height: "48px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {agentScanne ? <FaTags size={18} /> : <FaUser size={18} />}
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, color: "#1e3a8a", fontSize: "20px" }}>Tri automatique</div>
-              <div style={{ fontSize: "13px", color: "#64748b" }}>
-                {agentScanne
-                  ? <span>Agent: <strong>{agentScanne.nom || agentScanne.matricule}</strong></span>
-                  : "Aucun agent connecté"
-                }
+        {/* Barre supérieure */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "20px",
+          flexWrap: "wrap",
+          gap: "12px"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {agentScanne ? (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "8px 16px",
+                background: "#f0fdf4",
+                borderRadius: "10px",
+                border: "1px solid #bbf7d0"
+              }}>
+                <FaCheckCircle color="#22c55e" size={16} />
+                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
+                  {agentScanne.nomPrenom || agentScanne.nom || agentScanne.matricule}
+                </span>
+                <Badge variant="outline" style={{ fontSize: "11px" }}>
+                  {agentScanne.codeBarre || agentScanne.matricule}
+                </Badge>
+                <button
+                  onClick={handleLogoutAgent}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#94a3b8",
+                    cursor: "pointer"
+                  }}
+                >
+                  <FaTimes size={12} />
+                </button>
               </div>
-            </div>
+            ) : (
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>Aucun agent connecté</div>
+            )}
           </div>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
             <button
               onClick={() => setModeScan(modeScan === MODE_RFID ? MODE_CODEBARRE : MODE_RFID)}
               style={{
-                padding: "8px 16px",
+                padding: "6px 14px",
                 border: "1px solid #e2e8f0",
                 borderRadius: "10px",
                 background: "#f8fafc",
                 color: "#64748b",
                 cursor: "pointer",
-                fontSize: "13px",
+                fontSize: "12px",
                 fontWeight: 500,
                 display: "flex",
                 alignItems: "center",
                 gap: "6px"
               }}
             >
-              {modeScan === MODE_RFID ? <FaRss size={14} /> : <FaBarcode size={14} />}
+              {modeScan === MODE_RFID ? <FaRss size={12} /> : <FaBarcode size={12} />}
               {modeScan === MODE_RFID ? "RFID" : "Code-barres"}
             </button>
-            {agentScanne && (
-              <button onClick={handleLogoutAgent} style={btnStyle}>
-                <FaUser size={14} /> Changer d'agent
-              </button>
-            )}
-            <button onClick={handleResetAll} style={btnStyle}>
-              <FaFilter /> Réinitialiser
-            </button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetAll}
+            >
+              Reset
+            </Button>
           </div>
         </div>
 
-        {agentScanne && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "20px", padding: "16px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-            <StatCard value={statistiques.totalTrie || 0} label="Articles triés" color="#0ea5e9" />
-            <StatCard value={statistiques.lotsUtilises || 0} label="Lots utilisés" color="#22c55e" />
-            <StatCard value={(statistiques.poidsTotal?.toFixed(1) || "0") + " kg"} label="Poids total" color="#8b5cf6" />
-          </div>
-        )}
-
-        {/* ─── Message si agent non connecté ── */}
+        {/* ─── Message si agent non connecté ──────────────────────────────── */}
         {!agentScanne && (
           <div style={{
             padding: "12px 16px",
@@ -649,79 +678,70 @@ function TriInner() {
           </div>
         )}
 
-        <div style={{ display: "flex", gap: "16px", marginBottom: "24px", flexWrap: "wrap", padding: "20px", background: "#f8fafc", borderRadius: "12px", border: agentScanne ? "2px solid #22c55e" : "2px dashed #e2e8f0" }}>
-          <div style={{ flex: 1, minWidth: "300px" }}>
-            <form onSubmit={agentScanne ? handleScanLinge : handleScanAgent} style={{ margin: 0 }}>
-              <div style={{ position: "relative", width: "100%" }}>
-                <div style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }}>
-                  {modeScan === MODE_RFID ? <FaRss size={18} /> : <FaBarcode size={18} />}
-                </div>
-                <input
-                  ref={scanInputRef}
-                  type="text"
-                  placeholder={scanPlaceholder}
-                  value={scanValue}
-                  onChange={e => setScanValue(e.target.value)}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  disabled={isLoading || showDialog || !agentScanne}
-                  style={{
-                    width: "100%",
-                    padding: "16px 16px 16px 48px",
-                    borderRadius: "10px",
-                    border: `2px solid ${isFocused && agentScanne ? "#0ea5e9" : "#e2e8f0"}`,
-                    fontSize: "16px",
-                    background: (isLoading || showDialog || !agentScanne) ? "#f1f5f9" : "white",
-                    transition: "all 0.2s",
-                    outline: "none",
-                    boxShadow: isFocused && agentScanne ? "0 0 0 3px rgba(14,165,233,0.1)" : "none",
-                    cursor: (isLoading || showDialog || !agentScanne) ? "not-allowed" : "text",
-                    boxSizing: "border-box"
-                  }}
-                />
-                {scanValue && !showDialog && agentScanne && (
-                  <button
-                    type="button"
-                    onClick={() => setScanValue("")}
-                    style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: "8px" }}
-                  >
-                    <FaTimes size={16} />
-                  </button>
-                )}
+        {/* ─── ZONE DE SCAN (exactement comme Pliage) ────────────────────── */}
+        <Card style={{
+          marginBottom: "20px",
+          border: `2px dashed ${getBorderColor()}`
+        }}>
+          <CardContent className="p-5">
+            <ScanInput
+              ref={scanInputRef}
+              placeholder={getPlaceholder()}
+              value={scanValue}
+              onChange={setScanValue}
+              onSubmit={agentScanne ? handleScanLinge : handleScanAgent}
+              borderColor={getBorderColor()}
+              keepFocus={true}
+              autoDebounce={true}
+              disabled={!agentScanne || isLoading || showDialog}
+            />
+          </CardContent>
+        </Card>
+
+        {/* ─── INFO AGENT ────────────────────────────────────────────────── */}
+        {agentScanne && (
+          <Card style={{ background: "#fef3c7", border: "1px solid #fcd34d", marginBottom: "16px" }}>
+            <CardContent className="p-4">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+                <FaTags color="#d97706" size={16} />
+                <span style={{ fontWeight: 600, color: "#92400e" }}>Prêt pour le tri</span>
+                <span style={{ color: "#64748b" }}>Scannez un linge en état RECEPTION</span>
               </div>
-            </form>
+            </CardContent>
+          </Card>
+        )}
 
-            <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "#94a3b8" }}>
-              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: isFocused && agentScanne ? "#10b981" : "#9ca3af", transition: "background 0.3s" }} />
-              <span>Lecteur: {isFocused && agentScanne ? "Prêt" : "Inactif"}</span>
-              {isLoading && <span style={{ marginLeft: "16px", color: "#0ea5e9" }}>⏳ Traitement...</span>}
-              <span style={{ marginLeft: "16px" }}>{agentScanne ? "📦 Scan linge" : "👤 En attente"}</span>
-            </div>
+        {/* ─── STATISTIQUES ────────────────────────────────────────────────── */}
+        {agentScanne && (
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", 
+            gap: "12px", 
+            marginBottom: "20px"
+          }}>
+            <StatCard value={statistiques.totalTrie || 0} label="Articles triés" color="#0ea5e9" />
+            <StatCard value={statistiques.lotsUtilises || 0} label="Lots utilisés" color="#22c55e" />
+            <StatCard value={(statistiques.poidsTotal?.toFixed(1) || "0") + " kg"} label="Poids total" color="#8b5cf6" />
           </div>
+        )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-            <div style={{ padding: "8px 16px", borderRadius: "10px", background: agentScanne ? "#dcfce7" : "#f1f5f9", color: agentScanne ? "#15803d" : "#94a3b8", fontSize: "14px", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px" }}>
-              {agentScanne ? <FaCheckCircle size={16} color="#22c55e" /> : <FaTimes size={16} />}
-              {agentScanne ? "Agent connecté" : "Agent non connecté"}
-            </div>
-            {showDialog && (
-              <div style={{ padding: "8px 16px", borderRadius: "10px", background: "#fef3c7", color: "#92400e", fontSize: "13px", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}>
-                <FaExclamationTriangle size={14} /> Choix du lot en cours...
-              </div>
-            )}
-          </div>
-        </div>
-
+        {/* ─── LOT AFFECTÉ ────────────────────────────────────────────────── */}
         {lotSuggere && (
-          <div style={{ background: "linear-gradient(135deg, #dbeafe, #eff6ff)", borderRadius: "12px", padding: "20px", border: "2px solid #3b82f6", marginBottom: "20px" }}>
+          <div style={{ 
+            background: "linear-gradient(135deg, #dbeafe, #eff6ff)", 
+            borderRadius: "12px", 
+            padding: "16px", 
+            border: "2px solid #3b82f6", 
+            marginBottom: "16px" 
+          }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px", flexWrap: "wrap" }}>
-              <FaCheckCircle size={24} color="#2563eb" />
-              <span style={{ fontWeight: 700, fontSize: "18px", color: "#1e3a8a" }}>Lot affecté</span>
-              <span style={{ padding: "4px 12px", borderRadius: "20px", background: "#2563eb", color: "white", fontSize: "12px", fontWeight: 600 }}>
+              <FaCheckCircle size={20} color="#2563eb" />
+              <span style={{ fontWeight: 700, fontSize: "16px", color: "#1e3a8a" }}>Lot affecté</span>
+              <Badge style={{ background: "#2563eb", color: "white", fontSize: "11px" }}>
                 {lotSuggere.codeLot}
-              </span>
+              </Badge>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px" }}>
               <LotField label="Type" value={lotSuggere.typeCollecte} />
               <LotField label="Catégorie" value={lotSuggere.categorie} />
               <LotField label="Poids" value={`${lotSuggere.poidsActuel?.toFixed(2) || "0"} / ${lotSuggere.capaciteMax || "0"} kg`} />
@@ -730,44 +750,94 @@ function TriInner() {
           </div>
         )}
 
+        {/* ─── LINGE SCANNÉ ───────────────────────────────────────────────── */}
         {lingeScanne && !lotSuggere && (
-          <div style={{ background: "#f0fdf4", borderRadius: "12px", padding: "16px", border: "2px solid #22c55e", marginBottom: "20px" }}>
+          <div style={{ 
+            background: "#f0fdf4", 
+            borderRadius: "12px", 
+            padding: "12px 16px", 
+            border: "2px solid #22c55e", 
+            marginBottom: "16px" 
+          }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              <FaBarcode size={20} color="#22c55e" />
+              <FaBarcode size={18} color="#22c55e" />
               <span style={{ fontWeight: 600 }}>Dernier linge scanné</span>
-              <code style={{ padding: "4px 12px", background: "#dcfce7", borderRadius: "6px", fontSize: "14px", fontWeight: 600, color: "#15803d" }}>
+              <code style={{ 
+                padding: "2px 10px", 
+                background: "#dcfce7", 
+                borderRadius: "6px", 
+                fontSize: "13px", 
+                fontWeight: 600, 
+                color: "#15803d" 
+              }}>
                 {lingeScanne.codeSuivi || lingeScanne.codeBarre}
               </code>
-              <span style={{ fontSize: "13px", color: "#64748b" }}>{lingeScanne.categorie} • {lingeScanne.typeCollecte}</span>
-              <span style={{ fontSize: "13px", color: "#64748b" }}>{lingeScanne.poids} kg</span>
+              <span style={{ fontSize: "12px", color: "#64748b" }}>{lingeScanne.categorie} • {lingeScanne.typeCollecte}</span>
+              <span style={{ fontSize: "12px", color: "#64748b" }}>{lingeScanne.poids} kg</span>
             </div>
           </div>
         )}
 
+        {/* ─── HISTORIQUE ────────────────────────────────────────────────── */}
         {historiqueTri.length > 0 && (
-          <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "16px", border: "1px solid #e2e8f0", marginTop: "16px" }}>
-            <div style={{ fontWeight: 600, fontSize: "14px", color: "#1e293b", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ 
+            background: "#f8fafc", 
+            borderRadius: "12px", 
+            padding: "16px", 
+            border: "1px solid #e2e8f0", 
+            marginTop: "16px" 
+          }}>
+            <div style={{ 
+              fontWeight: 600, 
+              fontSize: "14px", 
+              color: "#1e293b", 
+              marginBottom: "12px", 
+              display: "flex", 
+              alignItems: "center", 
+              gap: "8px" 
+            }}>
               <FaHistory />
               Historique des tris ({historiqueTri.length})
             </div>
-            <div style={{ maxHeight: "200px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "4px" }}>
+            <div style={{ 
+              maxHeight: "200px", 
+              overflowY: "auto", 
+              display: "flex", 
+              flexDirection: "column", 
+              gap: "4px" 
+            }}>
               {historiqueTri.map((item, index) => (
                 <div
                   key={index}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "white", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "13px", flexWrap: "wrap", gap: "4px" }}
+                  style={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "space-between", 
+                    padding: "6px 12px", 
+                    background: "white", 
+                    borderRadius: "8px", 
+                    border: "1px solid #e2e8f0", 
+                    fontSize: "12px", 
+                    flexWrap: "wrap", 
+                    gap: "4px" 
+                  }}
                 >
-                  <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ color: "#94a3b8", fontSize: "11px" }}>#{index + 1}</span>
-                    <code style={{ fontWeight: 600, color: "#0ea5e9" }}>{item.codeLinge}</code>
-                    <span style={{ color: "#475569" }}>{item.categorie}</span>
-                    <span style={{ padding: "2px 8px", borderRadius: "12px", background: item.typeCollecte === "BLANC" ? "#dcfce7" : "#fee2e2", color: item.typeCollecte === "BLANC" ? "#15803d" : "#dc2626", fontSize: "11px", fontWeight: 600 }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ color: "#94a3b8", fontSize: "10px" }}>#{index + 1}</span>
+                    <code style={{ fontWeight: 600, color: "#0ea5e9", fontSize: "12px" }}>{item.codeLinge}</code>
+                    <span style={{ color: "#475569", fontSize: "12px" }}>{item.categorie}</span>
+                    <Badge style={{ 
+                      background: item.typeCollecte === "BLANC" ? "#dcfce7" : "#fee2e2", 
+                      color: item.typeCollecte === "BLANC" ? "#15803d" : "#dc2626", 
+                      fontSize: "9px" 
+                    }}>
                       {item.typeCollecte}
-                    </span>
+                    </Badge>
                     <span style={{ color: "#64748b", fontSize: "11px" }}>→ {item.lotCode}</span>
                   </div>
-                  <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                    <span style={{ fontSize: "11px", color: "#94a3b8" }}>{item.poids} kg</span>
-                    <span style={{ fontSize: "11px", color: "#94a3b8" }}>{item.date}</span>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <span style={{ fontSize: "10px", color: "#94a3b8" }}>{item.poids} kg</span>
+                    <span style={{ fontSize: "10px", color: "#94a3b8" }}>{item.date}</span>
                   </div>
                 </div>
               ))}
@@ -775,11 +845,21 @@ function TriInner() {
           </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e2e8f0", flexWrap: "wrap", gap: "8px" }}>
-          <div style={{ display: "flex", gap: "20px", fontSize: "13px", color: "#64748b" }}>
+        {/* ─── FOOTER ────────────────────────────────────────────────────── */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: "16px",
+          paddingTop: "16px",
+          borderTop: "1px solid #e2e8f0",
+          flexWrap: "wrap",
+          gap: "8px"
+        }}>
+          <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#64748b" }}>
             {agentScanne && (
               <>
-                <span>Agent: <strong style={{ color: "#0f172a" }}>{agentScanne.nom || agentScanne.matricule}</strong></span>
+                <span>Agent: <strong style={{ color: "#0f172a" }}>{agentScanne.nomPrenom || agentScanne.nom || agentScanne.matricule}</strong></span>
                 <span>Matricule: <strong style={{ color: "#0f172a" }}>{agentScanne.matricule}</strong></span>
               </>
             )}
@@ -801,20 +881,6 @@ function TriInner() {
     </div>
   );
 }
-
-const btnStyle = {
-  padding: "8px 20px",
-  border: "1px solid #e2e8f0",
-  borderRadius: "10px",
-  background: "white",
-  color: "#64748b",
-  cursor: "pointer",
-  fontSize: "13px",
-  fontWeight: 500,
-  display: "flex",
-  alignItems: "center",
-  gap: "6px"
-};
 
 export default function TriList() {
   return <TriProvider><TriInner /></TriProvider>;

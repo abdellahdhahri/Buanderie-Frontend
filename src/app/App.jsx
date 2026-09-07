@@ -8,6 +8,9 @@ import { ServiceContext, ServiceProvider } from "./contextes/ServiceContext";
 import { ModalProvider } from "./contextes/ModalContext";
 import BacProvider from "./contextes/BacContext";
 import { ProgrammeProvider } from "./contextes/ProgrammeContext";
+import { AuthProvider } from "./contextes/Authentication/AuthContext";
+import {MachineProvider} from "./contextes/MachineContext"
+
 import { 
     startNotificationService, 
     stopNotificationService 
@@ -27,8 +30,12 @@ export default function App() {
     return (
         <ProgrammeProvider>
             <BacProvider>
+                    <MachineProvider>
+
                 <ModalProvider>
                     <ServiceProvider>
+                            <AuthProvider>
+
                         <LingeProvider>
                             <RouterProvider router={router} />
                             <Toaster 
@@ -38,8 +45,12 @@ export default function App() {
                                 duration={4000}
                             />
                         </LingeProvider>
+                            </AuthProvider>
+
                     </ServiceProvider>
                 </ModalProvider>
+                    </MachineProvider>
+
             </BacProvider>
         </ProgrammeProvider>
     );

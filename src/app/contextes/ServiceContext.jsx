@@ -1,90 +1,104 @@
-import React, { createContext, useState, useEffect } from "react";
+// src/contextes/ServiceContext.jsx
+
+import React, { createContext, useState, useEffect, useContext } from "react";
 
 export const ServiceContext = createContext();
 
+// ─── HOOK PERSONNALISÉ ────────────────────────────────────────────────────
+export const useServiceContext = () => {
+  const context = useContext(ServiceContext);
+  if (!context) {
+    throw new Error('useServiceContext must be used within a ServiceProvider');
+  }
+  return context;
+};
+
 export const ServiceProvider = ({ children }) => {
   const [services, setServices] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-/*  useEffect(() => {
-    // Lecture des services depuis SQL Server (non PostgreSQL)
-   // fetch("http://localhost:8080/api/sqlserver/services?page=0&size=200")
-      .then(res => res.json())
-      .then(data => {
-        // SQL Server renvoie une Page Spring : { content: [...], totalElements, ... }
-        // Chaque service SQL Server a : { id, code, description }
-        // On normalise vers { id, nom, description } pour compatibilité avec le reste de l'app
+  // ─── CHARGEMENT DES SERVICES ───────────────────────────────────────────
+  useEffect(() => {
+    const fetchServices = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch("http://localhost:8082/api/sqlserver/services?page=0&size=200");
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log("📦 Liste des services brute :", data.content);
+        
+        // Normaliser les données
         const list = (data.content || data || []).map(s => ({
-          id:          s.id,
-          nom:         s.code,        // "code" SQL Server → "nom" utilisé dans l'app
-          description: s.description,
-          code:        s.code,        // on garde aussi "code" brut
+          id: s.id,
+          nom: s.code || s.nom || `Service ${s.id}`,
+          code: s.code || s.nom,
+          description: s.description || s.nom || '',
+          type: s.typeService || s.type || null,
         }));
+        
         setServices(list);
-      })
-      .catch(err => console.error("Erreur fetch services SQL Server :", err));
-  }, []);
-*/
-// useEffect(() => {
-  //   const test = async () => {
-    //     const result = await getChambresByServiceId(17);
-    
-    //     console.log("Chambres :", result.content);
-    //     console.log("Résultat complet :", result);
-//   };
+        console.log("✅ Liste des services normalisée :", list);
+      } catch (err) {
+        console.error("❌ Erreur fetch services :", err);
+        setError(err.message);
+        setServices([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-//   test();
-// }, []);
-    useEffect(() => {
-    // Lecture des services depuis SQL Server (non PostgreSQL)
-   fetch("http://localhost:8082/api/sqlserver/services?page=0&size=200")
-   //fetch("http://localhost:8082/api/services?page=0&size=200")
-   .then(res => res.json())
-      .then(data => {
-        console.log("liste des services brute : ",data.content)
-        // SQL Server renvoie une Page Spring : { content: [...], totalElements, ... }
-        // Chaque service SQL Server a : { id, code, description }
-        // On normalise vers { id, nom, description } pour compatibilité avec le reste de l'app
-        const list = (data.content || data || [])
-        // .map(s => ({
-        //   id:          s.id,
-        //   nom:         s.code,        // "code" SQL Server → "nom" utilisé dans l'app
-        //   description: s.description,
-        //   type:        s.typeService,        // on garde aussi "code" brut
-        // }));
-        setServices(list);
-        console.log("la liste des services ",list)
-        console.log("la liste de services brut est :",data.content)
-
-
-      })
-      .catch(err => console.error("Erreur fetch services SQL Server :", err));
+    fetchServices();
   }, []);
 
-const getChambresByServiceId = async (serviceId,page = 0,size = 300) => {
-  try {
-    const response = await fetch(
-      `http://localhost:8082/api/sqlserver/chambres/service/${serviceId}?page=${page}&size=${size}`
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        `Erreur lors du chargement des chambres (${response.status})`
+  // ─── RÉCUPÉRER LES CHAMBRES D'UN SERVICE ──────────────────────────────
+  const getChambresByServiceId = async (serviceId, page = 0, size = 300) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8082/api/sqlserver/chambres/service/${serviceId}?page=${page}&size=${size}`
       );
+
+      if (!response.ok) {
+        throw new Error(
+          `Erreur lors du chargement des chambres (${response.status})`
+        );
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("❌ Erreur getChambresByServiceId :", error);
+      throw error;
     }
+  };
 
-    const data = await response.json();
+  // ─── RÉCUPÉRER UN SERVICE PAR SON ID ──────────────────────────────────
+  const getServiceById = (serviceId) => {
+    return services.find(s => s.id === serviceId) || null;
+  };
 
-   // console.log("Réponse API :", data);
-    //console.log("Liste des chambres :", data.content);
+  // ─── RÉCUPÉRER UN SERVICE PAR SON CODE ────────────────────────────────
+  const getServiceByCode = (code) => {
+    return services.find(s => s.code === code) || null;
+  };
 
-    return data;
-  } catch (error) {
-    console.error("Erreur getChambresByServiceId :", error);
-    throw error;
-  }
-};
+  const value = {
+    services,
+    setServices,
+    isLoading,
+    error,
+    getChambresByServiceId,
+    getServiceById,
+    getServiceByCode,
+  };
+
   return (
-    <ServiceContext.Provider value={{ services, setServices ,getChambresByServiceId}}>
+    <ServiceContext.Provider value={value}>
       {children}
     </ServiceContext.Provider>
   );

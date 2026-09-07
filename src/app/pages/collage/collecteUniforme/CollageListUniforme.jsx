@@ -201,7 +201,7 @@ function CarteUniforme({ u, uniformeEnCours, onManquant }) {
 export default function CollageListUniforme() {
   const { showAlert, showConfirm } = useModal();
 
-  const [etape, setEtape] = useState("BADGE"); // ✅ Changé de "AGENT" à "BADGE"
+  const [etape, setEtape] = useState("BADGE");
   const [agent, setAgent] = useState(null);
   const [collecte, setCollecte] = useState(null);
   const [uniformeEnCours, setUniformeEnCours] = useState(null);
@@ -223,13 +223,23 @@ export default function CollageListUniforme() {
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
-      setAgent(agentData);
+      // ✅ Utiliser les données du localStorage
+      const ag = {
+        matricule: agentData.codeBarre || agentData.matricule,
+        nom: agentData.nom || "Inconnu",
+        prenom: agentData.prenom || "",
+        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+        codeBarre: agentData.codeBarre || agentData.matricule,
+        id: agentData.id,
+        poste: agentData.poste || "AGENT_COLLECTE"
+      };
+      setAgent(ag);
       setEtape("BADGE");
       setScanStatus({
         loading: false,
         success: { 
-          message: `👤 Agent ${agentData.nom}`, 
-          detail: `Connecté · ${agentData.matricule}` 
+          message: `👤 ${ag.nomPrenom || ag.nom}`, 
+          detail: `Connecté · ${ag.codeBarre || ag.matricule}` 
         },
         error: null
       });
@@ -275,9 +285,6 @@ export default function CollageListUniforme() {
     } : p);
   }, []);
 
-  // ─── ÉTAPE 1 : Agent (SUPPRIMÉE) ──────────────────────────────────────
-  // ✅ L'agent est récupéré depuis localStorage
-
   // ─── ÉTAPE 2 : Badge médecin ─────────────────────────────────────────
   const handleBadge = useCallback(async (code) => {
     if (!agent) {
@@ -288,7 +295,7 @@ export default function CollageListUniforme() {
     setScanStatus(null);
     try {
       const res = await apiCall("/api/collecte/uniforme/ouvrir", {
-        matriculeAgent: agent.matricule, // ✅ Utiliser agent du localStorage
+        matriculeAgent: agent.codeBarre || agent.matricule, // ✅ Utiliser codeBarre
         codeBadge: code
       });
       setCollecte({
@@ -424,7 +431,6 @@ export default function CollageListUniforme() {
 
   const handleScan = useCallback(async (code) => {
     setScanVal("");
-    // ✅ Suppression de l'étape AGENT
     if (etape === "BADGE") { await handleBadge(code); return; }
     if (etape === "SCAN") {
       if (uniformeEnCours) {
@@ -501,7 +507,7 @@ export default function CollageListUniforme() {
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
+              {agent ? `Agent: ${agent.nomPrenom || agent.nom}` : "Aucun agent connecté"}
             </p>
           </div>
         </div>
@@ -536,9 +542,11 @@ export default function CollageListUniforme() {
                 border: "1px solid #e9d5ff"
               }}>
                 <FaUser color="#7c3aed" size={16} />
-                <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>{agent.nom}</span>
+                <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>
+                  {agent.nomPrenom || agent.nom}
+                </span>
                 <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {agent.matricule}
+                  {agent.codeBarre || agent.matricule}
                 </Badge>
               </div>
             )}
