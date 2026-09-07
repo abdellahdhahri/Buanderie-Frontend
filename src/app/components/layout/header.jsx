@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useLocation } from "react-router";
 import logoSoftSys from "../../../assets/logo_SoftSys.png";
+import { useAuth } from "../../contextes/Authentication/AuthContext";
 import { 
   Sun, Moon, Bell, MessageSquare, ChevronDown, User, LogOut, 
   Settings, Award, X, CheckCircle, AlertCircle, Info, AlertTriangle,
@@ -89,42 +90,30 @@ const NOTIFICATION_STYLES = {
 
 // ─── COMPOSANT HEADER ──────────────────────────────────────────────────
 export function Header({ sidebarOpen, setSidebarOpen }) {
+
+    const { agent, loginUser, admin } = useAuth();
+
+
+
   const [isDark, setIsDark] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [userDropOpen, setUserDropOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [isLoadingAgent, setIsLoadingAgent] = useState(true);
-  
   // Popup notification
   const [currentNotification, setCurrentNotification] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
-  const [agent, setAgent] = useState(null);
+  //const [agent, setAgent] = useState(null);
 
   const location = useLocation();
   const currentPath = location.pathname;
   const wsSubscriptionRef = useRef(null);
   const popupTimerRef = useRef(null);
 
-  // ─── Chargement de l'agent ──────────────────────────────────────────────
-  useEffect(() => {
-    const loadAgent = async () => {
-      try {
-        const savedAgent = getAgent();
-        if (savedAgent) {
-          setAgent(savedAgent);
-        }
-      } catch (error) {
-        console.error("Erreur chargement agent:", error);
-        setAgent(null);
-      } finally {
-        setIsLoadingAgent(false);
-      }
-    };
-    loadAgent();
-  }, []);
 
+  
+  
   const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
@@ -292,29 +281,41 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     document.documentElement.classList.toggle("dark");
   };
 
-  // ─── Obtenir les initiales de l'agent ──────────────────────────────────
-  const getInitials = () => {
-    if (!agent || !agent.nom) return "??";
-    // Prendre la première lettre du nom
-    return agent.nom.charAt(0).toUpperCase();
-  };
+const getInitials = () => {
+  if (!agent) return "??";
 
-  // ─── Obtenir le nom complet ─────────────────────────────────────────────
-  const getAgentFullName = () => {
-    if (!agent) return "Utilisateur";
-    return agent.nom || "Utilisateur";
-  };
+  const nomPrenom = agent.nomPrenom || agent.login || "";
 
+  if (!nomPrenom) return "??";
+
+  const parts = nomPrenom.trim().split(/\s+/);
+
+  if (parts.length >= 2) {
+    return (
+      parts[0].charAt(0) +
+      parts[1].charAt(0)
+    ).toUpperCase();
+  }
+
+  return parts[0].charAt(0).toUpperCase();
+};
+
+const getAgentFullName = () => {
+  if (!agent) return "Utilisateur";
+
+  return agent.nomPrenom ||
+         agent.login ||
+         "Utilisateur";
+};
   // ─── Obtenir le poste ──────────────────────────────────────────────────
   const getAgentPoste = () => {
     if (!agent) return "Non défini";
     return agent.poste?.replace("AGENT_", "") || agent.poste || "Non défini";
   };
 
-  // ─── Obtenir l'email ──────────────────────────────────────────────────
   const getAgentEmail = () => {
     if (!agent) return "";
-    return agent.email || `${agent.nom?.toLowerCase() || 'utilisateur'}@softsys.com`;
+    return agent.email || `${agent.nomPrenom?.toLowerCase() || 'utilisateur'}@softsys.com`;
   };
 
   return (
@@ -566,7 +567,7 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
               </div>
               <div className="user-btn__info">
                 <span className="user-btn__name">{getAgentFullName()}</span>
-                <span className="user-btn__role">{getAgentPoste()}</span>
+                {/* <span className="user-btn__role">{getAgentPoste()}</span> */}
               </div>
               <ChevronDown className={`user-btn__chevron ${userDropOpen ? "user-btn__chevron--open" : ""}`} />
             </button>

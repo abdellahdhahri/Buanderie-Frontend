@@ -1,5 +1,3 @@
-// src/components/linges/LingeImportModal.jsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Modal } from '../../components/ui/modal';
 import { Button } from '../../components/ui/button';
@@ -48,7 +46,7 @@ export const LingeImportModal = () => {
     selectedImportLinges,
     isImportLoading,
     importType,
-    importPagination, // ✅ Récupérer importPagination
+    importPagination,
     loadLingesToImport,
     importLinges,
     toggleImportSelection,
@@ -144,6 +142,11 @@ export const LingeImportModal = () => {
     }
   };
 
+  // ✅ Sélectionner un service et fermer l'alerte si elle était ouverte
+  const handleServiceSelect = (serviceId) => {
+    setSelectedServiceId(serviceId);
+  };
+
   const handleImport = async () => {
     if (selectedImportLinges.length === 0) {
       Swal.fire({
@@ -164,6 +167,9 @@ export const LingeImportModal = () => {
         cancelButtonText: 'Annuler',
       });
       if (!result.isConfirmed) return;
+      // ✅ Mettre le focus sur le select
+      const selectElement = document.querySelector('select[name="service-select"]');
+      if (selectElement) selectElement.focus();
       return;
     }
 
@@ -180,7 +186,6 @@ export const LingeImportModal = () => {
     }
   };
 
-  // ✅ Gestion sécurisée de la pagination
   const totalPages = importPagination?.totalPages || 0;
   const currentPage = importPagination?.currentPage || 0;
 
@@ -189,6 +194,9 @@ export const LingeImportModal = () => {
       loadLingesToImport(newPage, importPagination?.itemsPerPage || 50);
     }
   };
+
+  // ✅ Vérifier si le bouton doit être activé
+  const isImportDisabled = selectedImportLinges.length === 0 || !selectedServiceId || isImportLoading;
 
   return (
     <Modal
@@ -205,25 +213,32 @@ export const LingeImportModal = () => {
           </p>
         </div>
 
-        {/* Sélection du service */}
+        {/* ✅ Sélection du service - avec nom pour focus */}
         <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
           <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
             <Building className="w-4 h-4" />
             Service de destination :
           </label>
           <select
+            name="service-select"
             value={selectedServiceId || ''}
-            onChange={(e) => setSelectedServiceId(e.target.value || null)}
-            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            onChange={(e) => handleServiceSelect(e.target.value || null)}
+            className={`flex-1 px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              !selectedServiceId ? 'border-amber-300 bg-amber-50' : 'border-slate-200'
+            }`}
           >
-            <option value="">Sélectionner un service...</option>
+            <option value="">🔽 Sélectionner un service...</option>
             {services.map((s) => (
               <option key={s.id} value={s.id}>{s.code || s.nom}</option>
             ))}
           </select>
-          {selectedServiceId && (
-            <Badge variant="success" className="text-xs">
+          {selectedServiceId ? (
+            <Badge variant="success" className="text-xs flex items-center gap-1">
               ✅ {getServiceName(selectedServiceId)}
+            </Badge>
+          ) : (
+            <Badge variant="warning" className="text-xs flex items-center gap-1">
+              ⚠️ Service requis
             </Badge>
           )}
         </div>
@@ -398,7 +413,7 @@ export const LingeImportModal = () => {
           </div>
         </div>
 
-        {/* Pagination - avec vérification de sécurité */}
+        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between pt-4 border-t border-slate-200">
             <div className="text-sm text-slate-500">
@@ -435,6 +450,11 @@ export const LingeImportModal = () => {
                 → Service: {getServiceName(selectedServiceId)}
               </span>
             )}
+            {!selectedServiceId && (
+              <span className="ml-2 text-amber-600">
+                ⚠️ Service non sélectionné
+              </span>
+            )}
           </div>
           <div className="flex gap-3">
             <Button
@@ -446,8 +466,13 @@ export const LingeImportModal = () => {
             </Button>
             <Button
               onClick={handleImport}
-              disabled={selectedImportLinges.length === 0 || !selectedServiceId || isImportLoading}
-              className="bg-indigo-600 hover:bg-indigo-700"
+              disabled={isImportDisabled}
+              className={isImportDisabled ? 'opacity-50 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}
+              title={isImportDisabled ? (
+                !selectedServiceId ? 'Sélectionnez un service' :
+                selectedImportLinges.length === 0 ? 'Sélectionnez des linges' :
+                'Import en cours...'
+              ) : ''}
             >
               {isImportLoading ? (
                 <>

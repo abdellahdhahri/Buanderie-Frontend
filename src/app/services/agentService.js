@@ -50,12 +50,10 @@ export const authenticateAgent = async (matricule) => {
     
     const agent = await response.json();
     
-    // Vérifier si l'agent a un poste configuré
     if (!agent.poste || !POSTE_TO_ROUTE[agent.poste]) {
       throw new Error(`Poste non configuré pour ${agent.nom}`);
     }
     
-    // Sauvegarder l'agent
     const agentData = {
       matricule: agent.matricule,
       nom: agent.nom,

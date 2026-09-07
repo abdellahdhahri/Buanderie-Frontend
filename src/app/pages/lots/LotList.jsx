@@ -35,6 +35,7 @@ import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import printJS from "print-js";
+import BarcodeLabel from "../../components/BarcodeLabel"; 
 
 const CATEGORIES = [
   { value: "DRAP", label: "Drap" },
@@ -135,10 +136,8 @@ export default function LotList() {
     if (!status) return <Badge variant="secondary">Non défini</Badge>;
     
     const variants = {
-      // Type collecte
       BLANC: { variant: "info", label: "Blanc" },
       INFECTE: { variant: "danger", label: "Infecté" },
-      // État lot
       EN_RECEPTION: { variant: "warning", label: "En réception" },
       EN_ATTENTE_COLLECTE: { variant: "secondary", label: "En attente" },
       EN_TRI: { variant: "info", label: "En tri" },
@@ -323,83 +322,6 @@ export default function LotList() {
     setSelectedId((prev) => (prev === id ? null : id));
   };
 
-  const detectFormat = (value) => {
-    if (!value) return "code128";
-    const cleanValue = value.replace(/\s+/g, "");
-    if (/^\d{13}$/.test(cleanValue)) return "ean13";
-    if (/^\d{8}$/.test(cleanValue)) return "ean8";
-    if (/^\d{12}$/.test(cleanValue)) return "upc";
-    return "code128";
-  };
-
-  const handlePrintLotCode = (lot) => {
-    if (!lot) return;
-    
-    const codeLot = lot.codeLot || `LOT-${lot.id}`;
-    const format = detectFormat(codeLot);
-        const code = 'AGT001'
-
-    printJS({
-      printable: `
-        <div style="width:60mm; padding:3mm; font-family:'Courier New',monospace; background:white; text-align:center;">
-         
-          
-          <div style="display:flex; justify-content:center; margin:2mm 0;">
-            <img
-              src="https://barcodeapi.org/api/${format}/${encodeURIComponent(code)}"
-              style="height:80px; width:100%; max-width:200px;"
-              alt="Code-barres"
-            />
-          </div>
-          
-         
-          
-          
-        </div>
-      `,
-      type: "raw-html",
-      style: "* { margin: 0; padding: 0; box-sizing: border-box; } body { background: white; display: flex; justify-content: center; }",
-      documentTitle: `Code_Lot_${lot.codeLot || lot.id}`,
-      css: `
-        @page { 
-          size: 60mm 40mm;
-          margin: 0;
-        }
-      `
-    });
-  };
-
-  const handlePrintLotTicket = (lot) => {
-    if (!lot) return;
-    
-    printJS({
-      printable: `
-        <div style="width:80mm; padding:5mm; font-family:'Courier New',monospace; background:white;">
-         
-          
-          <div style="display:flex; justify-content:center; margin:2mm 0;">
-            <img
-              src="https://barcodeapi.org/api/${detectFormat(lot.codeLot || `LOT-${lot.id}`)}/${encodeURIComponent(lot.codeLot || `LOT-${lot.id}`)}"
-              style="height:60px; max-width:200px;"
-              alt="Code-barres"
-            />
-          </div>
-          
-          
-          
-        </div>
-      `,
-      type: "raw-html",
-      style: "* { margin: 0; padding: 0; box-sizing: border-box; }",
-      documentTitle: `Ticket_Lot_${lot.codeLot || lot.id}`,
-      css: `
-        @page { 
-          size: 80mm 130mm;
-          margin: 0;
-        }
-      `
-    });
-  };
 
   const filteredLots = lots.filter((r) => {
     if (!searchTerm) return true;
@@ -422,59 +344,59 @@ export default function LotList() {
         }}
       >
         <div className="space-y-4">
-<div style={{ marginBottom: "32px" }}>
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    marginBottom: "8px"
-  }}>
-    <div style={{
-      width: "52px",
-      height: "52px",
-      borderRadius: "16px",
-      background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      boxShadow: "0 4px 16px rgba(139, 92, 246, 0.25)"
-    }}>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        width="24" 
-        height="24" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-        <line x1="12" y1="22.08" x2="12" y2="12" />
-      </svg>
-    </div>
-    <div>
-      <h1 style={{
-        fontSize: "28px",
-        fontWeight: 800,
-        color: "#0f172a",
-        margin: 0
-      }}>
-        Gestion des lots
-      </h1>
-      <p style={{
-        fontSize: "14px",
-        color: "#64748b",
-        margin: "2px 0 0 0"
-      }}>
-        Création et gestion des lots de linge
-      </p>
-    </div>
-  </div>
-</div>
+          <div style={{ marginBottom: "32px" }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              marginBottom: "8px"
+            }}>
+              <div style={{
+                width: "52px",
+                height: "52px",
+                borderRadius: "16px",
+                background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                boxShadow: "0 4px 16px rgba(139, 92, 246, 0.25)"
+              }}>
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  width="24" 
+                  height="24" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                </svg>
+              </div>
+              <div>
+                <h1 style={{
+                  fontSize: "28px",
+                  fontWeight: 800,
+                  color: "#0f172a",
+                  margin: 0
+                }}>
+                  Gestion des lots
+                </h1>
+                <p style={{
+                  fontSize: "14px",
+                  color: "#64748b",
+                  margin: "2px 0 0 0"
+                }}>
+                  Création et gestion des lots de linge
+                </p>
+              </div>
+            </div>
+          </div>
 
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
             <button
@@ -486,24 +408,21 @@ export default function LotList() {
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
 
-            <button
-              disabled={!selectedLotId}
-              onClick={() => {
-                if (selectedLot) handlePrintLotTicket(selectedLot);
-              }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
-            >
-              <Printer className="w-4 h-4 stroke-[2.5]" /> Ticket Lot
-            </button>
+            {/* ✅ Bouton Étiquette Lot avec BarcodeLabel */}
+            {selectedLot && (
+              <BarcodeLabel item={selectedLot} type="lot" />
+            )}
 
             <button
               disabled={!selectedLotId}
               onClick={() => {
-                if (selectedLot) handlePrintLotCode(selectedLot);
+                if (selectedLot) {
+                  // Ticket Lot - à garder si besoin
+                }
               }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Barcode className="w-4 h-4 stroke-[2.5]" /> Code Lot
+              <Printer className="w-4 h-4 stroke-[2.5]" /> Ticket Lot
             </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
@@ -649,26 +568,8 @@ export default function LotList() {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePrintLotCode(lot);
-                                }}
-                                className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title="Imprimer le code"
-                              >
-                                <Barcode className="w-4 h-4 text-[#e67700]" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePrintLotTicket(lot);
-                                }}
-                                className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title="Imprimer le ticket"
-                              >
-                                <Printer className="w-4 h-4 text-[#8b5cf6]" />
-                              </button>
+                              {/* ✅ Bouton Étiquette avec BarcodeLabel */}
+                              <BarcodeLabel item={lot} type="lot" />
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -728,7 +629,6 @@ export default function LotList() {
             }}
             className="w-[30%] bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden h-[calc(100vh-120px)] sticky top-20 flex-shrink-0"
           >
-            {/* Header */}
             <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-blue-100">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -743,20 +643,8 @@ export default function LotList() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handlePrintLotCode(selectedLot)}
-                    className="p-1.5 hover:bg-blue-200 rounded-lg transition-colors text-slate-500 hover:text-[#e67700]"
-                    title="Imprimer le code"
-                  >
-                    <Barcode className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handlePrintLotTicket(selectedLot)}
-                    className="p-1.5 hover:bg-blue-200 rounded-lg transition-colors text-slate-500 hover:text-[#8b5cf6]"
-                    title="Imprimer le ticket"
-                  >
-                    <Printer className="w-4 h-4" />
-                  </button>
+                  {/* ✅ Bouton Étiquette avec BarcodeLabel */}
+                  <BarcodeLabel item={selectedLot} type="lot" />
                   <button
                     onClick={handleClosePanel}
                     className="p-1.5 hover:bg-blue-200 rounded-lg transition-colors text-slate-500 hover:text-slate-700"
@@ -775,7 +663,7 @@ export default function LotList() {
                     <div className="text-xs text-slate-500 mb-2">CODE-BARRES DU LOT</div>
                     <div className="flex justify-center">
                       <img
-                        src={`https://barcodeapi.org/api/${detectFormat(selectedLot.codeLot || `LOT-${selectedLot.id}`)}/${encodeURIComponent(selectedLot.codeLot || `LOT-${selectedLot.id}`)}`}
+                        src={`https://barcodeapi.org/api/${/^\d{13}$/.test(selectedLot.codeLot || `LOT-${selectedLot.id}`) ? 'ean13' : /^\d{8}$/.test(selectedLot.codeLot || `LOT-${selectedLot.id}`) ? 'ean8' : /^\d{12}$/.test(selectedLot.codeLot || `LOT-${selectedLot.id}`) ? 'upc' : 'code128'}/${encodeURIComponent(selectedLot.codeLot || `LOT-${selectedLot.id}`)}`}
                         style={{ height: "50px", maxWidth: "200px" }}
                         alt="Code-barres"
                       />
@@ -816,18 +704,8 @@ export default function LotList() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  <button
-                    onClick={() => handlePrintLotCode(selectedLot)}
-                    className="flex items-center justify-center gap-2 p-3 bg-[#e67700]/10 text-[#e67700] rounded-xl hover:bg-[#e67700]/20 transition-all"
-                  >
-                    <Barcode className="w-4 h-4" /> Code
-                  </button>
-                  <button
-                    onClick={() => handlePrintLotTicket(selectedLot)}
-                    className="flex items-center justify-center gap-2 p-3 bg-[#8b5cf6]/10 text-[#8b5cf6] rounded-xl hover:bg-[#8b5cf6]/20 transition-all"
-                  >
-                    <Printer className="w-4 h-4" /> Ticket
-                  </button>
+                  {/* ✅ Bouton Étiquette avec BarcodeLabel */}
+                  <BarcodeLabel item={selectedLot} type="lot" />
                 </div>
               </div>
             </div>

@@ -1,3 +1,4 @@
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 /**
@@ -7,35 +8,106 @@ export const normalizeAgent = (agentData) => ({
   matricule: agentData.codeBarre || agentData.matricule,
   nom: agentData.nom || "Inconnu",
   prenom: agentData.prenom || "",
-  nomPrenom: agentData.nomPrenom || `${agentData.prenom || ''} ${agentData.nom || ''}`.trim() || agentData.nom || "Inconnu",
+  nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
   codeBarre: agentData.codeBarre || agentData.matricule,
   id: agentData.id,
   poste: agentData.poste || agentData.fonction || "AGENT_REMISE"
 });
 
 /**
- * Récupère un agent par son matricule
+ * Récupère l'agent depuis localStorage (clé 'auth')
  */
-export const fetchAgentByMatricule = async (matricule) => {
-  const response = await fetch(`${API_URL}/api/agents/matricule/${encodeURIComponent(matricule)}`);
+export const getAgentFromStorage = () => {
+  try {
+    const authData = localStorage.getItem('auth');
+    if (authData) {
+      try {
+        const parsed = JSON.parse(authData);
+        if (parsed.agent && (parsed.agent.codeBarre || parsed.agent.matricule || parsed.agent.id)) {
+          console.log("  Agent trouvé dans localStorage sous la clé 'auth'");
+          return normalizeAgent(parsed.agent);
+        }
+      } catch {}
+    }
+
+    const directAgent = localStorage.getItem('agent');
+    if (directAgent) {
+      try {
+        const parsed = JSON.parse(directAgent);
+        if (parsed.codeBarre || parsed.matricule || parsed.id) {
+          console.log("  Agent trouvé dans localStorage sous la clé 'agent'");
+          return normalizeAgent(parsed);
+        }
+      } catch {}
+    }
+
+    console.warn("⚠️ Aucun agent trouvé dans le stockage");
+    return null;
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'agent:", error);
+    return null;
+  }
+};
+
+/**
+ * Récupère le token depuis localStorage
+ */
+export const getTokenFromStorage = () => {
+  try {
+    const authData = localStorage.getItem('auth');
+    if (authData) {
+      const parsed = JSON.parse(authData);
+      return parsed.token || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Vérifie si un agent est connecté
+ */
+export const isAgentConnected = () => {
+  return !!getAgentFromStorage();
+};
+
+/**
+ * Récupère un agent par son code (API SQL Server)
+ */
+export const fetchAgentByMatricule = async (code) => {
+  const token = getTokenFromStorage();
+  const response = await fetch(
+    `${API_URL}/api/sqlserver/personnel/code/${encodeURIComponent(code)}?code=${encodeURIComponent(code)}`,
+    {
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    }
+  );
   if (!response.ok) {
-    throw new Error(`Agent [${matricule}] introuvable`);
+    throw new Error(`Agent [${code}] introuvable`);
   }
   const data = await response.json();
   return normalizeAgent(data);
 };
 
 /**
- * Crée une nouvelle remise
+ *   Crée une nouvelle remise - Correction
  */
-export const createRemise = async (matriculeAgentRemise, matriculeAgentCollecte) => {
-  const response = await fetch(
-    `${API_URL}/api/remises-linge?matriculeAgentRemise=${encodeURIComponent(matriculeAgentRemise)}&matriculeAgentCollecte=${encodeURIComponent(matriculeAgentCollecte)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" }
+export const createRemise = async (matriculeAgentRemise, id) => {
+  const token = getTokenFromStorage();
+  
+  const url = `${API_URL}/api/remises-linge?matriculeAgentRemise=${encodeURIComponent(matriculeAgentRemise)}&id=${id}`;
+  console.log("📡 Appel API création remise:", url);
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     }
-  );
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -49,12 +121,16 @@ export const createRemise = async (matriculeAgentRemise, matriculeAgentCollecte)
 
   return response.json();
 };
-
 /**
  * Récupère le statut d'une collecte
  */
 export const fetchStatutCollecte = async (collecteId) => {
-  const response = await fetch(`${API_URL}/api/remises-linge/collecte/${collecteId}/statut`);
+  const token = getTokenFromStorage();
+  const response = await fetch(`${API_URL}/api/remises-linge/collecte/${collecteId}/statut`, {
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    }
+  });
   if (!response.ok) {
     throw new Error("Erreur lors de la récupération du statut");
   }
@@ -65,7 +141,12 @@ export const fetchStatutCollecte = async (collecteId) => {
  * Récupère l'historique des remises d'une collecte
  */
 export const fetchHistoriqueRemises = async (collecteId) => {
-  const response = await fetch(`${API_URL}/api/remises-linge/collecte/${collecteId}`);
+  const token = getTokenFromStorage();
+  const response = await fetch(`${API_URL}/api/remises-linge/collecte/${collecteId}`, {
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    }
+  });
   if (!response.ok) {
     throw new Error("Erreur lors de la récupération de l'historique");
   }
@@ -77,11 +158,15 @@ export const fetchHistoriqueRemises = async (collecteId) => {
  * Scanne un linge pour une remise
  */
 export const scanLingeForRemise = async (remiseId, codeBarre) => {
+  const token = getTokenFromStorage();
   const response = await fetch(
     `${API_URL}/api/remises-linge/${remiseId}/scanner?codeBarre=${encodeURIComponent(codeBarre)}`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" }
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
     }
   );
 
@@ -145,7 +230,7 @@ export const formatDate = (dateString) => {
  */
 export const getRemiseStatutConfig = (etat) => {
   const configs = {
-    COMPLETEE: { bg: "#f0fdf4", text: "#15803d", icon: "✅", label: "Complétée" },
+    COMPLETEE: { bg: "#f0fdf4", text: "#15803d", icon: " ", label: "Complétée" },
     PARTIELLE: { bg: "#fffbeb", text: "#d97706", icon: "⏳", label: "Partielle" },
     EN_COURS: { bg: "#eff6ff", text: "#1d4ed8", icon: "🔄", label: "En cours" },
     CLOTUREE: { bg: "#f0fdf4", text: "#15803d", icon: "🏁", label: "Clôturée" }

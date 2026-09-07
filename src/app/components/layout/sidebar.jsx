@@ -4,8 +4,6 @@ import logoSoftSys from "../../../assets/logo_SoftSys.png";
 import { useAuth } from "../../contextes/Authentication/AuthContext";
 import { useNavigate } from 'react-router-dom';
 
-
-
 export const NAV_ITEMS = [
   {
     id: "rh",
@@ -47,56 +45,66 @@ export const NAV_ITEMS = [
         path: "/bac",
         privilege: "LIG1201",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
           </svg>
         ),
       },
-
+      {
+        label: "Étapes",
+        path: "/etape",
+        privilege: "LIG1201",
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+            <path d="M12 22V17" />
+            <path d="M8 7l4 2 4-2" />
+          </svg>
+        ),
+      },
       {
         label: "Lots",
         path: "/lot",
         privilege: "LIG1202",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
             <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
             <line x1="12" y1="22.08" x2="12" y2="12" />
           </svg>
         ),
       },
-
       {
         label: "Machines",
         path: "/machine",
         privilege: "LIG1203",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         ),
       },
-
       {
         label: "Programmes",
         path: "/programme",
         privilege: "LIG1204",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M21 12a9 9 0 1 1-6.219-8.56" />
             <polyline points="21 3 12 12 9 9" />
           </svg>
         ),
       },
-
       {
         label: "Stock",
         path: "/arsenal",
         privilege: "LIG1205",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M12 2L2 7l10 5 10-5-10-5z" />
             <path d="M2 17l10 5 10-5" />
             <path d="M2 12l10 5 10-5" />
@@ -104,13 +112,12 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
-
       {
         label: "Agents",
         path: "/Agents",
         privilege: "LIG1206",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
@@ -136,19 +143,18 @@ export const NAV_ITEMS = [
         path: "/tracking",
         privilege: "LIG1301",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
           </svg>
         ),
       },
-
       {
         label: "Cycles Lavages",
         path: "/cycleLavage",
         privilege: "LIG1302",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M23 4v6h-6" />
             <path d="M1 20v-6h6" />
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
@@ -156,25 +162,23 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
-
       {
         label: "Chambres",
         path: "/chambre",
         privilege: "LIG1303",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
             <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
         ),
       },
-
       {
         label: "Matériel",
         path: "/immo",
         privilege: "LIG1304",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <rect x="2" y="2" width="20" height="20" rx="2" ry="2" />
             <line x1="8" y1="2" x2="8" y2="22" />
             <line x1="16" y1="2" x2="16" y2="22" />
@@ -183,25 +187,56 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
+  {
+  label: "etat machines",
+  path: "/machines",
+  privilege: "LIG1304",
+  icon: (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      viewBox="0 0 24 24"
+    >
+      {/* Corps de la machine */}
+      <rect x="3" y="2" width="18" height="20" rx="2" />
 
+      {/* Bandeau supérieur */}
+      <line x1="3" y1="7" x2="21" y2="7" />
+
+      {/* Boutons */}
+      <circle cx="7" cy="4.5" r="0.8" fill="currentColor" />
+      <circle cx="10" cy="4.5" r="0.8" fill="currentColor" />
+
+      {/* Tambour */}
+      <circle cx="12" cy="14" r="5.2" />
+
+      {/* Intérieur du tambour */}
+      <circle cx="12" cy="14" r="3.8" />
+
+      {/* Petit détail */}
+      <path d="M9.5 14c.7-1.2 1.5-1.8 2.5-1.8s1.8.6 2.5 1.8" />
+    </svg>
+  ),
+},
       {
         label: "Inventaire",
         path: "/inventaire",
         privilege: "LIG1305",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
           </svg>
         ),
       },
-
       {
         label: "Linges",
         path: "/Linges",
         privilege: "LIG02",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
             <line x1="3" y1="6" x2="21" y2="6" />
             <path d="M16 10a4 4 0 0 1-8 0" />
@@ -229,7 +264,7 @@ export const NAV_ITEMS = [
         path: "/collecteList",
         privilege: "LIG1501",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <polyline points="14 2 14 8 20 8" />
             <line x1="16" y1="13" x2="8" y2="13" />
@@ -238,38 +273,35 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
-
       {
         label: "Réception",
         path: "/Receptions",
         privilege: "LIG1502",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="17 8 12 3 7 8" />
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
         ),
       },
-
       {
         label: "Tri",
         path: "/tri",
         privilege: "LIG1503",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
           </svg>
         ),
       },
-
       {
         label: "Lavage",
         path: "/Lavages",
         privilege: "LIG1504",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" />
             <path d="M12 8v8" />
             <path d="M8 12h8" />
@@ -299,7 +331,7 @@ export const NAV_ITEMS = [
         path: "/Sechages",
         privilege: "LIG1601",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M12 2v4" />
             <path d="M12 18v4" />
             <path d="M4 12H2" />
@@ -312,38 +344,35 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
-
       {
         label: "Pliage",
         path: "/Pliages",
         privilege: "LIG1602",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
             <line x1="3" y1="6" x2="21" y2="6" />
             <path d="M16 10a4 4 0 0 1-8 0" />
           </svg>
         ),
       },
-
       {
         label: "Stockage",
         path: "/stockage",
         privilege: "LIG1603",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
           </svg>
         ),
       },
-
       {
         label: "Livraison",
         path: "/remise",
         privilege: "LIG1604",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
             <path d="M6 12v5c0 1.5 6 3 6 3s6-1.5 6-3v-5" />
             <path d="M12 20v-5" />
@@ -353,13 +382,12 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
-
       {
-        label: "distribution",
+        label: "Distribution",
         path: "/distribution",
         privilege: "LIG1605",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M1 3h5l2 9h13l4-7h-9" />
             <circle cx="6" cy="19" r="2" />
             <circle cx="18" cy="19" r="2" />
@@ -385,45 +413,42 @@ export const NAV_ITEMS = [
         path: "/Historiques",
         privilege: "LIG1401",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
           </svg>
         ),
       },
-
       {
         label: "Statistiques",
         path: "/Statistiques",
         privilege: "LIG1402",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M21 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7" />
             <polyline points="15 3 21 3 21 9" />
             <line x1="9" y1="15" x2="15" y2="9" />
           </svg>
         ),
       },
-
       {
         label: "Réclamations",
         path: "/Reclamations",
         privilege: "LIG1403",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
         ),
       },
-
       {
         label: "Historique collectes",
         path: "/collecte",
         privilege: "LIG1404",
         icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <polyline points="14 2 14 8 20 8" />
             <line x1="16" y1="13" x2="8" y2="13" />
@@ -434,8 +459,6 @@ export const NAV_ITEMS = [
     ],
   },
 ];
-
-
 
 export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
@@ -454,9 +477,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
     logout
   } = useAuth();
 
-
- 
-
   const hasFullAccess =
     privileges.includes("ADMIN") || privileges.includes("ALL");
 
@@ -473,12 +493,8 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
     return privileges.includes(code);
   };
 
-
-
-
   const filteredNavItems = NAV_ITEMS
     .map((item) => {
-
 
       if (item.children) {
 
@@ -500,9 +516,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
         };
       }
 
-
-
-
       if (!hasPrivilege(item.privilege)) {
         return null;
       }
@@ -511,7 +524,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
     })
     .filter(Boolean);
-
 
   // ============================================================
   // Menu actif
@@ -525,23 +537,34 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
       )
   );
 
+  // ============================================================
+  // Ouvrir automatiquement le sous-menu actif (UNIQUEMENT au premier chargement)
+  // ============================================================
 
-  // ============================================================
-  // Ouvrir automatiquement le sous-menu actif
-  // ============================================================
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-
-    if (
-      activeNavItem &&
-      sidebarOpen &&
-      activeNavItem.children
-    ) {
-      setOpenSubmenu(activeNavItem.id);
+    // ✅ Ne s'exécute qu'une seule fois au montage
+    if (!initialized) {
+      if (
+        activeNavItem &&
+        activeNavItem.children &&
+        activeNavItem.children.length > 0 &&
+        sidebarOpen
+      ) {
+        setOpenSubmenu(activeNavItem.id);
+      }
+      setInitialized(true);
     }
+  }, []); // ✅ Dépendance vide = exécuté une seule fois
 
-  }, [activeNavItem, sidebarOpen]);
+  // ============================================================
+  // Gestion manuelle de l'ouverture/fermeture
+  // ============================================================
 
+  const toggleSubmenu = (itemId) => {
+    setOpenSubmenu((prev) => (prev === itemId ? null : itemId));
+  };
 
   // ============================================================
   // RENDER
@@ -618,7 +641,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
       </div>
 
-
       {/* SEARCH */}
 
       {sidebarOpen && (
@@ -647,7 +669,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
       )}
 
-
       {/* NAVIGATION */}
 
       <nav className="sidebar__nav">
@@ -657,7 +678,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
             Menu principal
           </span>
         )}
-
 
         {filteredNavItems.map((item) => (
 
@@ -695,12 +715,8 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
                   } else {
 
-                    setOpenSubmenu(
-                      (p) =>
-                        p === item.id
-                          ? null
-                          : item.id
-                    );
+                    // ✅ Toggle manuel du sous-menu
+                    toggleSubmenu(item.id);
 
                   }
 
@@ -777,7 +793,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </Link>
 
             )}
-
 
             {/* ===============================
                 POPUP SIDEBAR FERMÉ
@@ -861,7 +876,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
               )}
 
-
             {/* ===============================
                 SOUS-MENU SIDEBAR OUVERT
             =============================== */}
@@ -893,6 +907,12 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
                           ? "submenu__link--active"
                           : ""
                       }`}
+                      onClick={() => {
+                        // ✅ Fermer le sous-menu après la navigation sur mobile
+                        if (window.innerWidth < 768) {
+                          setSidebarOpen(false);
+                        }
+                      }}
                     >
 
                       <span
@@ -916,7 +936,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
         ))}
 
       </nav>
-
 
       {/* FOOTER */}
 

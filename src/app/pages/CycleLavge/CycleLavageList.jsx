@@ -1,3 +1,4 @@
+// pages/CycleLavage/CycleLavageList.js
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -21,7 +22,10 @@ import {
   X,
   Filter,
   Printer,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  CalendarDays
 } from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
 import { Modal } from "../../components/ui/modal";
@@ -34,8 +38,65 @@ import printJS from "print-js";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
+// ─── Pagination ──────────────────────────────────────────────────────────────
+function Pagination({ currentPage, totalPages, onPageChange }) {
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between mt-4">
+      <div className="text-sm text-slate-500">
+        Page {currentPage} / {totalPages}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Précédent
+        </button>
+        {getPageNumbers().map((page) => (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            className={`w-9 h-9 text-sm rounded-lg transition-colors ${
+              currentPage === page
+                ? "bg-teal-500 text-white font-bold"
+                : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Suivant
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function CycleLavageList() {
   const [cycles, setCycles] = useState([]);
+  const [filteredCycles, setFilteredCycles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCycle, setSelectedCycle] = useState(null);
@@ -45,6 +106,19 @@ export default function CycleLavageList() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
+  // ─── Pagination ──────────────────────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  // ─── Filtres ─────────────────────────────────────────────────────────────
+  const [filters, setFilters] = useState({
+    dateFrom: "",
+    dateTo: "",
+    statut: "",
+  });
+  const [showFilters, setShowFilters] = useState(false);
+
+  // ─── Chargement des cycles ──────────────────────────────────────────────
   const fetchCycles = async () => {
     setIsLoading(true);
     try {
@@ -52,6 +126,7 @@ export default function CycleLavageList() {
       if (response.ok) {
         const data = await response.json();
         setCycles(data);
+        applyFilters(data);
       }
     } catch (err) {
       console.error("Erreur réseau:", err);
@@ -64,6 +139,61 @@ export default function CycleLavageList() {
     fetchCycles();
   }, []);
 
+  // ─── Application des filtres ─────────────────────────────────────────────
+  const applyFilters = (data = cycles) => {
+    let result = [...data];
+
+    // Recherche
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (cycle) =>
+          cycle.numeroCycle?.toLowerCase().includes(term) ||
+          cycle.machine?.code?.toLowerCase().includes(term) ||
+          cycle.machine?.reference?.toLowerCase().includes(term) ||
+          cycle.programmeLavage?.nom?.toLowerCase().includes(term) ||
+          cycle.agent?.nom?.toLowerCase().includes(term)
+      );
+    }
+
+    // Filtre date début
+    if (filters.dateFrom) {
+      const from = new Date(filters.dateFrom);
+      from.setHours(0, 0, 0, 0);
+      result = result.filter(
+        (cycle) => cycle.dateCreation && new Date(cycle.dateCreation) >= from
+      );
+    }
+
+    // Filtre date fin
+    if (filters.dateTo) {
+      const to = new Date(filters.dateTo);
+      to.setHours(23, 59, 59, 999);
+      result = result.filter(
+        (cycle) => cycle.dateCreation && new Date(cycle.dateCreation) <= to
+      );
+    }
+
+    // Filtre statut
+    if (filters.statut) {
+      result = result.filter((cycle) => cycle.statut === filters.statut);
+    }
+
+    setFilteredCycles(result);
+    setCurrentPage(1);
+  };
+
+  // ─── Effet lors des changements de filtres ──────────────────────────────
+  useEffect(() => {
+    applyFilters();
+  }, [searchTerm, filters, cycles]);
+
+  // ─── Pagination ──────────────────────────────────────────────────────────
+  const totalPages = Math.max(1, Math.ceil(filteredCycles.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentData = filteredCycles.slice(startIndex, startIndex + itemsPerPage);
+
+  // ─── Récupération des linges d'un cycle ──────────────────────────────────
   const fetchCycleLinges = async (cycleId) => {
     setIsLingesLoading(true);
     try {
@@ -82,6 +212,7 @@ export default function CycleLavageList() {
     }
   };
 
+  // ─── Gestion du panneau latéral ──────────────────────────────────────────
   const handleOpenPanel = async (cycle) => {
     if (selectedCycleId === cycle.id && panelOpen) {
       setPanelOpen(false);
@@ -110,10 +241,10 @@ export default function CycleLavageList() {
     setShowDetailModal(true);
   };
 
-  // ─── Impression des informations du cycle ──────────────────────────────
+  // ─── Impression ──────────────────────────────────────────────────────────
   const handlePrintCycle = (cycle) => {
     if (!cycle) return;
-    
+
     const printContent = `
       <div style="width:80mm; padding:5mm; font-family:'Courier New',monospace; background:white;">
         <div style="text-align:center; border-bottom:2px solid black; padding-bottom:3mm; margin-bottom:3mm;">
@@ -146,33 +277,7 @@ export default function CycleLavageList() {
             <span><strong>👤 Agent:</strong></span>
             <span>${cycle.agent?.nom || 'N/A'}</span>
           </div>
-          <div style="display:flex; justify-content:space-between; padding:2px 0; border-top:1px solid #eee; margin-top:2px; padding-top:4px;">
-            <span><strong>🌡️ Température:</strong></span>
-            <span>${cycle.programmeLavage?.temperatureCelsius || 0}°C</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; padding:2px 0;">
-            <span><strong>⏱️ Durée:</strong></span>
-            <span>${cycle.programmeLavage?.dureeMinutes || 0} min</span>
-          </div>
-          ${cycle.programmeLavage?.vitesseEssorageRpm ? `
-          <div style="display:flex; justify-content:space-between; padding:2px 0;">
-            <span><strong>⚡ Essorage:</strong></span>
-            <span>${cycle.programmeLavage.vitesseEssorageRpm} RPM</span>
-          </div>` : ''}
         </div>
-        
-        ${cycleLinges.length > 0 ? `
-        <div style="font-size:8pt; margin-top:3mm; border-top:1px solid #ddd; padding-top:2mm;">
-          <div style="font-weight:bold; margin-bottom:2mm;">🧺 Linges traités (${cycleLinges.length})</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:2px; font-size:7pt;">
-            ${cycleLinges.slice(0, 10).map(l => `
-              <div style="border-bottom:0.5px solid #eee; padding:1px 0;">
-                ${l.codeBarre || 'N/A'} - ${l.categorie || 'N/A'}
-              </div>
-            `).join('')}
-            ${cycleLinges.length > 10 ? `<div style="grid-column:1/-1; text-align:center; color:#666; padding:2px 0;">... et ${cycleLinges.length - 10} autres</div>` : ''}
-          </div>
-        </div>` : ''}
         
         <div style="text-align:center; font-size:7pt; margin-top:3mm; border-top:1px solid #ddd; padding-top:2mm; color:#666;">
           Généré le ${new Date().toLocaleString('fr-FR')}
@@ -194,6 +299,7 @@ export default function CycleLavageList() {
     });
   };
 
+  // ─── Badges ──────────────────────────────────────────────────────────────
   const getStatusBadge = (status) => {
     const variants = {
       TERMINE: { variant: "success", label: "✅ Terminé" },
@@ -230,90 +336,103 @@ export default function CycleLavageList() {
     });
   };
 
-  const filteredCycles = cycles.filter((cycle) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      cycle.numeroCycle?.toLowerCase().includes(term) ||
-      cycle.machine?.code?.toLowerCase().includes(term) ||
-      cycle.machine?.reference?.toLowerCase().includes(term) ||
-      cycle.programmeLavage?.nom?.toLowerCase().includes(term) ||
-      cycle.agent?.nom?.toLowerCase().includes(term)
-    );
-  });
+  // ─── Réinitialiser les filtres ──────────────────────────────────────────
+  const resetFilters = () => {
+    setFilters({
+      dateFrom: "",
+      dateTo: "",
+      statut: "",
+    });
+    setSearchTerm("");
+  };
 
   return (
     <div className="relative flex h-full gap-4">
-      <motion.div 
+      <motion.div
         className="transition-all duration-500 ease-in-out"
-        animate={{ 
+        animate={{
           width: panelOpen ? '60%' : '100%',
           transition: { duration: 0.4, ease: "easeInOut" }
         }}
       >
         <div className="space-y-4">
-          {/* ─── Header ────────────────────────────────────────────────────── */}
-        {/* ─── Header ────────────────────────────────────────────────────── */}
-<div style={{ marginBottom: "32px" }}>
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    marginBottom: "8px"
-  }}>
-    <div style={{
-      width: "52px",
-      height: "52px",
-      borderRadius: "16px",
-      background: "linear-gradient(135deg, #06b6d4, #0891b2)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      boxShadow: "0 4px 16px rgba(6, 182, 212, 0.25)"
-    }}>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        width="24" 
-        height="24" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-        <polyline points="21 3 12 12 9 9" />
-      </svg>
-    </div>
-    <div>
-      <h1 style={{
-        fontSize: "28px",
-        fontWeight: 800,
-        color: "#0f172a",
-        margin: 0
-      }}>
-        Cycles de Lavage
-      </h1>
-      <p style={{
-        fontSize: "14px",
-        color: "#64748b",
-        margin: "2px 0 0 0"
-      }}>
-        Gestion et suivi des cycles de lavage
-      </p>
-    </div>
-  </div>
-</div>
+          {/* ─── EN-TÊTE ────────────────────────────────────────────────────── */}
+          <div style={{ marginBottom: "32px" }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              marginBottom: "8px"
+            }}>
+              <div style={{
+                width: "52px",
+                height: "52px",
+                borderRadius: "16px",
+                background: "linear-gradient(135deg, #06b6d4, #0891b2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                boxShadow: "0 4px 16px rgba(6, 182, 212, 0.25)"
+              }}>
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  width="24" 
+                  height="24" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  <polyline points="21 3 12 12 9 9" />
+                </svg>
+              </div>
+              <div>
+                <h1 style={{
+                  fontSize: "28px",
+                  fontWeight: 800,
+                  color: "#0f172a",
+                  margin: 0
+                }}>
+                  Cycles de Lavage
+                </h1>
+                <p style={{
+                  fontSize: "14px",
+                  color: "#64748b",
+                  margin: "2px 0 0 0"
+                }}>
+                  {filteredCycles.length} cycle(s) trouvé(s)
+                </p>
+              </div>
+            </div>
+          </div>
 
-          {/* ─── Barre d'outils ────────────────────────────────────────────── */}
+          {/* ─── BARRE D'OUTILS ────────────────────────────────────────────── */}
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
             <button
               onClick={fetchCycles}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Actualiser
+            </button>
+
+            <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
+
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
+            >
+              <Filter className="w-4 h-4" /> Filtrer
+            </button>
+
+            <button
+              onClick={resetFilters}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+            >
+              <X className="w-4 h-4" /> Réinitialiser
             </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
@@ -323,9 +442,9 @@ export default function CycleLavageList() {
               onClick={() => {
                 if (selectedCycle) handlePrintCycle(selectedCycle);
               }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Printer className="w-4 h-4 stroke-[2.5]" /> Imprimer
+              <Printer className="w-4 h-4" /> Imprimer
             </button>
 
             <button
@@ -333,81 +452,160 @@ export default function CycleLavageList() {
               onClick={() => {
                 if (selectedCycle) handleViewDetails(selectedCycle);
               }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#006f94]/30 rounded-[14px] text-sm font-bold text-[#006f94] hover:bg-[#006f94]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#006f94]/30 rounded-[14px] text-sm font-bold text-[#006f94] hover:bg-[#006f94]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Eye className="w-4 h-4 stroke-[2.5]" /> Détails
+              <Eye className="w-4 h-4" /> Détails
             </button>
           </div>
 
-          {/* ─── Barre de recherche ────────────────────────────────────────── */}
+          {/* ─── FILTRES DÉROULANTS ────────────────────────────────────────── */}
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
+              >
+                <Card className="mb-4">
+                  <CardContent className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          <CalendarDays className="w-4 h-4 inline mr-2 text-slate-400" />
+                          Date début
+                        </label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <input
+                            type="date"
+                            value={filters.dateFrom}
+                            onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                            className="w-full h-10 pl-10 pr-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-teal-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          <CalendarDays className="w-4 h-4 inline mr-2 text-slate-400" />
+                          Date fin
+                        </label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <input
+                            type="date"
+                            value={filters.dateTo}
+                            onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                            className="w-full h-10 pl-10 pr-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-teal-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          <Filter className="w-4 h-4 inline mr-2 text-slate-400" />
+                          Statut
+                        </label>
+                        <select
+                          value={filters.statut}
+                          onChange={(e) => setFilters({ ...filters, statut: e.target.value })}
+                          className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-teal-400"
+                        >
+                          <option value="">Tous les statuts</option>
+                          <option value="TERMINE">✅ Terminé</option>
+                          <option value="EN_COURS">⏳ En cours</option>
+                          <option value="EN_ATTENTE">⏸️ En attente</option>
+                          <option value="ANNULE">❌ Annulé</option>
+                        </select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ─── BARRE DE RECHERCHE ────────────────────────────────────────── */}
           <Card className="mb-4">
             <CardContent className="p-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Rechercher par numéro, machine, programme ou agent..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-teal-400"
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* ─── Tableau ────────────────────────────────────────────────────── */}
+          {/* ─── TABLEAU ────────────────────────────────────────────────────── */}
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="border-b border-border bg-muted/50">
+                  <thead className="border-b border-slate-200 bg-slate-50/80">
                     <tr>
-                      <th className="text-center py-3 px-4 text-sm font-medium w-10"></th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Numéro</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Machine</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Programme</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Agent</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Statut</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500 w-10"></th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Numéro</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Machine</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Programme</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Agent</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Statut</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500" style={{ width: "100px" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       <tr>
-                        <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <td colSpan={7} className="text-center py-8 text-slate-400">
                           <div className="flex items-center justify-center gap-2">
                             <Loader2 className="w-5 h-5 animate-spin" />
                             Chargement...
                           </div>
                         </td>
                       </tr>
-                    ) : filteredCycles.length === 0 ? (
+                    ) : currentData.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="text-center py-8 text-muted-foreground">
-                          {searchTerm ? "Aucun cycle correspondant" : "Aucun cycle trouvé"}
+                        <td colSpan={7} className="text-center py-12 text-slate-400">
+                          <Package className="w-12 h-12 mx-auto opacity-30 mb-3" />
+                          <p className="text-sm font-medium">{searchTerm ? "Aucun cycle correspondant" : "Aucun cycle trouvé"}</p>
+                          <p className="text-xs mt-1">Ajustez vos filtres ou actualisez la liste</p>
                         </td>
                       </tr>
                     ) : (
-                      filteredCycles.map((cycle) => (
+                      currentData.map((cycle) => (
                         <tr
                           key={cycle.id}
-                          className={`border-b border-border hover:bg-accent/50 transition-colors ${selectedCycleId === cycle.id ? 'bg-blue-50' : ''}`}
+                          className={`border-b border-slate-100 hover:bg-slate-50/80 transition-colors ${selectedCycleId === cycle.id ? 'bg-teal-50' : ''}`}
                         >
                           <td className="text-center py-3 px-4">
                             <button
                               onClick={() => handleOpenPanel(cycle)}
-                              className="p-1 hover:bg-blue-100 rounded-lg transition-colors"
+                              className="p-1 hover:bg-teal-100 rounded-lg transition-colors"
                               title={panelOpen && selectedCycleId === cycle.id ? "Fermer" : "Voir les linges"}
                             >
                               {panelOpen && selectedCycleId === cycle.id ? (
-                                <ChevronLeft className="w-5 h-5 text-blue-500" />
+                                <ChevronLeft className="w-5 h-5 text-teal-500" />
                               ) : (
-                                <ChevronRight className="w-5 h-5 text-slate-400 hover:text-blue-500" />
+                                <ChevronRight className="w-5 h-5 text-slate-400 hover:text-teal-500" />
                               )}
                             </button>
                           </td>
                           <td className="text-center py-3 px-4">
-                            <div className="font-mono text-sm font-medium text-blue-600">
+                            <div className="font-mono text-sm font-medium text-teal-600">
                               {cycle.numeroCycle || `#${cycle.id}`}
                             </div>
                           </td>
@@ -435,26 +633,26 @@ export default function CycleLavageList() {
                             {getStatusBadge(cycle.statut)}
                           </td>
                           <td className="text-center py-3 px-4">
-                            <div className="flex items-center justify-center gap-2">
+                            <div className="flex items-center justify-center gap-1.5">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePrintCycle(cycle);
                                 }}
-                                className="p-2 hover:bg-accent rounded-lg transition-colors"
+                                className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors text-slate-400 hover:text-[#8b5cf6]"
                                 title="Imprimer"
                               >
-                                <Printer className="w-4 h-4 text-[#8b5cf6]" />
+                                <Printer className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleViewDetails(cycle);
                                 }}
-                                className="p-2 hover:bg-accent rounded-lg transition-colors"
+                                className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors text-slate-400 hover:text-[#006f94]"
                                 title="Détails"
                               >
-                                <Eye className="w-4 h-4 text-[#006f94]" />
+                                <Eye className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
@@ -466,10 +664,19 @@ export default function CycleLavageList() {
               </div>
             </CardContent>
           </Card>
+
+          {/* ─── PAGINATION ────────────────────────────────────────────────── */}
+          {!isLoading && filteredCycles.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </motion.div>
 
-      {/* ─── Panneau latéral des linges ────────────────────────────────────── */}
+      {/* ─── PANNEAU LATÉRAL DES LINGES ────────────────────────────────────── */}
       <AnimatePresence mode="wait">
         {panelOpen && (
           <motion.div
@@ -497,10 +704,10 @@ export default function CycleLavageList() {
             className="w-[40%] bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden h-[calc(100vh-120px)] sticky top-20 flex-shrink-0"
           >
             {/* Header */}
-            <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-blue-100">
+            <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-teal-50 to-teal-100">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Package className="w-5 h-5 text-blue-600" />
+                  <Package className="w-5 h-5 text-teal-600" />
                   <div>
                     <h3 className="font-bold text-slate-800 text-sm">
                       {selectedCycle?.numeroCycle || "Cycle"}
@@ -516,14 +723,14 @@ export default function CycleLavageList() {
                   </Badge>
                   <button
                     onClick={() => handlePrintCycle(selectedCycle)}
-                    className="p-1.5 hover:bg-blue-200 rounded-lg transition-colors text-slate-500 hover:text-[#8b5cf6]"
+                    className="p-1.5 hover:bg-teal-200 rounded-lg transition-colors text-slate-500 hover:text-[#8b5cf6]"
                     title="Imprimer"
                   >
                     <Printer className="w-4 h-4" />
                   </button>
                   <button
                     onClick={handleClosePanel}
-                    className="p-1.5 hover:bg-blue-200 rounded-lg transition-colors text-slate-500 hover:text-slate-700"
+                    className="p-1.5 hover:bg-teal-200 rounded-lg transition-colors text-slate-500 hover:text-slate-700"
                     title="Fermer"
                   >
                     <X className="w-5 h-5" />
@@ -535,7 +742,7 @@ export default function CycleLavageList() {
             <div className="p-4 overflow-y-auto h-[calc(100%-80px)]">
               {isLingesLoading ? (
                 <div className="flex items-center justify-center h-32">
-                  <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+                  <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
                 </div>
               ) : cycleLinges.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">
@@ -556,12 +763,12 @@ export default function CycleLavageList() {
                           duration: 0.3
                         }
                       }}
-                      className="p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors hover:shadow-md"
+                      className="p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-teal-200 transition-colors hover:shadow-md"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                            <Package className="w-4 h-4 text-blue-600" />
+                          <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
+                            <Package className="w-4 h-4 text-teal-600" />
                           </div>
                           <div>
                             <div className="font-medium text-sm">
@@ -598,7 +805,7 @@ export default function CycleLavageList() {
         )}
       </AnimatePresence>
 
-      {/* ─── Modal Détails ──────────────────────────────────────────────────── */}
+      {/* ─── MODAL DÉTAILS ────────────────────────────────────────────────── */}
       <Modal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}

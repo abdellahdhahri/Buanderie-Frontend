@@ -53,7 +53,7 @@ export function AuthProvider({ children }) {
         login: loginResponse.login || loginValue,
         admin: loginResponse.admin === true,
         privileges: Array.isArray(loginResponse.privileges) ? loginResponse.privileges : [],
-        agent: loginResponse.agent || null
+        agent: loginResponse.user || null
       };
 
       localStorage.setItem("auth", JSON.stringify(authData));

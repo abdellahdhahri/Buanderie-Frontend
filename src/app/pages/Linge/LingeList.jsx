@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useModal } from "../../contextes/ModalContext";
 import { useReactToPrint } from "react-to-print";
-import BarcodeLabel from "./BarcodeLabel";
+import BarcodeLabel from "../../components/BarcodeLabel";
 import "./WorkflowList.css";
 import "./LingeList.css";
 import { Modal } from "../../components/ui/modal";

@@ -73,7 +73,8 @@ export function SechageProvider({ children }) {
       const r = await fetch(`${API_URL}/api/lots`);
       if (r.ok) {
         const tous = await r.json();
-        setLotsDisponibles(tous.filter(l => l.etat === "LAVE" || l.etat === "EN_TRI" || l.etat === "PRET_SECHAGE"));
+       // setLotsDisponibles(tous.filter(l => l.etat === "LAVE" || l.etat === "EN_TRI" || l.etat === "PRET_SECHAGE"));
+        setLotsDisponibles(tous);
       console.log("la liste de slots disponible est ================= ",tous)
       }
     } catch {} finally { setLoadingLots(false); }
@@ -118,7 +119,7 @@ export function SechageProvider({ children }) {
     try {
       const premier = lotsSelectionnes[0];
       const r = await fetch(
-        `${API_BASE}/sechage/start?codeMachine=${machine.code}&codeLot=${premier.lot.codeLot}&matriculeAgent=${agent.matricule}&poidsCharge=${premier.lot.poidsActuel||0}`,
+        `${API_BASE}/sechage/start?codeMachine=${machine.code}&codeLot=${premier.lot.codeLot}&matriculeAgent=${encodeURIComponent(agent.codeBarre)}&poidsCharge=${premier.lot.poidsActuel||0}`,
         { method: "POST" }
       );
       if (!r.ok) { const e = await r.json(); throw new Error(e.message||"Erreur démarrage"); }

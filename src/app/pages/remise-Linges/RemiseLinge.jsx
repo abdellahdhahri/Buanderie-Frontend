@@ -16,6 +16,222 @@ import { RemiseLingeProvider, useRemiseLinge } from "../../contextes/RemiseLinge
 import { getCategorieInfo, formatDate, getRemiseStatutConfig } from "../../services/remiseLingeService";
 import "../Linge/WorkflowList.css";
 
+import lottie from "lottie-web";
+
+
+function SuccessAnimation({ show, onComplete }) {
+  const [visible, setVisible] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+  const containerRef = useRef(null);
+  const animationRef = useRef(null);
+
+  useEffect(() => {
+    if (show) {
+      setVisible(true);
+      setIsExiting(false);
+
+      // ✅ Charger l'animation Lottie depuis une URL valide
+      const loadAnimation = async () => {
+        try {
+          // Animation de succès / livraison validée
+          const response = await fetch(
+            "https://assets2.lottiefiles.com/packages/lf20_usmfx6bp.json"
+          );
+
+          
+          const animationData = await response.json();
+
+          if (containerRef.current) {
+            animationRef.current = lottie.loadAnimation({
+              container: containerRef.current,
+              renderer: "svg",
+              loop: false,
+              autoplay: true,
+              animationData: animationData,
+              rendererSettings: {
+                preserveAspectRatio: "xMidYMid meet",
+              },
+            });
+
+            animationRef.current.addEventListener("complete", () => {
+              console.log("Animation terminée");
+            });
+          }
+        } catch (err) {
+          console.error("Erreur chargement animation Lottie:", err);
+          // Fallback visuel si l'animation échoue
+          if (containerRef.current) {
+            containerRef.current.innerHTML = `
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);">
+                <svg viewBox="0 0 100 100" style="width:60%;height:60%;">
+                  <path d="M25 50 L42 67 L75 34" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </div>
+            `;
+          }
+        }
+      };
+
+      loadAnimation();
+
+      // Fermeture automatique après 3 secondes
+      const timer = setTimeout(() => {
+        setIsExiting(true);
+        setTimeout(() => {
+          setVisible(false);
+          if (animationRef.current) {
+            animationRef.current.destroy();
+            animationRef.current = null;
+          }
+          if (onComplete) onComplete();
+        }, 600);
+      }, 3000);
+
+      return () => {
+        clearTimeout(timer);
+        if (animationRef.current) {
+          animationRef.current.destroy();
+          animationRef.current = null;
+        }
+      };
+    } else {
+      if (animationRef.current) {
+        animationRef.current.destroy();
+        animationRef.current = null;
+      }
+    }
+  }, [show, onComplete]);
+
+  if (!visible) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 99999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0, 0, 0, 0.5)",
+        backdropFilter: "blur(8px)",
+        animation: isExiting
+          ? "fadeOut 0.5s ease-in-out forwards"
+          : "fadeIn 0.4s ease-out",
+      }}
+    >
+      <div
+        style={{
+          background: "white",
+          borderRadius: "32px",
+          padding: "48px 56px",
+          maxWidth: "480px",
+          width: "100%",
+          textAlign: "center",
+          boxShadow: "0 40px 80px rgba(0,0,0,0.3)",
+          transform: isExiting ? "scale(0.9)" : "scale(1)",
+          transition: "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          animation: isExiting
+            ? "scaleDown 0.5s ease-in-out forwards"
+            : "scaleUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+        }}
+      >
+        {/* Conteneur Lottie */}
+        <div
+          ref={containerRef}
+          style={{
+            width: "200px",
+            height: "200px",
+            margin: "0 auto -20px",
+          }}
+        />
+
+        <h2
+          style={{
+            fontSize: "28px",
+            fontWeight: 800,
+            color: "#0f172a",
+            margin: "0 0 8px 0",
+          }}
+        >
+          ✅ Livraison réussie !
+        </h2>
+        <p
+          style={{
+            fontSize: "16px",
+            color: "#64748b",
+            margin: 0,
+          }}
+        >
+          Le linge a été livré avec succès
+        </p>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginTop: "16px",
+          }}
+        >
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #10b981, #059669)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              animation: "pulse 1.5s ease-in-out infinite",
+            }}
+          >
+            <FaCheckDouble size={24} color="white" />
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginTop: "12px",
+            display: "inline-block",
+            padding: "4px 16px",
+            borderRadius: "12px",
+            background: "#f0fdf4",
+            border: "1px solid #86efac",
+            color: "#059669",
+            fontSize: "12px",
+            fontWeight: 600,
+          }}
+        >
+          ✨ Confirmation envoyée
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; backdrop-filter: blur(0px); }
+          to { opacity: 1; backdrop-filter: blur(8px); }
+        }
+        @keyframes fadeOut {
+          from { opacity: 1; backdrop-filter: blur(8px); }
+          to { opacity: 0; backdrop-filter: blur(0px); }
+        }
+        @keyframes scaleUp {
+          from { transform: scale(0.8); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes scaleDown {
+          from { transform: scale(1); opacity: 1; }
+          to { transform: scale(0.8); opacity: 0; }
+        }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 // ─── COMPOSANTS STATISTIQUES ────────────────────────────────────────────
 
 function ProgressionBar({ value, label }) {
@@ -24,23 +240,49 @@ function ProgressionBar({ value, label }) {
 
   return (
     <div style={{ marginBottom: "16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "4px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "13px",
+          marginBottom: "4px",
+        }}
+      >
         <span style={{ fontWeight: 500, color: "#64748b" }}>{label}</span>
         <span style={{ fontWeight: 700, color: "#0f172a" }}>{pct}%</span>
       </div>
-      <div style={{ height: "8px", borderRadius: "6px", background: "#f1f5f9", overflow: "hidden" }}>
+      <div
+        style={{
+          height: "8px",
+          borderRadius: "6px",
+          background: "#f1f5f9",
+          overflow: "hidden",
+        }}
+      >
         <div
           style={{
             height: "100%",
             borderRadius: "6px",
-            background: isComplete ? "linear-gradient(90deg, #10b981, #059669)" : "linear-gradient(90deg, #14b8a6, #0d9488)",
+            background: isComplete
+              ? "linear-gradient(90deg, #10b981, #059669)"
+              : "linear-gradient(90deg, #14b8a6, #0d9488)",
             width: `${pct}%`,
-            transition: "width 0.5s ease-in-out"
+            transition: "width 0.5s ease-in-out",
           }}
         />
       </div>
       {isComplete && (
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px", fontSize: "11px", color: "#059669", fontWeight: 600 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            marginTop: "4px",
+            fontSize: "11px",
+            color: "#059669",
+            fontWeight: 600,
+          }}
+        >
           <FaCheckCircle size={12} /> Collecte terminée
         </div>
       )}
@@ -50,37 +292,60 @@ function ProgressionBar({ value, label }) {
 
 function StatutCard({ label, value, icon, color, bg, subValue }) {
   return (
-    <div style={{
-      padding: "16px 18px",
-      borderRadius: "14px",
-      background: bg,
-      border: `1px solid ${color}25`,
-      flex: 1,
-      minWidth: "120px",
-      transition: "all 0.2s ease"
-    }}>
+    <div
+      style={{
+        padding: "16px 18px",
+        borderRadius: "14px",
+        background: bg,
+        border: `1px solid ${color}25`,
+        flex: 1,
+        minWidth: "120px",
+        transition: "all 0.2s ease",
+      }}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        <div style={{
-          width: "40px",
-          height: "40px",
-          borderRadius: "12px",
-          background: `${color}15`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "20px"
-        }}>
+        <div
+          style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "12px",
+            background: `${color}15`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "20px",
+          }}
+        >
           {icon}
         </div>
         <div>
-          <p style={{ fontSize: "10px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px", margin: 0 }}>
+          <p
+            style={{
+              fontSize: "10px",
+              fontWeight: 600,
+              color: "#94a3b8",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              margin: 0,
+            }}
+          >
             {label}
           </p>
-          <p style={{ fontSize: "24px", fontWeight: 700, color: color, margin: 0, lineHeight: 1.2 }}>
+          <p
+            style={{
+              fontSize: "24px",
+              fontWeight: 700,
+              color: color,
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
             {value}
           </p>
           {subValue && (
-            <p style={{ fontSize: "10px", color: "#94a3b8", margin: 0 }}>{subValue}</p>
+            <p style={{ fontSize: "10px", color: "#94a3b8", margin: 0 }}>
+              {subValue}
+            </p>
           )}
         </div>
       </div>
@@ -94,26 +359,46 @@ function CategorieRow({ categorie, collecte, livre, reste }) {
   const info = getCategorieInfo(categorie);
 
   return (
-    <div style={{
-      padding: "12px 16px",
-      borderRadius: "10px",
-      background: isComplete ? "#f0fdf4" : "white",
-      border: `1px solid ${isComplete ? "#bbf7d0" : "#e2e8f0"}`,
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: "8px",
-      transition: "all 0.2s ease"
-    }}>
+    <div
+      style={{
+        padding: "12px 16px",
+        borderRadius: "10px",
+        background: isComplete ? "#f0fdf4" : "white",
+        border: `1px solid ${isComplete ? "#bbf7d0" : "#e2e8f0"}`,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "8px",
+        transition: "all 0.2s ease",
+      }}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
         <span style={{ fontSize: "20px" }}>{info.emoji}</span>
-        <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "14px" }}>{info.label}</span>
+        <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "14px" }}>
+          {info.label}
+        </span>
         {isComplete ? (
-          <Badge style={{ background: "#dcfce7", color: "#15803d", fontSize: "9px", padding: "2px 10px", borderRadius: "12px" }}>
+          <Badge
+            style={{
+              background: "#dcfce7",
+              color: "#15803d",
+              fontSize: "9px",
+              padding: "2px 10px",
+              borderRadius: "12px",
+            }}
+          >
             ✓ Complète
           </Badge>
         ) : (
-          <Badge style={{ background: "#f1f5f9", color: "#64748b", fontSize: "9px", padding: "2px 10px", borderRadius: "12px" }}>
+          <Badge
+            style={{
+              background: "#f1f5f9",
+              color: "#64748b",
+              fontSize: "9px",
+              padding: "2px 10px",
+              borderRadius: "12px",
+            }}
+          >
             {pct}%
           </Badge>
         )}
@@ -145,21 +430,34 @@ function ScanStatusComponent({ status }) {
 
   if (status.loading) {
     return (
-      <div style={{
-        padding: "14px 18px",
-        borderRadius: "12px",
-        background: "#eff6ff",
-        border: "1px solid #93c5fd",
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        marginTop: "12px",
-        animation: "fadeIn 0.3s ease-out"
-      }}>
+      <div
+        style={{
+          padding: "14px 18px",
+          borderRadius: "12px",
+          background: "#eff6ff",
+          border: "1px solid #93c5fd",
+          display: "flex",
+          alignItems: "center",
+          gap: "14px",
+          marginTop: "12px",
+          animation: "fadeIn 0.3s ease-out",
+        }}
+      >
         <FaSpinner className="animate-spin" color="#3b82f6" size={22} />
         <div>
-          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "14px", margin: 0 }}>Scan en cours...</p>
-          <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{status.code}</p>
+          <p
+            style={{
+              fontWeight: 600,
+              color: "#1d4ed8",
+              fontSize: "14px",
+              margin: 0,
+            }}
+          >
+            Scan en cours...
+          </p>
+          <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>
+            {status.code}
+          </p>
         </div>
       </div>
     );
@@ -167,30 +465,43 @@ function ScanStatusComponent({ status }) {
 
   if (status.success) {
     return (
-      <div style={{
-        padding: "14px 18px",
-        borderRadius: "12px",
-        background: "#f0fdf4",
-        border: "1px solid #86efac",
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        marginTop: "12px",
-        animation: "fadeIn 0.3s ease-out"
-      }}>
-        <div style={{
-          width: "36px",
-          height: "36px",
-          borderRadius: "50%",
-          background: "#dcfce7",
+      <div
+        style={{
+          padding: "14px 18px",
+          borderRadius: "12px",
+          background: "#f0fdf4",
+          border: "1px solid #86efac",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center"
-        }}>
+          gap: "14px",
+          marginTop: "12px",
+          animation: "fadeIn 0.3s ease-out",
+        }}
+      >
+        <div
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "50%",
+            background: "#dcfce7",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <FaCheckCircle color="#22c55e" size={20} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "14px", margin: 0 }}>✓ Linge livré avec succès</p>
+          <p
+            style={{
+              fontWeight: 600,
+              color: "#15803d",
+              fontSize: "14px",
+              margin: 0,
+            }}
+          >
+            ✓ Linge livré avec succès
+          </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>
             <strong>{status.success.codeBarre}</strong> · {status.success.categorie}
           </p>
@@ -201,31 +512,46 @@ function ScanStatusComponent({ status }) {
 
   if (status.error) {
     return (
-      <div style={{
-        padding: "14px 18px",
-        borderRadius: "12px",
-        background: "#fef2f2",
-        border: "1px solid #fca5a5",
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        marginTop: "12px",
-        animation: "fadeIn 0.3s ease-out"
-      }}>
-        <div style={{
-          width: "36px",
-          height: "36px",
-          borderRadius: "50%",
-          background: "#fee2e2",
+      <div
+        style={{
+          padding: "14px 18px",
+          borderRadius: "12px",
+          background: "#fef2f2",
+          border: "1px solid #fca5a5",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center"
-        }}>
+          gap: "14px",
+          marginTop: "12px",
+          animation: "fadeIn 0.3s ease-out",
+        }}
+      >
+        <div
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "50%",
+            background: "#fee2e2",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <FaExclamationTriangle color="#ef4444" size={18} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "14px", margin: 0 }}>Erreur</p>
-          <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{status.error}</p>
+          <p
+            style={{
+              fontWeight: 600,
+              color: "#dc2626",
+              fontSize: "14px",
+              margin: 0,
+            }}
+          >
+            Erreur
+          </p>
+          <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>
+            {status.error}
+          </p>
         </div>
       </div>
     );
@@ -256,91 +582,111 @@ function RemiseLingeInner() {
     chargerHistorique,
     rafraichir,
     resetAll,
-    clearScanStatus
+    clearScanStatus,
   } = useRemiseLinge();
 
   const [scanValue, setScanValue] = useState("");
   const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const scanInputRef = useRef(null);
 
   // ─── Alertes ─────────────────────────────────────────────────────────────
-  const showAlert = useCallback((title, text, icon = "info", timer = null) => {
-    return Swal.fire({
-      title,
-      text,
-      icon,
-      timer,
-      timerProgressBar: true,
-      showConfirmButton: !!timer,
-      confirmButtonColor: "#0d9488",
-      confirmButtonText: "OK",
-      ...(timer ? { showConfirmButton: false } : {})
-    });
-  }, []);
+  const showAlert = useCallback(
+    (title, text, icon = "info", timer = null) => {
+      return Swal.fire({
+        title,
+        text,
+        icon,
+        timer,
+        timerProgressBar: true,
+        showConfirmButton: !!timer,
+        confirmButtonColor: "#0d9488",
+        confirmButtonText: "OK",
+        ...(timer ? { showConfirmButton: false } : {}),
+      });
+    },
+    []
+  );
 
   // ─── Handlers ────────────────────────────────────────────────────────────
-  const handleScan = useCallback(async (code) => {
-    if (!code?.trim()) return;
+  const handleScan = useCallback(
+    async (code) => {
+      if (!code?.trim()) return;
 
-    setScanValue("");
+      setScanValue("");
 
-    try {
-      // Étape 1: Scan Agent Remise
-      if (etape === "AGENT_REMISE") {
-        const agent = await scanAgentRemise(code.trim());
-        await showAlert(
-          "Agent identifié",
-          `✅ ${agent.nom} (${agent.matricule})`,
-          "success",
-          1500
-        );
-        setTimeout(() => scanInputRef.current?.focus(), 200);
-        return;
-      }
-
-      // Étape 2: Scan Agent Collecte
-      if (etape === "AGENT_COLLECTE") {
-        const result = await scanAgentCollecte(code.trim(), agentRemise);
-        await showAlert(
-          "✅ Remise créée",
-          `Remise ${result.remise.numeroLivraison} · ${result.remise.collecte?.numeroCollecte}`,
-          "success",
-          2000
-        );
-        setTimeout(() => scanInputRef.current?.focus(), 200);
-        return;
-      }
-
-      // Étape 3: Scan Linge
-      if (etape === "SCAN") {
-        const result = await scanLinge(code.trim());
-
-        if (result.isComplete) {
-          await Swal.fire({
-            title: "✅ Collecte terminée !",
-            text: "Tous les linges ont été livrés.",
-            icon: "success",
-            timer: 2500,
-            timerProgressBar: true,
-            showConfirmButton: false,
-            confirmButtonColor: "#0d9488"
-          });
+      try {
+        // Étape 1: Scan Agent Remise
+        if (etape === "AGENT_REMISE") {
+          const agent = await scanAgentRemise(code.trim());
+          await showAlert(
+            "Agent identifié",
+            `✅ ${agent.nom} (${agent.matricule})`,
+            "success",
+            1500
+          );
+          setTimeout(() => scanInputRef.current?.focus(), 200);
+          return;
         }
 
+        // Étape 2: Scan Agent Collecte
+        if (etape === "AGENT_COLLECTE") {
+          const result = await scanAgentCollecte(code.trim(), agentRemise);
+          await showAlert(
+            "✅ Remise créée",
+            `Remise ${result.remise.numeroLivraison} · ${result.remise.collecte?.numeroCollecte}`,
+            "success",
+            2000
+          );
+          setTimeout(() => scanInputRef.current?.focus(), 200);
+          return;
+        }
+
+        // Étape 3: Scan Linge
+        if (etape === "SCAN") {
+          const result = await scanLinge(code.trim());
+
+          // ✅ Afficher l'animation Lottie à chaque scan réussi
+          if (result && !result.error) {
+            setShowSuccessAnimation(true);
+          }
+
+          if (result.isComplete) {
+            await Swal.fire({
+              title: "✅ Collecte terminée !",
+              text: "Tous les linges ont été livrés.",
+              icon: "success",
+              timer: 2500,
+              timerProgressBar: true,
+              showConfirmButton: false,
+              confirmButtonColor: "#0d9488",
+            });
+          }
+
+          setTimeout(() => {
+            clearScanStatus();
+          }, 2000);
+          return;
+        }
+      } catch (error) {
+        await showAlert("Erreur", error.message, "error");
         setTimeout(() => {
           clearScanStatus();
-        }, 2000);
-        return;
+        }, 3000);
       }
-    } catch (error) {
-      await showAlert("Erreur", error.message, "error");
-      setTimeout(() => {
-        clearScanStatus();
-      }, 3000);
-    }
 
-    setTimeout(() => scanInputRef.current?.focus(), 100);
-  }, [etape, agentRemise, scanAgentRemise, scanAgentCollecte, scanLinge, clearScanStatus, showAlert]);
+      setTimeout(() => scanInputRef.current?.focus(), 100);
+    },
+    [
+      etape,
+      agentRemise,
+      scanAgentRemise,
+      scanAgentCollecte,
+      scanLinge,
+      clearScanStatus,
+      showAlert,
+    ]
+  );
 
   // ─── RENDU ──────────────────────────────────────────────────────────────
 
@@ -358,7 +704,8 @@ function RemiseLingeInner() {
   };
 
   const getBorderColor = () => {
-    if (!agentRemise || (etape === "AGENT_COLLECTE" && !agentCollecte)) return "#dc2626";
+    if (!agentRemise || (etape === "AGENT_COLLECTE" && !agentCollecte))
+      return "#dc2626";
     if (isCloturee) return "#e2e8f0";
     return "#0ea5e9";
   };
@@ -367,101 +714,187 @@ function RemiseLingeInner() {
 
   return (
     <div className="collecte-container">
+      {/* ✅ Animation de succès avec Lottie */}
+      <SuccessAnimation
+        show={showSuccessAnimation}
+        onComplete={() => {
+          setShowSuccessAnimation(false);
+          setTimeout(() => scanInputRef.current?.focus(), 200);
+        }}
+      />
+
       {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "32px" }}>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-          marginBottom: "8px"
-        }}>
-          <div style={{
-            width: "56px",
-            height: "56px",
-            borderRadius: "18px",
-            background: "linear-gradient(135deg, #14b8a6, #0d9488)",
+        <div
+          style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            boxShadow: "0 6px 20px rgba(20, 184, 166, 0.3)"
-          }}>
+            gap: "16px",
+            marginBottom: "8px",
+          }}
+        >
+          <div
+            style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "18px",
+              background: "linear-gradient(135deg, #14b8a6, #0d9488)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              boxShadow: "0 6px 20px rgba(20, 184, 166, 0.3)",
+            }}
+          >
             <FaBoxes size={26} />
           </div>
           <div>
-            <h1 style={{
-              fontSize: "28px",
-              fontWeight: 800,
-              color: "#0f172a",
-              margin: 0
-            }}>
+            <h1
+              style={{
+                fontSize: "28px",
+                fontWeight: 800,
+                color: "#0f172a",
+                margin: 0,
+              }}
+            >
               Remise de linge
             </h1>
-            <p style={{
-              fontSize: "14px",
-              color: "#64748b",
-              margin: "2px 0 0 0"
-            }}>
-              {agentRemise ? `Agent: ${agentRemise.nom}` : "Aucun agent connecté"}
+            <p
+              style={{
+                fontSize: "14px",
+                color: "#64748b",
+                margin: "2px 0 0 0",
+              }}
+            >
+              {agentRemise
+                ? `Agent: ${agentRemise.nomPrenom || agentRemise.nom}`
+                : "Aucun agent connecté"}
             </p>
           </div>
         </div>
       </div>
 
-      <div style={{
-        background: "white",
-        borderRadius: "20px",
-        padding: "32px",
-        border: "1px solid #e2e8f0",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.06)"
-      }}>
-
+      <div
+        style={{
+          background: "white",
+          borderRadius: "20px",
+          padding: "32px",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+        }}
+      >
         {/* ─── BARRE SUPÉRIEURE ─────────────────────────────────────────── */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-          flexWrap: "wrap",
-          gap: "12px"
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "20px",
+            flexWrap: "wrap",
+            gap: "12px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
+          >
             {agentRemise && (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "8px 18px",
-                background: "#f0fdf4",
-                borderRadius: "12px",
-                border: "1px solid #bbf7d0"
-              }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "8px 18px",
+                  background: "#f0fdf4",
+                  borderRadius: "12px",
+                  border: "1px solid #bbf7d0",
+                }}
+              >
                 <FaCheckCircle color="#22c55e" size={16} />
-                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>{agentRemise.nom}</span>
-                <Badge style={{ background: "#dcfce7", color: "#15803d", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {agentRemise.matricule}
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: "#15803d",
+                    fontSize: "14px",
+                  }}
+                >
+                  {agentRemise.nomPrenom || agentRemise.nom}
+                </span>
+                <Badge
+                  style={{
+                    background: "#dcfce7",
+                    color: "#15803d",
+                    fontSize: "10px",
+                    padding: "2px 10px",
+                    borderRadius: "12px",
+                  }}
+                >
+                  {agentRemise.codeBarre || agentRemise.matricule}
                 </Badge>
+                <button
+                  onClick={() => {
+                    resetAll();
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#94a3b8",
+                    cursor: "pointer",
+                  }}
+                >
+                  <FaTimes size={12} />
+                </button>
               </div>
             )}
             {agentCollecte && (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "8px 18px",
-                background: "#eff6ff",
-                borderRadius: "12px",
-                border: "1px solid #93c5fd"
-              }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "8px 18px",
+                  background: "#eff6ff",
+                  borderRadius: "12px",
+                  border: "1px solid #93c5fd",
+                }}
+              >
                 <FaUser color="#3b82f6" size={16} />
-                <span style={{ fontWeight: 700, color: "#1d4ed8", fontSize: "14px" }}>{agentCollecte.nom}</span>
-                <Badge style={{ background: "#dbeafe", color: "#1d4ed8", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {agentCollecte.matricule}
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: "#1d4ed8",
+                    fontSize: "14px",
+                  }}
+                >
+                  {agentCollecte.nomPrenom || agentCollecte.nom}
+                </span>
+                <Badge
+                  style={{
+                    background: "#dbeafe",
+                    color: "#1d4ed8",
+                    fontSize: "10px",
+                    padding: "2px 10px",
+                    borderRadius: "12px",
+                  }}
+                >
+                  {agentCollecte.codeBarre || agentCollecte.matricule}
                 </Badge>
               </div>
             )}
             {remise && (
-              <Badge style={{ background: "#f1f5f9", color: "#64748b", fontSize: "11px", padding: "4px 14px", borderRadius: "12px" }}>
+              <Badge
+                style={{
+                  background: "#f1f5f9",
+                  color: "#64748b",
+                  fontSize: "11px",
+                  padding: "4px 14px",
+                  borderRadius: "12px",
+                }}
+              >
                 Remise {remise.numeroLivraison}
               </Badge>
             )}
@@ -472,17 +905,17 @@ function RemiseLingeInner() {
                 variant="outline"
                 size="sm"
                 onClick={rafraichir}
-                style={{ 
-                  fontSize: "12px", 
+                style={{
+                  fontSize: "12px",
                   gap: "6px",
                   borderColor: "#e2e8f0",
                   color: "#64748b",
                   borderRadius: "10px",
-                  padding: "6px 14px"
+                  padding: "6px 14px",
                 }}
                 disabled={loading}
               >
-                <FaSpinner className={loading ? 'animate-spin' : ''} size={10} />
+                <FaSpinner className={loading ? "animate-spin" : ""} size={10} />
                 Rafraîchir
               </Button>
             )}
@@ -496,7 +929,7 @@ function RemiseLingeInner() {
                 borderColor: "#fca5a5",
                 color: "#dc2626",
                 borderRadius: "10px",
-                padding: "6px 14px"
+                padding: "6px 14px",
               }}
             >
               <FaTimes size={10} />
@@ -506,12 +939,14 @@ function RemiseLingeInner() {
         </div>
 
         {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
-        <Card style={{
-          marginBottom: "20px",
-          border: `2px dashed ${getBorderColor()}`,
-          background: isCloturee ? "#f8fafc" : "white",
-          borderRadius: "16px"
-        }}>
+        <Card
+          style={{
+            marginBottom: "20px",
+            border: `2px dashed ${getBorderColor()}`,
+            background: isCloturee ? "#f8fafc" : "white",
+            borderRadius: "16px",
+          }}
+        >
           <CardContent className="p-5">
             <ScanInput
               ref={scanInputRef}
@@ -530,23 +965,57 @@ function RemiseLingeInner() {
 
         {/* ─── MESSAGES D'INFO ──────────────────────────────────────────── */}
         {!agentRemise && (
-          <Card style={{ background: "#fef2f2", border: "1px solid #fca5a5", marginBottom: "16px", borderRadius: "12px" }}>
+          <Card
+            style={{
+              background: "#fef2f2",
+              border: "1px solid #fca5a5",
+              marginBottom: "16px",
+              borderRadius: "12px",
+            }}
+          >
             <CardContent className="p-4">
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  fontSize: "13px",
+                }}
+              >
                 <FaExclamationTriangle color="#dc2626" size={16} />
-                <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
-                <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une remise</span>
+                <span style={{ fontWeight: 600, color: "#dc2626" }}>
+                  Aucun agent connecté
+                </span>
+                <span style={{ color: "#64748b" }}>
+                  Veuillez vous connecter pour effectuer une remise
+                </span>
               </div>
             </CardContent>
           </Card>
         )}
 
         {agentRemise && !agentCollecte && (
-          <Card style={{ background: "#eff6ff", border: "1px solid #93c5fd", marginBottom: "16px", borderRadius: "12px" }}>
+          <Card
+            style={{
+              background: "#eff6ff",
+              border: "1px solid #93c5fd",
+              marginBottom: "16px",
+              borderRadius: "12px",
+            }}
+          >
             <CardContent className="p-4">
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  fontSize: "13px",
+                }}
+              >
                 <FaUser color="#3b82f6" size={16} />
-                <span style={{ fontWeight: 600, color: "#1d4ed8" }}>Scannez l'agent de collecte</span>
+                <span style={{ fontWeight: 600, color: "#1d4ed8" }}>
+                  Scannez l'agent de collecte
+                </span>
                 <span style={{ color: "#64748b" }}>pour créer la remise</span>
               </div>
             </CardContent>
@@ -554,12 +1023,30 @@ function RemiseLingeInner() {
         )}
 
         {agentRemise && agentCollecte && !isCloturee && (
-          <Card style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", marginBottom: "16px", borderRadius: "12px" }}>
+          <Card
+            style={{
+              background: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              marginBottom: "16px",
+              borderRadius: "12px",
+            }}
+          >
             <CardContent className="p-4">
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  fontSize: "13px",
+                }}
+              >
                 <FaCheckCircle color="#22c55e" size={16} />
-                <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt à livrer</span>
-                <span style={{ color: "#64748b" }}>Scannez les linges à remettre</span>
+                <span style={{ fontWeight: 600, color: "#15803d" }}>
+                  Prêt à livrer
+                </span>
+                <span style={{ color: "#64748b" }}>
+                  Scannez les linges à remettre
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -570,30 +1057,51 @@ function RemiseLingeInner() {
           <>
             {/* Bannière clôture */}
             {isCloturee && (
-              <div style={{
-                padding: "20px",
-                borderRadius: "14px",
-                background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
-                border: "2px solid #86efac",
-                textAlign: "center",
-                marginBottom: "20px"
-              }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "14px" }}>
-                  <div style={{
-                    width: "48px",
-                    height: "48px",
-                    borderRadius: "50%",
-                    background: "#dcfce7",
+              <div
+                style={{
+                  padding: "20px",
+                  borderRadius: "14px",
+                  background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
+                  border: "2px solid #86efac",
+                  textAlign: "center",
+                  marginBottom: "20px",
+                }}
+              >
+                <div
+                  style={{
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center"
-                  }}>
+                    justifyContent: "center",
+                    gap: "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "48px",
+                      height: "48px",
+                      borderRadius: "50%",
+                      background: "#dcfce7",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     <FaCheckDouble color="#22c55e" size={24} />
                   </div>
                   <div>
-                    <p style={{ fontSize: "20px", fontWeight: 700, color: "#15803d", margin: 0 }}>✓ COLLECTE TERMINÉE</p>
+                    <p
+                      style={{
+                        fontSize: "20px",
+                        fontWeight: 700,
+                        color: "#15803d",
+                        margin: 0,
+                      }}
+                    >
+                      ✓ COLLECTE TERMINÉE
+                    </p>
                     <p style={{ fontSize: "14px", color: "#059669", margin: 0 }}>
-                      {statut.totalLivre || 0} / {statut.totalCollecte || 0} linges livrés · 100%
+                      {statut.totalLivre || 0} / {statut.totalCollecte || 0} linges
+                      livrés · 100%
                     </p>
                   </div>
                 </div>
@@ -601,12 +1109,14 @@ function RemiseLingeInner() {
             )}
 
             {/* Cartes de statut */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-              gap: "14px",
-              marginBottom: "20px"
-            }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                gap: "14px",
+                marginBottom: "20px",
+              }}
+            >
               <StatutCard
                 label="Total collecté"
                 value={statut.totalCollecte || 0}
@@ -633,11 +1143,15 @@ function RemiseLingeInner() {
               />
               <StatutCard
                 label="Statut"
-                value={statut.statut || '—'}
+                value={statut.statut || "—"}
                 icon={statut.statut === "CLOTUREE" ? "🏁" : "🔄"}
                 color={statut.statut === "CLOTUREE" ? "#059669" : "#0ea5e9"}
                 bg={statut.statut === "CLOTUREE" ? "#f0fdf4" : "#f0f9ff"}
-                subValue={statut.statut === "CLOTUREE" ? "Collecte clôturée" : "En cours"}
+                subValue={
+                  statut.statut === "CLOTUREE"
+                    ? "Collecte clôturée"
+                    : "En cours"
+                }
               />
             </div>
 
@@ -650,22 +1164,34 @@ function RemiseLingeInner() {
             {/* Détail par catégorie */}
             {statut.categories && statut.categories.length > 0 && (
               <div style={{ marginBottom: "20px" }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  marginBottom: "14px"
-                }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    marginBottom: "14px",
+                  }}
+                >
                   <FaTshirt size={16} color="#64748b" />
-                  <h3 style={{
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    color: "#0f172a",
-                    margin: 0
-                  }}>
+                  <h3
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      margin: 0,
+                    }}
+                  >
                     Détail par catégorie
                   </h3>
-                  <Badge style={{ background: "#f1f5f9", color: "#64748b", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
+                  <Badge
+                    style={{
+                      background: "#f1f5f9",
+                      color: "#64748b",
+                      fontSize: "10px",
+                      padding: "2px 10px",
+                      borderRadius: "12px",
+                    }}
+                  >
                     {statut.categories.length} catégories
                   </Badge>
                 </div>
@@ -700,33 +1226,45 @@ function RemiseLingeInner() {
                   padding: "10px 0",
                   width: "100%",
                   borderTop: "1px solid #f1f5f9",
-                  marginTop: "8px"
+                  marginTop: "8px",
                 }}
               >
                 <FaHistory size={14} />
-                {historiqueOuvert ? 'Masquer' : 'Afficher'} l'historique des remises
-                <Badge style={{ 
-                  background: "#f1f5f9", 
-                  color: "#64748b", 
-                  fontSize: "10px", 
-                  padding: "2px 10px", 
-                  borderRadius: "12px",
-                  marginLeft: "auto"
-                }}>
+                {historiqueOuvert ? "Masquer" : "Afficher"} l'historique des
+                remises
+                <Badge
+                  style={{
+                    background: "#f1f5f9",
+                    color: "#64748b",
+                    fontSize: "10px",
+                    padding: "2px 10px",
+                    borderRadius: "12px",
+                    marginLeft: "auto",
+                  }}
+                >
                   {remises.length}
                 </Badge>
               </button>
 
               {historiqueOuvert && (
-                <div style={{
-                  padding: "16px",
-                  borderRadius: "12px",
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  marginTop: "8px"
-                }}>
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "12px",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    marginTop: "8px",
+                  }}
+                >
                   {remises.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "20px", color: "#94a3b8", fontSize: "13px" }}>
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "20px",
+                        color: "#94a3b8",
+                        fontSize: "13px",
+                      }}
+                    >
                       Aucune remise pour cette collecte
                     </div>
                   ) : (
@@ -734,34 +1272,73 @@ function RemiseLingeInner() {
                       {remises.map((r, i) => {
                         const config = getRemiseStatutConfig(r.etat);
                         return (
-                          <div key={i} style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "12px 16px",
-                            borderRadius: "10px",
-                            background: r.etat === "COMPLETEE" ? "#f0fdf4" : "white",
-                            border: `1px solid ${r.etat === "COMPLETEE" ? "#bbf7d0" : "#e2e8f0"}`,
-                            marginBottom: "6px"
-                          }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                              <span style={{ fontFamily: "monospace", fontWeight: 600, fontSize: "13px", color: "#0f172a" }}>
+                          <div
+                            key={i}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              padding: "12px 16px",
+                              borderRadius: "10px",
+                              background:
+                                r.etat === "COMPLETEE"
+                                  ? "#f0fdf4"
+                                  : "white",
+                              border: `1px solid ${
+                                r.etat === "COMPLETEE"
+                                  ? "#bbf7d0"
+                                  : "#e2e8f0"
+                              }`,
+                              marginBottom: "6px",
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "12px",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontFamily: "monospace",
+                                  fontWeight: 600,
+                                  fontSize: "13px",
+                                  color: "#0f172a",
+                                }}
+                              >
                                 {r.numeroLivraison || r.id}
                               </span>
-                              <Badge style={{
-                                background: config.bg,
-                                color: config.text,
-                                fontSize: "10px",
-                                padding: "2px 12px",
-                                borderRadius: "12px"
-                              }}>
+                              <Badge
+                                style={{
+                                  background: config.bg,
+                                  color: config.text,
+                                  fontSize: "10px",
+                                  padding: "2px 12px",
+                                  borderRadius: "12px",
+                                }}
+                              >
                                 {config.icon} {config.label}
                               </Badge>
                             </div>
-                            <div style={{ display: "flex", gap: "16px", fontSize: "11px", color: "#94a3b8" }}>
-                              <span>{r.agentRemiseNom || 'Agent'}</span>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: "16px",
+                                fontSize: "11px",
+                                color: "#94a3b8",
+                              }}
+                            >
+                              <span>{r.agentRemiseNom || "Agent"}</span>
                               <span>{formatDate(r.dateRemise)}</span>
-                              <span style={{ fontWeight: 600, color: "#0f172a" }}>{r.nbLinges || 0} linges</span>
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  color: "#0f172a",
+                                }}
+                              >
+                                {r.nbLinges || 0} linges
+                              </span>
                             </div>
                           </div>
                         );

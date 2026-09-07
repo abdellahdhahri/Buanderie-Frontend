@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { useModal } from "./ModalContext";
-import { getAgent, isAgentConnected } from "../services/agentService";
 import {
+  getAgentFromStorage,
   fetchAgentByMatricule,
   createRemise,
   fetchStatutCollecte,
@@ -29,23 +29,13 @@ export function RemiseLingeProvider({ children }) {
 
   // ✅ Initialisation de l'agent depuis localStorage
   useEffect(() => {
-    const agentData = getAgent();
-    if (agentData && isAgentConnected()) {
-      const ag = {
-        matricule: agentData.codeBarre || agentData.matricule,
-        nom: agentData.nom || "Inconnu",
-        prenom: agentData.prenom || "",
-        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
-        codeBarre: agentData.codeBarre || agentData.matricule,
-        id: agentData.id,
-        poste: agentData.poste || "AGENT_REMISE"
-      };
-      setAgentRemise(ag);
+    const agentData = getAgentFromStorage();
+    if (agentData) {
+      setAgentRemise(agentData);
       setEtape("AGENT_COLLECTE");
     }
   }, []);
 
-  // ✅ Scan Agent Remise
   const scanAgentRemise = useCallback(async (code) => {
     setLoading(true);
     try {
@@ -60,23 +50,27 @@ export function RemiseLingeProvider({ children }) {
     }
   }, []);
 
-  // ✅ Scan Agent Collecte et création remise
-  const scanAgentCollecte = useCallback(async (code, agentRemiseData) => {
+   const scanAgentCollecte = useCallback(async (code, agentRemiseData) => {
     if (!agentRemiseData) {
       throw new Error("Aucun agent de remise sélectionné");
     }
 
     setLoading(true);
     try {
-      // Vérifier l'agent de collecte
+      // Récupérer l'agent de collecte
       const agent = await fetchAgentByMatricule(code);
       setAgentCollecte(agent);
 
-      // Créer la remise
+      console.log("✅ Agent remise:", agentRemiseData);
+      console.log("✅ Agent collecte:", agent);
+
+      // L'API attend: matriculeAgentRemise (String) et id (Long)
       const remiseData = await createRemise(
-        agentRemiseData.matricule,
-        agent.matricule
+        agentRemiseData.matricule,  // ✅ matriculeAgentRemise (String)
+        agent.id                    // ✅ id (Long) - l'ID du personnel de collecte
       );
+
+      console.log("✅ Remise créée:", remiseData);
 
       setRemise(remiseData);
       setCollecteId(remiseData.collecte?.id);
@@ -87,6 +81,9 @@ export function RemiseLingeProvider({ children }) {
 
       setEtape("SCAN");
       return { agent, remise: remiseData };
+    } catch (error) {
+      console.error("❌ Erreur création remise:", error);
+      throw error;
     } finally {
       setLoading(false);
     }

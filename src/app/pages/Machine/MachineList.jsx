@@ -28,9 +28,9 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
-import printJS from "print-js";
 import { useMachineContext } from "../../contextes/MachineContext";
 import { MachineImportModal } from "./MachineImportModal";
+import BarcodeLabel from "../../components/BarcodeLabel"; // ✅ Import du composant
 
 const TYPES_MACHINE = [
   { value: "LAVEUR", label: "🧺 Laveur", icon: "🧺", color: "#2563eb", bg: "#eff6ff" },
@@ -73,7 +73,7 @@ export default function MachineList() {
     updateMachine,
     deleteMachine,
     setIsImportModalOpen,
-    setImportType, // Nouvelle fonction pour définir le type d'import
+    setImportType,
   } = useMachineContext();
 
   const [activeTab, setActiveTab] = useState("LAVEUR");
@@ -99,11 +99,9 @@ export default function MachineList() {
     modele: "",
   });
 
-  // Pagination
   const itemsPerPage = pagination.itemsPerPage || 10;
   const currentPage = pagination.currentPage || 1;
   
-  // Filtrer les machines par type et recherche
   const filteredMachines = machines.filter((r) => {
     const matchType = r.type === activeTab;
     const matchSearch = !searchTerm || (
@@ -120,7 +118,6 @@ export default function MachineList() {
   const endIndex = startIndex + itemsPerPage;
   const currentMachines = filteredMachines.slice(startIndex, endIndex);
 
-  // Stats par type
   const getStats = (type) => {
     const typeMachines = machines.filter(m => m.type === type);
     const total = typeMachines.length;
@@ -136,13 +133,11 @@ export default function MachineList() {
     setPagination(prev => ({ ...prev, currentPage: page }));
   };
 
-  // ─── Ouvrir l'import avec le type actif ──────────────────────────────
   const handleOpenImport = () => {
     setImportType(activeTab);
     setIsImportModalOpen(true);
   };
 
-  // ─── Get Badge État Technique ──────────────────────────────────────────
   const getEtatTechniqueBadge = (etat) => {
     const config = ETATS_TECHNIQUES.find(e => e.value === etat) || { 
       label: etat || 'Inconnu', 
@@ -161,7 +156,6 @@ export default function MachineList() {
     );
   };
 
-  // ─── Get Badge État Immobilisation ────────────────────────────────────
   const getEtatImmobilisationBadge = (etat) => {
     const config = ETATS_IMMOBILISATION.find(e => e.value === etat) || { 
       label: etat || 'Inconnu', 
@@ -180,7 +174,6 @@ export default function MachineList() {
     );
   };
 
-  // ─── Get Type Badge ────────────────────────────────────────────────────
   const getTypeBadge = (type) => {
     const config = TYPE_COLORS[type] || { bg: "#f1f5f9", color: "#64748b", label: type };
     return (
@@ -190,7 +183,6 @@ export default function MachineList() {
     );
   };
 
-  // ─── Handle Open Create Modal ──────────────────────────────────────────
   const handleOpenCreateModal = () => {
     setSelectedMachine(null);
     setNewRec({
@@ -209,7 +201,6 @@ export default function MachineList() {
     setIsModalOpen(true);
   };
 
-  // ─── Handle Open Edit Modal ──────────────────────────────────────────
   const handleOpenEditModal = (machine) => {
     setSelectedMachine(machine);
     setNewRec({
@@ -228,7 +219,6 @@ export default function MachineList() {
     setIsModalOpen(true);
   };
 
-  // ─── Handle Save ──────────────────────────────────────────────────────
   const handleSave = async (e) => {
     e.preventDefault();
 
@@ -270,7 +260,6 @@ export default function MachineList() {
     }
   };
 
-  // ─── Handle Delete ──────────────────────────────────────────────────
   const handleDelete = async (id) => {
     const result = await Swal.fire({
       title: "Es-tu sûr?",
@@ -295,65 +284,24 @@ export default function MachineList() {
     }
   };
 
-  // ─── Handle Row Click ────────────────────────────────────────────────
   const handleRowClick = (id) => {
     setSelectedId((prev) => (prev === id ? null : id));
   };
 
-  // ─── Handle Detail ──────────────────────────────────────────────────
   const handleDetail = (machine) => {
     setSelectedMachineDetail(machine);
     setShowDetailModal(true);
   };
 
-  // ─── Print Code ──────────────────────────────────────────────────────
-  const detectFormat = (value) => {
-    if (!value) return "code128";
-    const cleanValue = value.replace(/\s+/g, "");
-    if (/^\d{13}$/.test(cleanValue)) return "ean13";
-    if (/^\d{8}$/.test(cleanValue)) return "ean8";
-    if (/^\d{12}$/.test(cleanValue)) return "upc";
-    return "code128";
-  };
+  // ✅ Supprimer detectFormat et handlePrintCode
+  // Remplacés par BarcodeLabel
 
-  const handlePrintCode = (machine) => {
-    if (!machine) return;
-    const code = machine.code || machine.reference || machine.designation || `M-${machine.id}`;
-    const format = detectFormat(code);
-    
-    printJS({
-      printable: `
-        <div style="width:60mm; padding:3mm; font-family:'Courier New',monospace; background:white; text-align:center;">
-          <div style="border-bottom:1px solid #ddd; padding-bottom:2mm; margin-bottom:2mm;">
-            <div style="font-size:10pt; font-weight:bold; color:#1a1a1a;">CODE MACHINE</div>
-            <div style="font-size:8pt; color:#666;">${machine.type || 'N/A'} - ${machine.marque || machine.designation || 'N/A'}</div>
-          </div>
-          <div style="display:flex; justify-content:center; margin:2mm 0;">
-            <img src="https://barcodeapi.org/api/${format}/${encodeURIComponent(code)}" style="height:70px; width:100%; max-width:180px;" alt="Code-barres" />
-          </div>
-          <div style="font-size:8pt; color:#666; margin-top:2mm; border-top:1px solid #ddd; padding-top:2mm;">
-            <div>📦 ${machine.categorie || 'N/A'} · ${machine.capaciteKg || 0} kg</div>
-            <div style="font-size:7pt; margin-top:1mm;">
-              ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </div>
-          </div>
-        </div>
-      `,
-      type: "raw-html",
-      style: "* { margin: 0; padding: 0; box-sizing: border-box; } body { background: white; display: flex; justify-content: center; }",
-      documentTitle: `Code_Machine_${machine.code || machine.id}`,
-      css: `@page { size: 60mm 45mm; margin: 0; }`
-    });
-  };
-
-  // Stats du type actif
   const currentStats = activeTab === 'LAVEUR' ? laveurStats : secheurStats;
 
   return (
     <div className="relative flex h-full gap-4">
       <motion.div className="transition-all duration-500 ease-in-out w-full">
         <div className="space-y-4">
-          {/* En-tête */}
           <div style={{ marginBottom: "24px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
               <div style={{
@@ -380,7 +328,6 @@ export default function MachineList() {
             </div>
           </div>
 
-          {/* Onglets Laveur / Sécheur */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
               {TYPES_MACHINE.map((tab) => {
@@ -415,7 +362,6 @@ export default function MachineList() {
               })}
             </div>
 
-            {/* Stats rapides */}
             <div className="flex items-center gap-4 text-sm text-slate-500">
               <span className="flex items-center gap-1">
                 <CheckCircle className="w-4 h-4 text-green-500" />
@@ -428,7 +374,6 @@ export default function MachineList() {
             </div>
           </div>
 
-          {/* Barre d'outils - Toujours visible en haut */}
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-4 sticky top-0 z-10">
             <button
               onClick={handleOpenCreateModal}
@@ -437,7 +382,6 @@ export default function MachineList() {
               <Plus className="w-4 h-4 stroke-[2.5]" /> Nouvelle Machine
             </button>
 
-            {/* Bouton Importer - Toujours visible avec couleur claire */}
             <button
               onClick={handleOpenImport}
               className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-[14px] text-sm font-bold text-indigo-700 hover:from-indigo-100 hover:to-purple-100 transition-all shadow-[0_2px_8px_rgba(99,102,241,0.15)] hover:shadow-[0_4px_16px_rgba(99,102,241,0.25)] hover:scale-[1.02]"
@@ -461,18 +405,10 @@ export default function MachineList() {
               <Eye className="w-4 h-4 stroke-[2.5]" /> Détails
             </button>
 
-            <button
-              disabled={!selectedId}
-              onClick={() => {
-                if (selectedId) {
-                  const machine = machines.find(m => m.id === selectedId);
-                  if (machine) handlePrintCode(machine);
-                }
-              }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
-            >
-              <Barcode className="w-4 h-4 stroke-[2.5]" /> Code
-            </button>
+            {/* ✅ Bouton Étiquette avec BarcodeLabel */}
+            {selectedId && (
+              <BarcodeLabel item={machines.find(m => m.id === selectedId)} type="machine" />
+            )}
 
             <button
               disabled={!selectedId}
@@ -498,7 +434,6 @@ export default function MachineList() {
             </button>
           </div>
 
-          {/* Recherche et filtres */}
           <Card className="mb-4">
             <CardContent className="p-4">
               <div className="flex gap-3 flex-wrap">
@@ -520,7 +455,6 @@ export default function MachineList() {
             </CardContent>
           </Card>
 
-          {/* Tableau */}
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -531,7 +465,6 @@ export default function MachineList() {
                       <th className="text-center py-3 px-4 text-sm font-medium">Désignation</th>
                       <th className="text-center py-3 px-4 text-sm font-medium">Marque</th>
                       <th className="text-center py-3 px-4 text-sm font-medium">Modèle</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Code Barre</th>
                       <th className="text-center py-3 px-4 text-sm font-medium">État Technique</th>
                       <th className="text-center py-3 px-4 text-sm font-medium">Disponibilité</th>
                       <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
@@ -540,7 +473,7 @@ export default function MachineList() {
                   <tbody>
                     {isLoading ? (
                       <tr>
-                        <td colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <td colSpan={7} className="text-center py-8 text-muted-foreground">
                           <div className="flex items-center justify-center gap-2">
                             <svg className="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -551,7 +484,7 @@ export default function MachineList() {
                       </tr>
                     ) : filteredMachines.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <td colSpan={7} className="text-center py-8 text-muted-foreground">
                           {searchTerm ? "Aucune machine correspondante" : `Aucun ${activeTab === 'LAVEUR' ? 'laveur' : 'sécheur'} trouvé`}
                         </td>
                       </tr>
@@ -579,11 +512,6 @@ export default function MachineList() {
                             <span className="text-sm">{machine.modele || '-'}</span>
                           </td>
                           <td className="text-center py-3 px-4">
-                            <code className="text-xs font-mono bg-slate-100 px-2 py-1 rounded">
-                              {machine.code || '-'}
-                            </code>
-                          </td>
-                          <td className="text-center py-3 px-4">
                             {getEtatTechniqueBadge(machine.etatTechnique)}
                           </td>
                           <td className="text-center py-3 px-4">
@@ -591,16 +519,8 @@ export default function MachineList() {
                           </td>
                           <td className="text-center py-3 px-4">
                             <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePrintCode(machine);
-                                }}
-                                className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title="Imprimer le code"
-                              >
-                                <Barcode className="w-4 h-4 text-[#e67700]" />
-                              </button>
+                              {/* ✅ Bouton Étiquette avec BarcodeLabel */}
+                              <BarcodeLabel item={machine} type="machine" />
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -630,7 +550,6 @@ export default function MachineList() {
                 </table>
               </div>
 
-              {/* Pagination */}
               {filteredMachines.length > 0 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-border">
                   <div className="text-sm text-muted-foreground">
@@ -684,10 +603,8 @@ export default function MachineList() {
         </div>
       </motion.div>
 
-      {/* Modal d'import */}
       <MachineImportModal />
 
-      {/* Modal Détails */}
       <Modal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
@@ -746,19 +663,14 @@ export default function MachineList() {
           </div>
         )}
         <div className="flex justify-end gap-3 mt-6">
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (selectedMachineDetail) handlePrintCode(selectedMachineDetail);
-            }}
-          >
-            <Barcode className="w-4 h-4 mr-2" /> Imprimer code
-          </Button>
+          {/* ✅ Bouton Étiquette avec BarcodeLabel */}
+          {selectedMachineDetail && (
+            <BarcodeLabel item={selectedMachineDetail} type="machine" />
+          )}
           <Button onClick={() => setShowDetailModal(false)}>Fermer</Button>
         </div>
       </Modal>
 
-      {/* Modal Formulaire */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

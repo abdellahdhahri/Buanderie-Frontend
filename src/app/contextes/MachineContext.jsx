@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { machineService } from '../services/machineService';
 import Swal from 'sweetalert2';
@@ -15,8 +14,10 @@ export const useMachineContext = () => {
 
 export const MachineProvider = ({ children }) => {
   const [machines, setMachines] = useState([]);
+  const [cycles, setCycles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [lastRefresh, setLastRefresh] = useState(null);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     itemsPerPage: 10,
@@ -28,9 +29,8 @@ export const MachineProvider = ({ children }) => {
   const [selectedImportMachines, setSelectedImportMachines] = useState([]);
   const [isImportLoading, setIsImportLoading] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [importType, setImportType] = useState('LAVEUR'); // Nouveau : type actif pour l'import
+  const [importType, setImportType] = useState('LAVEUR');
 
-  // Charger toutes les machines
   const loadMachines = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -41,85 +41,105 @@ export const MachineProvider = ({ children }) => {
         ...prev,
         totalItems: data.length,
       }));
+      setLastRefresh(new Date());
+      return data;
     } catch (err) {
       setError(err.message);
       console.error('❌ Erreur chargement machines:', err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Charger les machines à importer
-  const loadMachinesToImport = useCallback(async () => {
-    setIsImportLoading(true);
-    setError(null);
+  const loadCycles = useCallback(async () => {
     try {
-      const data = await machineService.getMachinesToImport();
-      console.log('📦 Machines à importer reçues:', data);
-      setMachinesToImport(data);
-      setSelectedImportMachines([]);
+      const data = await machineService.getCycles();
+      setCycles(data);
+      return data;
     } catch (err) {
-      setError(err.message);
-      Swal.fire({
-        title: '❌ Erreur',
-        text: err.message || 'Impossible de charger les machines à importer',
-        icon: 'error',
-      });
-    } finally {
-      setIsImportLoading(false);
+      console.error('❌ Erreur chargement cycles:', err);
+      throw err;
     }
   }, []);
 
-  // Importer les machines sélectionnées avec le type actif
-  const importMachines = useCallback(async () => {
-    if (selectedImportMachines.length === 0) {
-      Swal.fire({
-        title: '⚠️ Aucune sélection',
-        text: 'Veuillez sélectionner au moins une machine à importer',
-        icon: 'warning',
-      });
-      return;
-    }
-
-    setIsImportLoading(true);
+  // ─── Charger toutes les données (machines + cycles) ──────────────────────
+  const loadAllData = useCallback(async () => {
     try {
-      // Construire le payload avec le type actif (LAVEUR ou SECHEUR)
-      const payload = selectedImportMachines.map(id => ({
-        id: id,
-        type: importType, // Utiliser le type de l'onglet actif
-      }));
+      const [machinesData, cyclesData] = await Promise.all([
+        loadMachines(),
+        loadCycles()
+      ]);
+      setLastRefresh(new Date());
+      return { machines: machinesData, cycles: cyclesData };
+    } catch (err) {
+      console.error('❌ Erreur chargement données:', err);
+      throw err;
+    }
+  }, [loadMachines, loadCycles]);
 
-      console.log(`📤 Payload d'import pour ${importType}:`, payload);
-
-      const result = await machineService.importMachines(payload);
-      
+  // ─── Terminer un cycle ─────────────────────────────────────────────────────
+  const terminerCycle = useCallback(async (cycleId) => {
+    try {
+      const result = await machineService.terminerCycle(cycleId);
+      await loadAllData(); // Recharger tout après l'action
       Swal.fire({
-        title: '✅ Import réussi',
-        text: `${result.length || selectedImportMachines.length} machine(s) ${importType === 'LAVEUR' ? 'laveuse(s)' : 'sécheuse(s)'} importée(s) avec succès`,
+        title: '✅ Cycle terminé',
+        text: 'Le cycle de lavage a été terminé avec succès',
         icon: 'success',
-        timer: 2000,
+        timer: 1500,
         showConfirmButton: false,
       });
-
-      // Fermer le modal et recharger la liste
-      setIsImportModalOpen(false);
-      setSelectedImportMachines([]);
-      await loadMachines();
-      
       return result;
     } catch (err) {
       Swal.fire({
-        title: '❌ Erreur d\'import',
-        text: err.message || 'Une erreur est survenue lors de l\'import',
+        title: '❌ Erreur',
+        text: err.message || 'Impossible de terminer le cycle',
         icon: 'error',
       });
       throw err;
-    } finally {
-      setIsImportLoading(false);
     }
-  }, [selectedImportMachines, importType, loadMachines]);
+  }, [loadAllData]);
 
-  // Créer une machine
+  // ─── Démarrer un cycle ─────────────────────────────────────────────────────
+  const demarrerCycle = useCallback(async (machineId, programmeId, lots) => {
+    try {
+      const result = await machineService.demarrerCycle(machineId, programmeId, lots);
+      await loadAllData();
+      Swal.fire({
+        title: '✅ Cycle démarré',
+        text: 'Le cycle de lavage a été démarré avec succès',
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      return result;
+    } catch (err) {
+      Swal.fire({
+        title: '❌ Erreur',
+        text: err.message || 'Impossible de démarrer le cycle',
+        icon: 'error',
+      });
+      throw err;
+    }
+  }, [loadAllData]);
+
+  // ─── Mettre à jour une machine ────────────────────────────────────────────
+  const updateMachine = useCallback(async (id, data) => {
+    setIsLoading(true);
+    try {
+      const updated = await machineService.update(id, data);
+      setMachines(prev => prev.map(m => m.id === id ? updated : m));
+      await loadCycles();
+      return updated;
+    } catch (err) {
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadCycles]);
+
+  // ─── Créer une machine ────────────────────────────────────────────────────
   const createMachine = useCallback(async (data) => {
     setIsLoading(true);
     try {
@@ -137,21 +157,7 @@ export const MachineProvider = ({ children }) => {
     }
   }, []);
 
-  // Mettre à jour une machine
-  const updateMachine = useCallback(async (id, data) => {
-    setIsLoading(true);
-    try {
-      const updated = await machineService.update(id, data);
-      setMachines(prev => prev.map(m => m.id === id ? updated : m));
-      return updated;
-    } catch (err) {
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Supprimer une machine
+  // ─── Supprimer une machine ────────────────────────────────────────────────
   const deleteMachine = useCallback(async (id) => {
     setIsLoading(true);
     try {
@@ -169,7 +175,70 @@ export const MachineProvider = ({ children }) => {
     }
   }, []);
 
-  // Sélectionner/désélectionner une machine pour l'import
+  // ─── Machines à importer ──────────────────────────────────────────────────
+  const loadMachinesToImport = useCallback(async () => {
+    setIsImportLoading(true);
+    setError(null);
+    try {
+      const data = await machineService.getMachinesToImport();
+      setMachinesToImport(data);
+      setSelectedImportMachines([]);
+    } catch (err) {
+      setError(err.message);
+      Swal.fire({
+        title: '❌ Erreur',
+        text: err.message || 'Impossible de charger les machines à importer',
+        icon: 'error',
+      });
+    } finally {
+      setIsImportLoading(false);
+    }
+  }, []);
+
+  const importMachines = useCallback(async () => {
+    if (selectedImportMachines.length === 0) {
+      Swal.fire({
+        title: '⚠️ Aucune sélection',
+        text: 'Veuillez sélectionner au moins une machine à importer',
+        icon: 'warning',
+      });
+      return;
+    }
+
+    setIsImportLoading(true);
+    try {
+      const payload = selectedImportMachines.map(id => ({
+        id: id,
+        type: importType,
+      }));
+
+      const result = await machineService.importMachines(payload);
+      
+      Swal.fire({
+        title: '✅ Import réussi',
+        text: `${result.length || selectedImportMachines.length} machine(s) importée(s) avec succès`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      setIsImportModalOpen(false);
+      setSelectedImportMachines([]);
+      await loadAllData();
+      
+      return result;
+    } catch (err) {
+      Swal.fire({
+        title: '❌ Erreur d\'import',
+        text: err.message || 'Une erreur est survenue lors de l\'import',
+        icon: 'error',
+      });
+      throw err;
+    } finally {
+      setIsImportLoading(false);
+    }
+  }, [selectedImportMachines, importType, loadAllData]);
+
   const toggleImportSelection = useCallback((id) => {
     setSelectedImportMachines(prev =>
       prev.includes(id)
@@ -178,7 +247,6 @@ export const MachineProvider = ({ children }) => {
     );
   }, []);
 
-  // Sélectionner toutes les machines pour l'import
   const selectAllImportMachines = useCallback(() => {
     if (selectedImportMachines.length === machinesToImport.length) {
       setSelectedImportMachines([]);
@@ -187,28 +255,45 @@ export const MachineProvider = ({ children }) => {
     }
   }, [machinesToImport, selectedImportMachines]);
 
-  // Charger au montage
+  // ─── Initialisation ───────────────────────────────────────────────────────
   useEffect(() => {
-    loadMachines();
-  }, [loadMachines]);
+    loadAllData();
+  }, []);
+
+  // ─── Auto-refresh toutes les 5 secondes ──────────────────────────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadCycles(); // Rafraîchir uniquement les cycles pour la minuterie
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [loadCycles]);
 
   const value = {
     machines,
+    cycles,
     isLoading,
     error,
+    lastRefresh,
     pagination,
     setPagination,
+    
     loadMachines,
+    loadCycles,
+    loadAllData,
     createMachine,
     updateMachine,
     deleteMachine,
+    
+    terminerCycle,
+    demarrerCycle,
+    
     machinesToImport,
     selectedImportMachines,
     isImportLoading,
     isImportModalOpen,
     setIsImportModalOpen,
     importType,
-    setImportType, // Nouvelle fonction
+    setImportType,
     loadMachinesToImport,
     importMachines,
     toggleImportSelection,

@@ -68,7 +68,6 @@ const ETATS = {
   HORS_SERVICE: { label: "Hors service", color: "#64748b", bg: "#f1f5f9", icon: "🗑️" },
 };
 
-// ─── HOOK ──────────────────────────────────────────────────────────────────
 function useDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);

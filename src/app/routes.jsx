@@ -39,6 +39,7 @@ import CycleLavageList from "./pages/CycleLavge/CycleLavageList";
 import ChambreList from "./pages/chambre/ChambreList";
 import InventaireArsenal from "./pages/inventaire/InventaireArsenal";
 import RemiseLinge from "./pages/remise-Linges/RemiseLinge";
+import EtapeList from "./pages/etape/EtapeList";
 
 
 export const router = createBrowserRouter([
@@ -91,6 +92,13 @@ export const router = createBrowserRouter([
           {
             path: "Receptions",
             Component: ReceptionList,
+            handle: {
+              privileges: ["LIG1502"],
+            },
+          },
+           {
+            path: "etape",
+            Component: EtapeList,
             handle: {
               privileges: ["LIG1502"],
             },
@@ -312,7 +320,7 @@ export const router = createBrowserRouter([
             path: "uniforme",
             Component: CollageListUniforme,
             handle: {
-              privileges: ["LIG1605"],
+              privileges: ["LIG1501"],
             },
           },
 

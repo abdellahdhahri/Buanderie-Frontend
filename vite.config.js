@@ -8,7 +8,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+    optimizeDeps: {
+    include: ['lottie-react']
+  },
     define: {
     global: 'window'
-  }
+  },
+    assetsInclude: ['**/*.json']
+
 })

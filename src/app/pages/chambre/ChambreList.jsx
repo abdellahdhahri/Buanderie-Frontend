@@ -25,7 +25,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
-import printJS from "print-js";
+import BarcodeLabel from "../../components/BarcodeLabel"; // ✅ Import
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -139,69 +139,8 @@ export default function ChambreList() {
     return <Badge variant="secondary">Inconnu</Badge>;
   };
 
-  // ─── Détection du format de code-barres ──────────────────────────────────
-  const detectFormat = useCallback((value) => {
-    if (!value) return "code128";
-    const clean = value.replace(/\s+/g, "");
-    if (/^\d{13}$/.test(clean)) return "ean13";
-    if (/^\d{8}$/.test(clean)) return "ean8";
-    if (/^\d{12}$/.test(clean)) return "upc";
-    return "code128";
-  }, []);
-
-  // ─── Impression du code-barres de la chambre ────────────────────────────
-  const handlePrintChambreCode = useCallback((chambre) => {
-    if (!chambre) return;
-    
-    const barcodeValue = chambre.codeBarre || chambre.code || `CH-${chambre.id}`;
-    const format = detectFormat(barcodeValue);
-    const serviceName = getServiceName(chambre.serviceId);
-
-    printJS({
-      printable: `
-        <div style="width:60mm;padding:3mm;font-family:'Courier New',monospace;background:white;text-align:center;">
-          <div style="border-bottom:1px solid #ddd;padding-bottom:2mm;margin-bottom:2mm;">
-            <div style="font-size:10pt;font-weight:bold;color:#1a1a1a;">CHAMBRE</div>
-            <div style="font-size:7pt;color:#666;">${serviceName || "N/A"}</div>
-          </div>
-          <div style="display:flex;justify-content:center;margin:2mm 0;">
-            <img src="https://barcodeapi.org/api/${format}/${encodeURIComponent(barcodeValue)}" style="height:70px;width:100%;max-width:180px;" />
-          </div>
-          
-        </div>
-      `,
-      type: "raw-html",
-      style: "*{margin:0;padding:0;box-sizing:border-box;}body{background:white;display:flex;justify-content:center;}",
-      documentTitle: `Code_Chambre_${chambre.code || chambre.id}`,
-      css: `@page{size:60mm 45mm;margin:0;}`
-    });
-  }, [detectFormat, getServiceName]);
-
-  const handlePrintLitCode = useCallback((lit) => {
-    if (!lit) return;
-    
-    const barcodeValue = lit.codeBarre || lit.code || `LIT-${lit.id}`;
-    const format = detectFormat(barcodeValue);
-
-    printJS({
-      printable: `
-        <div style="width:60mm;padding:3mm;font-family:'Courier New',monospace;background:white;text-align:center;">
-          <div style="border-bottom:1px solid #ddd;padding-bottom:2mm;margin-bottom:2mm;">
-            <div style="font-size:10pt;font-weight:bold;color:#1a1a1a;">LIT</div>
-            <div style="font-size:7pt;color:#666;">${lit.description || "N/A"}</div>
-          </div>
-          <div style="display:flex;justify-content:center;margin:2mm 0;">
-            <img src="https://barcodeapi.org/api/${format}/${encodeURIComponent(barcodeValue)}" style="height:70px;width:100%;max-width:180px;" />
-          </div>
-          
-        </div>
-      `,
-      type: "raw-html",
-      style: "*{margin:0;padding:0;box-sizing:border-box;}body{background:white;display:flex;justify-content:center;}",
-      documentTitle: `Code_Lit_${lit.code || lit.id}`,
-      css: `@page{size:60mm 45mm;margin:0;}`
-    });
-  }, [detectFormat]);
+  // ✅ Supprimer detectFormat, handlePrintChambreCode, handlePrintLitCode
+  // Remplacés par BarcodeLabel
 
   // ─── CRUD ──────────────────────────────────────────────────────────────────
   const handleOpenCreateModal = useCallback(() => {
@@ -297,58 +236,58 @@ export default function ChambreList() {
   return (
     <div className="space-y-4">
       {/* Header */}
-<div style={{ marginBottom: "32px" }}>
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    marginBottom: "8px"
-  }}>
-    <div style={{
-      width: "52px",
-      height: "52px",
-      borderRadius: "16px",
-      background: "linear-gradient(135deg, #f472b6, #ec4899)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      boxShadow: "0 4px 16px rgba(244, 114, 182, 0.25)"
-    }}>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        width="24" 
-        height="24" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-        <polyline points="9 22 9 12 15 12 15 22" />
-      </svg>
-    </div>
-    <div>
-      <h1 style={{
-        fontSize: "28px",
-        fontWeight: 800,
-        color: "#0f172a",
-        margin: 0
-      }}>
-        Gestion des Chambres
-      </h1>
-      <p style={{
-        fontSize: "14px",
-        color: "#64748b",
-        margin: "2px 0 0 0"
-      }}>
-        Gérez les chambres et leurs disponibilités
-      </p>
-    </div>
-  </div>
-</div>
+      <div style={{ marginBottom: "32px" }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "8px"
+        }}>
+          <div style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "16px",
+            background: "linear-gradient(135deg, #f472b6, #ec4899)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            boxShadow: "0 4px 16px rgba(244, 114, 182, 0.25)"
+          }}>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
+          <div>
+            <h1 style={{
+              fontSize: "28px",
+              fontWeight: 800,
+              color: "#0f172a",
+              margin: 0
+            }}>
+              Gestion des Chambres
+            </h1>
+            <p style={{
+              fontSize: "14px",
+              color: "#64748b",
+              margin: "2px 0 0 0"
+            }}>
+              Gérez les chambres et leurs disponibilités
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
@@ -361,24 +300,15 @@ export default function ChambreList() {
 
         <div className="w-px h-8 bg-slate-200 mx-1" />
 
-        <button
-          disabled={!expandedId}
-          onClick={() => selectedChambre && handlePrintChambreCode(selectedChambre)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <Barcode className="w-4 h-4 stroke-[2.5]" /> Code Chambre
-        </button>
+        {/* ✅ Bouton Étiquette Chambre avec BarcodeLabel */}
+        {selectedChambre && (
+          <BarcodeLabel item={selectedChambre} />
+        )}
 
-        <button
-          disabled={!selectedId}
-          onClick={() => {
-            const lit = chambreLits.find(l => l.id === selectedId);
-            if (lit) handlePrintLitCode(lit);
-          }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <Printer className="w-4 h-4 stroke-[2.5]" /> Code Lit
-        </button>
+        {/* ✅ Bouton Étiquette Lit avec BarcodeLabel */}
+        {selectedId && (
+          <BarcodeLabel item={chambreLits.find(l => l.id === selectedId)} />
+        )}
 
         <button
           disabled={!expandedId}
@@ -493,16 +423,8 @@ export default function ChambreList() {
                           </td>
                           <td className="text-center py-3 px-4">
                             <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePrintChambreCode(chambre);
-                                }}
-                                className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title="Imprimer le code-barres"
-                              >
-                                <Barcode className="w-4 h-4 text-[#e67700]" />
-                              </button>
+                              {/* ✅ Bouton Étiquette avec BarcodeLabel */}
+                              <BarcodeLabel item={chambre} />
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -614,16 +536,8 @@ export default function ChambreList() {
                                               </div>
                                             </div>
                                             <div className="mt-2 flex gap-2 justify-end">
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handlePrintLitCode(lit);
-                                                }}
-                                                className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
-                                                title="Imprimer le code-barres du lit"
-                                              >
-                                                <Barcode className="w-4 h-4 text-[#e67700]" />
-                                              </button>
+                                              {/* ✅ Bouton Étiquette Lit avec BarcodeLabel */}
+                                              <BarcodeLabel item={lit} />
                                             </div>
                                           </div>
                                         ))}

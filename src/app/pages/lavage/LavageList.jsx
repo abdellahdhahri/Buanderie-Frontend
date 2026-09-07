@@ -1,14 +1,17 @@
+// pages/Lavage/LavageList.js
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   FaSoap, FaFilter, FaCheckCircle, FaBiohazard,
   FaCalendarAlt, FaBoxes, FaSpinner, FaPlay, FaStop,
   FaUser, FaExclamationTriangle, FaTshirt, FaRedo,
-  FaCheckDouble, FaClock, FaHistory
+  FaCheckDouble, FaClock, FaHistory, FaTimes
 } from "react-icons/fa";
 import { LavageProvider, useLavage } from "../../contextes/LavageContext";
 import { getAgent, isAgentConnected } from "../../services/agentService";
 import Swal from "sweetalert2";
 import { Badge } from "../../components/ui/badge";
+import { Card, CardContent } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
 
 import ScanInput              from "../../components/utils/ScanInput";
 import CarteLot               from "../../components/utils/CarteLot";
@@ -302,7 +305,6 @@ function LavageInner() {
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
-      // ✅ Utiliser les données du localStorage
       const ag = {
         matricule: agentData.codeBarre || agentData.matricule,
         nom: agentData.nom || "Inconnu",
@@ -316,6 +318,8 @@ function LavageInner() {
       if (identifierAgent) {
         identifierAgent(ag.codeBarre || ag.matricule).catch(() => {});
       }
+    } else {
+      setAgent(null);
     }
   }, []);
 
@@ -687,6 +691,7 @@ function LavageInner() {
       setTimerInterval(null);
     }
     setScanVal("");
+    setAgent(null);
   }, [resetAll, timerInterval]);
 
   // ─── Scan général ──────────────────────────────────────────────────────
@@ -848,44 +853,46 @@ function LavageInner() {
         border: "1px solid #e2e8f0", boxShadow: "0 4px 16px rgba(0,0,0,0.06)"
       }}>
 
-        {/* Barre agent + info mode */}
+        {/* Barre supérieure */}
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
           marginBottom: "20px", flexWrap: "wrap", gap: "12px"
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{
-              background: "#dbeafe", width: "48px", height: "48px",
-              borderRadius: "12px", display: "flex",
-              alignItems: "center", justifyContent: "center"
-            }}>
-              {agent ? <FaSoap size={22} color="#0ea5e9" /> : <FaUser size={22} color="#94a3b8" />}
-            </div>
-            <div>
-              <span style={{ fontWeight: 700, color: "#1e3a8a", fontSize: "18px" }}>
-                {agent ? `${agent.nomPrenom || agent.nom} (${agent.codeBarre || agent.matricule})` : "Station de Lavage"}
-              </span>
-              <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                <FaCalendarAlt size={10} />
-                {new Date().toLocaleDateString("fr-FR")}{" "}
-                {new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                {machine && modeLavage === "NORMAL" && (
-                  <span style={{ fontWeight: 600, color: "#0ea5e9", marginLeft: "6px" }}>
-                    · Machine : {machine.code} ({machine.capaciteKg} kg)
-                  </span>
-                )}
-                {machineInfecte && modeLavage === "INFECTE" && (
-                  <span style={{ fontWeight: 600, color: "#dc2626", marginLeft: "6px" }}>
-                    · Machine infectée : {machineInfecte.code}
-                  </span>
-                )}
-                {!agent && (
-                  <span style={{ fontWeight: 600, color: "#dc2626", marginLeft: "6px" }}>
-                    ⚠️ Agent non connecté
-                  </span>
-                )}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {agent ? (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "8px 16px",
+                background: "#f0fdf4",
+                borderRadius: "10px",
+                border: "1px solid #bbf7d0"
+              }}>
+                <FaCheckCircle color="#22c55e" size={16} />
+                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
+                  {agent.nomPrenom || agent.nom || agent.matricule}
+                </span>
+                <Badge variant="outline" style={{ fontSize: "11px" }}>
+                  {agent.codeBarre || agent.matricule}
+                </Badge>
+                <button
+                  onClick={() => {
+                    handleResetAll();
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#94a3b8",
+                    cursor: "pointer"
+                  }}
+                >
+                  <FaTimes size={12} />
+                </button>
               </div>
-            </div>
+            ) : (
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>Aucun agent connecté</div>
+            )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
             <span style={{
@@ -898,14 +905,13 @@ function LavageInner() {
             }}>
               {getModeLabel()}
             </span>
-            <button onClick={handleResetAll} style={{
-              padding: "8px 16px", border: "1px solid #e2e8f0",
-              borderRadius: "10px", background: "white", color: "#64748b",
-              cursor: "pointer", fontSize: "13px", fontWeight: 500,
-              display: "flex", alignItems: "center", gap: "6px"
-            }}>
-              <FaFilter size={12} /> Réinitialiser
-            </button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetAll}
+            >
+              Reset
+            </Button>
           </div>
         </div>
 
@@ -929,45 +935,47 @@ function LavageInner() {
           </div>
         )}
 
-        {/* ── Zone de scan ── */}
-        <div style={{
-          marginBottom: "20px", padding: "18px 20px",
-          background: "#f8fafc", borderRadius: "14px",
+        {/* ─── ZONE DE SCAN (exactement comme Pliage) ────────────────────── */}
+        <Card style={{
+          marginBottom: "20px",
           border: `2px dashed ${getBorderColor()}`
         }}>
-          <ScanInput
-            ref={scanInputRef}
-            placeholder={getPlaceholder()}
-            value={scanVal}
-            onChange={setScanVal}
-            onSubmit={handleScan}
-            borderColor={getBorderColor()}
-            keepFocus={true}
-            autoDebounce={true}
-            disabled={!agent || isLoading || etapeInfecte === "TERMINE"}
-          />
-          {modeLavage && (
-            <div style={{ marginTop: "8px", fontSize: "11px", color: "#94a3b8" }}>
-              {modeLavage === "NORMAL" && etapeBlanc === "LOTS" && (
-                <span>📦 {lotsDisponibles.length} lots disponibles · {lotsSelectionnes.length} sélectionnés</span>
-              )}
-              {modeLavage === "INFECTE" && etapeInfecte === "SACS" && (
-                <span>🔴 {sacsDisponibles.length} sacs disponibles · {sacsSelectionnes.length} sélectionnés</span>
-              )}
-              {modeLavage === "INFECTE" && etapeInfecte === "LAVAGE" && (
-                <span>🔄 {sacsSelectionnes.length} sac(s) en lavage · {Math.floor(tempsEcoule / 60)}m {tempsEcoule % 60}s</span>
-              )}
-              {modeLavage === "INFECTE" && etapeInfecte === "TERMINE" && (
-                <span>✅ Cycle terminé - {sacsSelectionnes.length} sac(s) lavés</span>
-              )}
-            </div>
-          )}
-        </div>
+          <CardContent className="p-5">
+            <ScanInput
+              ref={scanInputRef}
+              placeholder={getPlaceholder()}
+              value={scanVal}
+              onChange={setScanVal}
+              onSubmit={handleScan}
+              borderColor={getBorderColor()}
+              keepFocus={true}
+              autoDebounce={true}
+              disabled={!agent || isLoading || etapeInfecte === "TERMINE"}
+            />
+          </CardContent>
+        </Card>
+
+        {/* ─── INFO AGENT (exactement comme Pliage) ───────────────────────── */}
+        {agent && (
+          <Card style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", marginBottom: "16px" }}>
+            <CardContent className="p-4">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+                <FaSoap color="#22c55e" size={16} />
+                <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt pour le lavage</span>
+                <span style={{ color: "#64748b" }}>
+                  {!modeLavage ? "Scannez une machine" :
+                   modeLavage === "NORMAL" ? "Scannez un lot (état EN_TRI)" :
+                   "Scannez un sac infecté"}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* ─── Contenu selon le mode ──────────────────────────────────────── */}
         {agent && (
           <>
-            {/* ─── MODE NORMAL - NE PAS TOUCHER ──────────────────────────── */}
+            {/* ─── MODE NORMAL ──────────────────────────── */}
             {modeLavage === "NORMAL" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px" }}>
                 <div>
@@ -1090,7 +1098,7 @@ function LavageInner() {
               </div>
             )}
 
-            {/* ─── MODE INFECTE - MÊME STYLE QUE BLANC ──────────────────── */}
+            {/* ─── MODE INFECTE ──────────────────── */}
             {modeLavage === "INFECTE" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px" }}>
 
@@ -1246,7 +1254,7 @@ function LavageInner() {
                   )}
                 </div>
 
-                {/* Colonne droite - Recap avec timer et boutons */}
+                {/* Colonne droite */}
                 <RecapChargementInfecte
                   sacsSelectionnes={sacsSelectionnes}
                   poidsTotal={totalArticles}
@@ -1261,6 +1269,29 @@ function LavageInner() {
               </div>
             )}
           </>
+        )}
+
+        {/* ─── FOOTER ────────────────────────────────────────────────────── */}
+        {agent && (
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e2e8f0",
+            fontSize: "12px", color: "#64748b", flexWrap: "wrap", gap: "8px"
+          }}>
+            <div style={{ display: "flex", gap: "16px" }}>
+              <span>🧺 Lots : <strong style={{ color: "#0ea5e9" }}>{lotsSelectionnes.length}</strong></span>
+              <span>⚖️ Poids : <strong style={{ color: "#0ea5e9" }}>{poidsTotal.toFixed(1)} kg</strong></span>
+              {machine && <span>🔧 Machine : <strong style={{ color: "#0ea5e9" }}>{machine.code}</strong></span>}
+            </div>
+            <span style={{
+              padding: "2px 10px", borderRadius: "8px",
+              background: modeLavage === "INFECTE" ? "#fee2e2" : "#e0f2fe",
+              color: modeLavage === "INFECTE" ? "#dc2626" : "#0369a1",
+              fontSize: "11px", fontWeight: 700
+            }}>
+              {getModeLabel()}
+            </span>
+          </div>
         )}
       </div>
 

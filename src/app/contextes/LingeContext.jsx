@@ -18,7 +18,6 @@ export const CATEGORIES = [
 export const LingeContext = createContext();
 
 export const LingeProvider = ({ children }) => {
-  // ─── ÉTATS PRINCIPAUX ────────────────────────────────────────────────────
   const [linges, setLinges] = useState([]);
   const [pagedData, setPagedData] = useState({
     content: [],
@@ -29,13 +28,11 @@ export const LingeProvider = ({ children }) => {
   });
   const { showAlert } = useModal() || {};
 
-  // ─── MODE RFID ──────────────────────────────────────────────────────────
   const [isRfidMode, setIsRfidMode] = useState(() => {
     const saved = localStorage.getItem("rfidMode");
     return saved !== null ? JSON.parse(saved) : true;
   });
 
-  // ─── ÉTATS D'IMPORT ─────────────────────────────────────────────────────
   const [lingesToImport, setLingesToImport] = useState([]);
   const [selectedImportLinges, setSelectedImportLinges] = useState([]);
   const [isImportLoading, setIsImportLoading] = useState(false);
@@ -263,21 +260,16 @@ export const LingeProvider = ({ children }) => {
     }
   };
 
-  // ════════════════════════════════════════════════════════════════════════
-  // ─── RFID ─────────────────────────────────────────────────────────────
-  // ════════════════════════════════════════════════════════════════════════
 
-  // ─── Formater un EPC RFID ──────────────────────────────────────────────
   const formatEPC = (epc) => {
     if (!epc || epc.length !== 24) return epc;
     return epc.match(/.{1,4}/g).join(" ");
   };
 
-  // ─── Vérifier si un code existe déjà ──────────────────────────────────
   const checkCodeExists = async (code) => {
     if (!code) return false;
     const cleanCode = code.trim();
-    const existsInState = linges.some(l => l.codeSuivi && l.codeSuivi.toLowerCase() === cleanCode.toLowerCase());
+    const existsInState = linges.some(l => l.codeBarre && l.codeBarre.toLowerCase() === cleanCode.toLowerCase());
     if (existsInState) return true;
 
     try {
@@ -406,11 +398,8 @@ export const LingeProvider = ({ children }) => {
     }
   }, [API_BASE_URL]);
 
-  // ════════════════════════════════════════════════════════════════════════
-  // ─── IMPORT ──────────────────────────────────────────────────────────
-  // ════════════════════════════════════════════════════════════════════════
 
-  // ─── Charger les linges à importer ─────────────────────────────────────
+
   const loadLingesToImport = useCallback(async (page = 0, size = 50) => {
     setIsImportLoading(true);
     try {

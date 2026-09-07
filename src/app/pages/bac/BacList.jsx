@@ -25,7 +25,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
-import printJS from "print-js";
+import BarcodeLabel from "../../components/BarcodeLabel";
 
 export default function BacList() {
   const [bacs, setBacs] = useState([]);
@@ -41,8 +41,6 @@ export default function BacList() {
   const [selectedId, setSelectedId] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedLingeDetail, setSelectedLingeDetail] = useState(null);
-  
-  // ✅ Stocker le nombre de linges par bac
   const [bacLingesCount, setBacLingesCount] = useState({});
 
   const [newRec, setNewRec] = useState({
@@ -104,7 +102,6 @@ export default function BacList() {
         const data = await response.json();
         const linges = Array.isArray(data) ? data : data.content || [];
         setBacLinges(linges);
-        // ✅ Mettre à jour le compteur
         setBacLingesCount(prev => ({ ...prev, [bacId]: linges.length }));
         return linges;
       } else {
@@ -357,137 +354,6 @@ export default function BacList() {
     setShowDetailModal(true);
   };
 
-  const detectFormat = (value) => {
-    if (!value) return "code128";
-    const cleanValue = value.replace(/\s+/g, "");
-    if (/^\d{13}$/.test(cleanValue)) return "ean13";
-    if (/^\d{8}$/.test(cleanValue)) return "ean8";
-    if (/^\d{12}$/.test(cleanValue)) return "upc";
-    return "code128";
-  };
-
-  const handlePrintBacCode = (bac) => {
-    if (!bac) return;
-    
-    const codeBac = bac.code || bac.reference || `BAC-${bac.id}`;
-    const format = detectFormat(codeBac);
-    
-    printJS({
-      printable: `
-        <div style="width:60mm; padding:3mm; font-family:'Courier New',monospace; background:white; text-align:center;">
-          <div style="border-bottom:1px solid #ddd; padding-bottom:2mm; margin-bottom:2mm;">
-            <div style="font-size:10pt; font-weight:bold; color:#1a1a1a;">CODE BAC</div>
-            <div style="font-size:7pt; color:#666;">${bac.typeCollecte || 'BLANC'}</div>
-          </div>
-          
-          <div style="display:flex; justify-content:center; margin:2mm 0;">
-            <img
-              src="https://barcodeapi.org/api/${format}/${encodeURIComponent(codeBac)}"
-              style="height:80px; width:100%; max-width:200px;"
-              alt="Code-barres"
-            />
-          </div>
-          
-          <div style="font-size:14pt; font-weight:bold; letter-spacing:2px; margin:2mm 0; font-family:'Courier New',monospace;">
-            ${codeBac}
-          </div>
-          
-          <div style="font-size:8pt; color:#666; margin-top:2mm; border-top:1px solid #ddd; padding-top:2mm;">
-            <div>📦 ${bac.typeCollecte || 'N/A'} | ${bac.typebac || 'N/A'}</div>
-            <div style="font-size:7pt; margin-top:1mm;">
-              ${new Date().toLocaleDateString('fr-FR', { 
-                day: '2-digit', 
-                month: '2-digit', 
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </div>
-          </div>
-        </div>
-      `,
-      type: "raw-html",
-      style: "* { margin: 0; padding: 0; box-sizing: border-box; } body { background: white; display: flex; justify-content: center; }",
-      documentTitle: `Code_Bac_${bac.code || bac.id}`,
-      css: `
-        @page { 
-          size: 60mm 40mm;
-          margin: 0;
-        }
-      `
-    });
-  };
-
-  const handlePrintBacTicket = (bac) => {
-    if (!bac) return;
-    
-    const codeBac = bac.code || bac.reference || `BAC-${bac.id}`;
-    const format = detectFormat(codeBac);
-    
-    printJS({
-      printable: `
-        <div style="width:80mm; padding:5mm; font-family:'Courier New',monospace; background:white;">
-          <div style="text-align:center; border-bottom:2px solid black; padding-bottom:3mm; margin-bottom:3mm;">
-            <h2 style="margin:0; font-size:14pt;">🏷️ BON DE BAC</h2>
-            <p style="margin:2px 0; font-size:12pt; font-weight:bold;">${bac.reference || `BAC-${bac.id}`}</p>
-          </div>
-          
-          <div style="display:flex; justify-content:center; margin:2mm 0;">
-            <img
-              src="https://barcodeapi.org/api/${format}/${encodeURIComponent(codeBac)}"
-              style="height:60px; max-width:200px;"
-              alt="Code-barres"
-            />
-          </div>
-          
-          <div style="font-size:9pt; margin-bottom:3mm; border:1px solid #ddd; padding:3mm; border-radius:4px;">
-            <div style="display:flex; justify-content:space-between; padding:2px 0;">
-              <span><strong>📅 Date:</strong></span>
-              <span>${bac.dateCreation ? new Date(bac.dateCreation).toLocaleDateString('fr-FR') : 'N/A'}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; padding:2px 0;">
-              <span><strong>🏷️ Type BAC:</strong></span>
-              <span>${bac.typebac || 'BLANC'}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; padding:2px 0;">
-              <span><strong>📊 Type Collecte:</strong></span>
-              <span>${bac.typeCollecte || 'BLANC'}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; padding:2px 0;">
-              <span><strong>📊 État:</strong></span>
-              <span>${bac.etat || 'EN_RECEPTION'}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; padding:2px 0;">
-              <span><strong>⚖️ Capacité:</strong></span>
-              <span>${bac.capacite_max || 0} kg</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; padding:2px 0; border-top:1px solid #eee; margin-top:2px; padding-top:4px;">
-              <span><strong>📦 Poids actuel:</strong></span>
-              <span>${bac.poids || 0} kg</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; padding:2px 0;">
-              <span><strong>🧺 Nombre de linges:</strong></span>
-              <span>${bacLingesCount[bac.id] || 0}</span>
-            </div>
-          </div>
-          
-          <div style="text-align:center; font-size:7pt; margin-top:3mm; border-top:1px solid #ddd; padding-top:2mm; color:#666;">
-            Généré le ${new Date().toLocaleString('fr-FR')}
-          </div>
-        </div>
-      `,
-      type: "raw-html",
-      style: "* { margin: 0; padding: 0; box-sizing: border-box; }",
-      documentTitle: `Ticket_Bac_${bac.code || bac.id}`,
-      css: `
-        @page { 
-          size: 80mm 130mm;
-          margin: 0;
-        }
-      `
-    });
-  };
-
   const filteredBacs = bacs.filter((r) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -563,7 +429,6 @@ export default function BacList() {
             </div>
           </div>
 
-          {/* Barre d'outils */}
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
             <button
               onClick={handleOpenCreateModal}
@@ -574,24 +439,21 @@ export default function BacList() {
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
 
-            <button
-              disabled={!selectedBacId}
-              onClick={() => {
-                if (selectedBac) handlePrintBacTicket(selectedBac);
-              }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
-            >
-              <Printer className="w-4 h-4 stroke-[2.5]" /> Ticket Bac
-            </button>
+            {/* ✅ Bouton Étiquette Bac avec BarcodeLabel */}
+            {selectedBac && (
+              <BarcodeLabel item={selectedBac} type="bac" />
+            )}
 
             <button
               disabled={!selectedBacId}
               onClick={() => {
-                if (selectedBac) handlePrintBacCode(selectedBac);
+                if (selectedBac) {
+                  // Imprimer ticket bac (fonction à garder si besoin)
+                }
               }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Barcode className="w-4 h-4 stroke-[2.5]" /> Code Bac
+              <Printer className="w-4 h-4 stroke-[2.5]" /> Ticket Bac
             </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
@@ -664,7 +526,6 @@ export default function BacList() {
             </button>
           </div>
 
-          {/* Barre de recherche */}
           <Card className="mb-4">
             <CardContent className="p-4">
               <div className="relative">
@@ -680,7 +541,6 @@ export default function BacList() {
             </CardContent>
           </Card>
 
-          {/* Tableau */}
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -752,32 +612,13 @@ export default function BacList() {
                           <td className="py-3 px-4">
                             {getStatusBadge(bac.typeCollecte)}
                             <div className="text-xs text-muted-foreground mt-1">
-                              {/* ✅ Afficher le nombre de linges depuis bacLingesCount */}
                               {bacLingesCount[bac.id] !== undefined ? bacLingesCount[bac.id] : '...'} linges
                             </div>
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePrintBacCode(bac);
-                                }}
-                                className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title="Imprimer le code"
-                              >
-                                <Barcode className="w-4 h-4 text-[#e67700]" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePrintBacTicket(bac);
-                                }}
-                                className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title="Imprimer le ticket"
-                              >
-                                <Printer className="w-4 h-4 text-[#8b5cf6]" />
-                              </button>
+                              {/* ✅ Bouton Étiquette avec BarcodeLabel */}
+                              <BarcodeLabel item={bac} type="bac" />
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -838,7 +679,6 @@ export default function BacList() {
             }}
             className="w-[40%] bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden h-[calc(100vh-120px)] sticky top-20 flex-shrink-0"
           >
-            {/* Header avec boutons d'impression */}
             <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-blue-100">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -856,20 +696,8 @@ export default function BacList() {
                   <Badge variant="outline" className="bg-white">
                     {bacLinges.length} linge{bacLinges.length > 1 ? 's' : ''}
                   </Badge>
-                  <button
-                    onClick={() => handlePrintBacCode(selectedBac)}
-                    className="p-1.5 hover:bg-blue-200 rounded-lg transition-colors text-slate-500 hover:text-[#e67700]"
-                    title="Imprimer le code"
-                  >
-                    <Barcode className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handlePrintBacTicket(selectedBac)}
-                    className="p-1.5 hover:bg-blue-200 rounded-lg transition-colors text-slate-500 hover:text-[#8b5cf6]"
-                    title="Imprimer le ticket"
-                  >
-                    <Printer className="w-4 h-4" />
-                  </button>
+                  {/* ✅ Bouton Étiquette avec BarcodeLabel */}
+                  <BarcodeLabel item={selectedBac} type="bac" />
                   <button
                     onClick={handleClosePanel}
                     className="p-1.5 hover:bg-blue-200 rounded-lg transition-colors text-slate-500 hover:text-slate-700"
@@ -958,7 +786,7 @@ export default function BacList() {
         )}
       </AnimatePresence>
 
-      {/* Modal Détails Linge */}
+      {/* Modal Détails Linge - inchangée */}
       <Modal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
@@ -1010,7 +838,7 @@ export default function BacList() {
         </div>
       </Modal>
 
-      {/* Modal Création/Modification */}
+      {/* Modal Création/Modification - inchangée */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
