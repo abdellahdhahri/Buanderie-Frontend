@@ -1,6 +1,7 @@
 // Authentification.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   FaUser,
   FaSpinner,
@@ -16,7 +17,8 @@ import { useModal } from "../../contextes/ModalContext";
 import { useAuth } from "../../contextes/Authentication/AuthContext";
 import "../Linge/WorkflowList.css";
 
-export default function Authentification() {
+function AuthentificationInner() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { showAlert } = useModal();
   const { login, loginWithBadge, auth, isAuthenticated } = useAuth();
@@ -59,13 +61,13 @@ export default function Authentification() {
   // ─── Login par identifiants ─────────────────────────────────────────────
   const handleLoginCredentials = async () => {
     if (!loginValue.trim()) {
-      setError("Veuillez saisir votre login");
-      showAlert("Login requis", "Veuillez saisir votre login", "warning");
+      setError(t('auth.errors.login_required'));
+      showAlert(t('auth.errors.login_required'), t('auth.errors.login_required_text'), "warning");
       return;
     }
     if (!password.trim()) {
-      setError("Veuillez saisir votre mot de passe");
-      showAlert("Mot de passe requis", "Veuillez saisir votre mot de passe", "warning");
+      setError(t('auth.errors.password_required'));
+      showAlert(t('auth.errors.password_required'), t('auth.errors.password_required_text'), "warning");
       return;
     }
 
@@ -73,19 +75,18 @@ export default function Authentification() {
     setError(null);
 
     try {
-      // ✅ Utiliser la méthode du contexte
       const authData = await login(loginValue.trim(), password);
       
       if (!authData?.token) {
-        throw new Error("Aucun token JWT reçu");
+        throw new Error(t('auth.errors.no_token'));
       }
 
       setRedirecting(true);
-      showAlert("Authentification réussie", "Bienvenue " + authData.login, "success");
+      showAlert(t('auth.success.title'), t('auth.success.welcome') + " " + authData.login, "success");
       navigate("/", { replace: true });
     } catch (error) {
-      setError(error.message || "Login ou mot de passe incorrect");
-      showAlert("Échec de connexion", error.message || "Login ou mot de passe incorrect", "error");
+      setError(error.message || t('auth.errors.login_failed'));
+      showAlert(t('auth.errors.login_failed_title'), error.message || t('auth.errors.login_failed'), "error");
     } finally {
       setLoading(false);
     }
@@ -94,8 +95,8 @@ export default function Authentification() {
   // ─── Login par badge ────────────────────────────────────────────────────
   const handleLoginBadge = async () => {
     if (!badgeCode.trim()) {
-      setError("Veuillez scanner votre badge");
-      showAlert("Badge requis", "Veuillez scanner votre badge", "warning");
+      setError(t('auth.errors.badge_required'));
+      showAlert(t('auth.errors.badge_required'), t('auth.errors.badge_required_text'), "warning");
       return;
     }
 
@@ -103,19 +104,18 @@ export default function Authentification() {
     setError(null);
 
     try {
-      // ✅ Utiliser la méthode du contexte
       const authData = await loginWithBadge(badgeCode.trim());
 
       if (!authData?.token) {
-        throw new Error("Aucun token JWT reçu");
+        throw new Error(t('auth.errors.no_token'));
       }
 
       setRedirecting(true);
-      showAlert("Authentification réussie", "Bienvenue " + authData.login, "success");
+      showAlert(t('auth.success.title'), t('auth.success.welcome') + " " + authData.login, "success");
       navigate("/", { replace: true });
     } catch (error) {
-      setError(error.message || "Badge invalide");
-      showAlert("Échec de connexion", error.message || "Badge invalide", "error");
+      setError(error.message || t('auth.errors.badge_invalid'));
+      showAlert(t('auth.errors.login_failed_title'), error.message || t('auth.errors.badge_invalid'), "error");
     } finally {
       setLoading(false);
     }
@@ -189,13 +189,13 @@ export default function Authentification() {
             <FaCheckCircle size={38} color="#16a34a" />
           </div>
           <h2 style={{ fontSize: "22px", fontWeight: 700, color: "#0f172a", marginBottom: "8px" }}>
-            Authentification réussie
+            {t('auth.success.title')}
           </h2>
           <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "8px" }}>
-            Bienvenue {auth?.login}
+            {t('auth.success.welcome')} {auth?.login}
           </p>
           <p style={{ color: "#94a3b8", fontSize: "13px", marginBottom: "20px" }}>
-            {auth?.privileges?.length || 0} privilèges chargés
+            {auth?.privileges?.length || 0} {t('auth.success.privileges')}
           </p>
           <div style={{
             padding: "10px",
@@ -206,7 +206,7 @@ export default function Authentification() {
             fontWeight: 600,
             marginBottom: "20px"
           }}>
-            Redirection vers le tableau de bord...
+            {t('auth.success.redirecting')}
           </div>
           <button
             onClick={handleLogout}
@@ -221,7 +221,7 @@ export default function Authentification() {
               fontWeight: 500
             }}
           >
-            Se déconnecter
+            {t('auth.logout')}
           </button>
         </motion.div>
       </div>
@@ -288,12 +288,12 @@ export default function Authentification() {
               margin: "0 0 4px 0",
               letterSpacing: "-0.5px"
             }}>
-              Authentification
+              {t('auth.title')}
             </h1>
             <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
               {loginMode === "CREDENTIALS" 
-                ? "Connectez-vous avec vos identifiants" 
-                : "Connectez-vous avec votre badge"}
+                ? t('auth.subtitle_credentials')
+                : t('auth.subtitle_badge')}
             </p>
           </div>
 
@@ -330,7 +330,7 @@ export default function Authentification() {
               }}
             >
               <FaUser size={14} />
-              Identifiants
+              {t('auth.mode_credentials')}
             </button>
             <button
               onClick={() => {
@@ -356,7 +356,7 @@ export default function Authentification() {
               }}
             >
               <FaIdBadge size={14} />
-              Badge
+              {t('auth.mode_badge')}
             </button>
           </div>
 
@@ -384,7 +384,7 @@ export default function Authentification() {
                   <input
                     ref={loginInputRef}
                     type="text"
-                    placeholder="Login"
+                    placeholder={t('auth.login_placeholder')}
                     value={loginValue}
                     onChange={(e) => setLoginValue(e.target.value)}
                     onFocus={() => setLoginFocused(true)}
@@ -445,7 +445,7 @@ export default function Authentification() {
                   </div>
                   <input
                     type="password"
-                    placeholder="Mot de passe"
+                    placeholder={t('auth.password_placeholder')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onFocus={() => setPasswordFocused(true)}
@@ -492,7 +492,7 @@ export default function Authentification() {
                 <input
                   ref={badgeInputRef}
                   type="text"
-                  placeholder="Scanner votre badge..."
+                  placeholder={t('auth.badge_placeholder')}
                   value={badgeCode}
                   onChange={(e) => setBadgeCode(e.target.value)}
                   onFocus={() => setBadgeFocused(true)}
@@ -540,7 +540,7 @@ export default function Authentification() {
                 color: "#94a3b8"
               }}>
                 <FaQrcode size={12} />
-                <span>Scannez votre badge ou saisissez le code</span>
+                <span>{t('auth.badge_hint')}</span>
               </div>
             </div>
           )}
@@ -604,17 +604,17 @@ export default function Authentification() {
             {loading ? (
               <>
                 <FaSpinner style={{ animation: "spin 1s linear infinite" }} />
-                Connexion...
+                {t('auth.connecting')}
               </>
             ) : loginMode === "CREDENTIALS" ? (
               <>
                 <FaShieldAlt size={16} />
-                S'authentifier
+                {t('auth.login_button')}
               </>
             ) : (
               <>
                 <FaIdBadge size={16} />
-                Se connecter avec le badge
+                {t('auth.badge_login_button')}
               </>
             )}
           </button>
@@ -631,9 +631,9 @@ export default function Authentification() {
             color: "#94a3b8",
             gap: "16px"
           }}>
-            <span>Polyclinique Ibn Khaldoun</span>
+            <span>{t('auth.footer_clinic')}</span>
             <span>•</span>
-            <span>Sfax</span>
+            <span>{t('auth.footer_city')}</span>
           </div>
 
           {/* ─── Redirection message ────────────────────────────────────── */}
@@ -657,10 +657,10 @@ export default function Authentification() {
                 <FaCheckCircle color="#16a34a" size={18} />
                 <div>
                   <div style={{ fontWeight: 600, color: "#15803d", fontSize: "13px" }}>
-                    Authentification réussie
+                    {t('auth.success.title')}
                   </div>
                   <div style={{ fontSize: "12px", color: "#64748b" }}>
-                    Chargement de vos accès...
+                    {t('auth.success.loading_access')}
                   </div>
                 </div>
               </motion.div>
@@ -679,4 +679,8 @@ export default function Authentification() {
       </style>
     </div>
   );
+}
+
+export default function Authentification() {
+  return <AuthentificationInner />;
 }

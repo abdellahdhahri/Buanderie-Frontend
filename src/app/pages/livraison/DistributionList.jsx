@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { 
   FaTruck, FaUsers, FaBuilding, FaArrowRight,
@@ -47,12 +48,25 @@ const TYPES_DISTRIBUTION = [
 ];
 
 export default function DistributionList() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
 
   const handleNavigate = (route) => {
     navigate(route);
   };
+
+  // Traduire les labels des types de distribution
+  const getTranslatedTypes = () => {
+    return TYPES_DISTRIBUTION.map(type => ({
+      ...type,
+      label: t(`distribution.types.${type.id}.label`, type.label),
+      description: t(`distribution.types.${type.id}.description`, type.description),
+      badge: t(`distribution.types.${type.id}.badge`, type.badge)
+    }));
+  };
+
+  const translatedTypes = getTranslatedTypes();
 
   return (
     <div className="collecte-container" style={{ 
@@ -89,14 +103,14 @@ export default function DistributionList() {
               color: "#0f172a",
               margin: 0
             }}>
-              Distribution
+              {t('distribution.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              Sélectionnez le type de distribution à effectuer
+              {t('distribution.subtitle')}
             </p>
           </div>
         </div>
@@ -110,7 +124,7 @@ export default function DistributionList() {
         flex: 1,
         alignItems: "start"
       }}>
-        {TYPES_DISTRIBUTION.map((type, index) => {
+        {translatedTypes.map((type, index) => {
           const Icon = type.icon;
           const isHovered = hovered === type.id;
 
@@ -143,7 +157,6 @@ export default function DistributionList() {
                 overflow: "hidden"
               }}
             >
-              {/* Effet de brillance au survol */}
               {isHovered && (
                 <div style={{
                   position: "absolute",
@@ -156,7 +169,6 @@ export default function DistributionList() {
                 }} />
               )}
 
-              {/* Badge */}
               {type.badge && (
                 <div style={{
                   position: "absolute",
@@ -176,7 +188,6 @@ export default function DistributionList() {
                 </div>
               )}
 
-              {/* Icône */}
               <div style={{
                 width: "48px",
                 height: "48px",
@@ -194,7 +205,6 @@ export default function DistributionList() {
                 <Icon size={20} />
               </div>
 
-              {/* Texte */}
               <div style={{
                 flex: 1,
                 minWidth: 0
@@ -217,7 +227,6 @@ export default function DistributionList() {
                 </div>
               </div>
 
-              {/* Flèche */}
               <motion.div
                 animate={{ 
                   x: isHovered ? 6 : 0,
@@ -236,7 +245,6 @@ export default function DistributionList() {
                 <FaChevronRight size={18} />
               </motion.div>
 
-              {/* Indicateur de progression en bas */}
               <div style={{
                 position: "absolute",
                 bottom: 0,
@@ -273,7 +281,7 @@ export default function DistributionList() {
             animation: "pulse 2s infinite"
           }} />
           <span style={{ fontSize: "13px", color: "#475569" }}>
-            <strong style={{ color: "#0f172a" }}>Prêt</strong> · Choisissez un type de distribution
+            <strong style={{ color: "#0f172a" }}>{t('distribution.ready')}</strong> · {t('distribution.choose_type')}
           </span>
         </div>
         <div style={{

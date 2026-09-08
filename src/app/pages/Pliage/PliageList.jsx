@@ -1,4 +1,5 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { LingeContext } from "../../contextes/LingeContext";
 import { useNavigate } from "react-router-dom";
 import { FaRss, FaBarcode, FaUser, FaCheckCircle, FaTimes, FaExclamationTriangle } from "react-icons/fa";
@@ -14,27 +15,28 @@ import { getAgent, isAgentConnected } from "../../services/agentService";
 import "../Linge/WorkflowList.css";
 
 function PliageInner() {
+  const { t } = useTranslation();
+
   const { getLingeByCode, isRfidMode, setIsRfidMode } = useContext(LingeContext);
   const navigate = useNavigate();
-  const { 
-    agent: agentFromContext, 
-    dialogueItem, 
-    loading, 
-    scanAgent, 
-    deconnecterAgent, 
-    scanPliage, 
-    fermerDialogue 
+  const {
+    agent: agentFromContext,
+    dialogueItem,
+    loading,
+    scanAgent,
+    deconnecterAgent,
+    scanPliage,
+    fermerDialogue
   } = usePliage();
 
   const [scanValue, setScanValue] = useState("");
-  const [mode,      setMode]      = useState(isRfidMode ? "RFID" : "BARCODE");
-  const [agent,     setAgent]     = useState(null);
+  const [mode, setMode] = useState(isRfidMode ? "RFID" : "BARCODE");
+  const [agent, setAgent] = useState(null);
 
   // ✅ Récupérer l'agent depuis localStorage
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
-      // ✅ Utiliser les données du localStorage sans appeler scanAgent
       const ag = {
         matricule: agentData.codeBarre || agentData.matricule,
         nom: agentData.nom || "Inconnu",
@@ -57,13 +59,20 @@ function PliageInner() {
     }
   }, [agentFromContext]);
 
-  const handleModeChange = (m) => { setMode(m); setIsRfidMode(m === "RFID"); };
+  const handleModeChange = (m) => {
+    setMode(m);
+    setIsRfidMode(m === "RFID");
+  };
+
+  const getAgentFullName = () => {
+    if (!agent) return '';
+    return agent.nomPrenom || agent.nom || agent.matricule;
+  };
 
   const handleScan = async (code) => {
     setScanValue("");
     if (!agent) {
       if (scanAgent) {
-        // Fallback: si pas d'agent, essayer de scanner
         await scanAgent(code);
       }
       return;
@@ -71,20 +80,21 @@ function PliageInner() {
     await scanPliage(code, getLingeByCode);
   };
 
-  const getPlaceholder = () => !agent
-    ? "👤 Agent non connecté — veuillez vous reconnecter"
-    : mode === "RFID" ? "📡 Scanner tag RFID..." : "📦 Scanner un linge (état SECHE)...";
+  const getPlaceholder = () => {
+    if (!agent) return t('pliage.agent_not_connected');
+    return mode === "RFID" ? t('pliage.scan_rfid') : t('pliage.scan_linge');
+  };
 
   const getBorderColor = () => !agent ? "#dc2626" : "#0ea5e9";
 
   return (
     <div className="collecte-container">
       {dialogueItem && (
-        <DialoguePliage 
-          item={dialogueItem} 
-          agent={agent} 
-          onFermer={fermerDialogue} 
-          onSuccess={() => { fermerDialogue(); }} 
+        <DialoguePliage
+          item={dialogueItem}
+          agent={agent}
+          onFermer={fermerDialogue}
+          onSuccess={() => { fermerDialogue(); }}
         />
       )}
 
@@ -107,15 +117,15 @@ function PliageInner() {
             color: "white",
             boxShadow: "0 4px 16px rgba(139, 92, 246, 0.25)"
           }}>
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="24" 
-              height="24" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
               strokeLinejoin="round"
             >
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -130,85 +140,87 @@ function PliageInner() {
               color: "#0f172a",
               margin: 0
             }}>
-              Pliage
+              {t('pliage.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nomPrenom || agent.nom || agent.matricule}` : "Aucun agent connecté"}
+              {agent 
+                ? `${t('pliage.agent')}: ${getAgentFullName()}`
+                : t('pliage.no_agent_connected')}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="collecte-panel-grand" style={{ 
-        background: "white", 
-        borderRadius: "20px", 
-        padding: "32px", 
-        border: "1px solid #e2e8f0", 
-        boxShadow: "0 4px 16px rgba(0,0,0,0.06)" 
+      <div className="collecte-panel-grand" style={{
+        background: "white",
+        borderRadius: "20px",
+        padding: "32px",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.06)"
       }}>
 
         {/* Barre supérieure */}
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center", 
-          marginBottom: "20px", 
-          flexWrap: "wrap", 
-          gap: "12px" 
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "20px",
+          flexWrap: "wrap",
+          gap: "12px"
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             {agent ? (
-              <div style={{ 
-                display: "flex", 
-                alignItems: "center", 
-                gap: "10px", 
-                padding: "8px 16px", 
-                background: "#f0fdf4", 
-                borderRadius: "10px", 
-                border: "1px solid #bbf7d0" 
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "8px 16px",
+                background: "#f0fdf4",
+                borderRadius: "10px",
+                border: "1px solid #bbf7d0"
               }}>
                 <FaCheckCircle color="#22c55e" size={16} />
                 <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
-                  {agent.nomPrenom || agent.nom || agent.matricule}
+                  {getAgentFullName()}
                 </span>
                 <Badge variant="outline" style={{ fontSize: "11px" }}>
                   {agent.codeBarre || agent.matricule}
                 </Badge>
-                <button 
-                  onClick={() => { 
-                    deconnecterAgent(); 
-                    setAgent(null); 
-                  }} 
-                  style={{ 
-                    background: "none", 
-                    border: "none", 
-                    color: "#94a3b8", 
-                    cursor: "pointer" 
+                <button
+                  onClick={() => {
+                    deconnecterAgent();
+                    setAgent(null);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#94a3b8",
+                    cursor: "pointer"
                   }}
                 >
                   <FaTimes size={12} />
                 </button>
               </div>
             ) : (
-              <div style={{ fontSize: "13px", color: "#94a3b8" }}>Aucun agent connecté</div>
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>{t('pliage.no_agent_connected')}</div>
             )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <ModeToggle mode={mode} onChange={handleModeChange} />
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => { 
-                setScanValue(""); 
-                deconnecterAgent(); 
-                setAgent(null); 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setScanValue("");
+                deconnecterAgent();
+                setAgent(null);
               }}
             >
-              Reset
+              {t('common.reset')}
             </Button>
           </div>
         </div>
@@ -228,15 +240,15 @@ function PliageInner() {
             color: "#dc2626"
           }}>
             <FaExclamationTriangle size={16} />
-            <span style={{ fontWeight: 600 }}>Aucun agent connecté</span>
-            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer des opérations de pliage</span>
+            <span style={{ fontWeight: 600 }}>{t('pliage.no_agent_connected')}</span>
+            <span style={{ color: "#64748b" }}>{t('pliage.no_agent_connect_text')}</span>
           </div>
         )}
 
         {/* Zone scan */}
-        <Card style={{ 
-          marginBottom: "20px", 
-          border: `2px dashed ${getBorderColor()}` 
+        <Card style={{
+          marginBottom: "20px",
+          border: `2px dashed ${getBorderColor()}`
         }}>
           <CardContent className="p-5">
             <ScanInput
@@ -258,8 +270,8 @@ function PliageInner() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaUser color="#22c55e" />
-                <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt à plier</span>
-                <span style={{ color: "#64748b" }}>Scannez un linge en état SECHE</span>
+                <span style={{ fontWeight: 600, color: "#15803d" }}>{t('pliage.ready_to_fold')}</span>
+                <span style={{ color: "#64748b" }}>{t('pliage.scan_sec_linge')}</span>
               </div>
             </CardContent>
           </Card>

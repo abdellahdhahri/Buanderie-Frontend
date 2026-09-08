@@ -1,8 +1,10 @@
+// Sidebar.jsx
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router";
 import logoSoftSys from "../../../assets/logo_SoftSys.png";
 import { useAuth } from "../../contextes/Authentication/AuthContext";
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export const NAV_ITEMS = [
   {
@@ -199,23 +201,12 @@ export const NAV_ITEMS = [
       strokeWidth="1.8"
       viewBox="0 0 24 24"
     >
-      {/* Corps de la machine */}
       <rect x="3" y="2" width="18" height="20" rx="2" />
-
-      {/* Bandeau supérieur */}
       <line x1="3" y1="7" x2="21" y2="7" />
-
-      {/* Boutons */}
       <circle cx="7" cy="4.5" r="0.8" fill="currentColor" />
       <circle cx="10" cy="4.5" r="0.8" fill="currentColor" />
-
-      {/* Tambour */}
       <circle cx="12" cy="14" r="5.2" />
-
-      {/* Intérieur du tambour */}
       <circle cx="12" cy="14" r="3.8" />
-
-      {/* Petit détail */}
       <path d="M9.5 14c.7-1.2 1.5-1.8 2.5-1.8s1.8.6 2.5 1.8" />
     </svg>
   ),
@@ -465,6 +456,18 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const [activePopup, setActivePopup] = useState(null);
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+
+ useEffect(() => {
+    console.log('=== DEBUG TRADUCTION ===');
+    console.log('Langue actuelle:', i18n.language);
+    const bundle = i18n.getResourceBundle(i18n.language, 'translation');
+    console.log('Toutes les clés navigation:', Object.keys(bundle?.navigation || {}));
+    console.log('Test navigation.rh:', t('navigation.rh'));
+    console.log('Test navigation.logout:', t('navigation.logout'));
+    console.log('Test navigation.Historique collectes:', t('navigation.Historique collectes'));
+  }, [i18n.language, t, i18n]);
+  
 
   const location = useLocation();
   const currentPath = location.pathname;
@@ -525,10 +528,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
     })
     .filter(Boolean);
 
-  // ============================================================
-  // Menu actif
-  // ============================================================
-
   const activeNavItem = filteredNavItems.find(
     (item) =>
       item.path === currentPath ||
@@ -537,14 +536,9 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
       )
   );
 
-  // ============================================================
-  // Ouvrir automatiquement le sous-menu actif (UNIQUEMENT au premier chargement)
-  // ============================================================
-
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    // ✅ Ne s'exécute qu'une seule fois au montage
     if (!initialized) {
       if (
         activeNavItem &&
@@ -556,19 +550,11 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
       }
       setInitialized(true);
     }
-  }, []); // ✅ Dépendance vide = exécuté une seule fois
-
-  // ============================================================
-  // Gestion manuelle de l'ouverture/fermeture
-  // ============================================================
+  }, []);
 
   const toggleSubmenu = (itemId) => {
     setOpenSubmenu((prev) => (prev === itemId ? null : itemId));
   };
-
-  // ============================================================
-  // RENDER
-  // ============================================================
 
   return (
     <aside
@@ -578,8 +564,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
           : "sidebar--closed"
       }`}
     >
-
-      {/* HEADER */}
 
       <div className="sidebar__header">
 
@@ -641,8 +625,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
       </div>
 
-      {/* SEARCH */}
-
       {sidebarOpen && (
 
         <div className="sidebar__search">
@@ -661,7 +643,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
           </svg>
 
           <input
-            placeholder="Rechercher..."
+            placeholder={t('common.search')}
             readOnly
           />
 
@@ -669,13 +651,11 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
       )}
 
-      {/* NAVIGATION */}
-
       <nav className="sidebar__nav">
 
         {sidebarOpen && (
           <span className="sidebar__section-label">
-            Menu principal
+            {t('navigation.dashboard')}
           </span>
         )}
 
@@ -685,10 +665,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
             key={item.id}
             className="nav-item-wrap"
           >
-
-            {/* ===============================
-                MENU AVEC SOUS-MENUS
-            =============================== */}
 
             {item.children ? (
 
@@ -715,7 +691,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
                   } else {
 
-                    // ✅ Toggle manuel du sous-menu
                     toggleSubmenu(item.id);
 
                   }
@@ -729,7 +704,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
                 {sidebarOpen && (
                   <span className="nav-item__label">
-                    {item.label}
+                    {t(`navigation.${item.id}`, item.label)}
                   </span>
                 )}
 
@@ -759,10 +734,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
             ) : (
 
-              /* ===============================
-                 MENU SIMPLE
-              =============================== */
-
               <Link
                 to={item.path || "/"}
                 className={`nav-item nav-item--${item.id} ${
@@ -786,7 +757,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
                 {sidebarOpen && (
                   <span className="nav-item__label">
-                    {item.label}
+                    {t(`navigation.${item.id}`, item.label)}
                   </span>
                 )}
 
@@ -794,17 +765,13 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
             )}
 
-            {/* ===============================
-                POPUP SIDEBAR FERMÉ
-            =============================== */}
-
             {!sidebarOpen &&
               activePopup === item.id && (
 
                 <div className="nav-popup">
 
                   <span className="nav-popup__title">
-                    {item.label}
+                    {t(`navigation.${item.id}`, item.label)}
                   </span>
 
                   {item.children ? (
@@ -835,7 +802,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
                           </div>
 
                           <span className="nav-popup__card-label">
-                            {child.label}
+                            {t(`navigation.${child.label}`, child.label)}
                           </span>
 
                         </Link>
@@ -863,7 +830,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
                         </div>
 
                         <span>
-                          {item.label}
+                          {t(`navigation.${item.id}`, item.label)}
                         </span>
 
                       </Link>
@@ -875,10 +842,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
                 </div>
 
               )}
-
-            {/* ===============================
-                SOUS-MENU SIDEBAR OUVERT
-            =============================== */}
 
             {sidebarOpen &&
               item.children && (
@@ -908,7 +871,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
                           : ""
                       }`}
                       onClick={() => {
-                        // ✅ Fermer le sous-menu après la navigation sur mobile
                         if (window.innerWidth < 768) {
                           setSidebarOpen(false);
                         }
@@ -921,7 +883,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
                         {child.icon}
                       </span>
 
-                      {child.label}
+                      {t(`navigation.${child.label}`, child.label)}
 
                     </Link>
 
@@ -936,8 +898,6 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
         ))}
 
       </nav>
-
-      {/* FOOTER */}
 
       <div className="sidebar__footer">
 
@@ -970,7 +930,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
           {sidebarOpen && (
             <span className="nav-item__label">
-              Déconnexion
+              {t('navigation.logout')}
             </span>
           )}
 

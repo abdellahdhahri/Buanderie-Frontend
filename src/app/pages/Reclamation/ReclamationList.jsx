@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Plus,
   Search,
@@ -23,10 +24,8 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 
-// ─── Variables d'environnement ──────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
-// ─── Icônes SVG pour les types de réclamation ──────────────────────────────
 const TYPE_ICONS = {
   TROU: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -118,13 +117,14 @@ const STATUS_CONFIG = {
 };
 
 export default function ReclamationList() {
+  const { t } = useTranslation();
+
   const [reclamations, setReclamations] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReclamation, setSelectedReclamation] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // ─── Pagination ──────────────────────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   
@@ -173,15 +173,15 @@ export default function ReclamationList() {
   };
 
   const getStatusBadge = (status) => {
-    if (!status) return <Badge variant="secondary">Non défini</Badge>;
+    if (!status) return <Badge variant="secondary">{t('common.undefined')}</Badge>;
     const config = STATUS_CONFIG[status] || { variant: "secondary", label: status };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <Badge variant={config.variant}>{t(`reclamations.status.${status}`, config.label)}</Badge>;
   };
 
   const getTypeBadge = (type) => {
     const style = TYPE_COLORS[type] || TYPE_COLORS.AUTRE;
     const icon = TYPE_ICONS[type] || TYPE_ICONS.AUTRE;
-    const label = type?.replace(/_/g, ' ') || "Autre";
+    const label = t(`reclamations.types.${type}`, type?.replace(/_/g, ' ') || "Autre");
     return (
       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${style.bg} ${style.text} ${style.border} border`}>
         {React.cloneElement(icon, { className: `w-3.5 h-3.5 ${style.text}` })}
@@ -238,8 +238,8 @@ export default function ReclamationList() {
           const data = await response.json();
           setReclamations((prev) => prev.map((r) => (r.id === data.id ? data : r)));
           Swal.fire({
-            title: "✅ Modifié!",
-            text: "Réclamation mise à jour avec succès.",
+            title: "✅",
+            text: t('reclamations.update_success'),
             icon: "success",
             timer: 1500,
             showConfirmButton: false,
@@ -258,8 +258,8 @@ export default function ReclamationList() {
           const data = await response.json();
           setReclamations((prev) => [data, ...prev]);
           Swal.fire({
-            title: "✅ Créée!",
-            text: "Nouvelle réclamation créée avec succès.",
+            title: "✅",
+            text: t('reclamations.create_success'),
             icon: "success",
             timer: 1500,
             showConfirmButton: false,
@@ -274,8 +274,8 @@ export default function ReclamationList() {
     } catch (err) {
       console.error("Erreur:", err);
       Swal.fire({
-        title: "❌ Erreur",
-        text: err.message || "Une erreur est survenue.",
+        title: "❌",
+        text: t('reclamations.error_text'),
         icon: "error",
       });
     }
@@ -283,14 +283,14 @@ export default function ReclamationList() {
 
   const deleteRec = async (id) => {
     const result = await Swal.fire({
-      title: "Es-tu sûr?",
-      text: "Vous ne pourrez pas annuler cette action!",
+      title: t('common.delete_confirm'),
+      text: t('common.delete_confirm_text'),
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
-      confirmButtonText: "Oui, supprimer!",
-      cancelButtonText: "Annuler",
+      confirmButtonText: t('common.delete_confirm_yes'),
+      cancelButtonText: t('common.cancel'),
     });
 
     if (result.isConfirmed) {
@@ -301,8 +301,8 @@ export default function ReclamationList() {
         if (response.ok) {
           setReclamations((prev) => prev.filter((r) => r.id !== id));
           Swal.fire({
-            title: "✅ Supprimé!",
-            text: "Réclamation supprimée avec succès.",
+            title: "✅",
+            text: t('reclamations.delete_success'),
             icon: "success",
             timer: 1500,
             showConfirmButton: false,
@@ -314,8 +314,8 @@ export default function ReclamationList() {
       } catch (err) {
         console.error("Erreur suppression:", err);
         Swal.fire({
-          title: "❌ Erreur",
-          text: err.message || "Erreur lors de la suppression.",
+          title: "❌",
+          text: t('reclamations.error_text'),
           icon: "error",
         });
       }
@@ -334,8 +334,8 @@ export default function ReclamationList() {
         const data = await response.json();
         setReclamations((prev) => prev.map((r) => (r.id === data.id ? data : r)));
         Swal.fire({
-          title: "✅ Statut mis à jour!",
-          text: `Statut passé à ${newStatus}`,
+          title: "✅",
+          text: t('reclamations.status_updated', { status: t(`reclamations.status.${newStatus}`, newStatus) }),
           icon: "success",
           timer: 1500,
           showConfirmButton: false,
@@ -347,14 +347,13 @@ export default function ReclamationList() {
     } catch (err) {
       console.error("Erreur mise à jour statut:", err);
       Swal.fire({
-        title: "❌ Erreur",
-        text: err.message || "Erreur lors de la mise à jour.",
+        title: "❌",
+        text: t('reclamations.error_text'),
         icon: "error",
       });
     }
   };
 
-  // ─── Filtrage et Pagination ────────────────────────────────────────────
   const filteredReclamations = reclamations.filter((r) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -389,51 +388,72 @@ export default function ReclamationList() {
   return (
     <div className="collecte-container">
       
-      {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
-      <div className="page-header" style={{ marginBottom: 0, textAlign: "left" }}>
-        <h1 className="text-3xl font-extrabold flex items-center gap-3 text-blue-600">
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="32" 
-            height="32" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            className="text-blue-600 flex-shrink-0"
-            style={{ display: 'block' }}
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-            <polyline points="10 9 9 9 8 9" />
-          </svg>
-          Gestion des Réclamations
-        </h1>
-        <p style={{
-          fontSize: "14px",
-          color: "#64748b",
-          margin: "4px 0 0 0"
+      <div style={{ marginBottom: "32px" }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "8px"
         }}>
-          {stats.total} réclamation{stats.total > 1 ? "s" : ""} au total
-        </p>
+          <div style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "16px",
+            background: "linear-gradient(135deg, #ef4444, #dc2626)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            boxShadow: "0 4px 16px rgba(239, 68, 68, 0.25)"
+          }}>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+          </div>
+          <div>
+            <h1 style={{
+              fontSize: "28px",
+              fontWeight: 800,
+              color: "#0f172a",
+              margin: 0
+            }}>
+              {t('reclamations.title')}
+            </h1>
+            <p style={{
+              fontSize: "14px",
+              color: "#64748b",
+              margin: "2px 0 0 0"
+            }}>
+              {t('reclamations.subtitle', { count: stats.total })}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* ─── STATISTIQUES ────────────────────────────────────────────────── */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
         gap: "12px",
-        marginBottom: "20px",
-        marginTop: "20px"
+        marginBottom: "20px"
       }}>
-        <StatCard label="Ouvertes" value={stats.ouvertes} color="#f59e0b" bg="#fffbeb" />
-        <StatCard label="En cours" value={stats.enCours} color="#3b82f6" bg="#eff6ff" />
-        <StatCard label="Résolues" value={stats.resolues} color="#10b981" bg="#f0fdf4" />
-        <StatCard label="Fermées" value={stats.fermees} color="#64748b" bg="#f1f5f9" />
+        <StatCard label={t('reclamations.open')} value={stats.ouvertes} color="#f59e0b" bg="#fffbeb" />
+        <StatCard label={t('reclamations.in_progress')} value={stats.enCours} color="#3b82f6" bg="#eff6ff" />
+        <StatCard label={t('reclamations.resolved')} value={stats.resolues} color="#10b981" bg="#f0fdf4" />
+        <StatCard label={t('reclamations.closed')} value={stats.fermees} color="#64748b" bg="#f1f5f9" />
       </div>
 
       <div style={{
@@ -444,7 +464,6 @@ export default function ReclamationList() {
         boxShadow: "0 4px 20px rgba(0,0,0,0.06)"
       }}>
 
-        {/* ─── Barre d'outils ────────────────────────────────────────────── */}
         <div style={{
           display: "flex",
           justifyContent: "space-between",
@@ -470,7 +489,7 @@ export default function ReclamationList() {
                 gap: "6px"
               }}
             >
-              <Plus size={16} /> Nouvelle
+              <Plus size={16} /> {t('reclamations.new')}
             </button>
             <button
               onClick={fetchReclamations}
@@ -488,16 +507,15 @@ export default function ReclamationList() {
                 gap: "6px"
               }}
             >
-              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> Actualiser
+              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> {t('common.refresh')}
             </button>
           </div>
 
-          {/* ─── Recherche ────────────────────────────────────────────────── */}
           <div style={{ position: "relative", minWidth: "200px" }}>
             <Search size={16} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
             <input
               type="text"
-              placeholder="Rechercher..."
+              placeholder={t('common.search')}
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -516,7 +534,6 @@ export default function ReclamationList() {
           </div>
         </div>
 
-        {/* ─── Tableau ───────────────────────────────────────────────────── */}
         <div style={{
           borderRadius: "12px",
           border: "1px solid #e2e8f0",
@@ -526,12 +543,12 @@ export default function ReclamationList() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>Article</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>Agent</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>Type</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>Date</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>Statut</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>Actions</th>
+                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>{t('reclamations.article')}</th>
+                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>{t('reclamations.agent')}</th>
+                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>{t('reclamations.type')}</th>
+                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>{t('reclamations.date')}</th>
+                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>{t('reclamations.status')}</th>
+                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 600, color: "#64748b" }}>{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -542,14 +559,14 @@ export default function ReclamationList() {
                         <svg className="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        Chargement...
+                        {t('common.loading')}
                       </div>
                     </td>
                   </tr>
                 ) : currentItems.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
-                      {searchTerm ? "Aucune réclamation correspondante" : "Aucune réclamation trouvée"}
+                      {searchTerm ? t('reclamations.no_match') : t('reclamations.no_data')}
                     </td>
                   </tr>
                 ) : (
@@ -580,7 +597,7 @@ export default function ReclamationList() {
                           {r.status === "OUVERTE" && (
                             <button
                               onClick={() => updateStatus(r.id, "EN_COURS")}
-                              title="Prendre en charge"
+                              title={t('reclamations.take_charge')}
                               style={{
                                 padding: "4px 10px",
                                 borderRadius: "6px",
@@ -592,14 +609,14 @@ export default function ReclamationList() {
                                 cursor: "pointer"
                               }}
                             >
-                              Prendre
+                              {t('reclamations.take')}
                             </button>
                           )}
                           {r.status === "EN_COURS" && (
                             <>
                               <button
                                 onClick={() => updateStatus(r.id, "RESOLUE")}
-                                title="Résoudre"
+                                title={t('reclamations.resolve')}
                                 style={{
                                   padding: "4px 10px",
                                   borderRadius: "6px",
@@ -611,11 +628,11 @@ export default function ReclamationList() {
                                   cursor: "pointer"
                                 }}
                               >
-                                Résoudre
+                                {t('reclamations.resolve_btn')}
                               </button>
                               <button
                                 onClick={() => updateStatus(r.id, "FERMEE")}
-                                title="Fermer"
+                                title={t('reclamations.close')}
                                 style={{
                                   padding: "4px 10px",
                                   borderRadius: "6px",
@@ -627,14 +644,14 @@ export default function ReclamationList() {
                                   cursor: "pointer"
                                 }}
                               >
-                                Fermer
+                                {t('reclamations.close_btn')}
                               </button>
                             </>
                           )}
                           {r.status === "RESOLUE" && (
                             <button
                               onClick={() => updateStatus(r.id, "EN_COURS")}
-                              title="Rouvrir"
+                              title={t('reclamations.reopen')}
                               style={{
                                 padding: "4px 10px",
                                 borderRadius: "6px",
@@ -646,12 +663,12 @@ export default function ReclamationList() {
                                 cursor: "pointer"
                               }}
                             >
-                              Rouvrir
+                              {t('reclamations.reopen_btn')}
                             </button>
                           )}
                           <button
                             onClick={() => handleOpenEditModal(r)}
-                            title="Modifier"
+                            title={t('common.edit')}
                             style={{
                               padding: "4px 8px",
                               borderRadius: "6px",
@@ -665,7 +682,7 @@ export default function ReclamationList() {
                           </button>
                           <button
                             onClick={() => deleteRec(r.id)}
-                            title="Supprimer"
+                            title={t('common.delete')}
                             style={{
                               padding: "4px 8px",
                               borderRadius: "6px",
@@ -687,7 +704,6 @@ export default function ReclamationList() {
           </div>
         </div>
 
-        {/* ─── Pagination ────────────────────────────────────────────────── */}
         {totalPages > 1 && (
           <div style={{
             display: "flex",
@@ -700,7 +716,7 @@ export default function ReclamationList() {
             gap: "8px"
           }}>
             <div style={{ fontSize: "13px", color: "#64748b" }}>
-              Affichage de <strong>{startIndex + 1}</strong> à <strong>{Math.min(endIndex, totalItems)}</strong> sur <strong>{totalItems}</strong>
+              {t('common.showing')} <strong>{startIndex + 1}</strong> {t('common.to')} <strong>{Math.min(endIndex, totalItems)}</strong> {t('common.of')} <strong>{totalItems}</strong>
             </div>
             <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
               <button
@@ -735,7 +751,7 @@ export default function ReclamationList() {
               </button>
               
               <span style={{ padding: "0 12px", fontSize: "13px", color: "#0f172a", fontWeight: 600 }}>
-                {currentPage} / {totalPages}
+                {t('common.page')} {currentPage} / {totalPages}
               </span>
               
               <button
@@ -772,7 +788,6 @@ export default function ReclamationList() {
           </div>
         )}
 
-        {/* ─── Footer ────────────────────────────────────────────────────── */}
         <div style={{
           display: "flex",
           justifyContent: "space-between",
@@ -786,11 +801,11 @@ export default function ReclamationList() {
           marginTop: "16px"
         }}>
           <div style={{ display: "flex", gap: "16px" }}>
-            <span>Total: <strong style={{ color: "#0f172a" }}>{stats.total}</strong></span>
-            <span>Ouvertes: <strong style={{ color: "#f59e0b" }}>{stats.ouvertes}</strong></span>
-            <span>En cours: <strong style={{ color: "#3b82f6" }}>{stats.enCours}</strong></span>
-            <span>Résolues: <strong style={{ color: "#10b981" }}>{stats.resolues}</strong></span>
-            <span>Fermées: <strong style={{ color: "#64748b" }}>{stats.fermees}</strong></span>
+            <span>{t('reclamations.total')}: <strong style={{ color: "#0f172a" }}>{stats.total}</strong></span>
+            <span>{t('reclamations.open')}: <strong style={{ color: "#f59e0b" }}>{stats.ouvertes}</strong></span>
+            <span>{t('reclamations.in_progress')}: <strong style={{ color: "#3b82f6" }}>{stats.enCours}</strong></span>
+            <span>{t('reclamations.resolved')}: <strong style={{ color: "#10b981" }}>{stats.resolues}</strong></span>
+            <span>{t('reclamations.closed')}: <strong style={{ color: "#64748b" }}>{stats.fermees}</strong></span>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <span>{new Date().toLocaleDateString("fr-FR")}</span>
@@ -800,49 +815,48 @@ export default function ReclamationList() {
         </div>
       </div>
 
-      {/* ─── Modal ────────────────────────────────────────────────────────── */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={selectedReclamation ? `Modifier la réclamation #${selectedReclamation.id}` : "Nouvelle Réclamation"}
+        title={selectedReclamation ? `${t('reclamations.edit')} #${selectedReclamation.id}` : t('reclamations.new')}
         size="lg"
       >
         <form onSubmit={handleSave}>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <Input
-                label="Code barre de l'article"
+                label={t('reclamations.article_code')}
                 value={newRec.codeBarre}
                 onChange={(e) => setNewRec({ ...newRec, codeBarre: e.target.value.toUpperCase() })}
                 placeholder="ex: L97AA77D8"
                 required
               />
-              <p className="text-xs text-muted-foreground mt-1">Entrez le code barre du linge concerné</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('reclamations.article_code_hint')}</p>
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium mb-2">Type de problème</label>
+              <label className="block text-sm font-medium mb-2">{t('reclamations.problem_type')}</label>
               <select
                 value={newRec.type}
                 onChange={(e) => setNewRec({ ...newRec, type: e.target.value })}
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               >
-                <option value="TROU">🕳️ Trou</option>
-                <option value="TACHE_PERSISTANTE">🟡 Tâche persistante</option>
-                <option value="DECHIRE">✂️ Déchirure</option>
-                <option value="COUTURE_ABIMEE">🧵 Couture abîmée</option>
-                <option value="BOUTON_MANQUANT">🔘 Bouton manquant</option>
-                <option value="A_REFORMER">♻️ À réformer</option>
-                <option value="MAL_LAVE">🧼 Mal lavé</option>
-                <option value="AUTRE">📦 Autre</option>
+                <option value="TROU">{t('reclamations.types.TROU')}</option>
+                <option value="TACHE_PERSISTANTE">{t('reclamations.types.TACHE_PERSISTANTE')}</option>
+                <option value="DECHIRE">{t('reclamations.types.DECHIRE')}</option>
+                <option value="COUTURE_ABIMEE">{t('reclamations.types.COUTURE_ABIMEE')}</option>
+                <option value="BOUTON_MANQUANT">{t('reclamations.types.BOUTON_MANQUANT')}</option>
+                <option value="A_REFORMER">{t('reclamations.types.A_REFORMER')}</option>
+                <option value="MAL_LAVE">{t('reclamations.types.MAL_LAVE')}</option>
+                <option value="AUTRE">{t('reclamations.types.AUTRE')}</option>
               </select>
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium mb-2">Description du problème</label>
+              <label className="block text-sm font-medium mb-2">{t('reclamations.problem_description')}</label>
               <textarea
                 value={newRec.description}
                 onChange={(e) => setNewRec({ ...newRec, description: e.target.value })}
-                placeholder="Expliquez le problème en détail..."
+                placeholder={t('reclamations.problem_description_placeholder')}
                 className="w-full min-h-[100px] px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               />
@@ -851,10 +865,10 @@ export default function ReclamationList() {
 
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setIsModalOpen(false)} type="button">
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button type="submit">
-              {selectedReclamation ? "Enregistrer" : "Créer"}
+              {selectedReclamation ? t('common.save') : t('common.create')}
             </Button>
           </div>
         </form>
@@ -863,7 +877,6 @@ export default function ReclamationList() {
   );
 }
 
-// ─── COMPOSANT : StatCard ──────────────────────────────────────────────────
 function StatCard({ label, value, color, bg }) {
   return (
     <div style={{

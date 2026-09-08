@@ -2,18 +2,21 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
   ],
-    optimizeDeps: {
+  optimizeDeps: {
     include: ['lottie-react']
   },
-    define: {
+  define: {
     global: 'window'
   },
-    assetsInclude: ['**/*.json']
-
+  server: {
+    watch: {
+      usePolling: true,
+      interval: 100
+    }
+  }
 })

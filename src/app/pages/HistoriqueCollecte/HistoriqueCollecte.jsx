@@ -1,5 +1,6 @@
 // pages/Historique/HistoriqueCollecte.js
 import React, { useState, useEffect, useContext, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { 
   Search, Filter, Eye, RefreshCw, Calendar, Clock, 
@@ -33,10 +34,11 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 // ─── Composant de résumé amélioré ──────────────────────────────────────
 function ResumeCollecte({ details, collecte, onViewDetails }) {
+  const { t } = useTranslation();
+
   const categories = details?.categories || [];
   const totalPieces = details?.totalPieces || 0;
   
-  // Couleurs par catégorie
   const categoryColors = {
     DRAP: { bg: "#fee2e2", color: "#dc2626", emoji: "🛏️" },
     TAIE_OREILLER: { bg: "#ffedd5", color: "#ea580c", emoji: "💤" },
@@ -53,31 +55,29 @@ function ResumeCollecte({ details, collecte, onViewDetails }) {
     return categoryColors[categorie] || categoryColors.AUTRE;
   };
 
-  // Calcul du pourcentage
   const total = categories.reduce((sum, cat) => sum + cat.quantite, 0);
 
   return (
     <div className="space-y-4">
-      {/* En-tête du résumé avec stats principales */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 p-3 rounded-xl border border-blue-200">
           <div className="flex items-center gap-2">
             <Package className="w-4 h-4 text-blue-600" />
-            <span className="text-xs font-medium text-blue-700">Total pièces</span>
+            <span className="text-xs font-medium text-blue-700">{t('historique_collecte.total_pieces')}</span>
           </div>
           <div className="text-2xl font-bold text-blue-800 mt-1">{totalPieces}</div>
         </div>
         <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 p-3 rounded-xl border border-purple-200">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-purple-600" />
-            <span className="text-xs font-medium text-purple-700">Catégories</span>
+            <span className="text-xs font-medium text-purple-700">{t('historique_collecte.categories')}</span>
           </div>
           <div className="text-2xl font-bold text-purple-800 mt-1">{categories.length}</div>
         </div>
         <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-3 rounded-xl border border-emerald-200">
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-emerald-600" />
-            <span className="text-xs font-medium text-emerald-700">Blanc</span>
+            <span className="text-xs font-medium text-emerald-700">{t('historique_collecte.white')}</span>
           </div>
           <div className="text-2xl font-bold text-emerald-800 mt-1">
             {categories.find(c => c.categorie === "BLANC")?.quantite || 0}
@@ -86,7 +86,7 @@ function ResumeCollecte({ details, collecte, onViewDetails }) {
         <div className="bg-gradient-to-br from-rose-50 to-rose-100/50 p-3 rounded-xl border border-rose-200">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600" />
-            <span className="text-xs font-medium text-rose-700">Infecté</span>
+            <span className="text-xs font-medium text-rose-700">{t('historique_collecte.infected')}</span>
           </div>
           <div className="text-2xl font-bold text-rose-800 mt-1">
             {categories.find(c => c.categorie === "INFECTE")?.quantite || 0}
@@ -94,14 +94,13 @@ function ResumeCollecte({ details, collecte, onViewDetails }) {
         </div>
       </div>
 
-      {/* Détail des catégories avec barres de progression */}
       {categories.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <div className="flex items-center gap-2 mb-3">
             <PieChart className="w-4 h-4 text-slate-600" />
-            <span className="text-sm font-semibold text-slate-700">Répartition par catégorie</span>
+            <span className="text-sm font-semibold text-slate-700">{t('historique_collecte.category_distribution')}</span>
             <Badge variant="outline" className="ml-auto text-xs">
-              {categories.length} catégories
+              {categories.length} {t('historique_collecte.categories')}
             </Badge>
           </div>
           <div className="space-y-3">
@@ -140,42 +139,40 @@ function ResumeCollecte({ details, collecte, onViewDetails }) {
         </div>
       )}
 
-      {/* Informations complémentaires */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
         <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
           <User className="w-4 h-4 text-slate-500" />
-          <span className="text-slate-600">Agent:</span>
+          <span className="text-slate-600">{t('historique_collecte.agent')}:</span>
           <span className="font-medium text-slate-800">{collecte?.agent?.nom || collecte?.personnelId || "N/A"}</span>
         </div>
         <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
           <Building className="w-4 h-4 text-slate-500" />
-          <span className="text-slate-600">Service:</span>
-          <span className="font-medium text-slate-800">{collecte?.service?.nom || "Non assigné"}</span>
+          <span className="text-slate-600">{t('historique_collecte.service')}:</span>
+          <span className="font-medium text-slate-800">{collecte?.service?.nom || t('historique_collecte.unassigned')}</span>
         </div>
         <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
           <Calendar className="w-4 h-4 text-slate-500" />
-          <span className="text-slate-600">Date:</span>
+          <span className="text-slate-600">{t('historique_collecte.date')}:</span>
           <span className="font-medium text-slate-800">{formatDate(collecte?.dateCollecte)}</span>
         </div>
         <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
           <Clock className="w-4 h-4 text-slate-500" />
-          <span className="text-slate-600">Durée:</span>
+          <span className="text-slate-600">{t('historique_collecte.duration')}:</span>
           <span className="font-medium text-slate-800">
             {collecte?.dateDebut && collecte?.dateFin 
-              ? `${Math.round((new Date(collecte.dateFin) - new Date(collecte.dateDebut)) / 60000)} min`
+              ? `${Math.round((new Date(collecte.dateFin) - new Date(collecte.dateDebut)) / 60000)} ${t('historique_collecte.min')}`
               : "—"}
           </span>
         </div>
       </div>
 
-      {/* Bouton voir plus */}
       <div className="flex justify-end pt-2 border-t border-slate-200">
         <button
           onClick={onViewDetails}
           className="flex items-center gap-1.5 text-sm font-medium text-[#0794a4] hover:text-[#068391] hover:underline transition-colors"
         >
           <Eye className="w-4 h-4" />
-          Voir tous les détails
+          {t('historique_collecte.view_all_details')}
           <ArrowUpRight className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -185,8 +182,56 @@ function ResumeCollecte({ details, collecte, onViewDetails }) {
 
 // ─── Composant de carte de collecte (vue alternative) ──────────────────
 function CollecteCard({ collecte, index, onExpand, isExpanded, onViewDetails }) {
+  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
-  
+
+  // ✅ Utiliser t directement, pas de useTranslation à l'intérieur
+  const getTypeBadge = useCallback((type) => {
+    const typeConfig = {
+      BLANC: { variant: "info", emoji: "⬜", label: t('historique_collecte.types.BLANC') },
+      INFECTE: { variant: "destructive", emoji: "🔴", label: t('historique_collecte.types.INFECTE') },
+      MIXTE: { variant: "warning", emoji: "🟡", label: t('historique_collecte.types.MIXTE') },
+      PROPRE_EN_PLACE: { variant: "success", emoji: "🟢", label: t('historique_collecte.types.PROPRE_EN_PLACE') },
+      MANQUANT: { variant: "secondary", emoji: "❓", label: t('historique_collecte.types.MANQUANT') },
+    };
+    
+    const config = typeConfig[type] || { variant: "secondary", emoji: "📦", label: type };
+    return <Badge variant={config.variant}>{config.emoji} {config.label}</Badge>;
+  }, [t]);
+
+  const getEtatBadge = useCallback((etat) => {
+    const etatColors = {
+      VERIFIE: { variant: "success", label: t('historique_collecte.etats.VERIFIE') },
+      EN_ATTENTE: { variant: "warning", label: t('historique_collecte.etats.EN_ATTENTE') },
+      NON_VALIDE: { variant: "destructive", label: t('historique_collecte.etats.NON_VALIDE') },
+      EN_TRAITEMENT: { variant: "info", label: t('historique_collecte.etats.EN_TRAITEMENT') },
+      PARTIELLEMENT_LIVREE: { variant: "warning", label: t('historique_collecte.etats.PARTIELLEMENT_LIVREE') },
+      CLOTUREE: { variant: "secondary", label: t('historique_collecte.etats.CLOTUREE') },
+      RECEPTIONNE: { variant: "success", label: t('historique_collecte.etats.RECEPTIONNE') },
+      EN_COURS: { variant: "info", label: t('historique_collecte.etats.EN_COURS') },
+      TERMINE: { variant: "success", label: t('historique_collecte.etats.TERMINE') },
+    };
+    
+    const config = etatColors[etat] || { variant: "secondary", label: etat };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  }, [t]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getPersonnelName = (personnelId) => {
+    if (!personnelId) return "N/A";
+    return personnelId;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -198,7 +243,6 @@ function CollecteCard({ collecte, index, onExpand, isExpanded, onViewDetails }) 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Header de la carte */}
       <div 
         className="p-4 cursor-pointer"
         onClick={() => onExpand(collecte.id)}
@@ -206,12 +250,12 @@ function CollecteCard({ collecte, index, onExpand, isExpanded, onViewDetails }) 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">
-              #{startIndex + index + 1}
+              #{index + 1}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-slate-800">
-                  Collecte #{collecte.id}
+                  {t('historique_collecte.collection')} #{collecte.id}
                 </span>
                 {getTypeBadge(collecte.typeCollecte)}
               </div>
@@ -255,7 +299,6 @@ function CollecteCard({ collecte, index, onExpand, isExpanded, onViewDetails }) 
         </div>
       </div>
 
-      {/* Contenu expansé */}
       <AnimatePresence>
         {isExpanded && (
           <motion.div
@@ -281,6 +324,7 @@ function CollecteCard({ collecte, index, onExpand, isExpanded, onViewDetails }) 
 
 // ─── PAGE PRINCIPALE ──────────────────────────────────────────────────────
 export default function HistoriqueCollecte() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [collectes, setCollectes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -291,7 +335,7 @@ export default function HistoriqueCollecte() {
   const [personnelsCache, setPersonnelsCache] = useState({});
   const [servicesCache, setServicesCache] = useState({});
   const [loadingPersonnels, setLoadingPersonnels] = useState(false);
-  const [viewMode, setViewMode] = useState("table"); // "table" | "cards"
+  const [viewMode, setViewMode] = useState("table");
   const itemsPerPage = 8;
   const { services } = useContext(ServiceContext);
 
@@ -302,18 +346,15 @@ export default function HistoriqueCollecte() {
     dateTo: "",
   });
 
-  // ─── Chargement des collectes ──────────────────────────────────────────
   const loadCollectes = useCallback(async () => {
     try {
       setLoading(true);
       const data = await fetchCollectes();
       
-      // Extraire les IDs des personnels uniques
       const personnelIds = data
         .map(c => c.personnelId)
         .filter(id => id != null);
       
-      // Charger les personnels en parallèle
       if (personnelIds.length > 0) {
         setLoadingPersonnels(true);
         const personnels = await fetchPersonnelsByIds(personnelIds);
@@ -327,17 +368,16 @@ export default function HistoriqueCollecte() {
       setCollectes([]);
       Swal.fire({
         icon: "error",
-        title: "Erreur",
-        text: error.message || "Impossible de charger les collectes",
+        title: t('common.error'),
+        text: error.message || t('historique_collecte.load_error'),
         timer: 3000,
         showConfirmButton: false
       });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
-  // ─── Chargement des détails d'une collecte ────────────────────────────
   const loadCollecteDetails = useCallback(async (collecteId) => {
     try {
       const data = await fetchCollecteDetails(collecteId);
@@ -348,7 +388,6 @@ export default function HistoriqueCollecte() {
     }
   }, []);
 
-  // ─── Chargement d'un personnel individuel ─────────────────────────────
   const loadPersonnel = useCallback(async (personnelId) => {
     if (!personnelId) return null;
     if (personnelsCache[personnelId]) return personnelsCache[personnelId];
@@ -363,17 +402,14 @@ export default function HistoriqueCollecte() {
     }
   }, [personnelsCache]);
 
-  // ─── Effet pour charger les collectes au montage ──────────────────────
   useEffect(() => {
     loadCollectes();
   }, [loadCollectes]);
 
-  // ─── Réinitialiser la page quand les filtres changent ─────────────────
   useEffect(() => {
     setCurrentPage(1);
   }, [filters]);
 
-  // ─── Récupérer le nom du personnel depuis personnelId ──────────────────
   const getPersonnelName = useCallback((personnelId) => {
     if (!personnelId) return "N/A";
     const personnel = personnelsCache[personnelId];
@@ -381,14 +417,12 @@ export default function HistoriqueCollecte() {
     return personnel.nomPrenom || personnel.nom || personnel.matricule || `ID: ${personnelId}`;
   }, [personnelsCache]);
 
-  // ─── Récupérer le nom du service ──────────────────────────────────────
   const getServiceName = useCallback((serviceId) => {
-    if (!serviceId) return "Non assigné";
+    if (!serviceId) return t('historique_collecte.unassigned');
     const service = services.find(s => s.id === serviceId);
-    return service ? service.code : "Non assigné";
-  }, [services]);
+    return service ? service.code : t('historique_collecte.unassigned');
+  }, [services, t]);
 
-  // ─── Gestion de l'expansion ───────────────────────────────────────────
   const handleToggleExpand = useCallback(async (collecteId) => {
     if (expandedId === collecteId) {
       setExpandedId(null);
@@ -404,30 +438,46 @@ export default function HistoriqueCollecte() {
     }
   }, [expandedId, loadCollecteDetails]);
 
-  // ─── Voir les détails ─────────────────────────────────────────────────
   const handleViewDetails = useCallback(async (collecte) => {
     setSelectedCollecte(collecte);
     setIsDetailsModalOpen(true);
     
-    // Charger le personnel si pas encore en cache
     if (collecte.personnelId && !personnelsCache[collecte.personnelId]) {
       await loadPersonnel(collecte.personnelId);
     }
   }, [personnelsCache, loadPersonnel]);
 
-  // ─── Badge de type ─────────────────────────────────────────────────────
+  // ✅ Correction: utiliser t directement, pas de useTranslation à l'intérieur
   const getTypeBadge = useCallback((type) => {
-    const config = getTypeBadgeConfig(type);
+    const typeConfig = {
+      BLANC: { variant: "info", emoji: "⬜", label: t('historique_collecte.types.BLANC') },
+      INFECTE: { variant: "destructive", emoji: "🔴", label: t('historique_collecte.types.INFECTE') },
+      MIXTE: { variant: "warning", emoji: "🟡", label: t('historique_collecte.types.MIXTE') },
+      PROPRE_EN_PLACE: { variant: "success", emoji: "🟢", label: t('historique_collecte.types.PROPRE_EN_PLACE') },
+      MANQUANT: { variant: "secondary", emoji: "❓", label: t('historique_collecte.types.MANQUANT') },
+    };
+    
+    const config = typeConfig[type] || { variant: "secondary", emoji: "📦", label: type };
     return <Badge variant={config.variant}>{config.emoji} {config.label}</Badge>;
-  }, []);
+  }, [t]);
 
-  // ─── Badge d'état ─────────────────────────────────────────────────────
   const getEtatBadge = useCallback((etat) => {
-    const config = getEtatBadgeConfig(etat);
+    const etatColors = {
+      VERIFIE: { variant: "success", label: t('historique_collecte.etats.VERIFIE') },
+      EN_ATTENTE: { variant: "warning", label: t('historique_collecte.etats.EN_ATTENTE') },
+      NON_VALIDE: { variant: "destructive", label: t('historique_collecte.etats.NON_VALIDE') },
+      EN_TRAITEMENT: { variant: "info", label: t('historique_collecte.etats.EN_TRAITEMENT') },
+      PARTIELLEMENT_LIVREE: { variant: "warning", label: t('historique_collecte.etats.PARTIELLEMENT_LIVREE') },
+      CLOTUREE: { variant: "secondary", label: t('historique_collecte.etats.CLOTUREE') },
+      RECEPTIONNE: { variant: "success", label: t('historique_collecte.etats.RECEPTIONNE') },
+      EN_COURS: { variant: "info", label: t('historique_collecte.etats.EN_COURS') },
+      TERMINE: { variant: "success", label: t('historique_collecte.etats.TERMINE') },
+    };
+    
+    const config = etatColors[etat] || { variant: "secondary", label: etat };
     return <Badge variant={config.variant}>{config.label}</Badge>;
-  }, []);
+  }, [t]);
 
-  // ─── Filtrage des collectes ───────────────────────────────────────────
   const filteredCollectes = collectes.filter((collecte) => {
     const personnelName = getPersonnelName(collecte.personnelId);
     const serviceName = getServiceName(collecte.service);
@@ -445,12 +495,10 @@ export default function HistoriqueCollecte() {
     return matchSearch && matchType && matchDateFrom && matchDateTo;
   });
 
-  // ─── Pagination ──────────────────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(filteredCollectes.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = filteredCollectes.slice(startIndex, startIndex + itemsPerPage);
 
-  // ─── Réinitialiser les filtres ──────────────────────────────────────
   const resetFilters = useCallback(() => {
     setFilters({
       search: "",
@@ -465,7 +513,6 @@ export default function HistoriqueCollecte() {
   return (
     <div className="space-y-6">
 
-      {/* ─── HEADER ─────────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-extrabold flex items-center gap-2 text-slate-800">
@@ -487,14 +534,13 @@ export default function HistoriqueCollecte() {
               <line x1="8" y1="15" x2="16" y2="15" />
               <line x1="8" y1="19" x2="13" y2="19" />
             </svg>
-            Historique des Collectes
+            {t('historique_collecte.title')}
           </h1>
           <p className="text-slate-500 text-sm">
-            {filteredCollectes.length} collecte(s) trouvée(s)
+            {filteredCollectes.length} {t('historique_collecte.collections_found')}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Vue Table/Cartes */}
           <div className="flex border border-slate-200 rounded-lg overflow-hidden">
             <button
               onClick={() => setViewMode("table")}
@@ -520,7 +566,6 @@ export default function HistoriqueCollecte() {
         </div>
       </div>
 
-      {/* ─── BARRE D'OUTILS ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
         <button
           onClick={loadCollectes}
@@ -528,52 +573,50 @@ export default function HistoriqueCollecte() {
           disabled={isLoading}
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> 
-          {isLoading ? "Chargement..." : "Actualiser"}
+          {isLoading ? t('common.loading') : t('common.refresh')}
         </button>
         <button
           disabled={!selectedCollecte}
           onClick={() => selectedCollecte && handleViewDetails(selectedCollecte)}
           className="flex items-center gap-2 px-4 py-2 bg-white border border-[#006f94]/30 rounded-[14px] text-sm font-bold text-[#006f94] hover:bg-[#006f94]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Eye className="w-4 h-4" /> Détails
+          <Eye className="w-4 h-4" /> {t('common.details')}
         </button>
         <button
           onClick={resetFilters}
           className="flex items-center gap-2 px-4 py-2 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
         >
-          <Filter className="w-4 h-4" /> Réinitialiser
+          <Filter className="w-4 h-4" /> {t('common.reset')}
         </button>
         <div className="flex-1"></div>
         <div className="text-sm text-slate-400">
-          <span className="font-medium text-slate-600">{filteredCollectes.length}</span> collectes
+          <span className="font-medium text-slate-600">{filteredCollectes.length}</span> {t('historique_collecte.collections')}
         </div>
       </div>
 
-      {/* ─── FILTRES ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="md:col-span-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Rechercher par agent, service, chambre..."
+              placeholder={t('historique_collecte.search_placeholder')}
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
               className="w-full h-10 pl-9 pr-4 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0794a4]/30 focus:border-[#0794a4] text-sm"
             />
           </div>
         </div>
-        <Select
-          options={[
-            { value: "", label: "Tous les types" },
-            { value: "BLANC", label: "⬜ Blanc" },
-            { value: "INFECTE", label: "🔴 Infecté" },
-            { value: "MIXTE", label: "🟡 Mixte" },
-          ]}
+        <select
           value={filters.type}
           onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-          className="h-10"
-        />
+          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0794a4]/30 focus:border-[#0794a4] text-sm"
+        >
+          <option value="">{t('historique_collecte.all_types')}</option>
+          <option value="BLANC">⬜ {t('historique_collecte.white')}</option>
+          <option value="INFECTE">🔴 {t('historique_collecte.infected')}</option>
+          <option value="MIXTE">🟡 {t('historique_collecte.mixed')}</option>
+        </select>
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -596,24 +639,22 @@ export default function HistoriqueCollecte() {
         </div>
       </div>
 
-      {/* ─── CONTENU ────────────────────────────────────────────────────── */}
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
             <svg className="animate-spin w-10 h-10 text-[#0794a4] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            <p className="text-slate-500 font-medium">Chargement des collectes...</p>
+            <p className="text-slate-500 font-medium">{t('common.loading')}</p>
           </div>
         </div>
       ) : currentData.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
           <Package className="w-16 h-16 mx-auto text-slate-300 mb-4" />
-          <p className="text-slate-500 font-medium text-lg">Aucune collecte trouvée</p>
-          <p className="text-slate-400 text-sm mt-1">Ajustez vos filtres ou actualisez la liste</p>
+          <p className="text-slate-500 font-medium text-lg">{t('historique_collecte.no_collections')}</p>
+          <p className="text-slate-400 text-sm mt-1">{t('historique_collecte.no_collections_hint')}</p>
         </div>
       ) : viewMode === "cards" ? (
-        // ─── VUE CARTES ──────────────────────────────────────────────────
         <div className="grid grid-cols-1 gap-4">
           {currentData.map((collecte, index) => (
             <CollecteCard
@@ -627,7 +668,6 @@ export default function HistoriqueCollecte() {
           ))}
         </div>
       ) : (
-        // ─── VUE TABLEAU ──────────────────────────────────────────────────
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -635,12 +675,12 @@ export default function HistoriqueCollecte() {
                 <thead className="border-b border-slate-200 bg-slate-50/80">
                   <tr>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider w-12">#</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date & Heure</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Agent</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Service</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">État</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider w-20">Action</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('historique_collecte.date_time')}</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('historique_collecte.agent')}</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('historique_collecte.service')}</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('historique_collecte.status')}</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('historique_collecte.type')}</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider w-20">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -693,7 +733,7 @@ export default function HistoriqueCollecte() {
                                   handleViewDetails(collecte);
                                 }}
                                 className="p-1.5 hover:bg-[#0794a4]/10 rounded-lg transition-colors text-slate-400 hover:text-[#0794a4]"
-                                title="Voir les détails"
+                                title={t('common.details')}
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
@@ -710,7 +750,6 @@ export default function HistoriqueCollecte() {
                           </td>
                         </tr>
 
-                        {/* Détails expansés */}
                         {isExpanded && (
                           <tr>
                             <td colSpan={7} className="p-4 bg-slate-50/50">
@@ -732,11 +771,10 @@ export default function HistoriqueCollecte() {
         </Card>
       )}
 
-      {/* ─── PAGINATION ────────────────────────────────────────────────── */}
       {totalPages > 1 && !isLoading && (
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <div className="text-sm text-slate-500">
-            {filteredCollectes.length} collecte(s) · Page {currentPage} / {totalPages}
+            {filteredCollectes.length} {t('historique_collecte.collections')} · {t('common.page')} {currentPage} / {totalPages}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -746,7 +784,7 @@ export default function HistoriqueCollecte() {
               onClick={() => setCurrentPage(currentPage - 1)}
               className="rounded-xl"
             >
-              Précédent
+              {t('common.previous')}
             </Button>
             <div className="flex gap-1">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -782,52 +820,51 @@ export default function HistoriqueCollecte() {
               onClick={() => setCurrentPage(currentPage + 1)}
               className="rounded-xl"
             >
-              Suivant
+              {t('common.next')}
             </Button>
           </div>
         </div>
       )}
 
-      {/* ─── MODAL DÉTAILS ────────────────────────────────────────────── */}
       <Modal
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
-        title={`Détails de la collecte #${selectedCollecte?.id}`}
+        title={`${t('historique_collecte.collection_details')} #${selectedCollecte?.id}`}
         size="lg"
       >
         {selectedCollecte && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">ID Collecte</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('historique_collecte.collection_id')}</label>
                 <Input value={`#${selectedCollecte.id}`} disabled className="bg-slate-50" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Date</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('historique_collecte.date')}</label>
                 <Input value={formatDate(selectedCollecte.dateCollecte)} disabled className="bg-slate-50" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Agent</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('historique_collecte.agent')}</label>
                 <Input value={getPersonnelName(selectedCollecte.personnelId)} disabled className="bg-slate-50" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Service</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('historique_collecte.service')}</label>
                 <Input value={getServiceName(selectedCollecte.service)} disabled className="bg-slate-50" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Chambre</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('historique_collecte.room')}</label>
                 <Input value={selectedCollecte.codeChambre || "N/A"} disabled className="bg-slate-50" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Type</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('historique_collecte.type')}</label>
                 <div>{getTypeBadge(selectedCollecte.typeCollecte)}</div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">État</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('historique_collecte.status')}</label>
                 <div>{getEtatBadge(selectedCollecte.etatCollecte)}</div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Numéro Collecte</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('historique_collecte.collection_number')}</label>
                 <Input value={selectedCollecte.numeroCollecte || "N/A"} disabled className="bg-slate-50" />
               </div>
             </div>
@@ -842,7 +879,7 @@ export default function HistoriqueCollecte() {
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
               <Button variant="outline" onClick={() => setIsDetailsModalOpen(false)} className="rounded-xl">
-                Fermer
+                {t('common.close')}
               </Button>
             </div>
           </div>

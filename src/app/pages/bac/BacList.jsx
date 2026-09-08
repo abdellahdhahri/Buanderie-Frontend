@@ -1,4 +1,6 @@
+// src/components/bacs/BacList.jsx
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Plus,
   Search,
@@ -28,6 +30,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import BarcodeLabel from "../../components/BarcodeLabel";
 
 export default function BacList() {
+  const { t } = useTranslation();
+
   const [bacs, setBacs] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBac, setSelectedBac] = useState(null);
@@ -150,35 +154,35 @@ export default function BacList() {
   };
 
   const getStatusBadge = (status) => {
-    if (!status) return <Badge variant="secondary">Non défini</Badge>;
+    if (!status) return <Badge variant="secondary">{t('bac_status.Non défini')}</Badge>;
     const variants = {
-      BLANC: { variant: "info", label: "BLANC" },
-      INFECTE: { variant: "danger", label: "INFECTE" },
-      MIXTE: { variant: "warning", label: "MIXTE" },
-      EN_RECEPTION: { variant: "warning", label: "EN RÉCEPTION" },
-      EN_ATTENTE_COLLECTE: { variant: "secondary", label: "EN ATTENTE" },
-      COLLECTE_EN_COURS: { variant: "info", label: "COLLECTE EN COURS" },
-      COLLECTE_TERMINEE: { variant: "success", label: "COLLECTE TERMINÉE" },
+      BLANC: { variant: "info", label: t('bac_status.BLANC') },
+      INFECTE: { variant: "danger", label: t('bac_status.INFECTE') },
+      MIXTE: { variant: "warning", label: t('bac_status.MIXTE') },
+      EN_RECEPTION: { variant: "warning", label: t('bac_status.EN_RECEPTION') },
+      EN_ATTENTE_COLLECTE: { variant: "secondary", label: t('bac_status.EN_ATTENTE_COLLECTE') },
+      COLLECTE_EN_COURS: { variant: "info", label: t('bac_status.COLLECTE_EN_COURS') },
+      COLLECTE_TERMINEE: { variant: "success", label: t('bac_status.COLLECTE_TERMINEE') },
     };
     const config = variants[status] || { variant: "secondary", label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const getEtatLingeBadge = (etat) => {
-    if (!etat) return <Badge variant="secondary">Non défini</Badge>;
+    if (!etat) return <Badge variant="secondary">{t('linge_status.Non défini')}</Badge>;
     const variants = {
-      COLLECTE: { variant: "warning", label: "Collecte" },
-      EN_LAVAGE: { variant: "info", label: "En lavage" },
-      PROPRE_PRET: { variant: "success", label: "Propre" },
-      RECEPTIONNE: { variant: "success", label: "Réceptionné" },
-      DISTRIBUE: { variant: "success", label: "Distribué" },
-      EN_SECHAGE_REPASSAGE: { variant: "info", label: "Séchage" },
-      STOCKE: { variant: "secondary", label: "Stocké" },
-      PRET_LIVRAISON: { variant: "success", label: "Prêt livraison" },
-      EN_TRI: { variant: "info", label: "En tri" },
-      LAVE: { variant: "success", label: "Lavé" },
-      SECHE: { variant: "success", label: "Séché" },
-      SALE: { variant: "danger", label: "Sale" },
+      COLLECTE: { variant: "warning", label: t('linge_status.COLLECTE') },
+      EN_LAVAGE: { variant: "info", label: t('linge_status.EN_LAVAGE') },
+      PROPRE_PRET: { variant: "success", label: t('linge_status.PROPRE_PRET') },
+      RECEPTIONNE: { variant: "success", label: t('linge_status.RECEPTIONNE') },
+      DISTRIBUE: { variant: "success", label: t('linge_status.DISTRIBUE') },
+      EN_SECHAGE_REPASSAGE: { variant: "info", label: t('linge_status.EN_SECHAGE_REPASSAGE') },
+      STOCKE: { variant: "secondary", label: t('linge_status.STOCKE') },
+      PRET_LIVRAISON: { variant: "success", label: t('linge_status.PRET_LIVRAISON') },
+      EN_TRI: { variant: "info", label: t('linge_status.EN_TRI') },
+      LAVE: { variant: "success", label: t('linge_status.LAVE') },
+      SECHE: { variant: "success", label: t('linge_status.SECHE') },
+      SALE: { variant: "danger", label: t('linge_status.SALE') },
     };
     const config = variants[etat] || { variant: "secondary", label: etat };
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -220,8 +224,8 @@ export default function BacList() {
 
     if (!newRec.reference || newRec.reference.trim() === "") {
       Swal.fire({
-        title: "⚠️ Référence requise",
-        text: "Veuillez saisir une référence.",
+        title: t('bacs.reference_required'),
+        text: t('bacs.reference_required_text'),
         icon: "warning",
       });
       return;
@@ -268,8 +272,8 @@ export default function BacList() {
       if (selectedBac) {
         setBacs((prev) => prev.map((r) => (r.id === data.id ? data : r)));
         Swal.fire({
-          title: "✅ Modifié!",
-          text: "Bac mis à jour avec succès.",
+          title: "✅",
+          text: t('bacs.update_success'),
           icon: "success",
           timer: 1500,
           showConfirmButton: false,
@@ -277,8 +281,8 @@ export default function BacList() {
       } else {
         setBacs((prev) => [data, ...prev]);
         Swal.fire({
-          title: "✅ Créé!",
-          text: "Nouveau bac créé avec succès.",
+          title: "✅",
+          text: t('bacs.create_success'),
           icon: "success",
           timer: 1500,
           showConfirmButton: false,
@@ -291,8 +295,8 @@ export default function BacList() {
     } catch (err) {
       console.error("❌ Erreur:", err);
       Swal.fire({
-        title: "❌ Erreur",
-        text: err.message || "Une erreur est survenue.",
+        title: "❌",
+        text: t('bacs.error_text'),
         icon: "error",
       });
     } finally {
@@ -302,14 +306,14 @@ export default function BacList() {
 
   const deleteRec = async (id) => {
     const result = await Swal.fire({
-      title: "Es-tu sûr?",
-      text: "Vous ne pourrez pas annuler cette action!",
+      title: t('bacs.delete_confirm'),
+      text: t('bacs.delete_confirm_text'),
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
-      confirmButtonText: "Oui, supprimer!",
-      cancelButtonText: "Annuler",
+      confirmButtonText: t('bacs.delete_confirm_yes'),
+      cancelButtonText: t('bacs.delete_confirm_no'),
     });
 
     if (result.isConfirmed) {
@@ -328,8 +332,8 @@ export default function BacList() {
             handleClosePanel();
           }
           Swal.fire({
-            title: "✅ Supprimé!",
-            text: "Bac supprimé avec succès.",
+            title: "✅",
+            text: t('bacs.delete_success'),
             icon: "success",
             timer: 1500,
             showConfirmButton: false,
@@ -341,8 +345,8 @@ export default function BacList() {
       } catch (err) {
         console.error("Erreur suppression:", err);
         Swal.fire({
-          title: "❌ Erreur",
-          text: err.message || "Erreur lors de la suppression.",
+          title: "❌",
+          text: t('bacs.error_text'),
           icon: "error",
         });
       }
@@ -416,14 +420,14 @@ export default function BacList() {
                   color: "#0f172a",
                   margin: 0
                 }}>
-                  Gestion des Bacs
+                  {t('bacs.title')}
                 </h1>
                 <p style={{
                   fontSize: "14px",
                   color: "#64748b",
                   margin: "2px 0 0 0"
                 }}>
-                  Gérez les bacs de stockage et de transport
+                  {t('bacs.subtitle')}
                 </p>
               </div>
             </div>
@@ -434,12 +438,11 @@ export default function BacList() {
               onClick={handleOpenCreateModal}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
             >
-              <Plus className="w-4 h-4 stroke-[2.5]" /> Nouveau Bac
+              <Plus className="w-4 h-4 stroke-[2.5]" /> {t('bacs.new')}
             </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
 
-            {/* ✅ Bouton Étiquette Bac avec BarcodeLabel */}
             {selectedBac && (
               <BarcodeLabel item={selectedBac} type="bac" />
             )}
@@ -448,12 +451,12 @@ export default function BacList() {
               disabled={!selectedBacId}
               onClick={() => {
                 if (selectedBac) {
-                  // Imprimer ticket bac (fonction à garder si besoin)
+                  // Imprimer ticket bac
                 }
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Printer className="w-4 h-4 stroke-[2.5]" /> Ticket Bac
+              <Printer className="w-4 h-4 stroke-[2.5]" /> {t('bacs.ticket')}
             </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
@@ -468,7 +471,7 @@ export default function BacList() {
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#006f94]/30 rounded-[14px] text-sm font-bold text-[#006f94] hover:bg-[#006f94]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Eye className="w-4 h-4 stroke-[2.5]" /> Détails Linge
+              <Eye className="w-4 h-4 stroke-[2.5]" /> {t('bacs.details_linge')}
             </button>
 
             <button
@@ -483,7 +486,7 @@ export default function BacList() {
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <History className="w-4 h-4 stroke-[2.5]" /> Historique
+              <History className="w-4 h-4 stroke-[2.5]" /> {t('bacs.history')}
             </button>
 
             <button
@@ -491,7 +494,7 @@ export default function BacList() {
               onClick={() => handleOpenEditModal(selectedBac)}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#006f94]/30 rounded-[14px] text-sm font-bold text-[#006f94] hover:bg-[#006f94]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Edit className="w-4 h-4 stroke-[2.5]" /> Modifier
+              <Edit className="w-4 h-4 stroke-[2.5]" /> {t('common.edit')}
             </button>
 
             <button
@@ -499,14 +502,14 @@ export default function BacList() {
               onClick={async () => {
                 if (selectedBacId) {
                   const confirmed = await Swal.fire({
-                    title: "Es-tu sûr?",
-                    text: "Vous ne pourrez pas annuler cette action!",
+                    title: t('bacs.delete_confirm'),
+                    text: t('bacs.delete_confirm_text'),
                     icon: "warning",
                     showCancelButton: true,
                     confirmButtonColor: "#d33",
                     cancelButtonColor: "#3085d6",
-                    confirmButtonText: "Oui, supprimer!",
-                    cancelButtonText: "Annuler",
+                    confirmButtonText: t('bacs.delete_confirm_yes'),
+                    cancelButtonText: t('bacs.delete_confirm_no'),
                   });
                   if (confirmed.isConfirmed) {
                     deleteRec(selectedBacId);
@@ -515,14 +518,14 @@ export default function BacList() {
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e03131]/30 rounded-[14px] text-sm font-bold text-[#e03131] hover:bg-[#e03131]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Trash2 className="w-4 h-4 stroke-[2.5]" /> Supprimer
+              <Trash2 className="w-4 h-4 stroke-[2.5]" /> {t('common.delete')}
             </button>
 
             <button
               onClick={fetchBacs}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Actualiser
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> {t('bacs.refresh')}
             </button>
           </div>
 
@@ -532,7 +535,7 @@ export default function BacList() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Rechercher par référence ou code..."
+                  placeholder={t('common.search')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -547,12 +550,12 @@ export default function BacList() {
                 <table className="w-full">
                   <thead className="border-b border-border bg-muted/50">
                     <tr>
-                      <th className="text-left py-3 px-4 text-sm font-medium w-10"></th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Référence</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Date création</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Poids / Capacité</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Type</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Actions</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium w-10"></th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('bacs.reference')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('bacs.date_creation')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('bacs.weight')} / {t('bacs.capacity')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('bacs.type')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -563,14 +566,14 @@ export default function BacList() {
                             <svg className="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
-                            Chargement...
+                            {t('common.loading')}
                           </div>
                         </td>
                       </tr>
                     ) : filteredBacs.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center py-8 text-muted-foreground">
-                          {searchTerm ? "Aucun bac correspondant" : "Aucun bac trouvé"}
+                          {searchTerm ? t('bacs.no_match') : t('bacs.no_data')}
                         </td>
                       </tr>
                     ) : (
@@ -579,7 +582,7 @@ export default function BacList() {
                           key={bac.id}
                           className={`border-b border-border hover:bg-accent/50 transition-colors ${selectedBacId === bac.id ? 'bg-blue-50' : ''}`}
                         >
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <button
                               onClick={() => handleOpenPanel(bac)}
                               className="p-1 hover:bg-blue-100 rounded-lg transition-colors"
@@ -592,32 +595,33 @@ export default function BacList() {
                               )}
                             </button>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <div className="font-medium">{bac.reference || "N/A"}</div>
                             <div className="text-xs text-muted-foreground font-mono">
                               {bac.code || "N/A"}
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-sm">
-                            {bac.dateCreation ? new Date(bac.dateCreation).toLocaleDateString("fr-FR") : "N/A"}
+                          <td className="text-center py-3 px-4 text-sm">
+                            {bac.dateCreation ? new Date(bac.dateCreation).toLocaleDateString() : "N/A"}
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <Weight className="w-4 h-4 text-slate-400" />
                               <span className="font-medium">{bac.poids || 0} kg</span>
                               <span className="text-xs text-slate-400">/</span>
                               <span className="text-xs text-slate-400">{bac.capacite_max || 0} kg</span>
                             </div>
                           </td>
-                          <td className="py-3 px-4">
-                            {getStatusBadge(bac.typeCollecte)}
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {bacLingesCount[bac.id] !== undefined ? bacLingesCount[bac.id] : '...'} linges
+                          <td className="text-center py-3 px-4">
+                            <div className="flex flex-col items-center gap-1">
+                              {getStatusBadge(bac.typeCollecte)}
+                              <div className="text-xs text-muted-foreground">
+                                {bacLingesCount[bac.id] !== undefined ? bacLingesCount[bac.id] : '...'} {t('bacs.linges_count')}
+                              </div>
                             </div>
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              {/* ✅ Bouton Étiquette avec BarcodeLabel */}
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <BarcodeLabel item={bac} type="bac" />
                               <button
                                 onClick={(e) => {
@@ -625,7 +629,7 @@ export default function BacList() {
                                   handleOpenEditModal(bac);
                                 }}
                                 className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title="Modifier"
+                                title={t('common.edit')}
                               >
                                 <Edit className="w-4 h-4 text-[#006f94]" />
                               </button>
@@ -635,7 +639,7 @@ export default function BacList() {
                                   deleteRec(bac.id);
                                 }}
                                 className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
-                                title="Supprimer"
+                                title={t('common.delete')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -688,15 +692,14 @@ export default function BacList() {
                       {selectedBac?.reference || "Bac"}
                     </h3>
                     <p className="text-xs text-slate-500">
-                      {selectedBac?.typeCollecte || "Type inconnu"}
+                      {selectedBac?.typeCollecte || t('bacs.type')}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="bg-white">
-                    {bacLinges.length} linge{bacLinges.length > 1 ? 's' : ''}
+                    {bacLinges.length} {t('bacs.linges_count')}
                   </Badge>
-                  {/* ✅ Bouton Étiquette avec BarcodeLabel */}
                   <BarcodeLabel item={selectedBac} type="bac" />
                   <button
                     onClick={handleClosePanel}
@@ -719,7 +722,7 @@ export default function BacList() {
               ) : bacLinges.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">
                   <Package className="w-12 h-12 mx-auto opacity-30 mb-3" />
-                  <p className="text-sm">Aucun linge dans ce bac</p>
+                  <p className="text-sm">{t('bacs.no_linge')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -786,11 +789,11 @@ export default function BacList() {
         )}
       </AnimatePresence>
 
-      {/* Modal Détails Linge - inchangée */}
+      {/* Modal Détails Linge */}
       <Modal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        title={`Détails du linge - ${selectedLingeDetail?.codeBarre || 'N/A'}`}
+        title={`${t('bacs.details_linge')} - ${selectedLingeDetail?.codeBarre || 'N/A'}`}
         size="lg"
       >
         {selectedLingeDetail && (
@@ -800,49 +803,49 @@ export default function BacList() {
               <Input value={selectedLingeDetail.id} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Code Suivi</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.code')}</label>
               <Input value={selectedLingeDetail.codeBarre} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tag RFID</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">RFID</label>
               <Input value={selectedLingeDetail.rfidTag || "Non associé"} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.type')}</label>
               <Input value={selectedLingeDetail.categorie} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Poids</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.weight')}</label>
               <Input value={`${selectedLingeDetail.poids || 0} kg`} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">État</label>
-              <div>{getEtatLingeBadge(selectedLingeDetail.etat)}</div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.status')}</label>
+              <div className="text-center">{getEtatLingeBadge(selectedLingeDetail.etat)}</div>
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Bac</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.reference')}</label>
               <Input value={selectedBac?.reference || "Non assigné"} disabled />
             </div>
             {selectedLingeDetail.dateCreation && (
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date de création</label>
-                <Input value={new Date(selectedLingeDetail.dateCreation).toLocaleString('fr-FR')} disabled />
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.date_creation')}</label>
+                <Input value={new Date(selectedLingeDetail.dateCreation).toLocaleString()} disabled />
               </div>
             )}
           </div>
         )}
         <div className="flex justify-end gap-3 mt-6">
           <Button onClick={() => setShowDetailModal(false)}>
-            Fermer
+            {t('common.close')}
           </Button>
         </div>
       </Modal>
 
-      {/* Modal Création/Modification - inchangée */}
+      {/* Modal Création/Modification */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={selectedBac ? `Modifier le Bac #${selectedBac.id}` : "Nouveau Bac"}
+        title={selectedBac ? `${t('bacs.edit')} #${selectedBac.id}` : t('bacs.new')}
         size="lg"
       >
         <form onSubmit={handleSave}>
@@ -850,7 +853,7 @@ export default function BacList() {
             {selectedBac && (
               <div>
                 <Input
-                  label="Code du bac"
+                  label={t('bacs.code')}
                   value={newRec.code || ""}
                   onChange={(e) =>
                     setNewRec({ ...newRec, code: e.target.value.toUpperCase() })
@@ -862,7 +865,7 @@ export default function BacList() {
 
             <div>
               <Input
-                label="Référence *"
+                label={`${t('bacs.reference')} *`}
                 value={newRec.reference}
                 onChange={(e) =>
                   setNewRec({ ...newRec, reference: e.target.value })
@@ -875,7 +878,7 @@ export default function BacList() {
             <div>
               <Input
                 type="number"
-                label="Poids (kg)"
+                label={t('bacs.current_weight')}
                 value={newRec.poids}
                 onChange={(e) =>
                   setNewRec({ ...newRec, poids: e.target.value })
@@ -888,7 +891,7 @@ export default function BacList() {
             <div>
               <Input
                 type="number"
-                label="Capacité maximale (kg)"
+                label={t('bacs.max_capacity')}
                 value={newRec.capacite_max}
                 onChange={(e) =>
                   setNewRec({ ...newRec, capacite_max: e.target.value })
@@ -899,7 +902,7 @@ export default function BacList() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">État</label>
+              <label className="block text-sm font-medium mb-2">{t('bacs.status')}</label>
               <select
                 value={newRec.etat}
                 onChange={(e) =>
@@ -907,15 +910,15 @@ export default function BacList() {
                 }
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="EN_RECEPTION">En réception</option>
-                <option value="EN_ATTENTE_COLLECTE">En attente de collecte</option>
-                <option value="COLLECTE_EN_COURS">Collecte en cours</option>
-                <option value="COLLECTE_TERMINEE">Collecte terminée</option>
+                <option value="EN_RECEPTION">{t('bac_status.EN_RECEPTION')}</option>
+                <option value="EN_ATTENTE_COLLECTE">{t('bac_status.EN_ATTENTE_COLLECTE')}</option>
+                <option value="COLLECTE_EN_COURS">{t('bac_status.COLLECTE_EN_COURS')}</option>
+                <option value="COLLECTE_TERMINEE">{t('bac_status.COLLECTE_TERMINEE')}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Type de bac</label>
+              <label className="block text-sm font-medium mb-2">{t('bacs.type_bac')}</label>
               <select
                 value={newRec.typebac}
                 onChange={(e) =>
@@ -923,13 +926,13 @@ export default function BacList() {
                 }
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="BLANC">Blanc</option>
-                <option value="INFECTE">Infecté</option>
+                <option value="BLANC">{t('bac_status.BLANC')}</option>
+                <option value="INFECTE">{t('bac_status.INFECTE')}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Type de collecte</label>
+              <label className="block text-sm font-medium mb-2">{t('bacs.type_collecte')}</label>
               <select
                 value={newRec.typeCollecte}
                 onChange={(e) =>
@@ -937,20 +940,20 @@ export default function BacList() {
                 }
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="BLANC">Blanc</option>
-                <option value="INFECTE">Infecté</option>
-                <option value="MIXTE">Mixte</option>
+                <option value="BLANC">{t('bac_status.BLANC')}</option>
+                <option value="INFECTE">{t('bac_status.INFECTE')}</option>
+                <option value="MIXTE">{t('bac_status.MIXTE')}</option>
               </select>
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium mb-2">Observations</label>
+              <label className="block text-sm font-medium mb-2">{t('bacs.observations')}</label>
               <textarea
                 value={newRec.observation}
                 onChange={(e) =>
                   setNewRec({ ...newRec, observation: e.target.value })
                 }
-                placeholder="Observations..."
+                placeholder={t('bacs.observations')}
                 className="w-full min-h-[60px] px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -963,10 +966,10 @@ export default function BacList() {
               type="button"
               disabled={isSaving}
             >
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Enregistrement..." : (selectedBac ? "Enregistrer" : "Créer")}
+              {isSaving ? t('common.loading') : (selectedBac ? t('common.save') : t('bacs.new'))}
             </Button>
           </div>
         </form>

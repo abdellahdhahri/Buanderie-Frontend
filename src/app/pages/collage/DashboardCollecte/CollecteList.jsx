@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { 
   FaTruck, FaUsers, FaBuilding, FaArrowRight,
@@ -7,45 +8,46 @@ import {
 import { motion } from "framer-motion";
 import "../../Linge/WorkflowList.css";
 
-const TYPES_COLLECTE = [
-  {
-    id: "service",
-    label: "Collecte Service",
-    description: "Collecte des linges auprès des services",
-    icon: FaBuilding,
-    route: "/service",
-    color: "#3b82f6",
-    bg: "#eff6ff",
-    border: "#93c5fd",
-    gradient: "linear-gradient(135deg, #3b82f6, #2563eb)"
-  },
-  {
-    id: "uniforme",
-    label: "Collecte Uniforme",
-    description: "Collecte des uniformes du personnel",
-    icon: FaUsers,
-    route: "/uniforme",
-    color: "#8b5cf6",
-    bg: "#f5f3ff",
-    border: "#c4b5fd",
-    gradient: "linear-gradient(135deg, #8b5cf6, #7c3aed)"
-  },
-  {
-    id: "linge",
-    label: "Collecte Chambre",
-    description: "Collecte des linges des chambres",
-    icon: FaBoxes,
-    route: "/Collages",
-    color: "#10b981",
-    bg: "#ecfdf5",
-    border: "#6ee7b7",
-    gradient: "linear-gradient(135deg, #10b981, #059669)"
-  }
-];
-
-export default function CollecteList() {
+function CollecteListInner() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
+
+  const TYPES_COLLECTE = [
+    {
+      id: "service",
+      label: t('collecte_list.types.service.label'),
+      description: t('collecte_list.types.service.description'),
+      icon: FaBuilding,
+      route: "/service",
+      color: "#3b82f6",
+      bg: "#eff6ff",
+      border: "#93c5fd",
+      gradient: "linear-gradient(135deg, #3b82f6, #2563eb)"
+    },
+    {
+      id: "uniforme",
+      label: t('collecte_list.types.uniforme.label'),
+      description: t('collecte_list.types.uniforme.description'),
+      icon: FaUsers,
+      route: "/uniforme",
+      color: "#8b5cf6",
+      bg: "#f5f3ff",
+      border: "#c4b5fd",
+      gradient: "linear-gradient(135deg, #8b5cf6, #7c3aed)"
+    },
+    {
+      id: "linge",
+      label: t('collecte_list.types.linge.label'),
+      description: t('collecte_list.types.linge.description'),
+      icon: FaBoxes,
+      route: "/Collages",
+      color: "#10b981",
+      bg: "#ecfdf5",
+      border: "#6ee7b7",
+      gradient: "linear-gradient(135deg, #10b981, #059669)"
+    }
+  ];
 
   const handleNavigate = (route) => {
     navigate(route);
@@ -86,14 +88,14 @@ export default function CollecteList() {
               color: "#0f172a",
               margin: 0
             }}>
-              Collecte
+              {t('collecte_list.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              Sélectionnez le type de collecte à effectuer
+              {t('collecte_list.subtitle')}
             </p>
           </div>
         </div>
@@ -250,7 +252,7 @@ export default function CollecteList() {
             animation: "pulse 2s infinite"
           }} />
           <span style={{ fontSize: "13px", color: "#475569" }}>
-            <strong style={{ color: "#0f172a" }}>Prêt</strong> · Choisissez un type de collecte
+            <strong style={{ color: "#0f172a" }}>{t('collecte_list.ready')}</strong> · {t('collecte_list.choose_type')}
           </span>
         </div>
         <div style={{
@@ -280,4 +282,8 @@ export default function CollecteList() {
       `}</style>
     </div>
   );
+}
+
+export default function CollecteList() {
+  return <CollecteListInner />;
 }

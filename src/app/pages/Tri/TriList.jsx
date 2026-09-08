@@ -1,5 +1,5 @@
-// pages/Tri/TriList.js
 import React, { useState, useContext, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { LingeContext } from "../../contextes/LingeContext";
 import { useNavigate } from "react-router-dom";
 import { useModal } from "../../contextes/ModalContext";
@@ -25,6 +25,8 @@ import { getAgent, isAgentConnected } from "../../services/agentService";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 function TriInner() {
+  const { t } = useTranslation();
+
   const { getLingeByCode } = useContext(LingeContext);
   const navigate           = useNavigate();
   const { showAlert, showConfirm } = useModal();
@@ -42,7 +44,6 @@ function TriInner() {
   const [showDialog,    setShowDialog]    = useState(false);
   const [lingeEnCours,  setLingeEnCours]  = useState(null);
 
-  // Refs
   const scanInputRef    = useRef(null);
   const isMounted       = useRef(true);
   const resetTimeoutRef = useRef(null);
@@ -53,16 +54,15 @@ function TriInner() {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
       const ag = {
-        matricule: agentData.codeBarre || agentData.matricule,
-        nom: agentData.nom || "Inconnu",
-        prenom: agentData.prenom || "",
-        nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
-        codeBarre: agentData.codeBarre || agentData.matricule,
-        id: agentData.id,
-        poste: agentData.poste || "AGENT_TRI"
+        matricule: agentData.codeBarre || agentData.matricule || '',
+        nom: agentData.nom || 'Inconnu',
+        prenom: agentData.prenom || '',
+        nomPrenom: agentData.nomPrenom || agentData.nom || 'Inconnu',
+        codeBarre: agentData.codeBarre || agentData.matricule || '',
+        id: agentData.id || null,
+        poste: agentData.poste || 'AGENT_TRI'
       };
       setAgentScanne(ag);
-      // Charger les statistiques de l'agent
       chargerStatistiques(ag.matricule);
     }
   }, []);
@@ -90,13 +90,13 @@ function TriInner() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       if (isMounted.current && scanInputRef.current) {
         scanInputRef.current.focus();
         setIsFocused(true);
       }
     }, 100);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, []);
 
   const focusInput = useCallback((delay = 200) => {
@@ -141,6 +141,11 @@ function TriInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanValue]);
 
+  const getAgentFullName = () => {
+    if (!agentScanne) return '';
+    return agentScanne.nomPrenom || agentScanne.nom || agentScanne.matricule;
+  };
+
   const handleScanAgent = useCallback(async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     const code = scanValue.trim();
@@ -152,22 +157,34 @@ function TriInner() {
       const res = await fetch(`${API_URL}/api/agents/matricule/${code}`);
       if (res.ok) {
         const agent = await res.json();
-        setAgentScanne(agent);
-        await chargerStatistiques(agent.matricule);
-        showAlert("Agent identifié", `✅ ${agent.nom || agent.matricule}`, "success");
+        const agentWithName = {
+          ...agent,
+          nomPrenom: agent.nomPrenom || agent.nom || agent.matricule
+        };
+        setAgentScanne(agentWithName);
+        await chargerStatistiques(agentWithName.matricule);
+        showAlert(
+          t('tri.agent_identified'),
+          `✅ ${agentWithName.nomPrenom} (${agentWithName.matricule})`,
+          "success"
+        );
       } else {
-        showAlert("Agent introuvable", `❌ L'agent [${code}] n'existe pas.`, "error");
+        showAlert(
+          t('tri.agent_not_found'),
+          t('tri.agent_not_found_text', { code: code }),
+          "error"
+        );
       }
     } catch (err) {
       console.error(err);
-      showAlert("Erreur Technique", "⚠️ Erreur lors de la recherche de l'agent.", "error");
+      showAlert(t('tri.technical_error'), t('tri.technical_error_text'), "error");
     } finally {
       if (isMounted.current) {
         setIsLoading(false);
         focusInput();
       }
     }
-  }, [scanValue, showAlert, focusInput, chargerStatistiques]);
+  }, [scanValue, showAlert, focusInput, chargerStatistiques, t]);
 
   const fetchLotsSuggere = useCallback(async (code) => {
     try {
@@ -229,11 +246,15 @@ function TriInner() {
       }));
 
       showAlert(
-        "Tri réussi",
-        `✅ ${lingeEnCours.codeSuivi || lingeEnCours.codeBarre} affecté au lot ${lot.codeLot}\n` +
-        `📦 Poids: ${lot.poidsActuel?.toFixed(2) || "0"}/${lot.capaciteMax || "0"} kg\n` +
-        `📂 Catégorie: ${lot.categorie}\n` +
-        `🏷️ Type: ${lot.typeCollecte}`,
+        t('tri.tri_success'),
+        t('tri.tri_success_text', {
+          code: lingeEnCours.codeSuivi || lingeEnCours.codeBarre,
+          lotCode: lot.codeLot,
+          poids: lot.poidsActuel?.toFixed(2) || "0",
+          capacite: lot.capaciteMax || "0",
+          categorie: lot.categorie,
+          typeCollecte: lot.typeCollecte
+        }),
         "success"
       );
 
@@ -241,14 +262,14 @@ function TriInner() {
 
     } catch (err) {
       console.error("Erreur affectation:", err);
-      showAlert("Erreur", `❌ ${err.message}`, "error");
+      showAlert(t('tri.tri_error'), t('tri.tri_error_text', { message: err.message }), "error");
     } finally {
       if (isMounted.current) {
         setIsLoading(false);
         focusInput();
       }
     }
-  }, [lingeEnCours, agentScanne, showAlert, focusInput]);
+  }, [lingeEnCours, agentScanne, showAlert, focusInput, t]);
 
   const handleScanLinge = useCallback(async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -260,14 +281,14 @@ function TriInner() {
     try {
       const linge = await getLingeByCode(code);
       if (!linge) {
-        showAlert("Linge introuvable", `❌ Le code [${code}] n'existe pas.`, "error");
+        showAlert(t('tri.linge_not_found'), t('tri.linge_not_found_text', { code: code }), "error");
         return;
       }
 
       if (linge.etat !== "RECEPTION") {
         showAlert(
-          "État invalide",
-          `⚠️ Le linge [${code}] est en état [${linge.etat}]. Seuls les linges en RECEPTION peuvent être triés.`,
+          t('tri.invalid_state'),
+          t('tri.invalid_state_text', { code: code, etat: linge.etat }),
           "warning"
         );
         return;
@@ -280,8 +301,11 @@ function TriInner() {
       
       if (lots.length === 0) {
         showAlert(
-          "Aucun lot disponible",
-          `⚠️ Aucun lot disponible pour ce linge.\nCatégorie: ${linge.categorie}\nType: ${linge.typeCollecte}`,
+          t('tri.no_lot_available_title'),
+          t('tri.no_lot_available_message', {
+            categorie: linge.categorie,
+            typeCollecte: linge.typeCollecte
+          }),
           "warning"
         );
         setLingeScanne(null);
@@ -294,7 +318,7 @@ function TriInner() {
 
     } catch (err) {
       console.error("Erreur scan:", err);
-      showAlert("Erreur", `❌ ${err.message}`, "error");
+      showAlert(t('tri.tri_error'), t('tri.tri_error_text', { message: err.message }), "error");
       setLingeScanne(null);
       setLingeEnCours(null);
     } finally {
@@ -303,27 +327,27 @@ function TriInner() {
         focusInput();
       }
     }
-  }, [scanValue, getLingeByCode, fetchLotsSuggere, showAlert, focusInput]);
+  }, [scanValue, getLingeByCode, fetchLotsSuggere, showAlert, focusInput, t]);
 
   const handleLogoutAgent = useCallback(() => {
-    showConfirm("Déconnecter", "Voulez-vous déconnecter l'agent ?", "warning")
+    showConfirm(t('tri.confirm_logout'), t('tri.confirm_logout_text'), "warning")
       .then(ok => {
         if (ok && isMounted.current) {
           resetAllStates(true);
-          showAlert("Déconnexion", "✅ Agent déconnecté", "info");
+          showAlert(t('tri.logout_success'), "✅ Agent déconnecté", "info");
         }
       });
-  }, [showConfirm, showAlert, resetAllStates]);
+  }, [showConfirm, showAlert, resetAllStates, t]);
 
   const handleResetAll = useCallback(() => {
-    showConfirm("Réinitialiser", "Voulez-vous réinitialiser tout le processus de tri ?", "warning")
+    showConfirm(t('tri.confirm_reset'), t('tri.confirm_reset_text'), "warning")
       .then(ok => {
         if (ok && isMounted.current) {
           resetAllStates(true);
-          showAlert("Réinitialisation", "✅ Tout a été réinitialisé", "info");
+          showAlert(t('tri.reset_success'), "✅ Tout a été réinitialisé", "info");
         }
       });
-  }, [showConfirm, showAlert, resetAllStates]);
+  }, [showConfirm, showAlert, resetAllStates, t]);
 
   const DialogLotsSuggere = () => {
     if (!showDialog || lotsSuggere.length === 0) return null;
@@ -359,7 +383,7 @@ function TriInner() {
               </div>
               <div>
                 <div style={{ fontWeight: 800, fontSize: "16px", color: "#0f172a" }}>
-                  Choisir le lot de tri
+                  {t('tri.choose_lot')}
                 </div>
                 <div style={{ fontSize: "12px", color: "#64748b" }}>
                   {lingeEnCours?.codeSuivi || lingeEnCours?.codeBarre} • {lingeEnCours?.categorie} • {lingeEnCours?.typeCollecte}
@@ -432,8 +456,8 @@ function TriInner() {
                   </div>
                   
                   <div style={{ fontSize: "11px", color: "#64748b", display: "flex", flexDirection: "column", gap: "2px", width: "100%" }}>
-                    <span>📂 {lot.categorie}</span>
-                    <span>🏷️ {lot.typeCollecte}</span>
+                    <span>📂 {t('tri.category')}: {lot.categorie}</span>
+                    <span>🏷️ {t('tri.type')}: {lot.typeCollecte}</span>
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 600, color: couleur.color }}>
@@ -467,7 +491,7 @@ function TriInner() {
                       padding: "2px 8px",
                       borderRadius: "10px"
                     }}>
-                      ⚠️ Plein
+                      ⚠️ {t('tri.full')}
                     </span>
                   )}
 
@@ -493,7 +517,7 @@ function TriInner() {
           {lotsSuggere.length === 0 && (
             <div style={{ textAlign: "center", padding: "30px", color: "#94a3b8" }}>
               <FaExclamationTriangle size={32} style={{ opacity: 0.3, marginBottom: "10px" }} />
-              <div>Aucun lot disponible pour ce linge</div>
+              <div>{t('tri.no_lot_available')}</div>
             </div>
           )}
         </div>
@@ -502,8 +526,8 @@ function TriInner() {
   };
 
   const getPlaceholder = () => {
-    if (!agentScanne) return "👤 Agent non connecté — veuillez vous reconnecter";
-    return modeScan === MODE_RFID ? "📡 Scanner tag RFID..." : "📦 Scanner un article (état RECEPTION)...";
+    if (!agentScanne) return t('tri.scan_placeholder_no_agent');
+    return modeScan === MODE_RFID ? t('tri.scan_placeholder_rfid') : t('tri.scan_placeholder');
   };
 
   const getBorderColor = () => {
@@ -514,7 +538,6 @@ function TriInner() {
   return (
     <div className="collecte-container">
 
-      {/* Dialog de suggestion de lots */}
       <DialogLotsSuggere />
 
       {/* ── Header ── */}
@@ -560,14 +583,16 @@ function TriInner() {
               color: "#0f172a",
               margin: 0
             }}>
-              Tri de Linge
+              {t('tri.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agentScanne ? `Agent: ${agentScanne.nomPrenom || agentScanne.nom || agentScanne.matricule}` : "Aucun agent connecté"}
+              {agentScanne 
+                ? t('tri.subtitle', { agent: getAgentFullName() })
+                : t('tri.subtitle_no_agent')}
             </p>
           </div>
         </div>
@@ -607,7 +632,7 @@ function TriInner() {
               }}>
                 <FaCheckCircle color="#22c55e" size={16} />
                 <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
-                  {agentScanne.nomPrenom || agentScanne.nom || agentScanne.matricule}
+                  {getAgentFullName()}
                 </span>
                 <Badge variant="outline" style={{ fontSize: "11px" }}>
                   {agentScanne.codeBarre || agentScanne.matricule}
@@ -625,7 +650,7 @@ function TriInner() {
                 </button>
               </div>
             ) : (
-              <div style={{ fontSize: "13px", color: "#94a3b8" }}>Aucun agent connecté</div>
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>{t('tri.no_agent_title')}</div>
             )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
@@ -646,14 +671,14 @@ function TriInner() {
               }}
             >
               {modeScan === MODE_RFID ? <FaRss size={12} /> : <FaBarcode size={12} />}
-              {modeScan === MODE_RFID ? "RFID" : "Code-barres"}
+              {modeScan === MODE_RFID ? t('tri.mode_rfid') : t('tri.mode_barcode')}
             </button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleResetAll}
             >
-              Reset
+              {t('tri.reset')}
             </Button>
           </div>
         </div>
@@ -673,12 +698,12 @@ function TriInner() {
             color: "#dc2626"
           }}>
             <FaExclamationTriangle size={16} />
-            <span style={{ fontWeight: 600 }}>Aucun agent connecté</span>
-            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer un tri</span>
+            <span style={{ fontWeight: 600 }}>{t('tri.no_agent_title')}</span>
+            <span style={{ color: "#64748b" }}>{t('tri.no_agent_message')}</span>
           </div>
         )}
 
-        {/* ─── ZONE DE SCAN (exactement comme Pliage) ────────────────────── */}
+        {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
           border: `2px dashed ${getBorderColor()}`
@@ -704,8 +729,8 @@ function TriInner() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaTags color="#d97706" size={16} />
-                <span style={{ fontWeight: 600, color: "#92400e" }}>Prêt pour le tri</span>
-                <span style={{ color: "#64748b" }}>Scannez un linge en état RECEPTION</span>
+                <span style={{ fontWeight: 600, color: "#92400e" }}>{t('tri.ready')}</span>
+                <span style={{ color: "#64748b" }}>{t('tri.ready_text')}</span>
               </div>
             </CardContent>
           </Card>
@@ -719,9 +744,9 @@ function TriInner() {
             gap: "12px", 
             marginBottom: "20px"
           }}>
-            <StatCard value={statistiques.totalTrie || 0} label="Articles triés" color="#0ea5e9" />
-            <StatCard value={statistiques.lotsUtilises || 0} label="Lots utilisés" color="#22c55e" />
-            <StatCard value={(statistiques.poidsTotal?.toFixed(1) || "0") + " kg"} label="Poids total" color="#8b5cf6" />
+            <StatCard value={statistiques.totalTrie || 0} label={t('tri.articles_tried')} color="#0ea5e9" />
+            <StatCard value={statistiques.lotsUtilises || 0} label={t('tri.lots_used')} color="#22c55e" />
+            <StatCard value={(statistiques.poidsTotal?.toFixed(1) || "0") + " " + t('tri.weight')} label={t('tri.total_weight')} color="#8b5cf6" />
           </div>
         )}
 
@@ -736,16 +761,16 @@ function TriInner() {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px", flexWrap: "wrap" }}>
               <FaCheckCircle size={20} color="#2563eb" />
-              <span style={{ fontWeight: 700, fontSize: "16px", color: "#1e3a8a" }}>Lot affecté</span>
+              <span style={{ fontWeight: 700, fontSize: "16px", color: "#1e3a8a" }}>{t('tri.lot_affected')}</span>
               <Badge style={{ background: "#2563eb", color: "white", fontSize: "11px" }}>
                 {lotSuggere.codeLot}
               </Badge>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px" }}>
-              <LotField label="Type" value={lotSuggere.typeCollecte} />
-              <LotField label="Catégorie" value={lotSuggere.categorie} />
-              <LotField label="Poids" value={`${lotSuggere.poidsActuel?.toFixed(2) || "0"} / ${lotSuggere.capaciteMax || "0"} kg`} />
-              <LotField label="État" value={lotSuggere.etat} color={lotSuggere.etat === "EN_TRI" ? "#22c55e" : "#f59e0b"} />
+              <LotField label={t('tri.type')} value={lotSuggere.typeCollecte} />
+              <LotField label={t('tri.category')} value={lotSuggere.categorie} />
+              <LotField label={t('tri.weight')} value={`${lotSuggere.poidsActuel?.toFixed(2) || "0"} / ${lotSuggere.capaciteMax || "0"} kg`} />
+              <LotField label={t('tri.status')} value={lotSuggere.etat} color={lotSuggere.etat === "EN_TRI" ? "#22c55e" : "#f59e0b"} />
             </div>
           </div>
         )}
@@ -761,7 +786,7 @@ function TriInner() {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
               <FaBarcode size={18} color="#22c55e" />
-              <span style={{ fontWeight: 600 }}>Dernier linge scanné</span>
+              <span style={{ fontWeight: 600 }}>{t('tri.last_scanned')}</span>
               <code style={{ 
                 padding: "2px 10px", 
                 background: "#dcfce7", 
@@ -797,7 +822,7 @@ function TriInner() {
               gap: "8px" 
             }}>
               <FaHistory />
-              Historique des tris ({historiqueTri.length})
+              {t('tri.history')} ({historiqueTri.length})
             </div>
             <div style={{ 
               maxHeight: "200px", 
@@ -859,15 +884,15 @@ function TriInner() {
           <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#64748b" }}>
             {agentScanne && (
               <>
-                <span>Agent: <strong style={{ color: "#0f172a" }}>{agentScanne.nomPrenom || agentScanne.nom || agentScanne.matricule}</strong></span>
-                <span>Matricule: <strong style={{ color: "#0f172a" }}>{agentScanne.matricule}</strong></span>
+                <span>{t('tri.agent')}: <strong style={{ color: "#0f172a" }}>{getAgentFullName()}</strong></span>
+                <span>{t('tri.matricule')}: <strong style={{ color: "#0f172a" }}>{agentScanne.matricule}</strong></span>
               </>
             )}
             {!agentScanne && (
-              <span style={{ color: "#dc2626" }}>⚠️ Aucun agent connecté</span>
+              <span style={{ color: "#dc2626" }}>⚠️ {t('tri.no_agent_title')}</span>
             )}
             {lotSuggere && (
-              <span>Dernier lot: <strong style={{ color: "#3b82f6" }}>{lotSuggere.codeLot}</strong></span>
+              <span>{t('tri.last_lot')}: <strong style={{ color: "#3b82f6" }}>{lotSuggere.codeLot}</strong></span>
             )}
           </div>
           <div style={{ display: "flex", gap: "8px", fontSize: "12px", color: "#94a3b8" }}>

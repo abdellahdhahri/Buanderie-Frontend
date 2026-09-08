@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useModal } from "../../../contextes/ModalContext";
 import {
   FaUser, FaTimes, FaBiohazard, FaCheckCircle, FaCheck,
@@ -57,7 +58,7 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
 }
 
 // ─── DIALOGUE MANQUANT ─────────────────────────────────────────────────────
-function DlgManquant({ linge, onOk, onClose }) {
+function DlgManquant({ linge, onOk, onClose, t }) {
   if (!linge) return null;
   const c = cat(linge.categorie);
   return (
@@ -84,7 +85,7 @@ function DlgManquant({ linge, onOk, onClose }) {
               <FaExclamationTriangle size={14} color="#d97706" />
             </div>
             <div style={{ fontWeight: 700, fontSize: "14px", color: "#0f172a" }}>
-              Uniforme manquant ?
+              {t('collecte_uniforme.missing_uniform')}
             </div>
           </div>
           <button onClick={onClose} style={{
@@ -115,7 +116,7 @@ function DlgManquant({ linge, onOk, onClose }) {
             color: "#64748b", fontWeight: 600, fontSize: "12px",
             cursor: "pointer"
           }}>
-            Annuler
+            {t('common.cancel')}
           </button>
           <button onClick={() => onOk(linge)} style={{
             flex: 2, padding: "10px", borderRadius: "8px",
@@ -123,7 +124,7 @@ function DlgManquant({ linge, onOk, onClose }) {
             color: "white", fontWeight: 700, fontSize: "12px",
             cursor: "pointer"
           }}>
-            Confirmer
+            {t('collecte_uniforme.confirm_missing')}
           </button>
         </div>
       </div>
@@ -132,7 +133,7 @@ function DlgManquant({ linge, onOk, onClose }) {
 }
 
 // ─── CARTE UNIFORME ──────────────────────────────────────────────────────
-function CarteUniforme({ u, uniformeEnCours, onManquant }) {
+function CarteUniforme({ u, uniformeEnCours, onManquant, t }) {
   const c = cat(u.categorie);
   const col = ST_COLORS[u.statut];
   const estActif = uniformeEnCours?.lingeId === u.lingeId;
@@ -164,7 +165,7 @@ function CarteUniforme({ u, uniformeEnCours, onManquant }) {
             )}
             {estActif && (
               <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "9px" }}>
-                Scan bac
+                {t('collecte_uniforme.scan_bin')}
               </Badge>
             )}
           </div>
@@ -182,7 +183,7 @@ function CarteUniforme({ u, uniformeEnCours, onManquant }) {
       ) : (
         <button
           onClick={() => onManquant(u)}
-          title="Manquant"
+          title={t('collecte_uniforme.missing')}
           style={{
             width: "26px", height: "26px", borderRadius: "50%",
             border: "1px solid #fde68a", background: "#fef3c7",
@@ -198,7 +199,8 @@ function CarteUniforme({ u, uniformeEnCours, onManquant }) {
 }
 
 // ─── PAGE PRINCIPALE ──────────────────────────────────────────────────────
-export default function CollageListUniforme() {
+function CollageListUniformeInner() {
+  const { t } = useTranslation();
   const { showAlert, showConfirm } = useModal();
 
   const [etape, setEtape] = useState("BADGE");
@@ -223,7 +225,6 @@ export default function CollageListUniforme() {
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
-      // ✅ Utiliser les données du localStorage
       const ag = {
         matricule: agentData.codeBarre || agentData.matricule,
         nom: agentData.nom || "Inconnu",
@@ -239,7 +240,7 @@ export default function CollageListUniforme() {
         loading: false,
         success: { 
           message: `👤 ${ag.nomPrenom || ag.nom}`, 
-          detail: `Connecté · ${ag.codeBarre || ag.matricule}` 
+          detail: `${t('collecte_uniforme.connected')} · ${ag.codeBarre || ag.matricule}` 
         },
         error: null
       });
@@ -249,10 +250,10 @@ export default function CollageListUniforme() {
       setScanStatus({
         loading: false,
         success: null,
-        error: "Aucun agent connecté — veuillez vous reconnecter"
+        error: t('collecte_uniforme.no_agent_connected')
       });
     }
-  }, []);
+  }, [t]);
 
   // ─── Scan automatique ──────────────────────────────────────────────────
   useEffect(() => {
@@ -288,14 +289,14 @@ export default function CollageListUniforme() {
   // ─── ÉTAPE 2 : Badge médecin ─────────────────────────────────────────
   const handleBadge = useCallback(async (code) => {
     if (!agent) {
-      showAlert("Agent non connecté", "Veuillez vous reconnecter.", "error");
+      showAlert(t('collecte_uniforme.errors.agent_not_connected'), t('collecte_uniforme.errors.agent_not_connected_text'), "error");
       return;
     }
     setLoading(true);
     setScanStatus(null);
     try {
       const res = await apiCall("/api/collecte/uniforme/ouvrir", {
-        matriculeAgent: agent.codeBarre || agent.matricule, // ✅ Utiliser codeBarre
+        matriculeAgent: agent.codeBarre || agent.matricule,
         codeBadge: code
       });
       setCollecte({
@@ -313,25 +314,25 @@ export default function CollageListUniforme() {
       setScanStatus({
         loading: false,
         success: {
-          message: res.estInfecte ? "⚠️ Contact infectieux" : `✅ ${res.personnelNom}`,
-          detail: res.estInfecte ? res.infoInfection || "Uniformes potentiellement infectés" : `${res.nbUniformes} uniforme(s)`
+          message: res.estInfecte ? t('collecte_uniforme.infectious_contact') : `✅ ${res.personnelNom}`,
+          detail: res.estInfecte ? res.infoInfection || t('collecte_uniforme.potentially_infected') : `${res.nbUniformes} ${t('collecte_uniforme.uniforms')}`
         },
         error: null
       });
       setTimeout(() => setScanStatus(null), 3000);
       
       if (res.estInfecte) {
-        showAlert("⚠️ Contact infectieux", `${res.personnelNom} — ${res.infoInfection || "Uniformes potentiellement infectés"}`, "warning");
+        showAlert(t('collecte_uniforme.infectious_contact'), `${res.personnelNom} — ${res.infoInfection || t('collecte_uniforme.potentially_infected')}`, "warning");
       } else {
-        showAlert("Médecin identifié", `${res.personnelNom} — ${res.nbUniformes} uniforme(s)`, "success");
+        showAlert(t('collecte_uniforme.doctor_identified'), `${res.personnelNom} — ${res.nbUniformes} ${t('collecte_uniforme.uniforms')}`, "success");
       }
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
-      showAlert("Erreur", e.message, "error");
+      showAlert(t('common.error'), e.message, "error");
     } finally {
       setLoading(false);
     }
-  }, [agent, showAlert]);
+  }, [agent, showAlert, t]);
 
   // ─── ÉTAPE 3 : Scanner uniforme ──────────────────────────────────────
   const handleScanUniforme = useCallback((code) => {
@@ -339,20 +340,20 @@ export default function CollageListUniforme() {
       x => x.codeBarre === code || String(x.lingeId) === code
     );
     if (!u) {
-      showAlert("Uniforme introuvable", code, "error");
+      showAlert(t('collecte_uniforme.errors.uniform_not_found'), code, "error");
       return;
     }
     if (u.statut) {
-      showAlert("Déjà traité", u.codeBarre, "info");
+      showAlert(t('collecte_uniforme.already_processed'), u.codeBarre, "info");
       return;
     }
     setUniformeEnCours(u);
     if (u.estInfecte) {
-      showAlert("🔴 Uniforme infecté", "Scannez un bac ROUGE", "warning");
+      showAlert("🔴 " + t('collecte_uniforme.infected_uniform'), t('collecte_uniforme.scan_red_bin'), "warning");
     } else {
-      showAlert("🟢 Uniforme propre", "Scannez un bac BLANC", "success");
+      showAlert("🟢 " + t('collecte_uniforme.clean_uniform'), t('collecte_uniforme.scan_white_bin'), "success");
     }
-  }, [showAlert]);
+  }, [showAlert, t]);
 
   // ─── ÉTAPE 4 : Scanner bac ───────────────────────────────────────────
   const handleScanBac = useCallback(async (code) => {
@@ -369,7 +370,7 @@ export default function CollageListUniforme() {
       setScanStatus({
         loading: false,
         success: {
-          message: res.statut === "INFECTE" ? "✅ Bac ROUGE" : "✅ Bac BLANC",
+          message: res.statut === "INFECTE" ? "✅ " + t('collecte_uniforme.red_bin') : "✅ " + t('collecte_uniforme.white_bin'),
           detail: `${uniformeEnCours.codeBarre} → ${res.bac}`
         },
         error: null
@@ -377,17 +378,17 @@ export default function CollageListUniforme() {
       setTimeout(() => setScanStatus(null), 2000);
       
       if (res.statut === "INFECTE") {
-        showAlert("✅ Bac ROUGE", `${uniformeEnCours.codeBarre} → bac rouge`, "warning");
+        showAlert("✅ " + t('collecte_uniforme.red_bin'), `${uniformeEnCours.codeBarre} → ${t('collecte_uniforme.red_bin')}`, "warning");
       } else {
-        showAlert("✅ Bac BLANC", `${uniformeEnCours.codeBarre} → bac blanc`, "success");
+        showAlert("✅ " + t('collecte_uniforme.white_bin'), `${uniformeEnCours.codeBarre} → ${t('collecte_uniforme.white_bin')}`, "success");
       }
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
-      showAlert("Erreur", e.message || "Bac invalide", "error");
+      showAlert(t('common.error'), e.message || t('collecte_uniforme.errors.invalid_bin'), "error");
     } finally {
       setLoading(false);
     }
-  }, [uniformeEnCours, showAlert, majUniforme]);
+  }, [uniformeEnCours, showAlert, majUniforme, t]);
 
   // ─── Manquant ─────────────────────────────────────────────────────────
   const handleManquant = useCallback(async (u) => {
@@ -396,21 +397,21 @@ export default function CollageListUniforme() {
     try {
       await apiCall(`/api/collecte/uniforme/${collecteRef.current?.id}/manquant`, { lingeId: u.lingeId });
       majUniforme(u.lingeId, "MANQUANT");
-      showAlert("Manquant", u.codeBarre, "warning");
+      showAlert(t('collecte_uniforme.missing'), u.codeBarre, "warning");
     } catch (e) {
-      showAlert("Erreur", e.message, "error");
+      showAlert(t('common.error'), e.message, "error");
     } finally {
       setLoading(false);
     }
-  }, [showAlert, majUniforme]);
+  }, [showAlert, majUniforme, t]);
 
   // ─── Clôturer ─────────────────────────────────────────────────────────
   const handleCloturer = useCallback(async () => {
     const nonTr = collecte?.uniformes?.filter(u => !u.statut) || [];
     if (nonTr.length > 0) {
       const ok = await showConfirm(
-        "Clôturer",
-        `${nonTr.length} uniforme(s) non traité(s). Clôturer ?`,
+        t('collecte_uniforme.close'),
+        `${nonTr.length} ${t('collecte_uniforme.unprocessed')}. ${t('collecte_uniforme.close_confirm')}`,
         "question"
       );
       if (!ok) return;
@@ -421,13 +422,13 @@ export default function CollageListUniforme() {
       setResume(res);
       setUniformeEnCours(null);
       setEtape("RESUME");
-      showAlert("Collecte clôturée", `${collecte.personnelNom} — ${res.nbBlancs} blancs, ${res.nbInfectes} infectés`, "success");
+      showAlert(t('collecte_uniforme.collection_closed'), `${collecte.personnelNom} — ${res.nbBlancs} ${t('collecte_uniforme.white')}, ${res.nbInfectes} ${t('collecte_uniforme.infected')}`, "success");
     } catch (e) {
-      showAlert("Erreur", e.message, "error");
+      showAlert(t('common.error'), e.message, "error");
     } finally {
       setLoading(false);
     }
-  }, [collecte, showAlert, showConfirm]);
+  }, [collecte, showAlert, showConfirm, t]);
 
   const handleScan = useCallback(async (code) => {
     setScanVal("");
@@ -459,18 +460,18 @@ export default function CollageListUniforme() {
   const manquants = collecte?.uniformes?.filter(u => u.statut === "MANQUANT").length || 0;
 
   const getPlaceholder = () => {
-    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
-    if (!collecte) return "🩺 Scanner le badge du médecin...";
-    if (uniformeEnCours) return "📦 Scanner le bac...";
-    if (etape === "RESUME") return "🔒 Collecte terminée";
-    return "👔 Scanner un uniforme...";
+    if (!agent) return "👤 " + t('collecte_uniforme.no_agent_connected');
+    if (!collecte) return "🩺 " + t('collecte_uniforme.scan_doctor_badge');
+    if (uniformeEnCours) return "📦 " + t('collecte_uniforme.scan_bin');
+    if (etape === "RESUME") return "🔒 " + t('collecte_uniforme.collection_closed');
+    return "👔 " + t('collecte_uniforme.scan_uniform');
   };
 
   const isCloturee = etape === "RESUME";
 
   return (
     <div className="collecte-container">
-      <DlgManquant linge={dlgManq} onOk={handleManquant} onClose={() => setDlgManq(null)} />
+      <DlgManquant linge={dlgManq} onOk={handleManquant} onClose={() => setDlgManq(null)} t={t} />
 
       {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "32px" }}>
@@ -500,14 +501,14 @@ export default function CollageListUniforme() {
               color: "#0f172a",
               margin: 0
             }}>
-              Collecte Uniformes
+              {t('collecte_uniforme.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nomPrenom || agent.nom}` : "Aucun agent connecté"}
+              {agent ? `${t('collecte_uniforme.agent')}: ${agent.nomPrenom || agent.nom}` : t('collecte_uniforme.no_agent_connected')}
             </p>
           </div>
         </div>
@@ -563,11 +564,11 @@ export default function CollageListUniforme() {
                 <FaUserMd color="#0284c7" size={16} />
                 <span style={{ fontWeight: 700, color: "#0284c7", fontSize: "14px" }}>{collecte.personnelNom}</span>
                 <Badge style={{ background: "#e0f2fe", color: "#0284c7", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {collecte.nbUniformes} uniformes
+                  {collecte.nbUniformes} {t('collecte_uniforme.uniforms')}
                 </Badge>
                 {collecte.estInfecte && (
                   <Badge style={{ background: "#fee2e2", color: "#dc2626", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                    ⚠️ Infecté
+                    ⚠️ {t('collecte_uniforme.infected')}
                   </Badge>
                 )}
               </div>
@@ -588,7 +589,7 @@ export default function CollageListUniforme() {
               }}
             >
               <FaRedo size={10} />
-              Reset
+              {t('common.reset')}
             </Button>
           </div>
         </div>
@@ -602,28 +603,28 @@ export default function CollageListUniforme() {
             marginBottom: "20px"
           }}>
             <StatutCard
-              label="Total"
+              label={t('collecte_uniforme.total')}
               value={total}
               icon="📊"
               color="#0ea5e9"
               bg="#f0f9ff"
             />
             <StatutCard
-              label="Blancs"
+              label={t('collecte_uniforme.white')}
               value={blancs}
               icon="✅"
               color="#15803d"
               bg="#f0fdf4"
             />
             <StatutCard
-              label="Infectés"
+              label={t('collecte_uniforme.infected')}
               value={infectes}
               icon="🔴"
               color="#dc2626"
               bg="#fef2f2"
             />
             <StatutCard
-              label="Manquants"
+              label={t('collecte_uniforme.missing')}
               value={manquants}
               icon="⚠️"
               color="#d97706"
@@ -653,7 +654,7 @@ export default function CollageListUniforme() {
             />
             {scanStatus && (
               <div style={{ marginTop: "12px" }}>
-                <ScanStatus {...scanStatus} />
+                <ScanStatus {...scanStatus} t={t} />
               </div>
             )}
           </CardContent>
@@ -666,8 +667,8 @@ export default function CollageListUniforme() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaExclamationTriangle color="#dc2626" size={16} />
-                <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
-                <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une collecte</span>
+                <span style={{ fontWeight: 600, color: "#dc2626" }}>{t('collecte_uniforme.no_agent_connected')}</span>
+                <span style={{ color: "#64748b" }}>{t('collecte_uniforme.connect_to_collect')}</span>
               </div>
             </CardContent>
           </Card>
@@ -678,8 +679,8 @@ export default function CollageListUniforme() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaUserMd color="#7c3aed" size={16} />
-                <span style={{ fontWeight: 600, color: "#7c3aed" }}>Scannez le badge du médecin</span>
-                <span style={{ color: "#64748b" }}>pour commencer la collecte</span>
+                <span style={{ fontWeight: 600, color: "#7c3aed" }}>{t('collecte_uniforme.scan_doctor_badge')}</span>
+                <span style={{ color: "#64748b" }}>{t('collecte_uniforme.to_start_collection')}</span>
               </div>
             </CardContent>
           </Card>
@@ -690,8 +691,8 @@ export default function CollageListUniforme() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", flexWrap: "wrap" }}>
                 <FaCheckCircle color="#22c55e" size={16} />
-                <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt à collecter</span>
-                <span style={{ color: "#64748b" }}>Scannez un uniforme</span>
+                <span style={{ fontWeight: 600, color: "#15803d" }}>{t('collecte_uniforme.ready_to_collect')}</span>
+                <span style={{ color: "#64748b" }}>{t('collecte_uniforme.scan_uniform')}</span>
               </div>
             </CardContent>
           </Card>
@@ -719,10 +720,10 @@ export default function CollageListUniforme() {
                   color: uniformeEnCours.estInfecte ? "#dc2626" : "#7c3aed"
                 }}>
                   {uniformeEnCours.codeBarre}
-                  {uniformeEnCours.estInfecte && " — ⚠️ Bac ROUGE"}
+                  {uniformeEnCours.estInfecte && ` — ⚠️ ${t('collecte_uniforme.red_bin')}`}
                 </div>
                 <div style={{ fontSize: "12px", color: "#64748b" }}>
-                  Scannez le bac de destination
+                  {t('collecte_uniforme.scan_destination_bin')}
                 </div>
               </div>
             </div>
@@ -739,7 +740,7 @@ export default function CollageListUniforme() {
                 fontWeight: 500
               }}
             >
-              Annuler
+              {t('common.cancel')}
             </button>
           </div>
         )}
@@ -769,8 +770,8 @@ export default function CollageListUniforme() {
               {loading
                 ? <FaSpinner style={{ animation: "spin 1s linear infinite" }} />
                 : nonTr > 0
-                  ? `⚠️ Clôturer (${nonTr} non traités)`
-                  : <><FaCheckDouble size={12} /> Terminer et clôturer</>}
+                  ? `⚠️ ${t('collecte_uniforme.close_with_unprocessed')} (${nonTr} ${t('collecte_uniforme.unprocessed')})`
+                  : <><FaCheckDouble size={12} /> {t('collecte_uniforme.finish_and_close')}</>}
             </button>
           </div>
         )}
@@ -786,7 +787,7 @@ export default function CollageListUniforme() {
           }}>
             <div style={{ fontSize: "48px", marginBottom: "10px" }}>✅</div>
             <div style={{ fontWeight: 900, fontSize: "20px", color: "#15803d", marginBottom: "16px" }}>
-              Collecte terminée — {collecte?.personnelNom}
+              {t('collecte_uniforme.collection_completed')} — {collecte?.personnelNom}
             </div>
             <div style={{
               display: "grid",
@@ -795,10 +796,10 @@ export default function CollageListUniforme() {
               marginBottom: "20px"
             }}>
               {[
-                ["Blancs", resume.nbBlancs, "#dcfce7", "#15803d"],
-                ["Infectés", resume.nbInfectes, "#fee2e2", "#dc2626"],
-                ["Propres", resume.nbPropres, "#dbeafe", "#0284c7"],
-                ["Manq.", resume.nbManquants, "#fef3c7", "#d97706"],
+                [t('collecte_uniforme.white'), resume.nbBlancs, "#dcfce7", "#15803d"],
+                [t('collecte_uniforme.infected'), resume.nbInfectes, "#fee2e2", "#dc2626"],
+                [t('collecte_uniforme.clean'), resume.nbPropres, "#dbeafe", "#0284c7"],
+                [t('collecte_uniforme.missing_short'), resume.nbManquants, "#fef3c7", "#d97706"],
               ].map(([l, v, bg, co]) => (
                 <div key={l} style={{ background: bg, borderRadius: "10px", padding: "10px 4px" }}>
                   <div style={{ fontSize: "22px", fontWeight: 900, color: co }}>{v || 0}</div>
@@ -824,7 +825,7 @@ export default function CollageListUniforme() {
                 fontSize: "13px",
                 cursor: "pointer"
               }}>
-                + Autre médecin
+                + {t('collecte_uniforme.another_doctor')}
               </button>
               <button onClick={reset} style={{
                 flex: 1,
@@ -837,7 +838,7 @@ export default function CollageListUniforme() {
                 fontSize: "13px",
                 cursor: "pointer"
               }}>
-                Terminer
+                {t('collecte_uniforme.finish')}
               </button>
             </div>
           </div>
@@ -854,8 +855,8 @@ export default function CollageListUniforme() {
               display: "flex",
               justifyContent: "space-between"
             }}>
-              <span>Uniformes ({total})</span>
-              <span style={{ color: "#0ea5e9" }}>{traites} traités</span>
+              <span>{t('collecte_uniforme.uniforms')} ({total})</span>
+              <span style={{ color: "#0ea5e9" }}>{traites} {t('collecte_uniforme.processed')}</span>
             </div>
             <div style={{ maxHeight: "200px", overflowY: "auto" }}>
               {collecte.uniformes.map(u => (
@@ -864,6 +865,7 @@ export default function CollageListUniforme() {
                   u={u}
                   uniformeEnCours={uniformeEnCours}
                   onManquant={x => setDlgManq(x)}
+                  t={t}
                 />
               ))}
             </div>
@@ -889,8 +891,12 @@ export default function CollageListUniforme() {
   );
 }
 
+export default function CollageListUniforme() {
+  return <CollageListUniformeInner />;
+}
+
 // ─── COMPOSANT : Scan Status ──────────────────────────────────────────────
-function ScanStatus({ loading, success, error, code }) {
+function ScanStatus({ loading, success, error, code, t }) {
   if (loading) {
     return (
       <div style={{
@@ -905,7 +911,7 @@ function ScanStatus({ loading, success, error, code }) {
       }}>
         <FaSpinner className="animate-spin" color="#3b82f6" size={20} />
         <div>
-          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "13px", margin: 0 }}>Scan en cours...</p>
+          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "13px", margin: 0 }}>{t('collecte_uniforme.scanning')}</p>
           <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>{code}</p>
         </div>
       </div>
@@ -936,7 +942,7 @@ function ScanStatus({ loading, success, error, code }) {
           <FaCheckCircle color="#22c55e" size={18} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "13px", margin: 0 }}>✓ {success.message || "Succès"}</p>
+          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "13px", margin: 0 }}>✓ {success.message || t('collecte_uniforme.success')}</p>
           <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>{success.detail}</p>
         </div>
       </div>
@@ -967,7 +973,7 @@ function ScanStatus({ loading, success, error, code }) {
           <FaExclamationTriangle color="#ef4444" size={16} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "13px", margin: 0 }}>Erreur</p>
+          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "13px", margin: 0 }}>{t('common.error')}</p>
           <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>{error}</p>
         </div>
       </div>

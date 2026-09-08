@@ -81,6 +81,13 @@ export const router = createBrowserRouter([
               privileges: ["LIG1501"],
             },
           },
+           {
+            path: "arsenal",
+            Component: ArsenalList,
+            handle: {
+              privileges: ["LIG1501"],
+            },
+          },
              {
             path: "linges",
             Component: LingeList,

@@ -1,5 +1,5 @@
-// pages/Management/EtapeList.js
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Plus,
   Search,
@@ -42,15 +42,17 @@ function LoadingSpinner() {
 
 // ─── Ligne Etape ──────────────────────────────────────────────────────────
 function LigneEtape({ etape, index, isSelected, onOpenPanel, onEdit, onDelete }) {
+  const { t } = useTranslation();
+
   return (
     <tr className={`border-b border-slate-100 hover:bg-slate-50/80 transition-colors ${isSelected ? 'bg-purple-50' : ''}`}>
-      <td className="py-3 px-4 text-center">
+      <td className="text-center py-3 px-4">
         <button
           onClick={() => onOpenPanel(etape)}
           className={`p-1.5 rounded-lg transition-all duration-200 ${
             isSelected ? 'bg-purple-100 text-purple-600' : 'hover:bg-purple-100 text-slate-400 hover:text-purple-500'
           }`}
-          title={isSelected ? "Fermer" : "Voir les personnels"}
+          title={isSelected ? t('common.close') : t('etapes.view_personnel')}
         >
           {isSelected ? (
             <ChevronLeft className="w-5 h-5" />
@@ -59,40 +61,40 @@ function LigneEtape({ etape, index, isSelected, onOpenPanel, onEdit, onDelete })
           )}
         </button>
       </td>
-      <td className="py-3 px-4 text-center text-sm text-slate-500 font-medium">
+      <td className="text-center py-3 px-4 text-sm text-slate-500 font-medium">
         {index + 1}
       </td>
-      <td className="py-3 px-4 text-center">
+      <td className="text-center py-3 px-4">
         <div className="font-medium text-slate-800">{etape.nom}</div>
       </td>
-      <td className="py-3 px-4 text-center">
+      <td className="text-center py-3 px-4">
         <code className="text-xs font-mono text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
           {etape.codeBarre}
         </code>
       </td>
-      <td className="py-3 px-4 text-center">
+      <td className="text-center py-3 px-4">
         <Badge className="bg-blue-50 text-blue-700 border-blue-200">
-          {etape.zone || "Non défini"}
+          {etape.zone || t('etapes.zone_undefined')}
         </Badge>
       </td>
-      <td className="py-3 px-4 text-center">
+      <td className="text-center py-3 px-4">
         <Badge className="bg-slate-50 text-slate-600 border-slate-200">
-          Ordre {etape.ordre || "—"}
+          {t('etapes.order')} {etape.ordre || "—"}
         </Badge>
       </td>
-      <td className="py-3 px-4 text-center">
+      <td className="text-center py-3 px-4">
         <div className="flex items-center justify-center gap-1.5">
           <button
             onClick={() => onEdit(etape)}
             className="p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
-            title="Modifier"
+            title={t('common.edit')}
           >
             <Edit className="w-4 h-4" />
           </button>
           <button
             onClick={() => onDelete(etape.id)}
             className="p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-red-600"
-            title="Supprimer"
+            title={t('common.delete')}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -104,6 +106,7 @@ function LigneEtape({ etape, index, isSelected, onOpenPanel, onEdit, onDelete })
 
 // ─── Panneau latéral des Personnels ──────────────────────────────────────
 function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
+  const { t } = useTranslation();
   const { personnels, associations, addPersonnelToEtape, removePersonnelFromEtape, loading } = useEtape();
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -176,8 +179,8 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
     if (!selectedPersonnel) {
       Swal.fire({
         icon: "warning",
-        title: "Sélectionnez un personnel",
-        text: "Veuillez sélectionner un personnel dans la liste",
+        title: t('etapes.select_personnel'),
+        text: t('etapes.select_personnel_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -198,14 +201,14 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
 
   const handleRemove = async (personnel) => {
     const result = await Swal.fire({
-      title: "Retirer le personnel",
-      text: `Voulez-vous retirer ${personnel.nom} ${personnel.prenom || ''} de cette étape ?`,
+      title: t('etapes.remove_personnel'),
+      text: `${t('etapes.remove_personnel_text')} ${personnel.nom} ${personnel.prenom || ''} ?`,
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#dc2626",
       cancelButtonColor: "#64748b",
-      confirmButtonText: "Oui, retirer",
-      cancelButtonText: "Annuler"
+      confirmButtonText: t('etapes.remove_confirm'),
+      cancelButtonText: t('common.cancel')
     });
 
     if (result.isConfirmed) {
@@ -263,18 +266,18 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
             <div>
               <h3 className="font-bold text-slate-800 text-lg">{etape.nom}</h3>
               <p className="text-xs text-slate-500">
-                {etape.categorie || "Non catégorisé"} • {etape.zone || "N/A"}
+                {etape.categorie || t('etapes.uncategorized')} • {etape.zone || "N/A"}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Badge className="bg-purple-200 text-purple-700 border-purple-300 font-medium px-3 py-1">
-              {personnels.length} personnel{personnels.length > 1 ? 's' : ''}
+              {personnels.length} {t('etapes.personnel_count')}{personnels.length > 1 ? 's' : ''}
             </Badge>
             <button
               onClick={onClose}
               className="p-1.5 hover:bg-purple-200 rounded-lg transition-colors text-slate-500 hover:text-slate-700"
-              title="Fermer"
+              title={t('common.close')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -292,14 +295,14 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
             }}
             className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" /> Ajouter
+            <Plus className="w-4 h-4 stroke-[2.5]" /> {t('etapes.add_personnel')}
           </button>
 
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Rechercher un personnel..."
+              placeholder={t('etapes.search_personnel')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full h-9 pl-10 pr-3 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-300"
@@ -309,7 +312,7 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
           <button
             onClick={onRefresh}
             className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-500 hover:text-slate-700"
-            title="Actualiser"
+            title={t('common.refresh')}
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -323,18 +326,18 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
         ) : filteredPersonnels.length === 0 ? (
           <div className="text-center py-12 text-slate-400">
             <Users className="w-12 h-12 mx-auto opacity-30 mb-3" />
-            <p className="text-sm font-medium">Aucun personnel associé</p>
-            <p className="text-xs">Cliquez sur "Ajouter" pour en associer</p>
+            <p className="text-sm font-medium">{t('etapes.no_personnel')}</p>
+            <p className="text-xs">{t('etapes.no_personnel_text')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Code</th>
-                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Nom</th>
-                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Prénom</th>
-                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Actions</th>
+                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.code')}</th>
+                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.last_name')}</th>
+                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.first_name')}</th>
+                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -349,30 +352,30 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
                     }}
                     className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
                   >
-                    <td className="py-2.5 px-3 text-center font-mono text-xs text-slate-600">{p.codeBarre}</td>
-                    <td className="py-2.5 px-3 text-center font-medium text-slate-800">{p.nom}</td>
-                    <td className="py-2.5 px-3 text-center text-slate-600">{p.prenom || "—"}</td>
-                    <td className="py-2.5 px-3 text-center">
+                    <td className="text-center py-2.5 px-3 font-mono text-xs text-slate-600">{p.codeBarre}</td>
+                    <td className="text-center py-2.5 px-3 font-medium text-slate-800">{p.nom}</td>
+                    <td className="text-center py-2.5 px-3 text-slate-600">{p.prenom || "—"}</td>
+                    <td className="text-center py-2.5 px-3">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => {
                             Swal.fire({
                               icon: "info",
-                              title: "Étiquette",
-                              text: `Impression de l'étiquette pour ${p.nom} ${p.prenom || ''}`,
+                              title: t('etapes.print_label'),
+                              text: `${t('etapes.print_label_text')} ${p.nom} ${p.prenom || ''}`,
                               timer: 1500,
                               showConfirmButton: false
                             });
                           }}
                           className="p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
-                          title="Imprimer l'étiquette"
+                          title={t('etapes.print_label')}
                         >
                           <Printer className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleRemove(p)}
                           className="p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-red-600"
-                          title="Retirer"
+                          title={t('etapes.remove')}
                         >
                           <UserMinus className="w-3.5 h-3.5" />
                         </button>
@@ -395,20 +398,20 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
           setSearchPersonnel("");
           setPersonnelSuggestions([]);
         }}
-        title="Ajouter un personnel"
+        title={t('etapes.add_personnel')}
         size="md"
       >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Rechercher un personnel
+              {t('etapes.search_personnel')}
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={searchPersonnel}
                 onChange={(e) => setSearchPersonnel(e.target.value)}
-                placeholder="Tapez le nom, prénom ou code..."
+                placeholder={t('etapes.search_personnel_placeholder')}
                 className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
                 autoFocus
               />
@@ -442,7 +445,7 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
 
             {searchPersonnel.length >= 2 && personnelSuggestions.length === 0 && !isSearching && (
               <div className="mt-2 text-center py-4 text-sm text-slate-400 bg-slate-50 rounded-xl">
-                Aucun personnel trouvé
+                {t('etapes.no_personnel_found')}
               </div>
             )}
 
@@ -472,7 +475,7 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
               }}
               disabled={isAdding}
             >
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleAddPersonnel}
@@ -484,7 +487,7 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
               ) : (
                 <UserPlus className="w-4 h-4 mr-2" />
               )}
-              Ajouter
+              {t('etapes.add')}
             </Button>
           </div>
         </div>
@@ -495,6 +498,7 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
 
 // ─── MODAL Étape ──────────────────────────────────────────────────────────
 function ModalEtape({ isOpen, onClose, onSave, etape, loading }) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     nom: "",
     zone: "",
@@ -517,8 +521,8 @@ function ModalEtape({ isOpen, onClose, onSave, etape, loading }) {
     if (!formData.nom.trim()) {
       Swal.fire({
         icon: "warning",
-        title: "Nom requis",
-        text: "Veuillez saisir un nom",
+        title: t('etapes.name_required'),
+        text: t('etapes.name_required_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -531,45 +535,45 @@ function ModalEtape({ isOpen, onClose, onSave, etape, loading }) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={etape ? "Modifier l'étape" : "Nouvelle étape"}
+      title={etape ? t('etapes.edit_step') : t('etapes.new_step')}
       size="md"
     >
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">
-            Nom *
+            {t('etapes.name')} *
           </label>
           <input
             type="text"
             value={formData.nom}
             onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-            placeholder="Nom de l'étape..."
+            placeholder={t('etapes.name_placeholder')}
             className="w-full h-10 px-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">
-            Zone
+            {t('etapes.zone')}
           </label>
           <input
             type="text"
             value={formData.zone}
             onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
-            placeholder="Zone (ex: BLANC, INFECTE...)"
+            placeholder={t('etapes.zone_placeholder')}
             className="w-full h-10 px-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">
-            Catégorie
+            {t('etapes.category')}
           </label>
           <input
             type="text"
             value={formData.categorie}
             onChange={(e) => setFormData({ ...formData, categorie: e.target.value })}
-            placeholder="Catégorie (ex: DRAP, BLOUSE...)"
+            placeholder={t('etapes.category_placeholder')}
             className="w-full h-10 px-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
           />
         </div>
@@ -577,7 +581,7 @@ function ModalEtape({ isOpen, onClose, onSave, etape, loading }) {
 
       <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
         <Button variant="outline" onClick={onClose} disabled={loading}>
-          Annuler
+          {t('common.cancel')}
         </Button>
         <Button
           onClick={handleSubmit}
@@ -587,7 +591,7 @@ function ModalEtape({ isOpen, onClose, onSave, etape, loading }) {
           {loading ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           ) : null}
-          {etape ? "Mettre à jour" : "Créer"}
+          {etape ? t('common.update') : t('common.create')}
         </Button>
       </div>
     </Modal>
@@ -596,6 +600,7 @@ function ModalEtape({ isOpen, onClose, onSave, etape, loading }) {
 
 // ─── PAGE PRINCIPALE ──────────────────────────────────────────────────────
 function EtapeListInner() {
+  const { t } = useTranslation();
   const {
     etapes,
     loading,
@@ -669,14 +674,14 @@ function EtapeListInner() {
 
   const handleDeleteEtape = async (id) => {
     const result = await Swal.fire({
-      title: "Supprimer l'étape",
-      text: "Cette action est irréversible. Voulez-vous continuer ?",
+      title: t('etapes.delete_step'),
+      text: t('etapes.delete_step_text'),
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#dc2626",
       cancelButtonColor: "#64748b",
-      confirmButtonText: "Oui, supprimer",
-      cancelButtonText: "Annuler"
+      confirmButtonText: t('etapes.delete_confirm'),
+      cancelButtonText: t('common.cancel')
     });
 
     if (result.isConfirmed) {
@@ -731,14 +736,14 @@ function EtapeListInner() {
                   color: "#0f172a",
                   margin: 0
                 }}>
-                  Gestion des Étapes
+                  {t('etapes.title')}
                 </h1>
                 <p style={{
                   fontSize: "14px",
                   color: "#64748b",
                   margin: "2px 0 0 0"
                 }}>
-                  Gérez les étapes du processus et leurs personnels associés
+                  {t('etapes.subtitle')}
                 </p>
               </div>
             </div>
@@ -753,7 +758,7 @@ function EtapeListInner() {
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
             >
-              <Plus className="w-4 h-4" /> Nouvelle Étape
+              <Plus className="w-4 h-4" /> {t('etapes.new_step')}
             </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
@@ -764,8 +769,8 @@ function EtapeListInner() {
                 if (selectedEtape) {
                   Swal.fire({
                     icon: "info",
-                    title: "Impression du ticket",
-                    text: `Ticket pour l'étape ${selectedEtape.nom}`,
+                    title: t('etapes.print_ticket'),
+                    text: `${t('etapes.print_ticket_text')} ${selectedEtape.nom}`,
                     timer: 1500,
                     showConfirmButton: false
                   });
@@ -773,7 +778,7 @@ function EtapeListInner() {
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Printer className="w-4 h-4" /> Ticket
+              <Printer className="w-4 h-4" /> {t('etapes.ticket')}
             </button>
 
             <button
@@ -782,8 +787,8 @@ function EtapeListInner() {
                 if (selectedEtape) {
                   Swal.fire({
                     icon: "info",
-                    title: "Impression du code",
-                    text: `Code pour l'étape ${selectedEtape.nom}`,
+                    title: t('etapes.print_code'),
+                    text: `${t('etapes.print_code_text')} ${selectedEtape.nom}`,
                     timer: 1500,
                     showConfirmButton: false
                   });
@@ -791,7 +796,7 @@ function EtapeListInner() {
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-sm font-bold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Barcode className="w-4 h-4" /> Code
+              <Barcode className="w-4 h-4" /> {t('etapes.code')}
             </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
@@ -801,7 +806,7 @@ function EtapeListInner() {
               onClick={() => handleEditEtape(selectedEtape)}
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-bold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Edit className="w-4 h-4" /> Modifier
+              <Edit className="w-4 h-4" /> {t('common.edit')}
             </button>
 
             <button
@@ -809,14 +814,14 @@ function EtapeListInner() {
               onClick={async () => {
                 if (selectedEtapeId) {
                   const confirmed = await Swal.fire({
-                    title: "Es-tu sûr?",
-                    text: "Vous ne pourrez pas annuler cette action!",
+                    title: t('etapes.delete_step'),
+                    text: t('etapes.delete_step_text'),
                     icon: "warning",
                     showCancelButton: true,
                     confirmButtonColor: "#dc2626",
                     cancelButtonColor: "#64748b",
-                    confirmButtonText: "Oui, supprimer!",
-                    cancelButtonText: "Annuler",
+                    confirmButtonText: t('etapes.delete_confirm'),
+                    cancelButtonText: t('common.cancel'),
                   });
                   if (confirmed.isConfirmed) {
                     handleDeleteEtape(selectedEtapeId);
@@ -825,14 +830,14 @@ function EtapeListInner() {
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 text-sm font-bold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Trash2 className="w-4 h-4" /> Supprimer
+              <Trash2 className="w-4 h-4" /> {t('common.delete')}
             </button>
 
             <button
               onClick={loadEtapes}
               className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition-all ml-auto"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Actualiser
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> {t('common.refresh')}
             </button>
           </div>
 
@@ -843,7 +848,7 @@ function EtapeListInner() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Rechercher par nom, code barre ou catégorie..."
+                  placeholder={t('etapes.search_placeholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
@@ -861,11 +866,11 @@ function EtapeListInner() {
                     <tr>
                       <th className="text-center py-3 px-4 text-sm font-medium text-slate-500 w-10"></th>
                       <th className="text-center py-3 px-4 text-sm font-medium text-slate-500 w-12">#</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Étape</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Code Barre</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Zone</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Ordre</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Actions</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('etapes.step')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('etapes.barcode')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('etapes.zone')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('etapes.order')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -879,7 +884,7 @@ function EtapeListInner() {
                       <tr>
                         <td colSpan={7} className="text-center py-12 text-slate-400">
                           <Package className="w-12 h-12 mx-auto opacity-30 mb-3" />
-                          <p className="text-sm">{searchTerm ? "Aucune étape correspondante" : "Aucune étape trouvée"}</p>
+                          <p className="text-sm">{searchTerm ? t('etapes.no_match') : t('etapes.no_data')}</p>
                         </td>
                       </tr>
                     ) : (

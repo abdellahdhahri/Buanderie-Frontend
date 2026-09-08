@@ -1,6 +1,6 @@
-// src/components/linges/LingeList.jsx
 
 import React, { useContext, useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { LingeContext, CATEGORIES } from "../../contextes/LingeContext";
 import { ServiceContext } from "../../contextes/ServiceContext";
 import { 
@@ -32,6 +32,8 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 // ─── MODE TOGGLE ──────────────────────────────────────────────────────────
 function ModeToggle({ mode, onChange }) {
+  const { t } = useTranslation();
+
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px", background: "#f1f5f9", borderRadius: "12px" }}>
       <button
@@ -44,7 +46,7 @@ function ModeToggle({ mode, onChange }) {
           boxShadow: mode === "BARCODE" ? "0 2px 8px rgba(0,0,0,0.1)" : "none"
         }}
       >
-        <FaBarcode size={16} /> Code-barres
+        <FaBarcode size={16} /> {t('linge.mode_barcode')}
       </button>
       <button
         onClick={() => onChange("RFID")}
@@ -63,6 +65,8 @@ function ModeToggle({ mode, onChange }) {
 }
 
 export default function LingeList() {
+  const { t } = useTranslation();
+
   // ─── CONTEXTES ──────────────────────────────────────────────────────────
   const { 
     linges, 
@@ -77,7 +81,6 @@ export default function LingeList() {
     associerTagRfid,
     pagedData,
     setPagedData,
-    // Import
     setIsImportModalOpen,
     setImportType,
   } = useContext(LingeContext);
@@ -163,12 +166,10 @@ export default function LingeList() {
     }
   };
 
-  // Chargement initial
   useEffect(() => {
     loadPage(0);
   }, []);
 
-  // Recharger quand les filtres changent
   useEffect(() => {
     loadPage(0);
   }, [filters]);
@@ -265,8 +266,8 @@ export default function LingeList() {
         loadPage(currentPage);
         
         Swal.fire({
-          title: "✅ Modifié!",
-          text: "Linge modifié avec succès.",
+          title: "✅ " + t('messages.success'),
+          text: t('linge.update_success'),
           icon: "success",
           timer: 1500,
           showConfirmButton: false
@@ -274,18 +275,17 @@ export default function LingeList() {
         return;
       }
 
-      // Création
       if (creationMode === "manual") {
         const codeToCheck = newLinge.codebarre.trim();
         if (!codeToCheck) {
-          showAlert("Attention", "Veuillez scanner ou saisir un code de suivi en mode manuel.", "warning");
+          showAlert(t('messages.warning'), t('linge.scan_required_manual'), "warning");
           setIsSaving(false);
           return;
         }
         if (checkCodeExists) {
           const exists = await checkCodeExists(codeToCheck);
           if (exists) {
-            showAlert("Code Existant", `L'article avec le code "${codeToCheck}" existe déjà.`, "error");
+            showAlert(t('messages.error'), t('linge.code_exists', { code: codeToCheck }), "error");
             setIsSaving(false);
             return;
           }
@@ -327,11 +327,11 @@ export default function LingeList() {
           observations: ""
         });
         loadPage(0);
-        showAlert("Succès", "Article créé avec succès", "success");
+        showAlert(t('messages.success'), t('linge.create_success'), "success");
       }
     } catch (error) {
       console.error('❌ Erreur:', error);
-      showAlert("Erreur", error.message || "Erreur lors de l'opération", "error");
+      showAlert(t('messages.error'), error.message || t('linge.error_operation'), "error");
     } finally {
       setIsSaving(false);
     }
@@ -340,25 +340,25 @@ export default function LingeList() {
   // ─── ASSOCIATION RFID ──────────────────────────────────────────────────
   const handleAssocierRfid = async () => {
     if (!selectedLingeForRfid) {
-      showAlert("Erreur", "Aucun linge sélectionné.", "error");
+      showAlert(t('messages.error'), t('linge.no_linge_selected'), "error");
       return;
     }
     if (!rfidCode.trim()) {
-      showAlert("Attention", "Veuillez saisir un tag RFID.", "warning");
+      showAlert(t('messages.warning'), t('linge.rfid_required'), "warning");
       return;
     }
 
     try {
       const result = await associerTagRfid(selectedLingeForRfid.codebarre, rfidCode.trim());
       if (result) {
-        showAlert("Succès", `✅ Tag RFID associé au linge ${selectedLingeForRfid.codebarre}`, "success");
+        showAlert(t('messages.success'), t('linge.rfid_success', { code: selectedLingeForRfid.codebarre }), "success");
         setShowRfidPopup(false);
         setRfidCode("");
         setSelectedLingeForRfid(null);
         loadPage(currentPage);
       }
     } catch (error) {
-      showAlert("Erreur", `❌ ${error.message || "Erreur lors de l'association RFID"}`, "error");
+      showAlert(t('messages.error'), `❌ ${error.message || t('linge.rfid_error')}`, "error");
     }
   };
 
@@ -374,7 +374,7 @@ export default function LingeList() {
     if (l) {
       setSelectedLingeDetail(l);
     } else {
-      showAlert("Erreur", "Article non trouvé dans la liste.", "error");
+      showAlert(t('messages.error'), t('linge.not_found'), "error");
     }
   };
 
@@ -388,7 +388,7 @@ export default function LingeList() {
       }
     }
     if (!linge) {
-      showAlert("Erreur", "Aucun article sélectionné.", "error");
+      showAlert(t('messages.error'), t('linge.no_selection'), "error");
       return;
     }
     setNewLinge({
@@ -434,19 +434,19 @@ export default function LingeList() {
 
   // ─── GET SERVICE NAME ──────────────────────────────────────────────────
   const getServiceName = (serviceId) => {
-    if (!serviceId) return "Non assigné";
+    if (!serviceId) return t('linge.unassigned');
     const service = services.find(s => s.id === serviceId);
-    return service ? service.code : "Non assigné";
+    return service ? service.code : t('linge.unassigned');
   };
 
   // ─── GET PORTEUR NAME ──────────────────────────────────────────────────
   const getPorteurName = (porteurId) => {
-    if (!porteurId) return "Non assigné";
+    if (!porteurId) return t('linge.unassigned');
     const porteur = personnel.find(p => p.id === porteurId);
     if (porteur) {
       return `${porteur.prenom} ${porteur.nom}`;
     }
-    return "Non assigné";
+    return t('linge.unassigned');
   };
 
   // ─── BADGE ÉTAT ────────────────────────────────────────────────────────
@@ -473,7 +473,7 @@ export default function LingeList() {
       MANQUANT: "destructive"
     };
     const variant = etatColors[etat] || "secondary";
-    return <Badge variant={variant}>{etat}</Badge>;
+    return <Badge variant={variant}>{t(`linge_etat.${etat}`, etat)}</Badge>;
   };
 
   // ─── VÉRIFICATION UNIFORME ─────────────────────────────────────────────
@@ -533,7 +533,7 @@ export default function LingeList() {
               color: "#0f172a",
               margin: 0
             }}>
-              {displayMode === "RFID" ? "Gestion des Linges RFID" : "Gestion des Linges"}
+              {displayMode === "RFID" ? t('linge.title_rfid') : t('linge.title')}
             </h1>
             <p style={{
               fontSize: "14px",
@@ -541,8 +541,8 @@ export default function LingeList() {
               margin: "2px 0 0 0"
             }}>
               {displayMode === "RFID" 
-                ? "Suivi et traçabilité des linges par puce RFID" 
-                : "Gestion et suivi des linges"}
+                ? t('linge.subtitle_rfid')
+                : t('linge.subtitle')}
             </p>
           </div>
         </div>
@@ -561,15 +561,14 @@ export default function LingeList() {
           }}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
         >
-          <Plus className="w-4 h-4 stroke-[2.5]" /> Nouvel Article
+          <Plus className="w-4 h-4 stroke-[2.5]" /> {t('linge.new_article')}
         </button>
 
-        {/* ─── BOUTON IMPORTER ──────────────────────────────────────────── */}
         <button
           onClick={handleOpenImport}
           className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-[14px] text-sm font-bold text-indigo-700 hover:from-indigo-100 hover:to-purple-100 transition-all shadow-[0_2px_8px_rgba(99,102,241,0.15)] hover:shadow-[0_4px_16px_rgba(99,102,241,0.25)] hover:scale-[1.02]"
         >
-          <Upload className="w-4 h-4 stroke-[2.5]" /> Importer des linges
+          <Upload className="w-4 h-4 stroke-[2.5]" /> {t('linge.import_linens')}
         </button>
 
         <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
@@ -577,16 +576,16 @@ export default function LingeList() {
         <button
           onClick={() => {
             if (!selectedId) {
-              showAlert("Sélection", "Veuillez sélectionner un article.", "info");
+              showAlert(t('messages.info'), t('linge.select_article'), "info");
               return;
             }
             const linge = displayedLinges.find(l => l.id === selectedId) || linges.find(l => l.id === selectedId);
             if (!linge) {
-              showAlert("Erreur", "Article non trouvé.", "error");
+              showAlert(t('messages.error'), t('linge.not_found'), "error");
               return;
             }
             if (linge.rfidTag && linge.rfidTag !== "") {
-              showAlert("Attention", "Cet article possède déjà un tag RFID.", "warning");
+              showAlert(t('messages.warning'), t('linge.rfid_already'), "warning");
               return;
             }
             setSelectedLingeForRfid(linge);
@@ -596,7 +595,7 @@ export default function LingeList() {
           disabled={!selectedId}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
         >
-          <Tag className="w-4 h-4 stroke-[2.5]" /> Associer RFID
+          <Tag className="w-4 h-4 stroke-[2.5]" /> {t('linge.associate_rfid')}
         </button>
 
         <button
@@ -604,7 +603,7 @@ export default function LingeList() {
           onClick={() => selectedId && handleDetail(selectedId)}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#006f94]/30 rounded-[14px] text-sm font-bold text-[#006f94] hover:bg-[#006f94]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
         >
-          <Eye className="w-4 h-4 stroke-[2.5]" /> Détails
+          <Eye className="w-4 h-4 stroke-[2.5]" /> {t('common.details')}
         </button>
 
         <button
@@ -612,14 +611,14 @@ export default function LingeList() {
           onClick={() => selectedId && handleEdit(selectedLinge)}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
         >
-          <Edit className="w-4 h-4 stroke-[2.5]" /> Modifier
+          <Edit className="w-4 h-4 stroke-[2.5]" /> {t('common.edit')}
         </button>
 
         <button
           disabled={!selectedId}
           onClick={async () => {
             if (selectedId) {
-              const confirmed = await showConfirm("Suppression", "Voulez-vous vraiment supprimer cet article ?", "warning");
+              const confirmed = await showConfirm(t('messages.warning'), t('linge.delete_confirm_text'), "warning");
               if (confirmed) {
                 await deleteLinge(selectedId);
                 setSelectedId(null);
@@ -629,7 +628,7 @@ export default function LingeList() {
           }}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e03131]/30 rounded-[14px] text-sm font-bold text-[#e03131] hover:bg-[#e03131]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
         >
-          <Trash2 className="w-4 h-4 stroke-[2.5]" /> Supprimer
+          <Trash2 className="w-4 h-4 stroke-[2.5]" /> {t('common.delete')}
         </button>
 
         <button
@@ -642,7 +641,7 @@ export default function LingeList() {
           }}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
         >
-          <Barcode className="w-4 h-4 stroke-[2.5]" /> Étiquette
+          <Barcode className="w-4 h-4 stroke-[2.5]" /> {t('linge.label')}
         </button>
 
         <button
@@ -650,14 +649,14 @@ export default function LingeList() {
           onClick={() => selectedId && navigate(`/tracking?code=${selectedLinge?.codebarre}`)}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
         >
-          <History className="w-4 h-4 stroke-[2.5]" /> Historique
+          <History className="w-4 h-4 stroke-[2.5]" /> {t('linge.history')}
         </button>
 
         <button
           onClick={() => loadPage(currentPage)}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Actualiser
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> {t('common.refresh')}
         </button>
       </div>
 
@@ -666,63 +665,63 @@ export default function LingeList() {
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">État</label>
+              <label className="block text-sm font-medium mb-2">{t('linge.status')}</label>
               <select
                 value={filters.etat}
                 onChange={(e) => setFilters({ ...filters, etat: e.target.value })}
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="">Tous</option>
-                <option value="SALE">Sale</option>
-                <option value="EN_LAVAGE">En lavage</option>
-                <option value="LAVE">Lavé</option>
-                <option value="EN_SECHAGE">En séchage</option>
-                <option value="SECHE">Séché</option>
-                <option value="PLIE">Plié</option>
-                <option value="COLLE">Collé</option>
-                <option value="STOCKE">Stocké</option>
-                <option value="COLLECTE">Collecte</option>
-                <option value="LIVRE">Livre</option>
-                <option value="HORS_SERVICE">Hors service</option>
-                <option value="EN_TRI">En tri</option>
-                <option value="RECEPTION">Réception</option>
-                <option value="PROPRE">Propre</option>
-                <option value="MANQUANT">Manquant</option>
+                <option value="">{t('common.all')}</option>
+                <option value="SALE">{t('linge_etat.SALE')}</option>
+                <option value="EN_LAVAGE">{t('linge_etat.EN_LAVAGE')}</option>
+                <option value="LAVE">{t('linge_etat.LAVE')}</option>
+                <option value="EN_SECHAGE">{t('linge_etat.EN_SECHAGE')}</option>
+                <option value="SECHE">{t('linge_etat.SECHE')}</option>
+                <option value="PLIE">{t('linge_etat.PLIE')}</option>
+                <option value="COLLE">{t('linge_etat.COLLE')}</option>
+                <option value="STOCKE">{t('linge_etat.STOCKE')}</option>
+                <option value="COLLECTE">{t('linge_etat.COLLECTE')}</option>
+                <option value="LIVRE">{t('linge_etat.LIVRE')}</option>
+                <option value="HORS_SERVICE">{t('linge_etat.HORS_SERVICE')}</option>
+                <option value="EN_TRI">{t('linge_etat.EN_TRI')}</option>
+                <option value="RECEPTION">{t('linge_etat.RECEPTION')}</option>
+                <option value="PROPRE">{t('linge_etat.PROPRE')}</option>
+                <option value="MANQUANT">{t('linge_etat.MANQUANT')}</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Catégorie</label>
+              <label className="block text-sm font-medium mb-2">{t('linge.category')}</label>
               <select
                 value={filters.categorie}
                 onChange={(e) => setFilters({ ...filters, categorie: e.target.value })}
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="">Toutes</option>
+                <option value="">{t('common.all')}</option>
                 {CATEGORIES.map((cat, i) => (
-                  <option key={i} value={cat}>{cat}</option>
+                  <option key={i} value={cat}>{t(`categories.${cat}`, cat)}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Service</label>
+              <label className="block text-sm font-medium mb-2">{t('linge.service')}</label>
               <select
                 value={filters.serviceId}
                 onChange={(e) => setFilters({ ...filters, serviceId: e.target.value })}
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="">Tous les services</option>
+                <option value="">{t('common.all')}</option>
                 {services.map((s) => (
                   <option key={s.id} value={s.id}>{s.code}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Recherche</label>
+              <label className="block text-sm font-medium mb-2">{t('common.search')}</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Code, chambre, service..."
+                  placeholder={t('linge.search_placeholder')}
                   value={filters.search}
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                   className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-input-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -735,7 +734,7 @@ export default function LingeList() {
               onClick={resetFilters}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
             >
-              <Filter className="w-4 h-4 stroke-[2.5]" /> Réinitialiser
+              <Filter className="w-4 h-4 stroke-[2.5]" /> {t('common.reset')}
             </button>
           </div>
         </CardContent>
@@ -748,15 +747,15 @@ export default function LingeList() {
             <table className="param-table">
               <thead>
                 <tr>
-                  <th className="text-center py-3 px-4">ID</th>
-                  <th className="text-center py-3 px-4">{displayMode === "RFID" ? "RFID TAG (EPC)" : "Code"}</th>
-                  <th className="text-center py-3 px-4">Catégorie</th>
-                  <th className="text-center py-3 px-4">Poids</th>
-                  <th className="text-center py-3 px-4">État</th>
-                  <th className="text-center py-3 px-4">Service</th>
-                  <th className="text-center py-3 px-4">Porteur</th>
+                  <th className="text-center py-3 px-4">{t('common.id')}</th>
+                  <th className="text-center py-3 px-4">{displayMode === "RFID" ? t('linge.rfid_tag') : t('common.code')}</th>
+                  <th className="text-center py-3 px-4">{t('linge.category')}</th>
+                  <th className="text-center py-3 px-4">{t('linge.weight')}</th>
+                  <th className="text-center py-3 px-4">{t('linge.status')}</th>
+                  <th className="text-center py-3 px-4">{t('linge.service')}</th>
+                  <th className="text-center py-3 px-4">{t('linge.carrier')}</th>
                   <th className="text-center py-3 px-4">RFID</th>
-                  <th className="text-center py-3 px-4 actions-th">Action</th>
+                  <th className="text-center py-3 px-4 actions-th">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -764,13 +763,13 @@ export default function LingeList() {
                   <tr>
                     <td colSpan={9} className="text-center py-8 text-muted-foreground">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto" />
-                      Chargement en cours...
+                      {t('common.loading')}
                     </td>
                   </tr>
                 ) : displayedLinges.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="text-center py-8 text-muted-foreground">
-                      Aucun article trouvé
+                      {t('linge.no_articles')}
                     </td>
                   </tr>
                 ) : (
@@ -795,13 +794,13 @@ export default function LingeList() {
                             l.rfidTag ? (
                               <code className="rfid-tag">{formatEPC(l.rfidTag)}</code>
                             ) : (
-                              <span className="text-muted-foreground text-sm">Non associé</span>
+                              <span className="text-muted-foreground text-sm">{t('linge.not_associated')}</span>
                             )
                           ) : (
                             <code className="tracking-code">{l.codebarre}</code>
                           )}
                         </td>
-                        <td className="text-center font-semibold text-slate-800">{l.categorie}</td>
+                        <td className="text-center font-semibold text-slate-800">{t(`categories.${l.categorie}`, l.categorie)}</td>
                         <td className="text-center font-bold">{l.poids} kg</td>
                         <td className="text-center">{getEtatBadge(l.etat)}</td>
                         <td className="text-center">{serviceName}</td>
@@ -812,7 +811,7 @@ export default function LingeList() {
                                 <UserIcon className="w-3 h-3" /> {l.porteurNom}
                               </span>
                             ) : (
-                              <span className="text-xs text-slate-400">Non assigné</span>
+                              <span className="text-xs text-slate-400">{t('linge.unassigned')}</span>
                             )
                           ) : (
                             <span className="text-xs text-slate-400">—</span>
@@ -824,7 +823,7 @@ export default function LingeList() {
                               <FaRss className="mr-1" size={10} /> {l.rfidTag.substring(0, 8)}...
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-xs">Non associé</Badge>
+                            <Badge variant="secondary" className="text-xs">{t('linge.not_associated')}</Badge>
                           )}
                         </td>
                         <td className="text-center py-3 px-4">
@@ -836,7 +835,7 @@ export default function LingeList() {
                               }}
                               className="text-[#0794a4] hover:text-[#068391] font-semibold text-sm flex items-center gap-1.5 hover:underline"
                             >
-                              <Eye className="w-4 h-4" /> Détails
+                              <Eye className="w-4 h-4" /> {t('common.details')}
                             </button>
                             {!hasRfid && (
                               <button
@@ -866,7 +865,7 @@ export default function LingeList() {
       {/* ─── PAGINATION ──────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mt-6">
         <div className="text-sm text-muted-foreground">
-          Affichage de {displayedLinges.length > 0 ? currentPage * 10 + 1 : 0} à {Math.min((currentPage + 1) * 10, pagedData.totalElements)} sur {pagedData.totalElements} articles
+          {t('common.showing')} {displayedLinges.length > 0 ? currentPage * 10 + 1 : 0} {t('common.to')} {Math.min((currentPage + 1) * 10, pagedData.totalElements)} {t('common.of')} {pagedData.totalElements} {t('common.items')}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -875,10 +874,10 @@ export default function LingeList() {
             disabled={currentPage === 0 || isLoading}
             onClick={() => handlePageChange(currentPage - 1)}
           >
-            Précédent
+            {t('common.previous')}
           </Button>
           <span className="text-sm">
-            Page {currentPage + 1} / {pagedData.totalPages || 1}
+            {t('common.page')} {currentPage + 1} / {pagedData.totalPages || 1}
           </span>
           <Button
             variant="outline"
@@ -886,7 +885,7 @@ export default function LingeList() {
             disabled={currentPage >= (pagedData.totalPages - 1) || isLoading}
             onClick={() => handlePageChange(currentPage + 1)}
           >
-            Suivant
+            {t('common.next')}
           </Button>
         </div>
       </div>
@@ -895,7 +894,7 @@ export default function LingeList() {
       <Modal
         isOpen={showPopup}
         onClose={() => setShowPopup(false)}
-        title={lingeToEdit ? "Modifier le linge" : "Nouvel Article"}
+        title={lingeToEdit ? t('linge.edit_article') : t('linge.new_article')}
         size="lg"
       >
         <form onSubmit={handleSave}>
@@ -913,7 +912,7 @@ export default function LingeList() {
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                Nouveau linge
+                {t('linge.new_linen')}
               </button>
               <button
                 type="button"
@@ -924,7 +923,7 @@ export default function LingeList() {
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                Linge existant
+                {t('linge.existing_linen')}
               </button>
             </div>
           )}
@@ -933,11 +932,11 @@ export default function LingeList() {
             {creationMode === "manual" && !lingeToEdit && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Code de Suivi (Scan)
+                  {t('linge.tracking_code')}
                 </label>
                 <Input
                   type="text"
-                  placeholder="Scanner le code ici..."
+                  placeholder={t('linge.scan_code_here')}
                   value={newLinge.codebarre}
                   onChange={(e) => setNewLinge({ ...newLinge, codebarre: e.target.value })}
                   required
@@ -948,23 +947,23 @@ export default function LingeList() {
             {!lingeToEdit && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tag RFID <span className="text-xs text-gray-400">(optionnel)</span>
+                  RFID {t('common.optional')}
                 </label>
                 <Input
                   type="text"
-                  placeholder="Scanner un tag RFID ou laisser vide..."
+                  placeholder={t('linge.scan_rfid_or_leave_empty')}
                   value={newLinge.rfidTag}
                   onChange={(e) => setNewLinge({ ...newLinge, rfidTag: e.target.value })}
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  💡 Laissez vide si vous ne souhaitez pas associer de tag RFID
+                  💡 {t('linge.rfid_optional_hint')}
                 </p>
               </div>
             )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Catégorie <span className="text-red-500">*</span>
+                {t('linge.category')} <span className="text-red-500">*</span>
               </label>
               <select
                 value={newLinge.categorie}
@@ -978,16 +977,16 @@ export default function LingeList() {
                 className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="">Sélectionner une catégorie...</option>
+                <option value="">{t('linge.select_category')}</option>
                 {CATEGORIES.map((cat, i) => (
-                  <option key={i} value={cat}>{cat}</option>
+                  <option key={i} value={cat}>{t(`categories.${cat}`, cat)}</option>
                 ))}
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Poids (kg) <span className="text-red-500">*</span>
+                {t('linge.weight_kg')} <span className="text-red-500">*</span>
               </label>
               <Input
                 type="number"
@@ -1000,24 +999,24 @@ export default function LingeList() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Durée de vie (cycles)
+                {t('linge.life_cycles')}
               </label>
               <Input
                 type="number"
                 step="1"
                 min="0"
-                placeholder="Nombre de cycles de lavage"
+                placeholder={t('linge.life_cycles_placeholder')}
                 value={newLinge.dureVie}
                 onChange={(e) => setNewLinge({ ...newLinge, dureVie: e.target.value })}
               />
               <p className="text-xs text-gray-400 mt-1">
-                💡 Nombre de cycles de lavage estimé pour cet article
+                💡 {t('linge.life_cycles_hint')}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Service <span className="text-red-500">*</span>
+                {t('linge.service')} <span className="text-red-500">*</span>
               </label>
               <select
                 value={newLinge.serviceId || ""}
@@ -1025,7 +1024,7 @@ export default function LingeList() {
                 className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="">Sélectionner un service...</option>
+                <option value="">{t('linge.select_service')}</option>
                 {services.map((s) => (
                   <option key={s.id} value={s.id}>{s.code}</option>
                 ))}
@@ -1035,7 +1034,7 @@ export default function LingeList() {
             {isUniforme && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Porteur <span className="text-red-500">*</span>
+                  {t('linge.carrier')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={newLinge.porteurId || ""}
@@ -1043,7 +1042,7 @@ export default function LingeList() {
                   className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required={isUniforme}
                 >
-                  <option value="">Sélectionner un porteur...</option>
+                  <option value="">{t('linge.select_carrier')}</option>
                   {personnel.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.prenom} {p.nom} - {p.codeBarre}
@@ -1051,46 +1050,46 @@ export default function LingeList() {
                   ))}
                 </select>
                 <p className="text-xs text-blue-500 mt-1">
-                  👤 Sélectionnez le personnel porteur de cet uniforme
+                  👤 {t('linge.select_carrier_hint')}
                 </p>
               </div>
             )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                État
+                {t('linge.status')}
               </label>
               <select
                 value={newLinge.etat}
                 onChange={(e) => setNewLinge({ ...newLinge, etat: e.target.value })}
                 className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="SALE">Sale</option>
-                <option value="EN_LAVAGE">En lavage</option>
-                <option value="LAVE">Lavé</option>
-                <option value="EN_SECHAGE">En séchage</option>
-                <option value="SECHE">Séché</option>
-                <option value="PLIE">Plié</option>
-                <option value="COLLE">Collé</option>
-                <option value="STOCKE">Stocké</option>
-                <option value="COLLECTE">Collecte</option>
-                <option value="LIVRE">Livre</option>
-                <option value="HORS_SERVICE">Hors service</option>
-                <option value="EN_TRI">En tri</option>
-                <option value="RECEPTION">Réception</option>
-                <option value="PROPRE">Propre</option>
-                <option value="MANQUANT">Manquant</option>
+                <option value="SALE">{t('linge_etat.SALE')}</option>
+                <option value="EN_LAVAGE">{t('linge_etat.EN_LAVAGE')}</option>
+                <option value="LAVE">{t('linge_etat.LAVE')}</option>
+                <option value="EN_SECHAGE">{t('linge_etat.EN_SECHAGE')}</option>
+                <option value="SECHE">{t('linge_etat.SECHE')}</option>
+                <option value="PLIE">{t('linge_etat.PLIE')}</option>
+                <option value="COLLE">{t('linge_etat.COLLE')}</option>
+                <option value="STOCKE">{t('linge_etat.STOCKE')}</option>
+                <option value="COLLECTE">{t('linge_etat.COLLECTE')}</option>
+                <option value="LIVRE">{t('linge_etat.LIVRE')}</option>
+                <option value="HORS_SERVICE">{t('linge_etat.HORS_SERVICE')}</option>
+                <option value="EN_TRI">{t('linge_etat.EN_TRI')}</option>
+                <option value="RECEPTION">{t('linge_etat.RECEPTION')}</option>
+                <option value="PROPRE">{t('linge_etat.PROPRE')}</option>
+                <option value="MANQUANT">{t('linge_etat.MANQUANT')}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Observations
+                {t('linge.observations')}
               </label>
               <textarea
                 value={newLinge.observations}
                 onChange={(e) => setNewLinge({ ...newLinge, observations: e.target.value })}
-                placeholder="Observations..."
+                placeholder={t('linge.observations_placeholder')}
                 className="w-full min-h-[60px] px-3 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -1098,10 +1097,10 @@ export default function LingeList() {
 
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setShowPopup(false)} type="button" disabled={isSaving}>
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Enregistrement..." : (lingeToEdit ? "Enregistrer" : "Créer")}
+              {isSaving ? t('common.saving') : (lingeToEdit ? t('common.save') : t('common.create'))}
             </Button>
           </div>
         </form>
@@ -1115,32 +1114,32 @@ export default function LingeList() {
           setRfidCode("");
           setSelectedLingeForRfid(null);
         }}
-        title="Associer un tag RFID"
+        title={t('linge.associate_rfid_tag')}
         size="md"
       >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Linge sélectionné
+              {t('linge.selected_linen')}
             </label>
             <Input
-              value={selectedLingeForRfid ? `${selectedLingeForRfid.codebarre} - ${selectedLingeForRfid.categorie}` : "Aucun"}
+              value={selectedLingeForRfid ? `${selectedLingeForRfid.codebarre} - ${selectedLingeForRfid.categorie}` : t('common.none')}
               disabled
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tag RFID (EPC)
+              RFID {t('common.tag')}
             </label>
             <Input
               type="text"
-              placeholder="Scanner ou saisir le tag RFID..."
+              placeholder={t('linge.scan_or_enter_rfid')}
               value={rfidCode}
               onChange={(e) => setRfidCode(e.target.value)}
               autoFocus
             />
             <p className="text-xs text-gray-500 mt-1">
-              Scannez un tag RFID UHF ou saisissez son code EPC.
+              {t('linge.rfid_scan_hint')}
             </p>
           </div>
           <div className="flex justify-end gap-3 mt-4">
@@ -1153,13 +1152,13 @@ export default function LingeList() {
               }}
               type="button"
             >
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleAssocierRfid}
               disabled={!rfidCode.trim()}
             >
-              <Tag className="w-4 h-4 mr-2" /> Associer RFID
+              <Tag className="w-4 h-4 mr-2" /> {t('linge.associate_rfid')}
             </Button>
           </div>
         </div>
@@ -1169,50 +1168,50 @@ export default function LingeList() {
       <Modal
         isOpen={!!selectedLingeDetail}
         onClose={() => setSelectedLingeDetail(null)}
-        title={`Détails du linge - #${selectedLingeDetail?.id}`}
+        title={`${t('linge.details')} - #${selectedLingeDetail?.id}`}
         size="lg"
       >
         {selectedLingeDetail && (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ID</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('common.id')}</label>
               <Input value={selectedLingeDetail.id} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Code Suivi</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('linge.tracking_code')}</label>
               <Input value={selectedLingeDetail.codebarre} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tag RFID</label>
-              <Input value={selectedLingeDetail.rfidTag || "Non associé"} disabled />
+              <label className="block text-sm font-medium text-gray-700 mb-2">RFID</label>
+              <Input value={selectedLingeDetail.rfidTag || t('linge.not_associated')} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
-              <Input value={selectedLingeDetail.categorie} disabled />
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('linge.category')}</label>
+              <Input value={t(`categories.${selectedLingeDetail.categorie}`, selectedLingeDetail.categorie)} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Poids</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('linge.weight')}</label>
               <Input value={`${selectedLingeDetail.poids} kg`} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">État</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('linge.status')}</label>
               <div>{getEtatBadge(selectedLingeDetail.etat)}</div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type de collecte</label>
-              <Input value={selectedLingeDetail.typeCollecte || "Non défini"} disabled />
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('linge.collection_type')}</label>
+              <Input value={selectedLingeDetail.typeCollecte || t('common.undefined')} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Durée de vie</label>
-              <Input value={selectedLingeDetail.dureVie ? `${selectedLingeDetail.dureVie} cycles` : "Non définie"} disabled />
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('linge.life_cycles')}</label>
+              <Input value={selectedLingeDetail.dureVie ? `${selectedLingeDetail.dureVie} ${t('common.cycles')}` : t('common.undefined')} disabled />
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Service</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('linge.service')}</label>
               <Input value={getServiceName(selectedLingeDetail.serviceId)} disabled />
             </div>
             {selectedLingeDetail.porteurId && (
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Porteur</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('linge.carrier')}</label>
                 <div className="flex items-center gap-2 p-2 rounded-lg border border-input bg-slate-50">
                   <UserIcon className="w-4 h-4 text-slate-400" />
                   <span>{selectedLingeDetail.porteurNom || getPorteurName(selectedLingeDetail.porteurId)}</span>
@@ -1221,13 +1220,13 @@ export default function LingeList() {
             )}
             {selectedLingeDetail.dateCreation && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date de création</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('common.creation_date')}</label>
                 <Input value={new Date(selectedLingeDetail.dateCreation).toLocaleString('fr-FR')} disabled />
               </div>
             )}
             {selectedLingeDetail.observations && (
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Observations</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('linge.observations')}</label>
                 <Input value={selectedLingeDetail.observations} disabled />
               </div>
             )}
@@ -1235,7 +1234,7 @@ export default function LingeList() {
         )}
         <div className="flex justify-end mt-6">
           <Button onClick={() => setSelectedLingeDetail(null)}>
-            Fermer
+            {t('common.close')}
           </Button>
         </div>
       </Modal>
@@ -1244,13 +1243,13 @@ export default function LingeList() {
       <Modal
         isOpen={!!lingeToPrint}
         onClose={() => setLingeToPrint(null)}
-        title="Linge créé avec succès"
+        title={t('linge.created_success')}
         size="md"
       >
-        <p className="mb-6">Voulez-vous imprimer l'étiquette ?</p>
+        <p className="mb-6">{t('linge.print_label_question')}</p>
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={() => setLingeToPrint(null)}>
-            Non
+            {t('common.no')}
           </Button>
           <Button
             onClick={() => {
@@ -1259,7 +1258,7 @@ export default function LingeList() {
               setLingeToPrint(null);
             }}
           >
-            Oui, imprimer
+            {t('common.yes_print')}
           </Button>
         </div>
       </Modal>

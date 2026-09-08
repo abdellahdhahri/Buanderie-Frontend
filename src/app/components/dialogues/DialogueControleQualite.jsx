@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaTimes, FaCheckCircle, FaExclamationTriangle,
@@ -17,6 +18,7 @@ const TYPES_RECLAMATION = [
 ];
 
 export default function DialogueControleQualite({ item, agent, onClose, onConfirmer }) {
+  const { t } = useTranslation();
   const [selectedType, setSelectedType] = useState(null);
   const [description, setDescription] = useState("");
 
@@ -34,13 +36,21 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
 
   const handleConfirmer = () => {
     if (selectedType) {
-      // Créer une réclamation
       onConfirmer(selectedType, description);
     } else {
-      // Conforme : pas de réclamation
       onConfirmer(null, null);
     }
   };
+
+  // Traduire les types de réclamation
+  const getTranslatedTypes = () => {
+    return TYPES_RECLAMATION.map(type => ({
+      ...type,
+      label: t(`reclamation_types.${type.id}`, type.label)
+    }));
+  };
+
+  const translatedTypes = getTranslatedTypes();
 
   return (
     <AnimatePresence>
@@ -98,7 +108,7 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
                   fontSize: "18px",
                   color: "#0f172a"
                 }}>
-                  Contrôle Qualité
+                  {t('dialogue_controle.title')}
                 </div>
                 <div style={{
                   fontSize: "13px",
@@ -108,7 +118,7 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
                   gap: "8px",
                   flexWrap: "wrap"
                 }}>
-                  <span>🧑‍💼 {agent?.nom || "Agent"}</span>
+                  <span>🧑‍💼 {agent?.nom || t('dialogue_controle.agent')}</span>
                   <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#94a3b8" }} />
                   <code style={{ fontSize: "12px", fontWeight: 600, color: "#0ea5e9" }}>
                     {item.codeSuivi || item.codeBarre}
@@ -155,7 +165,7 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
           }}>
             <div>
               <div style={{ fontSize: "10px", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                Code
+                {t('dialogue_controle.code')}
               </div>
               <code style={{ fontWeight: 600, fontSize: "13px", color: "#0ea5e9" }}>
                 {item.codeSuivi || item.codeBarre || "N/A"}
@@ -163,7 +173,7 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
             </div>
             <div>
               <div style={{ fontSize: "10px", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                Catégorie
+                {t('dialogue_controle.category')}
               </div>
               <span style={{ fontWeight: 600, fontSize: "13px", color: "#0f172a" }}>
                 {item.categorie || "NC"}
@@ -171,7 +181,7 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
             </div>
             <div>
               <div style={{ fontSize: "10px", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                Chambre
+                {t('dialogue_controle.room')}
               </div>
               <span style={{ fontWeight: 600, fontSize: "13px", color: "#0f172a" }}>
                 {item.chambre || "—"}
@@ -179,7 +189,7 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
             </div>
             <div>
               <div style={{ fontSize: "10px", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                Poids
+                {t('dialogue_controle.weight')}
               </div>
               <span style={{ fontWeight: 600, fontSize: "13px", color: "#0f172a" }}>
                 {item.poids || 0} kg
@@ -202,8 +212,8 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
             <FaCheckCircle size={16} color="#22c55e" />
             <span>
               {selectedType
-                ? `⚠️ Réclamation sélectionnée : ${selectedType.label}`
-                : "✅ Aucun défaut détecté — Validation automatique dans 5s"}
+                ? t('dialogue_controle.reclamation_selected', { label: selectedType.label })
+                : t('dialogue_controle.no_defect')}
             </span>
           </div>
 
@@ -218,14 +228,14 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
               gap: "6px"
             }}>
               <FaExclamationTriangle size={12} color="#dc2626" />
-              Sélectionner un défaut (optionnel)
+              {t('dialogue_controle.select_defect')}
             </div>
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
               gap: "8px"
             }}>
-              {TYPES_RECLAMATION.map((type) => {
+              {translatedTypes.map((type) => {
                 const Icon = type.icon;
                 const isSelected = selectedType?.id === type.id;
                 return (
@@ -287,12 +297,12 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
                 color: "#64748b",
                 marginBottom: "6px"
               }}>
-                Description du défaut (optionnel)
+                {t('dialogue_controle.description_label')}
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Décrivez le problème en détail..."
+                placeholder={t('dialogue_controle.description_placeholder')}
                 style={{
                   width: "100%",
                   minHeight: "60px",
@@ -338,7 +348,7 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
               onMouseEnter={(e) => { e.currentTarget.style.background = "#f0fdf4"; e.currentTarget.style.borderColor = "#22c55e"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "white"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
             >
-              <FaCheckCircle size={16} /> Conforme
+              <FaCheckCircle size={16} /> {t('dialogue_controle.conform')}
             </button>
             <button
               onClick={handleConfirmer}
@@ -362,7 +372,9 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
               }}
             >
               <FaExclamationTriangle size={16} />
-              {selectedType ? `Signaler ${selectedType.label}` : "Sélectionnez un défaut"}
+              {selectedType 
+                ? t('dialogue_controle.report_defect', { label: selectedType.label })
+                : t('dialogue_controle.select_defect_first')}
             </button>
           </div>
 
@@ -372,7 +384,7 @@ export default function DialogueControleQualite({ item, agent, onClose, onConfir
             color: "#94a3b8",
             textAlign: "center"
           }}>
-            ⏱️ Validation automatique dans {selectedType ? "5s" : "5s"} sans sélection
+            ⏱️ {t('dialogue_controle.auto_validation')}
           </div>
         </motion.div>
       </div>

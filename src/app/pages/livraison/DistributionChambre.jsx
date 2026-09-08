@@ -1,5 +1,6 @@
 // pages/Distribution/DistributionChambre.js
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FaUser, FaBed, FaRedo, FaSpinner, FaCheckDouble,
   FaCheck, FaDoorOpen, FaCheckCircle, FaExclamationTriangle,
@@ -22,6 +23,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import "../Linge/WorkflowList.css";
 
 function ScanStatus({ loading, success, error, code }) {
+  const { t } = useTranslation();
+
   if (loading) {
     return (
       <div style={{
@@ -37,7 +40,9 @@ function ScanStatus({ loading, success, error, code }) {
       }}>
         <FaSpinner className="animate-spin" color="#3b82f6" size={22} />
         <div>
-          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "14px", margin: 0 }}>Scan en cours...</p>
+          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "14px", margin: 0 }}>
+            {t('distribution_chambre.scanning')}
+          </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{code}</p>
         </div>
       </div>
@@ -69,7 +74,9 @@ function ScanStatus({ loading, success, error, code }) {
           <FaCheckCircle color="#22c55e" size={20} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "14px", margin: 0 }}>✓ {success.message || "Succès"}</p>
+          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "14px", margin: 0 }}>
+            ✓ {success.message || t('common.success')}
+          </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{success.detail}</p>
         </div>
       </div>
@@ -101,7 +108,9 @@ function ScanStatus({ loading, success, error, code }) {
           <FaExclamationTriangle color="#ef4444" size={18} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "14px", margin: 0 }}>Erreur</p>
+          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "14px", margin: 0 }}>
+            {t('common.error')}
+          </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{error}</p>
         </div>
       </div>
@@ -152,17 +161,19 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
 }
 
 function CarteLit({ lit, actif, onClick }) {
+  const { t } = useTranslation();
+
   const complet = !lit.litVide;
   const infecte = lit.estInfecte;
   const nb = lit.lingesPoses?.length || 0;
   
   const statusConfig = complet 
-    ? { label: "Complété", color: "#10b981", bg: "#dcfce7", icon: "✅" }
+    ? { label: t('distribution_chambre.completed'), color: "#10b981", bg: "#dcfce7", icon: "✅" }
     : infecte 
-      ? { label: "Infecté", color: "#dc2626", bg: "#fee2e2", icon: "⚠️" }
+      ? { label: t('distribution_chambre.infected'), color: "#dc2626", bg: "#fee2e2", icon: "⚠️" }
       : nb > 0 
-        ? { label: "En cours", color: "#7c3aed", bg: "#ede9fe", icon: "●" }
-        : { label: "Vide", color: "#94a3b8", bg: "#f1f5f9", icon: "○" };
+        ? { label: t('distribution_chambre.in_progress'), color: "#7c3aed", bg: "#ede9fe", icon: "●" }
+        : { label: t('distribution_chambre.empty'), color: "#94a3b8", bg: "#f1f5f9", icon: "○" };
 
   return (
     <motion.div
@@ -222,7 +233,7 @@ function CarteLit({ lit, actif, onClick }) {
               alignItems: "center",
               gap: "8px"
             }}>
-              Lit {lit.codeLit}
+              {t('distribution_chambre.bed')} {lit.codeLit}
               <span style={{
                 fontSize: "10px",
                 fontWeight: 600,
@@ -242,7 +253,7 @@ function CarteLit({ lit, actif, onClick }) {
               gap: "6px",
               marginTop: "2px"
             }}>
-              <span>{nb} linge{nb > 1 ? 's' : ''}</span>
+              <span>{nb} {t('distribution_chambre.linen')}{nb > 1 ? 's' : ''}</span>
               {nb > 0 && (
                 <>
                   <span style={{ width: "3px", height: "3px", borderRadius: "50%", background: "#d1d5db" }} />
@@ -262,7 +273,7 @@ function CarteLit({ lit, actif, onClick }) {
             fontSize: "10px",
             fontWeight: 700
           }}>
-            ● En cours
+            ● {t('distribution_chambre.in_progress')}
           </div>
         )}
       </div>
@@ -307,7 +318,7 @@ function CarteLit({ lit, actif, onClick }) {
           color: "#94a3b8",
           fontStyle: "italic"
         }}>
-          Aucun linge posé
+          {t('distribution_chambre.no_linen_placed')}
         </div>
       )}
     </motion.div>
@@ -315,6 +326,8 @@ function CarteLit({ lit, actif, onClick }) {
 }
 
 function Resume({ res, onNouvelle, onTerminer }) {
+  const { t } = useTranslation();
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -348,15 +361,14 @@ function Resume({ res, onNouvelle, onTerminer }) {
           color: "#15803d",
           margin: 0
         }}>
-          Chambre {res.codeChambre} équipée
+          {t('distribution_chambre.room_equipped', { code: res.codeChambre })}
         </h2>
         <p style={{
           fontSize: "14px",
           color: "#64748b",
           marginTop: "4px"
         }}>
-          {res.nbLinges} linge{res.nbLinges > 1 ? "s" : ""} distribué{res.nbLinges > 1 ? "s" : ""} 
-          sur {res.nbLits} lit{res.nbLits > 1 ? "s" : ""}
+          {res.nbLinges} {t('distribution_chambre.linen')}{res.nbLinges > 1 ? 's' : ''} {t('distribution_chambre.distributed_on')} {res.nbLits} {t('distribution_chambre.bed')}{res.nbLits > 1 ? 's' : ''}
         </p>
       </div>
 
@@ -390,10 +402,10 @@ function Resume({ res, onNouvelle, onTerminer }) {
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: "13px", color: "#0f172a" }}>
-                Lit {l.codeLit}
+                {t('distribution_chambre.bed')} {l.codeLit}
               </div>
               <div style={{ fontSize: "11px", color: "#64748b" }}>
-                {l.nb} linge{l.nb > 1 ? "s" : ""}
+                {l.nb} {t('distribution_chambre.linen')}{l.nb > 1 ? 's' : ''}
               </div>
             </div>
           </div>
@@ -418,7 +430,7 @@ function Resume({ res, onNouvelle, onTerminer }) {
           onMouseEnter={e => e.currentTarget.style.transform = "scale(1.03)"}
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
         >
-          Autre chambre
+          {t('distribution_chambre.another_room')}
         </button>
         <button
           onClick={onTerminer}
@@ -436,7 +448,7 @@ function Resume({ res, onNouvelle, onTerminer }) {
           onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
           onMouseLeave={e => e.currentTarget.style.background = "white"}
         >
-          Terminer
+          {t('common.finish')}
         </button>
       </div>
     </motion.div>
@@ -444,6 +456,8 @@ function Resume({ res, onNouvelle, onTerminer }) {
 }
 
 export default function DistributionChambre() {
+  const { t } = useTranslation();
+
   const [etape, setEtape] = useState("CHAMBRE");
   const [agent, setAgent] = useState(null);
   const [chambre, setChambre] = useState(null);
@@ -471,8 +485,8 @@ export default function DistributionChambre() {
       setScanStatus({
         loading: false,
         success: {
-          message: `👤 Agent ${agentData.nom}`,
-          detail: `Connecté · ${agentData.codeBarre || agentData.matricule}`
+          message: `👤 ${t('distribution_chambre.agent')} ${agentData.nom}`,
+          detail: `${t('distribution_chambre.connected')} · ${agentData.codeBarre || agentData.matricule}`
         },
         error: null
       });
@@ -482,10 +496,10 @@ export default function DistributionChambre() {
       setScanStatus({
         loading: false,
         success: null,
-        error: "Aucun agent connecté — veuillez vous reconnecter"
+        error: t('distribution_chambre.no_agent_connected')
       });
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const keepFocus = () => {
@@ -502,8 +516,8 @@ export default function DistributionChambre() {
     if (poses.length === 0) {
       await Swal.fire({
         icon: 'warning',
-        title: '⚠️ Aucun linge distribué',
-        text: 'Posez au moins un linge avant de terminer.',
+        title: t('distribution_chambre.no_linen_distributed_title'),
+        text: t('distribution_chambre.no_linen_distributed_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -512,13 +526,16 @@ export default function DistributionChambre() {
 
     const result = await Swal.fire({
       icon: 'question',
-      title: 'Terminer la distribution ?',
-      text: `${poses.reduce((s, p) => s + p.nb, 0)} linge(s) distribués sur ${poses.length} lit(s)`,
+      title: t('distribution_chambre.finish_distribution_title'),
+      text: t('distribution_chambre.finish_distribution_text', {
+        count: poses.reduce((s, p) => s + p.nb, 0),
+        beds: poses.length
+      }),
       showCancelButton: true,
       confirmButtonColor: '#0d9488',
       cancelButtonColor: '#64748b',
-      confirmButtonText: 'Oui, terminer',
-      cancelButtonText: 'Annuler'
+      confirmButtonText: t('distribution_chambre.yes_finish'),
+      cancelButtonText: t('common.cancel')
     });
 
     if (!result.isConfirmed) return false;
@@ -533,14 +550,14 @@ export default function DistributionChambre() {
     setEtape("RESUME");
     setLitActif(null);
     return true;
-  }, [poses, chambre]);
+  }, [poses, chambre, t]);
 
   const handleChambre = useCallback(async code => {
     if (!agent) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Agent non connecté',
-        text: 'Veuillez vous reconnecter.',
+        title: t('distribution_chambre.agent_not_connected_title'),
+        text: t('distribution_chambre.agent_not_connected_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -562,14 +579,17 @@ export default function DistributionChambre() {
       setEtape("DISTRIBUER");
       setScanStatus({
         loading: false,
-        success: { message: `✅ Chambre ${res.codeChambre}`, detail: `${res.lits?.length} lit(s) · ${res.disponibles?.length || 0} linge(s)` },
+        success: { 
+          message: `✅ ${t('distribution_chambre.room')} ${res.codeChambre}`, 
+          detail: `${res.lits?.length} ${t('distribution_chambre.bed')}s · ${res.disponibles?.length || 0} ${t('distribution_chambre.linen')}s` 
+        },
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
       await Swal.fire({
         icon: 'success',
-        title: `✅ Chambre ${res.codeChambre}`,
-        text: `${res.lits?.length} lit(s) · ${res.disponibles?.length || 0} linge(s) disponibles`,
+        title: `✅ ${t('distribution_chambre.room')} ${res.codeChambre}`,
+        text: `${res.lits?.length} ${t('distribution_chambre.bed')}s · ${res.disponibles?.length || 0} ${t('distribution_chambre.linen')}s ${t('distribution_chambre.available')}`,
         timer: 1500,
         showConfirmButton: false
       });
@@ -577,20 +597,21 @@ export default function DistributionChambre() {
       setScanStatus({ loading: false, success: null, error: e.message });
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
+        title: t('common.error'),
         text: e.message
       });
     } finally {
       setLoading(false);
     }
-  }, [agent]);
+  }, [agent, t]);
 
   const handleScanLinge = useCallback(async code => {
     const lit = litRef.current;
     if (!lit) {
       await Swal.fire({
         icon: 'warning',
-        title: '🛏️ Sélectionnez d\'abord un lit',
+        title: t('distribution_chambre.select_bed_first_title'),
+        text: t('distribution_chambre.select_bed_first_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -623,7 +644,10 @@ export default function DistributionChambre() {
 
       setScanStatus({
         loading: false,
-        success: { message: "✓ Linge posé", detail: `Lit ${lit.codeLit}` },
+        success: { 
+          message: t('distribution_chambre.linen_placed'), 
+          detail: `${t('distribution_chambre.bed')} ${lit.codeLit}` 
+        },
         error: null
       });
       setTimeout(() => setScanStatus(null), 1500);
@@ -631,7 +655,7 @@ export default function DistributionChambre() {
       setScanStatus({ loading: false, success: null, error: e.message });
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
+        title: t('common.error'),
         text: e.message,
         timer: 1500,
         showConfirmButton: false
@@ -639,7 +663,7 @@ export default function DistributionChambre() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const handleScan = useCallback(async code => {
     if (!code || loading) return;
@@ -667,13 +691,13 @@ export default function DistributionChambre() {
     if (etape !== "CHAMBRE" && etape !== "RESUME") {
       const result = await Swal.fire({
         icon: 'warning',
-        title: 'Réinitialiser',
-        text: 'La distribution en cours sera abandonnée.',
+        title: t('distribution_chambre.reset_title'),
+        text: t('distribution_chambre.reset_text'),
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
         cancelButtonColor: '#64748b',
-        confirmButtonText: 'Oui, réinitialiser',
-        cancelButtonText: 'Annuler'
+        confirmButtonText: t('distribution_chambre.yes_reset'),
+        cancelButtonText: t('common.cancel')
       });
       if (!result.isConfirmed) return;
     }
@@ -684,14 +708,14 @@ export default function DistributionChambre() {
     setEtape("CHAMBRE");
     setScanVal("");
     setScanStatus(null);
-  }, [etape]);
+  }, [etape, t]);
 
   const getPlaceholder = () => {
-    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
-    if (etape === "CHAMBRE") return "🚪 Scanner le code chambre...";
-    if (etape === "RESUME") return "✅ Distribution terminée";
-    if (litActif) return `🏷️ Scanner un linge → Lit ${litActif.codeLit}`;
-    return "🛏️ Cliquez sur un lit pour le sélectionner";
+    if (!agent) return t('distribution_chambre.agent_not_connected_placeholder');
+    if (etape === "CHAMBRE") return t('distribution_chambre.scan_room_code');
+    if (etape === "RESUME") return t('distribution_chambre.distribution_completed');
+    if (litActif) return t('distribution_chambre.scan_linen_to_bed', { code: litActif.codeLit });
+    return t('distribution_chambre.select_bed_hint');
   };
 
   const getBorderColor = () => {
@@ -738,14 +762,14 @@ export default function DistributionChambre() {
               color: "#0f172a",
               margin: 0
             }}>
-              Distribution — Chambre
+              {t('distribution_chambre.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
+              {agent ? `${t('distribution_chambre.agent')}: ${agent.nom}` : t('distribution_chambre.no_agent_connected')}
             </p>
           </div>
         </div>
@@ -796,15 +820,17 @@ export default function DistributionChambre() {
                 border: "1px solid #99f6e4"
               }}>
                 <FaDoorOpen color="#0d9488" size={16} />
-                <span style={{ fontWeight: 700, color: "#0d9488", fontSize: "14px" }}>Chambre {chambre.codeChambre}</span>
+                <span style={{ fontWeight: 700, color: "#0d9488", fontSize: "14px" }}>
+                  {t('distribution_chambre.room')} {chambre.codeChambre}
+                </span>
                 <Badge style={{ background: "#ccfbf1", color: "#0d9488", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {chambre.lits?.length || 0} lits
+                  {chambre.lits?.length || 0} {t('distribution_chambre.bed')}s
                 </Badge>
               </div>
             )}
             {etape === "DISTRIBUER" && litActif && (
               <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "11px", padding: "4px 14px", borderRadius: "12px" }}>
-                🛏️ Lit {litActif.codeLit}
+                🛏️ {t('distribution_chambre.bed')} {litActif.codeLit}
               </Badge>
             )}
           </div>
@@ -827,7 +853,7 @@ export default function DistributionChambre() {
                 }}
               >
                 <FaRedo size={10} />
-                Reset
+                {t('common.reset')}
               </button>
             )}
           </div>
@@ -847,8 +873,8 @@ export default function DistributionChambre() {
             color: "#dc2626"
           }}>
             <FaExclamationTriangle size={16} />
-            <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
-            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une distribution</span>
+            <span style={{ fontWeight: 600, color: "#dc2626" }}>{t('distribution_chambre.no_agent_connected')}</span>
+            <span style={{ color: "#64748b" }}>{t('distribution_chambre.no_agent_connect_text')}</span>
           </div>
         )}
 
@@ -888,7 +914,7 @@ export default function DistributionChambre() {
             color: "#92400e"
           }}>
             <FaUser size={14} />
-            <span>💡 Scanner votre badge agent pour clôturer la distribution</span>
+            <span>💡 {t('distribution_chambre.scan_agent_to_close')}</span>
           </div>
         )}
 
@@ -897,8 +923,8 @@ export default function DistributionChambre() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaDoorOpen color="#0d9488" size={16} />
-                <span style={{ fontWeight: 600, color: "#0d9488" }}>Scannez le code de la chambre</span>
-                <span style={{ color: "#64748b" }}>pour charger les lits</span>
+                <span style={{ fontWeight: 600, color: "#0d9488" }}>{t('distribution_chambre.scan_room_to_load')}</span>
+                <span style={{ color: "#64748b" }}>{t('distribution_chambre.to_load_beds')}</span>
               </div>
             </CardContent>
           </Card>
@@ -912,33 +938,33 @@ export default function DistributionChambre() {
             marginBottom: "20px"
           }}>
             <StatutCard
-              label="Distribués"
+              label={t('distribution_chambre.distributed')}
               value={nbPoses}
               icon="✅"
               color="#15803d"
               bg="#f0fdf4"
             />
             <StatutCard
-              label="Disponibles"
+              label={t('distribution_chambre.available')}
               value={nbDispo}
               icon="📦"
               color="#0ea5e9"
               bg="#f0f9ff"
             />
             <StatutCard
-              label="Lits vides"
+              label={t('distribution_chambre.empty_beds')}
               value={litsVides}
               icon="🛏️"
               color="#d97706"
               bg="#fef3c7"
             />
             <StatutCard
-              label="Avancement"
+              label={t('distribution_chambre.progress')}
               value={`${pctAvancement}%`}
               icon="📊"
               color="#7c3aed"
               bg="#faf5ff"
-              subValue={pctAvancement === 100 ? "✅ Complet" : ""}
+              subValue={pctAvancement === 100 ? `✅ ${t('distribution_chambre.complete')}` : ""}
             />
           </div>
         )}
@@ -991,9 +1017,9 @@ export default function DistributionChambre() {
           marginTop: "16px"
         }}>
           <div style={{ display: "flex", gap: "16px" }}>
-            {agent && <span>Agent: <strong style={{ color: "#0f172a" }}>{agent.nom}</strong></span>}
-            {chambre && <span>Chambre: <strong style={{ color: "#0d9488" }}>{chambre.codeChambre}</strong></span>}
-            {litActif && <span style={{ color: "#7c3aed" }}>🛏️ Lit {litActif.codeLit}</span>}
+            {agent && <span>{t('distribution_chambre.agent')}: <strong style={{ color: "#0f172a" }}>{agent.nom}</strong></span>}
+            {chambre && <span>{t('distribution_chambre.room')}: <strong style={{ color: "#0d9488" }}>{chambre.codeChambre}</strong></span>}
+            {litActif && <span style={{ color: "#7c3aed" }}>🛏️ {t('distribution_chambre.bed')} {litActif.codeLit}</span>}
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <span>{new Date().toLocaleDateString("fr-FR")}</span>

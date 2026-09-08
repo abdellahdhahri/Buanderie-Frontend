@@ -1,4 +1,6 @@
+// pages/Management/LotList.js
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Plus,
   Search,
@@ -34,8 +36,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
-import printJS from "print-js";
-import BarcodeLabel from "../../components/BarcodeLabel"; 
+import BarcodeLabel from "../../components/BarcodeLabel";
 
 const CATEGORIES = [
   { value: "DRAP", label: "Drap" },
@@ -54,14 +55,19 @@ const TYPE_COLLECTE = [
   { value: "INFECTE", label: "Infecté", color: "danger" }
 ];
 
+// ✅ Nouveaux états avec PRET_SECHAGE, PRET_LAVAGE, EN_TRI
 const ETAT_LOT = [
   { value: "EN_RECEPTION", label: "En réception", color: "warning" },
   { value: "EN_ATTENTE_COLLECTE", label: "En attente de collecte", color: "secondary" },
   { value: "EN_TRI", label: "En tri", color: "info" },
+  { value: "PRET_LAVAGE", label: "Prêt lavage", color: "info" },
+  { value: "PRET_SECHAGE", label: "Prêt séchage", color: "info" },
   { value: "TERMINE", label: "Terminé", color: "success" }
 ];
 
 export default function LotList() {
+  const { t } = useTranslation();
+
   const [lots, setLots] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLot, setSelectedLot] = useState(null);
@@ -132,16 +138,19 @@ export default function LotList() {
     }, 300);
   };
 
+  // ✅ getStatusBadge avec traduction
   const getStatusBadge = (status) => {
-    if (!status) return <Badge variant="secondary">Non défini</Badge>;
+    if (!status) return <Badge variant="secondary">{t('lot_status.Non défini')}</Badge>;
     
     const variants = {
-      BLANC: { variant: "info", label: "Blanc" },
-      INFECTE: { variant: "danger", label: "Infecté" },
-      EN_RECEPTION: { variant: "warning", label: "En réception" },
-      EN_ATTENTE_COLLECTE: { variant: "secondary", label: "En attente" },
-      EN_TRI: { variant: "info", label: "En tri" },
-      TERMINE: { variant: "success", label: "Terminé" }
+      BLANC: { variant: "info", label: t('lot_status.BLANC') },
+      INFECTE: { variant: "danger", label: t('lot_status.INFECTE') },
+      EN_RECEPTION: { variant: "warning", label: t('lot_status.EN_RECEPTION') },
+      EN_ATTENTE_COLLECTE: { variant: "secondary", label: t('lot_status.EN_ATTENTE_COLLECTE') },
+      EN_TRI: { variant: "info", label: t('lot_status.EN_TRI') },
+      PRET_LAVAGE: { variant: "info", label: t('lot_status.PRET_LAVAGE') },
+      PRET_SECHAGE: { variant: "info", label: t('lot_status.PRET_SECHAGE') },
+      TERMINE: { variant: "success", label: t('lot_status.TERMINE') }
     };
     
     const config = variants[status] || { variant: "secondary", label: status };
@@ -174,8 +183,8 @@ export default function LotList() {
     
     if (!newRec.categorie) {
       Swal.fire({
-        title: "⚠️ Catégorie requise",
-        text: "Veuillez sélectionner une catégorie.",
+        title: t('lot.categorie_required'),
+        text: t('lot.categorie_required_text'),
         icon: "warning",
       });
       return;
@@ -183,8 +192,8 @@ export default function LotList() {
 
     if (!newRec.typeCollecte) {
       Swal.fire({
-        title: "⚠️ Type de collecte requis",
-        text: "Veuillez sélectionner un type de collecte.",
+        title: t('lot.type_collecte_required'),
+        text: t('lot.type_collecte_required_text'),
         icon: "warning",
       });
       return;
@@ -198,8 +207,6 @@ export default function LotList() {
         categorie: newRec.categorie,
         capaciteMax: parseFloat(newRec.capaciteMax) || 10
       });
-
-      console.log("📦 Paramètres envoyés:", params.toString());
 
       const url = selectedLot 
         ? `http://localhost:8082/api/lots/${selectedLot.id}`
@@ -221,14 +228,10 @@ export default function LotList() {
         options.body = JSON.stringify(payload);
       }
 
-      console.log("📦 URL:", url);
-      console.log("📦 Options:", options);
-
       const response = await fetch(url, options);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("❌ Erreur réponse:", errorText);
         let errorMsg = errorText;
         try {
           const errorJson = JSON.parse(errorText);
@@ -242,8 +245,8 @@ export default function LotList() {
       if (selectedLot) {
         setLots((prev) => prev.map((r) => (r.id === data.id ? data : r)));
         Swal.fire({
-          title: "✅ Modifié!",
-          text: "Lot mis à jour avec succès.",
+          title: "✅",
+          text: t('lot.update_success'),
           icon: "success",
           timer: 1500,
           showConfirmButton: false,
@@ -251,8 +254,8 @@ export default function LotList() {
       } else {
         setLots((prev) => [data, ...prev]);
         Swal.fire({
-          title: "✅ Créé!",
-          text: "Nouveau lot créé avec succès.",
+          title: "✅",
+          text: t('lot.create_success'),
           icon: "success",
           timer: 1500,
           showConfirmButton: false,
@@ -265,8 +268,8 @@ export default function LotList() {
     } catch (err) {
       console.error("❌ Erreur:", err);
       Swal.fire({
-        title: "❌ Erreur",
-        text: err.message || "Une erreur est survenue.",
+        title: "❌",
+        text: t('lot.error_text'),
         icon: "error",
       });
     } finally {
@@ -276,14 +279,14 @@ export default function LotList() {
 
   const deleteRec = async (id) => {
     const result = await Swal.fire({
-      title: "Es-tu sûr?",
-      text: "Vous ne pourrez pas annuler cette action!",
+      title: t('lot.delete_confirm'),
+      text: t('lot.delete_confirm_text'),
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
-      confirmButtonText: "Oui, supprimer!",
-      cancelButtonText: "Annuler",
+      confirmButtonText: t('lot.delete_confirm_yes'),
+      cancelButtonText: t('lot.delete_confirm_no'),
     });
 
     if (result.isConfirmed) {
@@ -297,8 +300,8 @@ export default function LotList() {
             handleClosePanel();
           }
           Swal.fire({
-            title: "✅ Supprimé!",
-            text: "Lot supprimé avec succès.",
+            title: "✅",
+            text: t('lot.delete_success'),
             icon: "success",
             timer: 1500,
             showConfirmButton: false,
@@ -310,8 +313,8 @@ export default function LotList() {
       } catch (err) {
         console.error("Erreur suppression:", err);
         Swal.fire({
-          title: "❌ Erreur",
-          text: err.message || "Erreur lors de la suppression.",
+          title: "❌",
+          text: t('lot.error_text'),
           icon: "error",
         });
       }
@@ -321,7 +324,6 @@ export default function LotList() {
   const handleRowClick = (id) => {
     setSelectedId((prev) => (prev === id ? null : id));
   };
-
 
   const filteredLots = lots.filter((r) => {
     if (!searchTerm) return true;
@@ -385,14 +387,14 @@ export default function LotList() {
                   color: "#0f172a",
                   margin: 0
                 }}>
-                  Gestion des lots
+                  {t('lot.title')}
                 </h1>
                 <p style={{
                   fontSize: "14px",
                   color: "#64748b",
                   margin: "2px 0 0 0"
                 }}>
-                  Création et gestion des lots de linge
+                  {t('lot.subtitle')}
                 </p>
               </div>
             </div>
@@ -403,12 +405,11 @@ export default function LotList() {
               onClick={handleOpenCreateModal}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
             >
-              <Plus className="w-4 h-4 stroke-[2.5]" /> Nouveau Lot
+              <Plus className="w-4 h-4 stroke-[2.5]" /> {t('lot.new')}
             </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
 
-            {/* ✅ Bouton Étiquette Lot avec BarcodeLabel */}
             {selectedLot && (
               <BarcodeLabel item={selectedLot} type="lot" />
             )}
@@ -417,12 +418,12 @@ export default function LotList() {
               disabled={!selectedLotId}
               onClick={() => {
                 if (selectedLot) {
-                  // Ticket Lot - à garder si besoin
+                  // Ticket Lot
                 }
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Printer className="w-4 h-4 stroke-[2.5]" /> Ticket Lot
+              <Printer className="w-4 h-4 stroke-[2.5]" /> {t('lot.ticket')}
             </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
@@ -432,7 +433,7 @@ export default function LotList() {
               onClick={() => handleOpenEditModal(selectedLot)}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#006f94]/30 rounded-[14px] text-sm font-bold text-[#006f94] hover:bg-[#006f94]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Edit className="w-4 h-4 stroke-[2.5]" /> Modifier
+              <Edit className="w-4 h-4 stroke-[2.5]" /> {t('common.edit')}
             </button>
 
             <button
@@ -440,14 +441,14 @@ export default function LotList() {
               onClick={async () => {
                 if (selectedLotId) {
                   const confirmed = await Swal.fire({
-                    title: "Es-tu sûr?",
-                    text: "Vous ne pourrez pas annuler cette action!",
+                    title: t('lot.delete_confirm'),
+                    text: t('lot.delete_confirm_text'),
                     icon: "warning",
                     showCancelButton: true,
                     confirmButtonColor: "#d33",
                     cancelButtonColor: "#3085d6",
-                    confirmButtonText: "Oui, supprimer!",
-                    cancelButtonText: "Annuler",
+                    confirmButtonText: t('lot.delete_confirm_yes'),
+                    cancelButtonText: t('lot.delete_confirm_no'),
                   });
                   if (confirmed.isConfirmed) {
                     deleteRec(selectedLotId);
@@ -456,14 +457,14 @@ export default function LotList() {
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e03131]/30 rounded-[14px] text-sm font-bold text-[#e03131] hover:bg-[#e03131]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Trash2 className="w-4 h-4 stroke-[2.5]" /> Supprimer
+              <Trash2 className="w-4 h-4 stroke-[2.5]" /> {t('common.delete')}
             </button>
 
             <button
               onClick={fetchLots}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Actualiser
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> {t('common.refresh')}
             </button>
           </div>
 
@@ -473,7 +474,7 @@ export default function LotList() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Rechercher par code, catégorie, type ou état..."
+                  placeholder={t('lot.search_placeholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -488,14 +489,14 @@ export default function LotList() {
                 <table className="w-full">
                   <thead className="border-b border-border bg-muted/50">
                     <tr>
-                      <th className="text-left py-3 px-4 text-sm font-medium w-10"></th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Code Lot</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Catégorie</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Type Collecte</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">État</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Date création</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Capacité / Poids</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Actions</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium w-10"></th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.code')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.category')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.type_collecte')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.status')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.date_creation')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.capacity')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -506,14 +507,14 @@ export default function LotList() {
                             <svg className="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
-                            Chargement...
+                            {t('common.loading')}
                           </div>
                         </td>
                       </tr>
                     ) : filteredLots.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="text-center py-8 text-muted-foreground">
-                          {searchTerm ? "Aucun lot correspondant" : "Aucun lot trouvé"}
+                          {searchTerm ? t('lot.no_match') : t('lot.no_data')}
                         </td>
                       </tr>
                     ) : (
@@ -525,14 +526,14 @@ export default function LotList() {
                             selectedLotId === lot.id ? 'bg-blue-50' : ''
                           }`}
                         >
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleOpenPanel(lot);
                               }}
                               className="p-1 hover:bg-blue-100 rounded-lg transition-colors"
-                              title={panelOpen && selectedLotId === lot.id ? "Fermer" : "Détails du lot"}
+                              title={panelOpen && selectedLotId === lot.id ? t('common.close') : t('lot.details')}
                             >
                               {panelOpen && selectedLotId === lot.id ? (
                                 <ChevronLeft className="w-5 h-5 text-blue-500" />
@@ -541,34 +542,33 @@ export default function LotList() {
                               )}
                             </button>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <div className="font-mono text-sm font-medium text-blue-600">
                               {lot.codeLot || `LOT-${lot.id}`}
                             </div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             <Badge variant="outline">{lot.categorie || "N/A"}</Badge>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             {getStatusBadge(lot.typeCollecte)}
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="text-center py-3 px-4">
                             {getStatusBadge(lot.etat)}
                           </td>
-                          <td className="py-3 px-4 text-sm">
-                            {lot.dateCreation ? new Date(lot.dateCreation).toLocaleDateString("fr-FR") : "N/A"}
+                          <td className="text-center py-3 px-4 text-sm">
+                            {lot.dateCreation ? new Date(lot.dateCreation).toLocaleDateString() : "N/A"}
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <Weight className="w-4 h-4 text-slate-400" />
                               <span className="font-medium">{lot.poidsActuel || 0} kg</span>
                               <span className="text-xs text-slate-400">/</span>
                               <span className="text-xs text-slate-400">{lot.capaciteMax || 0} kg</span>
                             </div>
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              {/* ✅ Bouton Étiquette avec BarcodeLabel */}
+                          <td className="text-center py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
                               <BarcodeLabel item={lot} type="lot" />
                               <button
                                 onClick={(e) => {
@@ -576,7 +576,7 @@ export default function LotList() {
                                   handleOpenEditModal(lot);
                                 }}
                                 className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title="Modifier"
+                                title={t('common.edit')}
                               >
                                 <Edit className="w-4 h-4 text-[#006f94]" />
                               </button>
@@ -586,7 +586,7 @@ export default function LotList() {
                                   deleteRec(lot.id);
                                 }}
                                 className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
-                                title="Supprimer"
+                                title={t('common.delete')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -643,12 +643,11 @@ export default function LotList() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* ✅ Bouton Étiquette avec BarcodeLabel */}
                   <BarcodeLabel item={selectedLot} type="lot" />
                   <button
                     onClick={handleClosePanel}
                     className="p-1.5 hover:bg-blue-200 rounded-lg transition-colors text-slate-500 hover:text-slate-700"
-                    title="Fermer"
+                    title={t('common.close')}
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -660,7 +659,7 @@ export default function LotList() {
               <div className="space-y-4">
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                   <div className="text-center">
-                    <div className="text-xs text-slate-500 mb-2">CODE-BARRES DU LOT</div>
+                    <div className="text-xs text-slate-500 mb-2">{t('lot.barcode_title')}</div>
                     <div className="flex justify-center">
                       <img
                         src={`https://barcodeapi.org/api/${/^\d{13}$/.test(selectedLot.codeLot || `LOT-${selectedLot.id}`) ? 'ean13' : /^\d{8}$/.test(selectedLot.codeLot || `LOT-${selectedLot.id}`) ? 'ean8' : /^\d{12}$/.test(selectedLot.codeLot || `LOT-${selectedLot.id}`) ? 'upc' : 'code128'}/${encodeURIComponent(selectedLot.codeLot || `LOT-${selectedLot.id}`)}`}
@@ -676,35 +675,34 @@ export default function LotList() {
 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">📅 Date création</span>
+                    <span className="text-sm text-slate-600">📅 {t('lot.date_creation')}</span>
                     <span className="text-sm font-medium">
-                      {selectedLot.dateCreation ? new Date(selectedLot.dateCreation).toLocaleDateString('fr-FR') : 'N/A'}
+                      {selectedLot.dateCreation ? new Date(selectedLot.dateCreation).toLocaleDateString() : 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">📂 Catégorie</span>
+                    <span className="text-sm text-slate-600">📂 {t('lot.category')}</span>
                     <Badge variant="outline">{selectedLot.categorie || "N/A"}</Badge>
                   </div>
                   <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">🏷️ Type Collecte</span>
+                    <span className="text-sm text-slate-600">🏷️ {t('lot.type_collecte')}</span>
                     {getStatusBadge(selectedLot.typeCollecte)}
                   </div>
                   <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">📊 État</span>
+                    <span className="text-sm text-slate-600">📊 {t('lot.status')}</span>
                     {getStatusBadge(selectedLot.etat)}
                   </div>
                   <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">⚖️ Capacité Max</span>
+                    <span className="text-sm text-slate-600">⚖️ {t('lot.max_capacity')}</span>
                     <span className="text-sm font-medium">{selectedLot.capaciteMax || 0} kg</span>
                   </div>
                   <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">📦 Poids Actuel</span>
+                    <span className="text-sm text-slate-600">📦 {t('lot.current_weight')}</span>
                     <span className="text-sm font-medium">{selectedLot.poidsActuel || 0} kg</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  {/* ✅ Bouton Étiquette avec BarcodeLabel */}
                   <BarcodeLabel item={selectedLot} type="lot" />
                 </div>
               </div>
@@ -716,7 +714,7 @@ export default function LotList() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={selectedLot ? `Modifier le lot #${selectedLot.id}` : "Nouveau lot"}
+        title={selectedLot ? `${t('lot.edit')} #${selectedLot.id}` : t('lot.new')}
         size="lg"
       >
         <form onSubmit={handleSave}>
@@ -724,7 +722,7 @@ export default function LotList() {
             {selectedLot && (
               <div>
                 <Input
-                  label="Code du lot"
+                  label={t('lot.code')}
                   value={selectedLot.codeLot || `LOT-${selectedLot.id}`}
                   disabled
                 />
@@ -733,7 +731,7 @@ export default function LotList() {
 
             <div>
               <label className="block text-sm font-medium mb-2">
-                Catégorie <span className="text-red-500">*</span>
+                {t('lot.category')} <span className="text-red-500">*</span>
               </label>
               <select
                 value={newRec.categorie}
@@ -743,7 +741,7 @@ export default function LotList() {
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               >
-                <option value="">Sélectionner une catégorie</option>
+                <option value="">{t('lot.select_category')}</option>
                 {CATEGORIES.map((cat) => (
                   <option key={cat.value} value={cat.value}>
                     {cat.label}
@@ -754,7 +752,7 @@ export default function LotList() {
 
             <div>
               <label className="block text-sm font-medium mb-2">
-                Type de collecte <span className="text-red-500">*</span>
+                {t('lot.type_collecte')} <span className="text-red-500">*</span>
               </label>
               <select
                 value={newRec.typeCollecte}
@@ -764,7 +762,7 @@ export default function LotList() {
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               >
-                <option value="">Sélectionner un type</option>
+                <option value="">{t('lot.select_type')}</option>
                 {TYPE_COLLECTE.map((type) => (
                   <option key={type.value} value={type.value}>
                     {type.label}
@@ -775,7 +773,7 @@ export default function LotList() {
 
             <div>
               <label className="block text-sm font-medium mb-2">
-                Capacité maximale (kg)
+                {t('lot.max_capacity')} (kg)
               </label>
               <input
                 type="number"
@@ -792,7 +790,7 @@ export default function LotList() {
             {selectedLot && (
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  État actuel
+                  {t('lot.current_status')}
                 </label>
                 <div className="w-full h-10 px-3 rounded-lg border border-input bg-slate-50 flex items-center">
                   {getStatusBadge(selectedLot.etat)}
@@ -808,10 +806,10 @@ export default function LotList() {
               type="button"
               disabled={isSaving}
             >
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Enregistrement..." : (selectedLot ? "Enregistrer" : "Créer le lot")}
+              {isSaving ? t('common.loading') : (selectedLot ? t('common.save') : t('lot.create'))}
             </Button>
           </div>
         </form>

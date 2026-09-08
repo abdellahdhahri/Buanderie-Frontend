@@ -1,15 +1,17 @@
+// pages/Machines/MachinesDashboard.jsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 import {
   FaSoap, FaPlay, FaStop, FaClock, FaWeight,
   FaLayerGroup, FaCheckCircle, FaExclamationTriangle,
   FaBiohazard, FaThermometerHalf, FaTachometerAlt, FaTimes,
   FaWater, FaFan, FaSpinner, FaArrowRight, FaCircle,
   FaWrench, FaPowerOff, FaHistory, FaCheckDouble,
- FaMicrochip , FaBolt, FaShieldAlt ,
+  FaMicrochip, FaBolt, FaShieldAlt,
   FaServer, FaWaveSquare,
 } from "react-icons/fa";
-import { FaCircleDot,FaGaugeHigh  } from "react-icons/fa6";
+import { FaCircleDot, FaGaugeHigh } from "react-icons/fa6";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMachineContext } from "../../contextes/MachineContext";
 import { Badge } from "../../components/ui/badge";
@@ -109,6 +111,7 @@ function CircularProgress({ value, max, size = 80, strokeWidth = 6, color, label
 }
 
 function Minuterie({ dateDebut }) {
+  const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!dateDebut) return;
@@ -129,17 +132,19 @@ function Minuterie({ dateDebut }) {
 }
 
 function CarteMachine({ machine, cycles, onClick, onTerminer }) {
+  const { t } = useTranslation();
+
   const categorie = machine.categorie || "LINGE_NORMAL";
   const theme = THEME[categorie] || THEME.LINGE_NORMAL;
   const etatCfg = ETAT_CFG[machine.etatImmobilisation] || ETAT_CFG.DISPONIBLE;
   const enCours = machine.etatImmobilisation === "EN_COURS";
   const disponible = machine.etatImmobilisation === "DISPONIBLE";
-  
-  const cycleActif = cycles?.find(c => 
+
+  const cycleActif = cycles?.find(c =>
     c.machine?.id === machine.id && c.statut === "EN_COURS"
   );
-  
-  const cyclesRecents = cycles?.filter(c => 
+
+  const cyclesRecents = cycles?.filter(c =>
     c.machine?.id === machine.id && c.statut === "TERMINE"
   ).slice(0, 3) || [];
 
@@ -169,7 +174,6 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
         position: "relative"
       }}
     >
-      {/* Effet de bordure lumineuse en cours */}
       {enCours && (
         <div style={{
           position: "absolute",
@@ -184,7 +188,6 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
         }} />
       )}
 
-      {/* Badge état - version épurée sans ✅ */}
       <div style={{
         position: "absolute",
         top: "14px",
@@ -210,10 +213,9 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
           animation: enCours ? "pulseDot 1.5s infinite" : "none",
           boxShadow: enCours ? `0 0 12px ${etatCfg.color}66` : "none"
         }} />
-        {etatCfg.label}
+        {t(`machine_status.${machine.etatImmobilisation}`, etatCfg.label)}
       </div>
 
-      {/* En-tête */}
       <div style={{
         padding: "18px 20px 14px",
         display: "flex",
@@ -260,7 +262,7 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
                 alignItems: "center",
                 gap: "4px"
               }}>
-                <FaTachometerAlt  size={10} /> ACTIF
+                <FaTachometerAlt size={10} /> {t('machines_dashboard.status_in_progress')}
               </span>
             )}
           </div>
@@ -283,7 +285,7 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
               <>
                 <span style={{ width: "3px", height: "3px", borderRadius: "50%", background: "#d1d5db" }} />
                 <span style={{ display: "flex", alignItems: "center", gap: "4px", color: theme.primary }}>
-                  <FaClock size={11} /> Cycle #{cycleActif.id}
+                  <FaClock size={11} /> {t('machines_dashboard.status_cycle', { id: cycleActif.id })}
                 </span>
               </>
             )}
@@ -291,13 +293,11 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
         </div>
       </div>
 
-      {/* Corps */}
       <div style={{ padding: "16px 20px 20px", position: "relative", zIndex: 1 }}>
-        {/* Jauge de poids */}
         <div style={{ marginBottom: "14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "6px" }}>
             <span style={{ color: "#64748b", display: "flex", alignItems: "center", gap: "4px" }}>
-              <FaGaugeHigh size={12} /> Charge
+              <FaGaugeHigh size={12} /> {t('machines_dashboard.load')}
             </span>
             <span style={{ fontWeight: 600, color: pctPoids >= 90 ? "#ef4444" : "#0f172a" }}>
               {machine.poidsActuel?.toFixed(1) || 0} / {machine.capaciteKg} kg
@@ -324,7 +324,6 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
           </div>
         </div>
 
-        {/* Cycle actif - Progress Circle */}
         {cycleActif && (
           <div style={{
             background: `linear-gradient(145deg, ${theme.light}, white)`,
@@ -340,11 +339,11 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
                 size={60}
                 strokeWidth={5}
                 color={theme.ringColor}
-                label="Progression"
+                label={t('machines_dashboard.status_cycle_progress')}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: "14px", color: "#0f172a", marginBottom: "4px" }}>
-                  {cycleActif.programmeLavage?.nom || "Lavage"}
+                  {cycleActif.programmeLavage?.nom || t('machines_dashboard.cycle_name')}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#64748b" }}>
@@ -357,7 +356,7 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#64748b" }}>
                     <FaLayerGroup size={11} color="#8b5cf6" />
-                    <span>{cycleActif.items?.length || 0} lots</span>
+                    <span>{cycleActif.items?.length || 0} {t('machines_dashboard.cycle_items')}</span>
                   </div>
                 </div>
               </div>
@@ -365,7 +364,6 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
           </div>
         )}
 
-        {/* Cycles récemment terminés */}
         {cyclesRecents.length > 0 && !enCours && (
           <div style={{ marginBottom: "12px" }}>
             <div style={{
@@ -378,7 +376,7 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
               alignItems: "center",
               gap: "6px"
             }}>
-              <FaHistory size={10} /> Derniers cycles
+              <FaHistory size={10} /> {t('machines_dashboard.status_recent_cycles')}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
               {cyclesRecents.map((cycle, i) => (
@@ -395,14 +393,13 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
                   color: "#15803d"
                 }}>
                   <FaCheckDouble size={8} />
-                  {cycle.programmeLavage?.nom || "Cycle"}
+                  {cycle.programmeLavage?.nom || t('machines_dashboard.cycle_name')}
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* DISPONIBLE - version épurée */}
         {disponible && !cycleActif && (
           <div style={{
             textAlign: "center",
@@ -428,15 +425,16 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
                 background: "#10b981",
                 boxShadow: "0 0 12px rgba(16,185,129,0.4)"
               }} />
-              Prête à l'emploi
+              {t('machines_dashboard.status_available')}
             </div>
             <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
-              Capacité disponible {machine.capaciteKg - (machine.poidsActuel || 0)} kg
+              {t('machines_dashboard.status_available_capacity', {
+                capacity: (machine.capaciteKg - (machine.poidsActuel || 0)).toFixed(1)
+              })}
             </div>
           </div>
         )}
 
-        {/* AUTRES ÉTATS */}
         {!enCours && !disponible && (
           <div style={{
             textAlign: "center",
@@ -461,12 +459,11 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
                 borderRadius: "50%",
                 background: etatCfg.color
               }} />
-              {etatCfg.label}
+              {t(`machine_status.${machine.etatImmobilisation}`, etatCfg.label)}
             </div>
           </div>
         )}
 
-        {/* Boutons d'action */}
         <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
           {disponible && (
             <Link
@@ -500,7 +497,7 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
                 e.currentTarget.style.boxShadow = `0 4px 16px ${theme.glow}`;
               }}
             >
-              <FaPlay size={12} /> Démarrer
+              <FaPlay size={12} /> {t('machines_dashboard.btn_start')}
             </Link>
           )}
 
@@ -535,9 +532,9 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
                   e.currentTarget.style.borderColor = theme.border;
                 }}
               >
-                <FaArrowRight size={11} /> Gérer
+                <FaArrowRight size={11} /> {t('machines_dashboard.btn_manage')}
               </Link>
-              
+
               <button
                 onClick={e => {
                   e.stopPropagation();
@@ -569,7 +566,7 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
                   e.currentTarget.style.boxShadow = "0 4px 16px rgba(239,68,68,0.3)";
                 }}
               >
-                <FaStop size={12} /> Fin
+                <FaStop size={12} /> {t('machines_dashboard.btn_finish')}
               </button>
             </>
           )}
@@ -580,6 +577,8 @@ function CarteMachine({ machine, cycles, onClick, onTerminer }) {
 }
 
 function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
+  const { t } = useTranslation();
+
   if (!machine) return null;
   const categorie = machine.categorie || "LINGE_NORMAL";
   const theme = THEME[categorie] || THEME.LINGE_NORMAL;
@@ -622,7 +621,6 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
             boxShadow: "0 32px 80px rgba(0,0,0,0.35)"
           }}
         >
-          {/* Header */}
           <div style={{
             background: theme.gradient,
             padding: "24px 28px",
@@ -656,7 +654,7 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
                     <>
                       <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.4)" }} />
                       <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <FaTachometerAlt  size={12} /> En cours
+                        <FaTachometerAlt size={12} /> {t('machines_dashboard.status_in_progress')}
                       </span>
                     </>
                   )}
@@ -685,9 +683,7 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
             </button>
           </div>
 
-          {/* Contenu */}
           <div style={{ padding: "24px 28px" }}>
-            {/* Cycle actif */}
             {enCours && cycleActif && (
               <div style={{ marginBottom: "24px" }}>
                 <div style={{
@@ -705,11 +701,11 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
                     size={80}
                     strokeWidth={7}
                     color={theme.ringColor}
-                    label="Progression"
+                    label={t('machines_dashboard.modal_loading')}
                   />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: "17px", color: "#0f172a", marginBottom: "6px" }}>
-                      {cycleActif.programmeLavage?.nom || "Lavage en cours"}
+                      {cycleActif.programmeLavage?.nom || t('machines_dashboard.cycle_name')}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", color: "#7c3aed" }}>
@@ -719,7 +715,7 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
                       <div style={{ display: "flex", gap: "12px", fontSize: "13px", color: "#64748b" }}>
                         <span>🌡️ {cycleActif.programmeLavage?.temperatureCelsius || 0}°C</span>
                         <span>⏱️ {cycleActif.programmeLavage?.dureeMinutes || 0} min</span>
-                        <span>📦 {cycleActif.items?.length || 0} lots</span>
+                        <span>📦 {cycleActif.items?.length || 0} {t('machines_dashboard.cycle_items')}</span>
                       </div>
                     </div>
                     <button
@@ -751,14 +747,13 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
                         e.currentTarget.style.boxShadow = "0 4px 16px rgba(239,68,68,0.3)";
                       }}
                     >
-                      <FaStop size={14} /> Terminer le cycle
+                      <FaStop size={14} /> {t('machines_dashboard.btn_terminate_cycle')}
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Cycles terminés */}
             {cyclesTermines.length > 0 && (
               <div>
                 <div style={{
@@ -772,7 +767,7 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
                   textTransform: "uppercase",
                   letterSpacing: "0.5px"
                 }}>
-                  <FaHistory size={14} /> Historique ({cyclesTermines.length})
+                  <FaHistory size={14} /> {t('machines_dashboard.modal_history')} ({cyclesTermines.length})
                 </div>
                 <div style={{ maxHeight: "200px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
                   {cyclesTermines.slice(0, 10).map((cycle, i) => (
@@ -791,7 +786,7 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
                     onMouseLeave={e => { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.borderColor = "#e2e8f0" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <FaCheckCircle color="#22c55e" size={14} />
-                        <span style={{ fontWeight: 500 }}>{cycle.programmeLavage?.nom || "Cycle"}</span>
+                        <span style={{ fontWeight: 500 }}>{cycle.programmeLavage?.nom || t('machines_dashboard.cycle_name')}</span>
                       </div>
                       <div style={{ color: "#94a3b8", fontSize: "12px" }}>
                         {cycle.dateFin ? new Date(cycle.dateFin).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : ""}
@@ -802,7 +797,6 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
               </div>
             )}
 
-            {/* Machine disponible */}
             {machine.etatImmobilisation === "DISPONIBLE" && (
               <div style={{ textAlign: "center", padding: "20px 0" }}>
                 <div style={{
@@ -819,10 +813,12 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
                   <FaCircleDot size={28} color="#10b981" />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: "20px", color: "#10b981", marginBottom: "4px" }}>
-                  Machine disponible
+                  {t('machines_dashboard.modal_available')}
                 </div>
                 <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "16px" }}>
-                  Capacité: {machine.capaciteKg - (machine.poidsActuel || 0)} kg disponible
+                  {t('machines_dashboard.modal_available_capacity', {
+                    capacity: (machine.capaciteKg - (machine.poidsActuel || 0)).toFixed(1)
+                  })}
                 </div>
                 <Link
                   to="/Lavages"
@@ -850,12 +846,11 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
                     e.currentTarget.style.boxShadow = `0 4px 20px ${theme.glow}`;
                   }}
                 >
-                  <FaPlay size={14} /> Lancer un lavage
+                  <FaPlay size={14} /> {t('machines_dashboard.btn_start_wash')}
                 </Link>
               </div>
             )}
 
-            {/* États spéciaux */}
             {!enCours && machine.etatImmobilisation !== "DISPONIBLE" && (
               <div style={{ textAlign: "center", padding: "20px 0" }}>
                 <div style={{
@@ -872,7 +867,7 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
                   <FaWrench size={28} color={machine.etatImmobilisation === "EN_PANNE" ? "#dc2626" : "#64748b"} />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: "20px", color: machine.etatImmobilisation === "EN_PANNE" ? "#dc2626" : "#64748b" }}>
-                  {ETAT_CFG[machine.etatImmobilisation]?.label || machine.etatImmobilisation}
+                  {t(`machine_status.${machine.etatImmobilisation}`, machine.etatImmobilisation)}
                 </div>
                 {machine.observation && (
                   <div style={{ fontSize: "14px", color: "#94a3b8", marginTop: "4px" }}>{machine.observation}</div>
@@ -887,6 +882,8 @@ function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
 }
 
 export default function MachinesDashboard() {
+  const { t } = useTranslation();
+
   const {
     machines,
     cycles,
@@ -994,7 +991,7 @@ export default function MachinesDashboard() {
               alignItems: "center",
               gap: "10px"
             }}>
-              Machines de Lavage
+              {t('machines_dashboard.title')}
               <span style={{
                 fontSize: "11px",
                 fontWeight: 600,
@@ -1015,8 +1012,11 @@ export default function MachinesDashboard() {
               gap: "8px",
               marginTop: "2px"
             }}>
-              <FaTachometerAlt  size={12} color="#0ea5e9" />
-              <span>{stats.cyclesEnCours} cycles en cours · {stats.cyclesTermines} terminés</span>
+              <FaTachometerAlt size={12} color="#0ea5e9" />
+              <span>{t('machines_dashboard.subtitle', {
+                enCours: stats.cyclesEnCours,
+                termines: stats.cyclesTermines
+              })}</span>
               {lastRefresh && (
                 <span>· {lastRefresh.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
               )}
@@ -1045,7 +1045,7 @@ export default function MachinesDashboard() {
             onMouseLeave={e => { e.currentTarget.style.background = "white" }}
           >
             <FaSpinner className={loading ? "animate-spin" : ""} size={14} />
-            Actualiser
+            {t('machines_dashboard.refresh')}
           </button>
           <Link
             to="/Lavages"
@@ -1072,7 +1072,7 @@ export default function MachinesDashboard() {
               e.currentTarget.style.boxShadow = "0 4px 16px rgba(14,165,233,0.3)";
             }}
           >
-            <FaPlay size={12} /> Nouveau lavage
+            <FaPlay size={12} /> {t('machines_dashboard.new_wash')}
           </Link>
         </div>
       </div>
@@ -1108,7 +1108,7 @@ export default function MachinesDashboard() {
           }}>🧺</div>
           <div>
             <div style={{ fontSize: "22px", fontWeight: 800, color: "#0f172a" }}>{machines.length}</div>
-            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Machines</div>
+            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>{t('machines_dashboard.stats_machines')}</div>
           </div>
         </div>
 
@@ -1138,7 +1138,7 @@ export default function MachinesDashboard() {
           </div>
           <div>
             <div style={{ fontSize: "22px", fontWeight: 800, color: "#10b981" }}>{stats.disponibles}</div>
-            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Disponibles</div>
+            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>{t('machines_dashboard.stats_available')}</div>
           </div>
         </div>
 
@@ -1164,11 +1164,11 @@ export default function MachinesDashboard() {
             justifyContent: "center",
             fontSize: "20px"
           }}>
-            <FaTachometerAlt  ivity size={20} color="#7c3aed" />
+            <FaTachometerAlt size={20} color="#7c3aed" />
           </div>
           <div>
             <div style={{ fontSize: "22px", fontWeight: 800, color: "#7c3aed" }}>{stats.cyclesEnCours}</div>
-            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Cycles en cours</div>
+            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>{t('machines_dashboard.stats_cycles')}</div>
           </div>
         </div>
 
@@ -1198,7 +1198,7 @@ export default function MachinesDashboard() {
           </div>
           <div>
             <div style={{ fontSize: "22px", fontWeight: 800, color: "#f59e0b" }}>{stats.poidsTotal.toFixed(1)} kg</div>
-            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Poids total</div>
+            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>{t('machines_dashboard.stats_weight')}</div>
           </div>
         </div>
       </div>
@@ -1213,9 +1213,9 @@ export default function MachinesDashboard() {
         width: "fit-content"
       }}>
         {[
-          { id: "TOUS", label: "Toutes", count: machines.length },
-          { id: "LINGE_NORMAL", label: "⬜ Normal", count: machinesNormal.length },
-          { id: "LINGES_INFECTE", label: "🔴 Infecté", count: machinesInfecte.length },
+          { id: "TOUS", label: t('machines_dashboard.filter_all'), count: machines.length },
+          { id: "LINGE_NORMAL", label: "⬜ " + t('machines_dashboard.filter_normal'), count: machinesNormal.length },
+          { id: "LINGES_INFECTE", label: "🔴 " + t('machines_dashboard.filter_infected'), count: machinesInfecte.length },
         ].map(({ id, label, count }) => (
           <button
             key={id}
@@ -1263,7 +1263,7 @@ export default function MachinesDashboard() {
         }}>
           <FaSpinner className="animate-spin" size={40} color="#0ea5e9" style={{ opacity: 0.5 }} />
           <div style={{ marginTop: "16px", fontSize: "15px", color: "#94a3b8", fontWeight: 500 }}>
-            Chargement des machines...
+            {t('machines_dashboard.loading')}
           </div>
         </div>
       ) : filtre === "TOUS" ? (
@@ -1283,7 +1283,7 @@ export default function MachinesDashboard() {
                   background: "linear-gradient(180deg, #0ea5e9, #0284c7)"
                 }} />
                 <span style={{ fontWeight: 700, fontSize: "16px", color: "#0f172a" }}>
-                  Machines Linge Normal
+                  {t('machines_dashboard.section_normal')}
                 </span>
                 <span style={{
                   fontSize: "12px",
@@ -1297,7 +1297,7 @@ export default function MachinesDashboard() {
                 <div style={{ flex: 1, height: "1px", background: "#e2e8f0" }} />
                 <span style={{ fontSize: "11px", color: "#64748b", display: "flex", alignItems: "center", gap: "4px" }}>
                   <FaCircleDot size={10} color="#10b981" />
-                  {machinesNormal.filter(m => m.etatImmobilisation === "DISPONIBLE").length} dispo
+                  {machinesNormal.filter(m => m.etatImmobilisation === "DISPONIBLE").length} {t('machines_dashboard.available_count')}
                 </span>
               </div>
               <div style={{
@@ -1306,12 +1306,12 @@ export default function MachinesDashboard() {
                 gap: "18px"
               }}>
                 {machinesNormal.map(m => (
-                  <CarteMachine 
-                    key={m.id || m.code} 
-                    machine={m} 
-                    cycles={cycles} 
-                    onClick={setMachineSelectee} 
-                    onTerminer={handleTerminer} 
+                  <CarteMachine
+                    key={m.id || m.code}
+                    machine={m}
+                    cycles={cycles}
+                    onClick={setMachineSelectee}
+                    onTerminer={handleTerminer}
                   />
                 ))}
               </div>
@@ -1337,7 +1337,7 @@ export default function MachinesDashboard() {
                   background: "linear-gradient(180deg, #dc2626, #b91c1c)"
                 }} />
                 <span style={{ fontWeight: 700, fontSize: "16px", color: "#0f172a" }}>
-                  Machines Linge Infecté
+                  {t('machines_dashboard.section_infected')}
                 </span>
                 <span style={{
                   fontSize: "12px",
@@ -1351,7 +1351,7 @@ export default function MachinesDashboard() {
                 <div style={{ flex: 1, height: "1px", background: "#e2e8f0" }} />
                 <span style={{ fontSize: "11px", color: "#64748b", display: "flex", alignItems: "center", gap: "4px" }}>
                   <FaCircleDot size={10} color="#10b981" />
-                  {machinesInfecte.filter(m => m.etatImmobilisation === "DISPONIBLE").length} dispo
+                  {machinesInfecte.filter(m => m.etatImmobilisation === "DISPONIBLE").length} {t('machines_dashboard.available_count')}
                 </span>
               </div>
               <div style={{
@@ -1360,12 +1360,12 @@ export default function MachinesDashboard() {
                 gap: "18px"
               }}>
                 {machinesInfecte.map(m => (
-                  <CarteMachine 
-                    key={m.id || m.code} 
-                    machine={m} 
-                    cycles={cycles} 
-                    onClick={setMachineSelectee} 
-                    onTerminer={handleTerminer} 
+                  <CarteMachine
+                    key={m.id || m.code}
+                    machine={m}
+                    cycles={cycles}
+                    onClick={setMachineSelectee}
+                    onTerminer={handleTerminer}
                   />
                 ))}
               </div>
@@ -1382,10 +1382,10 @@ export default function MachinesDashboard() {
             }}>
               <FaServer size={48} style={{ opacity: 0.2, marginBottom: "16px" }} />
               <div style={{ fontSize: "18px", fontWeight: 600, color: "#64748b" }}>
-                Aucune machine configurée
+                {t('machines_dashboard.no_machines')}
               </div>
               <div style={{ fontSize: "14px", color: "#94a3b8", marginTop: "4px" }}>
-                Commencez par ajouter une machine dans les paramètres
+                {t('machines_dashboard.no_machines_text')}
               </div>
             </div>
           )}
@@ -1397,12 +1397,12 @@ export default function MachinesDashboard() {
           gap: "18px"
         }}>
           {machinesFiltrees.map(m => (
-            <CarteMachine 
-              key={m.id || m.code} 
-              machine={m} 
-              cycles={cycles} 
-              onClick={setMachineSelectee} 
-              onTerminer={handleTerminer} 
+            <CarteMachine
+              key={m.id || m.code}
+              machine={m}
+              cycles={cycles}
+              onClick={setMachineSelectee}
+              onTerminer={handleTerminer}
             />
           ))}
         </div>
@@ -1420,7 +1420,7 @@ export default function MachinesDashboard() {
         alignItems: "center"
       }}>
         <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase" }}>
-          Légende
+          {t('machines_dashboard.legend')}
         </span>
         {Object.entries(ETAT_CFG).map(([key, val]) => (
           <div key={key} style={{
@@ -1437,7 +1437,7 @@ export default function MachinesDashboard() {
               background: val.color,
               boxShadow: key === "EN_COURS" ? `0 0 12px ${val.color}66` : "none"
             }} />
-            {val.label}
+            {t(`machine_status.${key}`, val.label)}
           </div>
         ))}
       </div>

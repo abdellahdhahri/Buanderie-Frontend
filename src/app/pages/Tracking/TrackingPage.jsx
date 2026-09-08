@@ -1,5 +1,5 @@
-// pages/Tracking/TrackingPage.js
 import React, { useState, useContext, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { LingeContext } from "../../contextes/LingeContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,26 +18,26 @@ import "../Linge/WorkflowList.css";
 
 // ─── Composant de statut ──────────────────────────────────────────────────
 function StatusTimeline({ history }) {
+  const { t } = useTranslation();
+
   if (!history || history.length === 0) return null;
 
   const etatColors = {
-    RECEPTION: { bg: "#f3e8ff", color: "#7c3aed", icon: "📥", label: "Réception" },
-    COLLECTE: { bg: "#e0f2fe", color: "#0284c7", icon: "🚚", label: "Collecte" },
-    EN_TRI: { bg: "#fef3c7", color: "#d97706", icon: "🔀", label: "Tri" },
-    EN_LAVAGE: { bg: "#dbeafe", color: "#2563eb", icon: "🫧", label: "Lavage" },
-    LAVE: { bg: "#cffafe", color: "#0891b2", icon: "💧", label: "Lavé" },
-    EN_SECHAGE: { bg: "#ffedd5", color: "#ea580c", icon: "🌬️", label: "Séchage" },
-    SECHE: { bg: "#ecfccb", color: "#65a30d", icon: "☀️", label: "Séché" },
-    PLIE: { bg: "#f3e8ff", color: "#7c3aed", icon: "📐", label: "Plié" },
-    STOCKE: { bg: "#d1fae5", color: "#059669", icon: "📦", label: "Stocké" },
-    LIVRE: { bg: "#d1fae5", color: "#059669", icon: "✅", label: "Livré" },
-    PROPRE: { bg: "#d1fae5", color: "#059669", icon: "✨", label: "Propre" },
-    MANQUANT: { bg: "#fee2e2", color: "#dc2626", icon: "❌", label: "Manquant" },
-    SALE: { bg: "#fef3c7", color: "#d97706", icon: "🟡", label: "Sale" },
-    EN_LAVAGE: { bg: "#dbeafe", color: "#2563eb", icon: "🫧", label: "En lavage" },
+    RECEPTION: { bg: "#f3e8ff", color: "#7c3aed", icon: "📥", label: t('tracking.etat.RECEPTION') },
+    COLLECTE: { bg: "#e0f2fe", color: "#0284c7", icon: "🚚", label: t('tracking.etat.COLLECTE') },
+    EN_TRI: { bg: "#fef3c7", color: "#d97706", icon: "🔀", label: t('tracking.etat.EN_TRI') },
+    EN_LAVAGE: { bg: "#dbeafe", color: "#2563eb", icon: "🫧", label: t('tracking.etat.EN_LAVAGE') },
+    LAVE: { bg: "#cffafe", color: "#0891b2", icon: "💧", label: t('tracking.etat.LAVE') },
+    EN_SECHAGE: { bg: "#ffedd5", color: "#ea580c", icon: "🌬️", label: t('tracking.etat.EN_SECHAGE') },
+    SECHE: { bg: "#ecfccb", color: "#65a30d", icon: "☀️", label: t('tracking.etat.SECHE') },
+    PLIE: { bg: "#f3e8ff", color: "#7c3aed", icon: "📐", label: t('tracking.etat.PLIE') },
+    STOCKE: { bg: "#d1fae5", color: "#059669", icon: "📦", label: t('tracking.etat.STOCKE') },
+    LIVRE: { bg: "#d1fae5", color: "#059669", icon: "✅", label: t('tracking.etat.LIVRE') },
+    PROPRE: { bg: "#d1fae5", color: "#059669", icon: "✨", label: t('tracking.etat.PROPRE') },
+    MANQUANT: { bg: "#fee2e2", color: "#dc2626", icon: "❌", label: t('tracking.etat.MANQUANT') },
+    SALE: { bg: "#fef3c7", color: "#d97706", icon: "🟡", label: t('tracking.etat.SALE') },
   };
 
-  // ✅ Conserver l'ordre retourné par l'API (pas de reverse)
   const sortedHistory = [...history];
 
   return (
@@ -72,7 +72,6 @@ function StatusTimeline({ history }) {
                 paddingLeft: "16px"
               }}
             >
-              {/* Cercle chronologique */}
               <div style={{
                 width: "38px",
                 height: "38px",
@@ -109,7 +108,6 @@ function StatusTimeline({ history }) {
                 )}
               </div>
 
-              {/* Contenu */}
               <div style={{
                 flex: 1,
                 background: isLast ? "linear-gradient(135deg, #f0fdf4, #dcfce7)" : "white",
@@ -149,7 +147,7 @@ function StatusTimeline({ history }) {
                         borderRadius: "10px",
                         fontWeight: 600
                       }}>
-                        ● Actuel
+                        ● {t('tracking.current')}
                       </Badge>
                     )}
                   </div>
@@ -242,6 +240,8 @@ function InfoCard({ icon, label, value, color, bg }) {
 
 // ─── PAGE PRINCIPALE ──────────────────────────────────────────────────────
 export default function TrackingPage() {
+  const { t } = useTranslation();
+
   const [searchValue, setSearchValue] = useState("");
   const [item, setItem] = useState(null);
   const [history, setHistory] = useState([]);
@@ -270,14 +270,14 @@ export default function TrackingPage() {
         setHistory(hist || []);
         setIsScanned(true);
       } else {
-        setError(isRfidMode ? "Tag RFID (EPC) non trouvé." : "Code de suivi non trouvé.");
+        setError(isRfidMode ? t('tracking.error_not_found_rfid') : t('tracking.error_not_found_barcode'));
       }
     } catch (err) {
-      setError("Erreur de connexion au serveur.");
+      setError(t('tracking.error_connection'));
     } finally {
       setLoading(false);
     }
-  }, [getHistorique, getLingeByCode, isRfidMode]);
+  }, [getHistorique, getLingeByCode, isRfidMode, t]);
 
   const handleReset = () => {
     setSearchValue("");
@@ -338,17 +338,17 @@ export default function TrackingPage() {
 
   const getEtatColor = (etat) => {
     const colors = {
-      RECEPTION: { bg: "#f3e8ff", color: "#7c3aed", icon: "📥", label: "Réception" },
-      COLLECTE: { bg: "#e0f2fe", color: "#0284c7", icon: "🚚", label: "Collecte" },
-      EN_TRI: { bg: "#fef3c7", color: "#d97706", icon: "🔀", label: "Tri" },
-      EN_LAVAGE: { bg: "#dbeafe", color: "#2563eb", icon: "🫧", label: "Lavage" },
-      LAVE: { bg: "#cffafe", color: "#0891b2", icon: "💧", label: "Lavé" },
-      EN_SECHAGE: { bg: "#ffedd5", color: "#ea580c", icon: "🌬️", label: "Séchage" },
-      SECHE: { bg: "#ecfccb", color: "#65a30d", icon: "☀️", label: "Séché" },
-      PLIE: { bg: "#f3e8ff", color: "#7c3aed", icon: "📐", label: "Plié" },
-      STOCKE: { bg: "#d1fae5", color: "#059669", icon: "📦", label: "Stocké" },
-      LIVRE: { bg: "#d1fae5", color: "#059669", icon: "✅", label: "Livré" },
-      PROPRE: { bg: "#d1fae5", color: "#059669", icon: "✨", label: "Propre" },
+      RECEPTION: { bg: "#f3e8ff", color: "#7c3aed", icon: "📥", label: t('tracking.etat.RECEPTION') },
+      COLLECTE: { bg: "#e0f2fe", color: "#0284c7", icon: "🚚", label: t('tracking.etat.COLLECTE') },
+      EN_TRI: { bg: "#fef3c7", color: "#d97706", icon: "🔀", label: t('tracking.etat.EN_TRI') },
+      EN_LAVAGE: { bg: "#dbeafe", color: "#2563eb", icon: "🫧", label: t('tracking.etat.EN_LAVAGE') },
+      LAVE: { bg: "#cffafe", color: "#0891b2", icon: "💧", label: t('tracking.etat.LAVE') },
+      EN_SECHAGE: { bg: "#ffedd5", color: "#ea580c", icon: "🌬️", label: t('tracking.etat.EN_SECHAGE') },
+      SECHE: { bg: "#ecfccb", color: "#65a30d", icon: "☀️", label: t('tracking.etat.SECHE') },
+      PLIE: { bg: "#f3e8ff", color: "#7c3aed", icon: "📐", label: t('tracking.etat.PLIE') },
+      STOCKE: { bg: "#d1fae5", color: "#059669", icon: "📦", label: t('tracking.etat.STOCKE') },
+      LIVRE: { bg: "#d1fae5", color: "#059669", icon: "✅", label: t('tracking.etat.LIVRE') },
+      PROPRE: { bg: "#d1fae5", color: "#059669", icon: "✨", label: t('tracking.etat.PROPRE') },
     };
     return colors[etat] || { bg: "#f1f5f9", color: "#64748b", icon: "📌", label: etat };
   };
@@ -410,7 +410,7 @@ export default function TrackingPage() {
               margin: 0,
               letterSpacing: "-0.5px"
             }}>
-              {isRfidMode ? "Traçabilité RFID" : "Suivi d'article"}
+              {isRfidMode ? t('tracking.title_rfid') : t('tracking.title_barcode')}
             </h1>
             <p style={{
               fontSize: "14px",
@@ -427,7 +427,7 @@ export default function TrackingPage() {
                 borderRadius: "50%",
                 background: isFocused ? "#10b981" : "#94a3b8"
               }} />
-              {isFocused ? "🔍 Scanner prêt" : "En attente"}
+              {isFocused ? t('tracking.scan_ready') : t('tracking.waiting')}
             </p>
           </div>
         </div>
@@ -462,7 +462,7 @@ export default function TrackingPage() {
                 <input
                   ref={scanInputRef}
                   type="text"
-                  placeholder={isRfidMode ? "Scanner ou saisir le tag RFID..." : "Scanner ou saisir le code article..."}
+                  placeholder={isRfidMode ? t('tracking.search_placeholder_rfid') : t('tracking.search_placeholder_barcode')}
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
                   onFocus={() => setIsFocused(true)}
@@ -525,7 +525,7 @@ export default function TrackingPage() {
                   ) : (
                     <FaSearch size={14} />
                   )}
-                  {loading ? "Recherche..." : "Suivre"}
+                  {loading ? t('tracking.searching') : t('tracking.search_button')}
                 </Button>
 
                 <Button
@@ -621,7 +621,7 @@ export default function TrackingPage() {
                       {item.codeBarre || "N/A"}
                     </div>
                     <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>
-                      ID #{item.id} · {item.categorie || "Non catégorisé"}
+                      {t('tracking.id')} #{item.id} · {item.categorie || t('tracking.category')}
                     </div>
                   </div>
                 </div>
@@ -638,28 +638,28 @@ export default function TrackingPage() {
                 }}>
                   <InfoCard
                     icon={<FaTag />}
-                    label="Catégorie"
+                    label={t('tracking.category')}
                     value={item.categorie || "—"}
                     color="#7c3aed"
                     bg="#f3e8ff"
                   />
                   <InfoCard
                     icon={<FaWeightHanging />}
-                    label="Poids"
-                    value={item.poids ? `${item.poids} kg` : "—"}
+                    label={t('tracking.weight')}
+                    value={item.poids ? `${item.poids} ${t('tracking.weight_unit')}` : "—"}
                     color="#0d9488"
                     bg="#ccfbf1"
                   />
                   <InfoCard
                     icon={<FaBox />}
-                    label="État"
+                    label={t('tracking.status')}
                     value={item.etat || "—"}
                     color="#059669"
                     bg="#d1fae5"
                   />
                   <InfoCard
                     icon={<FaCalendarAlt />}
-                    label="Date création"
+                    label={t('tracking.creation_date')}
                     value={item.dateCreation ? new Date(item.dateCreation).toLocaleDateString("fr-FR") : "—"}
                     color="#d97706"
                     bg="#fef3c7"
@@ -713,10 +713,10 @@ export default function TrackingPage() {
                   <FaHistory size={14} />
                 </div>
                 <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#0f172a" }}>
-                  Journal des mouvements
+                  {t('tracking.journal')}
                 </h3>
                 <Badge style={{ background: "#ccfbf1", color: "#0d9488", fontSize: "10px" }}>
-                  {history.length} étape{history.length > 1 ? 's' : ''}
+                  {history.length} {t('tracking.steps')}{history.length > 1 ? 's' : ''}
                 </Badge>
               </div>
 
@@ -728,8 +728,8 @@ export default function TrackingPage() {
                     color: "#94a3b8"
                   }}>
                     <div style={{ fontSize: "40px", marginBottom: "12px" }}>📭</div>
-                    <p style={{ fontWeight: 600, fontSize: "16px" }}>Aucun historique</p>
-                    <p style={{ fontSize: "13px" }}>Cet article n'a pas encore de mouvements enregistrés</p>
+                    <p style={{ fontWeight: 600, fontSize: "16px" }}>{t('tracking.no_history')}</p>
+                    <p style={{ fontSize: "13px" }}>{t('tracking.no_history_text')}</p>
                   </div>
                 ) : (
                   <StatusTimeline history={history} />
@@ -763,12 +763,12 @@ export default function TrackingPage() {
             {isRfidMode ? <FaRss color="#94a3b8" /> : <FaSearch color="#94a3b8" />}
           </div>
           <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#0f172a", marginBottom: "4px" }}>
-            {isRfidMode ? "Recherche RFID" : "Recherche d'article"}
+            {isRfidMode ? t('tracking.subtitle_rfid') : t('tracking.subtitle_barcode')}
           </h3>
           <p style={{ fontSize: "14px", color: "#94a3b8" }}>
             {isRfidMode 
-              ? "Scannez ou saisissez un tag RFID pour suivre son parcours"
-              : "Scannez ou saisissez un code article pour suivre son parcours"}
+              ? t('tracking.empty_rfid')
+              : t('tracking.empty_barcode')}
           </p>
         </div>
       )}

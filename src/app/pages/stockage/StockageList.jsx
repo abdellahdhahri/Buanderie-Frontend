@@ -1,5 +1,6 @@
 // pages/Stockage/StockageList.js
 import React, { useState, useContext, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { LingeContext } from "../../contextes/LingeContext";
 import { useNavigate } from "react-router-dom";
 import { FaWarehouse, FaUser, FaCheckCircle, FaTimes, FaExclamationTriangle } from "react-icons/fa";
@@ -14,6 +15,8 @@ import { getAgent, isAgentConnected } from "../../services/agentService";
 import "../Linge/WorkflowList.css";
 
 function StockageInner() {
+  const { t } = useTranslation();
+
   const { getLingeByCode, isRfidMode, setIsRfidMode } = useContext(LingeContext);
   const navigate = useNavigate();
   const {
@@ -60,6 +63,11 @@ function StockageInner() {
     }
   }, [agentFromContext]);
 
+  const getAgentFullName = () => {
+    if (!agent) return '';
+    return agent.nomPrenom || agent.nom || agent.matricule;
+  };
+
   const handleModeChange = (m) => {
     setMode(m);
     setIsRfidMode(m === "RFID");
@@ -77,8 +85,8 @@ function StockageInner() {
   };
 
   const getPlaceholder = () => {
-    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
-    return mode === "RFID" ? "📡 Scanner tag RFID..." : "📦 Scanner un linge (état PLIE)...";
+    if (!agent) return t('stockage.agent_not_connected');
+    return mode === "RFID" ? t('stockage.scan_rfid') : t('stockage.scan_linge');
   };
 
   const getBorderColor = () => !agent ? "#dc2626" : "#3b82f6";
@@ -136,14 +144,16 @@ function StockageInner() {
               color: "#0f172a",
               margin: 0
             }}>
-              Stockage
+              {t('stockage.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nomPrenom || agent.nom || agent.matricule}` : "Aucun agent connecté"}
+              {agent 
+                ? `${t('stockage.agent')}: ${getAgentFullName()}`
+                : t('stockage.no_agent_connected')}
             </p>
           </div>
         </div>
@@ -180,7 +190,7 @@ function StockageInner() {
               }}>
                 <FaCheckCircle color="#22c55e" size={16} />
                 <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
-                  {agent.nomPrenom || agent.nom || agent.matricule}
+                  {getAgentFullName()}
                 </span>
                 <Badge variant="outline" style={{ fontSize: "11px" }}>
                   {agent.codeBarre || agent.matricule}
@@ -203,7 +213,7 @@ function StockageInner() {
             ) : (
               <div style={{ fontSize: "13px", color: "#94a3b8" }}>
                 <FaUser style={{ marginRight: "6px" }} />
-                Aucun agent connecté
+                {t('stockage.no_agent_connected')}
               </div>
             )}
           </div>
@@ -218,7 +228,7 @@ function StockageInner() {
                 setAgent(null);
               }}
             >
-              Reset
+              {t('common.reset')}
             </Button>
           </div>
         </div>
@@ -238,8 +248,8 @@ function StockageInner() {
             color: "#dc2626"
           }}>
             <FaExclamationTriangle size={16} />
-            <span style={{ fontWeight: 600 }}>Aucun agent connecté</span>
-            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer des opérations de stockage</span>
+            <span style={{ fontWeight: 600 }}>{t('stockage.no_agent_connected')}</span>
+            <span style={{ color: "#64748b" }}>{t('stockage.no_agent_connect_text')}</span>
           </div>
         )}
 
@@ -287,8 +297,8 @@ function StockageInner() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaWarehouse color="#22c55e" />
-                <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt pour contrôle</span>
-                <span style={{ color: "#64748b" }}>Scannez un linge en état PLIE</span>
+                <span style={{ fontWeight: 600, color: "#15803d" }}>{t('stockage.ready_for_control')}</span>
+                <span style={{ color: "#64748b" }}>{t('stockage.scan_plie_linge')}</span>
               </div>
             </CardContent>
           </Card>

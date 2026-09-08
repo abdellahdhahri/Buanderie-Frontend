@@ -25,6 +25,8 @@ import {
   getAgentPosteName
 } from '../../services/agentService';
 
+import LanguageSwitcher from "../../components/utils/LanguageSwitcher";
+
 // ─── BREADCRUMB ──────────────────────────────────────────────────────────
 const BREADCRUMB_ITEMS = [
   { path: "/", parent: "", label: "Accueil" },
@@ -91,9 +93,7 @@ const NOTIFICATION_STYLES = {
 // ─── COMPOSANT HEADER ──────────────────────────────────────────────────
 export function Header({ sidebarOpen, setSidebarOpen }) {
 
-    const { agent, loginUser, admin } = useAuth();
-
-
+  const { agent, loginUser, admin } = useAuth();
 
   const [isDark, setIsDark] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -101,19 +101,14 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  // Popup notification
   const [currentNotification, setCurrentNotification] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
-  //const [agent, setAgent] = useState(null);
 
   const location = useLocation();
   const currentPath = location.pathname;
   const wsSubscriptionRef = useRef(null);
   const popupTimerRef = useRef(null);
 
-
-  
-  
   const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
@@ -146,7 +141,6 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     }
   }, []);
 
-  // ─── Marquer une notification comme lue ──────────────────────────────
   const handleMarkAsRead = useCallback(async (id) => {
     try {
       await markNotificationAsRead(id);
@@ -166,7 +160,6 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     }
   }, [currentNotification]);
 
-  // ─── Marquer toutes comme lues ──────────────────────────────────────
   const handleMarkAllAsRead = useCallback(async () => {
     try {
       await markAllNotificationsAsRead();
@@ -179,7 +172,6 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     }
   }, []);
 
-  // ─── Gestion des notifications WebSocket ─────────────────────────────
   const handleNewNotification = useCallback((notification) => {
     console.log("📨 Nouvelle notification reçue:", notification);
     
@@ -197,7 +189,6 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     }, 6000);
   }, []);
 
-  // ─── Initialisation WebSocket ────────────────────────────────────────
   useEffect(() => {
     loadNotifications();
     
@@ -234,13 +225,11 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     };
   }, [loadNotifications, handleNewNotification]);
 
-  // ─── Mise à jour périodique du compteur ──────────────────────────────
   useEffect(() => {
     const interval = setInterval(updateUnreadCount, 30000);
     return () => clearInterval(interval);
   }, [updateUnreadCount]);
 
-  // ─── Fermer la popup ─────────────────────────────────────────────────
   const handleClosePopup = useCallback(() => {
     setShowPopup(false);
     if (popupTimerRef.current) {
@@ -248,7 +237,6 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     }
   }, []);
 
-  // ─── Ouvrir la liste des notifications ──────────────────────────────
   const toggleNotifications = useCallback(() => {
     setShowNotifications(prev => !prev);
     setUserDropOpen(false);
@@ -258,7 +246,6 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     }
   }, [showNotifications, loadNotifications]);
 
-  // ─── Formater le temps ───────────────────────────────────────────────
   const formatTime = (timestamp) => {
     if (!timestamp) return "À l'instant";
     const date = new Date(timestamp);
@@ -281,33 +268,22 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     document.documentElement.classList.toggle("dark");
   };
 
-const getInitials = () => {
-  if (!agent) return "??";
+  const getInitials = () => {
+    if (!agent) return "??";
+    const nomPrenom = agent.nomPrenom || agent.login || "";
+    if (!nomPrenom) return "??";
+    const parts = nomPrenom.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+    }
+    return parts[0].charAt(0).toUpperCase();
+  };
 
-  const nomPrenom = agent.nomPrenom || agent.login || "";
+  const getAgentFullName = () => {
+    if (!agent) return "Utilisateur";
+    return agent.nomPrenom || agent.login || "Utilisateur";
+  };
 
-  if (!nomPrenom) return "??";
-
-  const parts = nomPrenom.trim().split(/\s+/);
-
-  if (parts.length >= 2) {
-    return (
-      parts[0].charAt(0) +
-      parts[1].charAt(0)
-    ).toUpperCase();
-  }
-
-  return parts[0].charAt(0).toUpperCase();
-};
-
-const getAgentFullName = () => {
-  if (!agent) return "Utilisateur";
-
-  return agent.nomPrenom ||
-         agent.login ||
-         "Utilisateur";
-};
-  // ─── Obtenir le poste ──────────────────────────────────────────────────
   const getAgentPoste = () => {
     if (!agent) return "Non défini";
     return agent.poste?.replace("AGENT_", "") || agent.poste || "Non défini";
@@ -320,7 +296,7 @@ const getAgentFullName = () => {
 
   return (
     <>
-      <header className={`navbar ${sidebarOpen ? "navbar--shifted" : ""}`}>
+      <header className={`navbar ${sidebarOpen ? "navbar--shifted" : ""}`} dir="ltr">
         <div className="navbar__left">
           <button className="navbar__mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
             <svg fill="currentColor" viewBox="0 0 20 20">
@@ -363,6 +339,9 @@ const getAgentFullName = () => {
         </div>
 
         <div className="navbar__right">
+          {/* ✅ Language Switcher intégré ici */}
+          <LanguageSwitcher />
+
           <button className="navbar__icon-btn">
             <MessageSquare className="w-[18px] h-[18px]" />
           </button>
@@ -567,7 +546,6 @@ const getAgentFullName = () => {
               </div>
               <div className="user-btn__info">
                 <span className="user-btn__name">{getAgentFullName()}</span>
-                {/* <span className="user-btn__role">{getAgentPoste()}</span> */}
               </div>
               <ChevronDown className={`user-btn__chevron ${userDropOpen ? "user-btn__chevron--open" : ""}`} />
             </button>

@@ -3,13 +3,16 @@ import { RouterProvider } from "react-router";
 import { router } from "./routes";
 import React, { useEffect } from "react";
 import { Toaster } from "sonner";
+import { I18nextProvider } from "react-i18next"; 
+import i18n from "../i18n"; 
 import { LingeProvider } from "./contextes/LingeContext";
 import { ServiceContext, ServiceProvider } from "./contextes/ServiceContext";
 import { ModalProvider } from "./contextes/ModalContext";
 import BacProvider from "./contextes/BacContext";
 import { ProgrammeProvider } from "./contextes/ProgrammeContext";
 import { AuthProvider } from "./contextes/Authentication/AuthContext";
-import {MachineProvider} from "./contextes/MachineContext"
+import { MachineProvider } from "./contextes/MachineContext";
+import { LanguageProvider } from "../i18n/LanguageProvider"; 
 
 import { 
     startNotificationService, 
@@ -28,30 +31,30 @@ export default function App() {
     }, []);
 
     return (
-        <ProgrammeProvider>
-            <BacProvider>
-                    <MachineProvider>
-
-                <ModalProvider>
-                    <ServiceProvider>
-                            <AuthProvider>
-
-                        <LingeProvider>
-                            <RouterProvider router={router} />
-                            <Toaster 
-                                position="top-right"
-                                richColors
-                                closeButton
-                                duration={4000}
-                            />
-                        </LingeProvider>
-                            </AuthProvider>
-
-                    </ServiceProvider>
-                </ModalProvider>
-                    </MachineProvider>
-
-            </BacProvider>
-        </ProgrammeProvider>
+       <I18nextProvider i18n={i18n}>
+            <LanguageProvider> 
+                <ProgrammeProvider>
+                    <BacProvider>
+                        <MachineProvider>
+                            <ModalProvider>
+                                <ServiceProvider>
+                                    <AuthProvider>
+                                        <LingeProvider>
+                                            <RouterProvider router={router} />
+                                            <Toaster 
+                                                position="top-right"
+                                                richColors
+                                                closeButton
+                                                duration={4000}
+                                            />
+                                        </LingeProvider>
+                                    </AuthProvider>
+                                </ServiceProvider>
+                            </ModalProvider>
+                        </MachineProvider>
+                    </BacProvider>
+                </ProgrammeProvider>
+            </LanguageProvider>
+        </I18nextProvider>
     );
 }

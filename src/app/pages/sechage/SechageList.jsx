@@ -1,5 +1,5 @@
-// pages/Sechage/SechageList.js
 import React, { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { FaWind, FaFilter, FaBoxes, FaSpinner, FaPlay, FaUser, FaCheckCircle, FaTimes, FaExclamationTriangle } from "react-icons/fa";
 import { SechageProvider, useSechage } from "../../contextes/SechageContext";
 import { getAgent, isAgentConnected } from "../../services/agentService";
@@ -13,6 +13,8 @@ import { Badge } from "../../components/ui/badge";
 import "../Linge/WorkflowList.css";
 
 function SechageInner() {
+  const { t } = useTranslation();
+
   const {
     agent: agentFromContext,
     identifierAgent,
@@ -82,16 +84,29 @@ function SechageInner() {
     );
   }, [lotsDisponibles, lotsSelectionnes, searchLot]);
 
+  const getAgentFullName = () => {
+    if (!agent) return '';
+    return agent.nomPrenom || agent.nom || agent.matricule;
+  };
+
   const getPlaceholder = () => {
-    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
-    if (etape === "MACHINE") return "🌬️ Scanner le code du séchoir...";
-    if (etape === "LOTS") return "📦 Scanner un lot (état LAVE)...";
-    return "Scanner...";
+    if (!agent) return t('sechage.agent_not_connected');
+    if (etape === "MACHINE") return t('sechage.scan_dryer_code');
+    if (etape === "LOTS") return t('sechage.scan_lot_wash');
+    return t('sechage.scan');
   };
 
   const getBorderColor = () => {
     if (!agent) return "#dc2626";
     return "#0ea5e9";
+  };
+
+  const getEtapeLabel = () => {
+    if (etape === "MACHINE") return t('sechage.step_machine');
+    if (etape === "LOTS") return t('sechage.step_lots');
+    if (etape === "EN_COURS") return t('sechage.step_in_progress');
+    if (etape === "TERMINE") return t('sechage.step_completed');
+    return etape;
   };
 
   return (
@@ -146,14 +161,16 @@ function SechageInner() {
               color: "#0f172a",
               margin: 0
             }}>
-              Station de Séchage
+              {t('sechage.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nomPrenom || agent.nom || agent.matricule}` : "Aucun agent connecté"}
+              {agent 
+                ? `${t('sechage.agent')}: ${getAgentFullName()}`
+                : t('sechage.no_agent_connected')}
             </p>
           </div>
         </div>
@@ -166,7 +183,6 @@ function SechageInner() {
       }}>
 
         {/* Barre supérieure */}
-
         <div style={{
           display: "flex",
           justifyContent: "space-between",
@@ -188,7 +204,7 @@ function SechageInner() {
               }}>
                 <FaCheckCircle color="#22c55e" size={16} />
                 <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
-                  {agent.nomPrenom || agent.nom || agent.matricule}
+                  {getAgentFullName()}
                 </span>
                 <Badge variant="outline" style={{ fontSize: "11px" }}>
                   {agent.codeBarre || agent.matricule}
@@ -209,7 +225,7 @@ function SechageInner() {
                 </button>
               </div>
             ) : (
-              <div style={{ fontSize: "13px", color: "#94a3b8" }}>Aucun agent connecté</div>
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>{t('sechage.no_agent_connected')}</div>
             )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
@@ -227,7 +243,7 @@ function SechageInner() {
                 setAgent(null);
               }}
             >
-              Reset
+              {t('common.reset')}
             </Button>
           </div>
         </div>
@@ -247,12 +263,12 @@ function SechageInner() {
             color: "#dc2626"
           }}>
             <FaExclamationTriangle size={16} />
-            <span style={{ fontWeight: 600 }}>Aucun agent connecté</span>
-            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer des opérations de séchage</span>
+            <span style={{ fontWeight: 600 }}>{t('sechage.no_agent_connected')}</span>
+            <span style={{ color: "#64748b" }}>{t('sechage.no_agent_connect_text')}</span>
           </div>
         )}
 
-        {/* ─── ZONE DE SCAN (exactement comme Pliage) ────────────────────── */}
+        {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
           border: `2px dashed ${getBorderColor()}`
@@ -271,15 +287,15 @@ function SechageInner() {
           </CardContent>
         </Card>
 
-        {/* ─── INFO AGENT (exactement comme Pliage) ───────────────────────── */}
+        {/* ─── INFO AGENT ────────────────────────────────────────────────── */}
         {agent && (
           <Card style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaWind color="#22c55e" size={16} />
-                <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt pour le séchage</span>
+                <span style={{ fontWeight: 600, color: "#15803d" }}>{t('sechage.ready_for_drying')}</span>
                 <span style={{ color: "#64748b" }}>
-                  {etape === "MACHINE" ? "Scannez un séchoir" : "Scannez un lot (état LAVE)"}
+                  {etape === "MACHINE" ? t('sechage.scan_dryer') : t('sechage.scan_lot_status')}
                 </span>
               </div>
             </CardContent>
@@ -298,9 +314,9 @@ function SechageInner() {
                   borderRadius: "14px", border: "2px dashed #e2e8f0", color: "#94a3b8"
                 }}>
                   <FaWind size={40} style={{ opacity: 0.2, marginBottom: "12px" }}/>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Scannez le séchoir</div>
+                  <div style={{ fontSize: "14px", fontWeight: 600 }}>{t('sechage.scan_dryer')}</div>
                   <div style={{ fontSize: "12px", marginTop: "4px" }}>
-                    Type SECHEUR ou LAVEUR_SECHEUR
+                    {t('sechage.scan_dryer_type')}
                   </div>
                 </div>
               )}
@@ -318,7 +334,7 @@ function SechageInner() {
                       fontWeight: 700, fontSize: "14px",
                       display: "flex", alignItems: "center", gap: "8px"
                     }}>
-                      <FaBoxes color="#64748b"/> Lots lavés
+                      <FaBoxes color="#64748b"/> {t('sechage.washed_lots')}
                       <span style={{
                         background: "#e2e8f0", padding: "2px 8px",
                         borderRadius: "10px", fontSize: "11px"
@@ -327,7 +343,7 @@ function SechageInner() {
                     <div style={{ display: "flex", gap: "8px" }}>
                       <input
                         type="text"
-                        placeholder="Rechercher..."
+                        placeholder={t('common.search')}
                         value={searchLot}
                         onChange={e=>setSearchLot(e.target.value)}
                         onFocus={e=>e.stopPropagation()}
@@ -345,14 +361,14 @@ function SechageInner() {
                   </div>
                   {loadingLots ? (
                     <div style={{ textAlign: "center", padding: "24px", color: "#94a3b8" }}>
-                      <FaSpinner style={{ animation: "spin 1s linear infinite" }}/> Chargement...
+                      <FaSpinner style={{ animation: "spin 1s linear infinite" }}/> {t('common.loading')}
                     </div>
                   ) : lotsFiltres.length === 0 ? (
                     <div style={{
                       textAlign: "center", padding: "32px", color: "#94a3b8", fontSize: "13px"
                     }}>
                       <FaBoxes size={28} style={{ opacity: 0.2, marginBottom: "8px" }}/>
-                      <div>Aucun lot lavé disponible</div>
+                      <div>{t('sechage.no_washed_lots')}</div>
                     </div>
                   ) : (
                     <div style={{
@@ -386,9 +402,9 @@ function SechageInner() {
                   <div style={{
                     fontWeight: 800, fontSize: "20px",
                     marginBottom: "8px", color: "#15803d"
-                  }}>Séchage terminé !</div>
+                  }}>{t('sechage.drying_completed')}</div>
                   <div style={{ color: "#64748b", marginBottom: "24px", fontSize: "14px" }}>
-                    {lotsSelectionnes.length} lot(s) séchés · Linges en état <strong>SECHE</strong>
+                    {lotsSelectionnes.length} {t('sechage.lots_dried')}
                   </div>
                   <button onClick={nouveauCycle} style={{
                     padding: "12px 28px", borderRadius: "10px", border: "none",
@@ -396,7 +412,7 @@ function SechageInner() {
                     color: "white", fontWeight: 700, cursor: "pointer", fontSize: "15px",
                     display: "inline-flex", alignItems: "center", gap: "8px"
                   }}>
-                    <FaPlay size={12}/> Nouveau cycle →
+                    <FaPlay size={12}/> {t('sechage.new_cycle')} →
                   </button>
                 </div>
               )}
@@ -415,15 +431,15 @@ function SechageInner() {
             fontSize: "12px", color: "#64748b", flexWrap: "wrap", gap: "8px"
           }}>
             <div style={{ display: "flex", gap: "16px" }}>
-              <span>🌬️ Lots : <strong style={{ color: "#0ea5e9" }}>{lotsSelectionnes.length}</strong></span>
-              <span>⚖️ Poids : <strong style={{ color: "#0ea5e9" }}>{poidsTotal.toFixed(1)} kg</strong></span>
-              {machine && <span>🔧 Séchoir : <strong style={{ color: "#0ea5e9" }}>{machine.code}</strong></span>}
+              <span>🌬️ {t('sechage.lots')}: <strong style={{ color: "#0ea5e9" }}>{lotsSelectionnes.length}</strong></span>
+              <span>⚖️ {t('sechage.weight')}: <strong style={{ color: "#0ea5e9" }}>{poidsTotal.toFixed(1)} kg</strong></span>
+              {machine && <span>🔧 {t('sechage.dryer')}: <strong style={{ color: "#0ea5e9" }}>{machine.code}</strong></span>}
             </div>
             <span style={{
               padding: "2px 10px", borderRadius: "8px",
               background: "#e0f2fe", color: "#0369a1", fontSize: "11px", fontWeight: 700
             }}>
-              🌬️ Étape : {etape}
+              🌬️ {t('sechage.step')}: {getEtapeLabel()}
             </span>
           </div>
         )}

@@ -1,5 +1,5 @@
-// pages/Lavage/LavageList.js
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FaSoap, FaFilter, FaCheckCircle, FaBiohazard,
   FaCalendarAlt, FaBoxes, FaSpinner, FaPlay, FaStop,
@@ -76,6 +76,8 @@ function RecapChargementInfecte({
   estEnLavage,
   tempsEcoule 
 }) {
+  const { t } = useTranslation();
+
   return (
     <div style={{
       background: "#f8fafc",
@@ -88,7 +90,7 @@ function RecapChargementInfecte({
     }}>
       <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
         <FaBoxes color="#dc2626" />
-        Sacs en lavage
+        {t('lavage.infecte_bags_in_wash')}
         <Badge style={{ background: "#fee2e2", color: "#dc2626", marginLeft: "auto" }}>
           {sacsSelectionnes.length}
         </Badge>
@@ -97,8 +99,8 @@ function RecapChargementInfecte({
       {sacsSelectionnes.length === 0 ? (
         <div style={{ textAlign: "center", padding: "20px", color: "#94a3b8", fontSize: "13px" }}>
           <FaBiohazard size={28} style={{ opacity: 0.2, marginBottom: "8px" }} />
-          <div>Aucun sac sélectionné</div>
-          <div style={{ fontSize: "11px", marginTop: "4px" }}>Scannez des sacs infectés</div>
+          <div>{t('lavage.no_bags_selected')}</div>
+          <div style={{ fontSize: "11px", marginTop: "4px" }}>{t('lavage.scan_infected_bags')}</div>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "300px", overflowY: "auto" }}>
@@ -120,7 +122,7 @@ function RecapChargementInfecte({
                   {sac.numeroSac}
                 </div>
                 <div style={{ fontSize: "11px", color: "#64748b" }}>
-                  {sac.quantiteDeclaree || 0} articles
+                  {sac.quantiteDeclaree || 0} {t('lavage.items')}
                 </div>
               </div>
               {!estTermine && !estEnLavage && (
@@ -150,18 +152,18 @@ function RecapChargementInfecte({
         borderTop: "1px solid #e2e8f0"
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "4px" }}>
-          <span style={{ color: "#64748b" }}>Total articles</span>
+          <span style={{ color: "#64748b" }}>{t('lavage.total_items')}</span>
           <span style={{ fontWeight: 700, color: "#0f172a" }}>{poidsTotal}</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-          <span style={{ color: "#64748b" }}>Sacs</span>
+          <span style={{ color: "#64748b" }}>{t('lavage.bags')}</span>
           <span style={{ fontWeight: 700, color: "#0f172a" }}>{sacsSelectionnes.length}</span>
         </div>
         {tempsEcoule > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginTop: "4px", paddingTop: "4px", borderTop: "1px solid #e2e8f0" }}>
             <span style={{ color: "#64748b" }}>
               <FaClock size={12} style={{ display: "inline", marginRight: "4px" }} />
-              Temps
+              {t('lavage.time')}
             </span>
             <span style={{ fontWeight: 600, color: "#0f172a" }}>
               {Math.floor(tempsEcoule / 60)}m {tempsEcoule % 60}s
@@ -193,7 +195,7 @@ function RecapChargementInfecte({
           }}
         >
           <FaPlay size={14} /> 
-          {sacsSelectionnes.length === 0 ? "Aucun sac sélectionné" : "Lancer le cycle infecté"}
+          {sacsSelectionnes.length === 0 ? t('lavage.no_bags_selected') : t('lavage.start_infected_cycle')}
         </button>
       )}
 
@@ -218,7 +220,7 @@ function RecapChargementInfecte({
               gap: "8px"
             }}
           >
-            <FaCheckDouble size={14} /> Terminer le cycle infecté
+            <FaCheckDouble size={14} /> {t('lavage.finish_infected_cycle')}
           </button>
           <button
             onClick={onArreter}
@@ -239,7 +241,7 @@ function RecapChargementInfecte({
               gap: "8px"
             }}
           >
-            <FaStop size={14} /> Arrêter le cycle
+            <FaStop size={14} /> {t('lavage.stop_cycle')}
           </button>
         </>
       )}
@@ -264,7 +266,7 @@ function RecapChargementInfecte({
             gap: "8px"
           }}
         >
-          <FaRedo size={14} /> Nouveau cycle
+          <FaRedo size={14} /> {t('lavage.new_cycle')}
         </button>
       )}
     </div>
@@ -272,6 +274,8 @@ function RecapChargementInfecte({
 }
 
 function LavageInner() {
+  const { t } = useTranslation();
+
   const {
     agent: agentFromContext,
     identifierAgent,
@@ -365,7 +369,7 @@ function LavageInner() {
       if (!res.ok) {
         await Swal.fire({
           icon: 'error',
-          title: 'Machine introuvable',
+          title: t('lavage.machine_not_found'),
           text: code,
           timer: 1500,
           showConfirmButton: false
@@ -386,7 +390,7 @@ function LavageInner() {
         
         await Swal.fire({
           icon: 'success',
-          title: '🔴 Machine linges infectés',
+          title: t('lavage.infected_machine'),
           text: `${mach.code} - ${mach.marque}`,
           timer: 1500,
           showConfirmButton: false
@@ -403,7 +407,7 @@ function LavageInner() {
         
         await Swal.fire({
           icon: 'success',
-          title: '✅ Machine linges normaux',
+          title: t('lavage.normal_machine'),
           text: `${mach.code} - ${mach.marque}`,
           timer: 1500,
           showConfirmButton: false
@@ -412,21 +416,21 @@ function LavageInner() {
     } catch (err) {
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
+        title: t('common.error'),
         text: err.message
       });
     } finally {
       setIsLoading(false);
     }
-  }, [scannerMachine, chargerSacsInfectes]);
+  }, [scannerMachine, chargerSacsInfectes, t]);
 
   // ─── Scanner Sac Infecté ──────────────────────────────────────────────
   const scannerSacInfecte = useCallback(async (code) => {
     if (!machineInfecte) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Scannez d\'abord la machine',
-        text: 'Veuillez scanner une machine infectée avant de scanner des sacs.',
+        title: t('lavage.scan_machine_first'),
+        text: t('lavage.scan_machine_first_text'),
         timer: 2000,
         showConfirmButton: false
       });
@@ -436,8 +440,8 @@ function LavageInner() {
     if (cycleTermineInfecte || cycleEnCours) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Cycle en cours ou terminé',
-        text: 'Vous ne pouvez plus ajouter de sacs.',
+        title: t('lavage.cycle_in_progress'),
+        text: t('lavage.cycle_in_progress_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -448,7 +452,7 @@ function LavageInner() {
     if (!sac) {
       await Swal.fire({
         icon: 'error',
-        title: 'Sac introuvable',
+        title: t('lavage.bag_not_found'),
         text: code,
         timer: 1500,
         showConfirmButton: false
@@ -459,7 +463,7 @@ function LavageInner() {
     if (sacsSelectionnes.find(s => s.numeroSac === sac.numeroSac)) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Sac déjà ajouté',
+        title: t('lavage.bag_already_added'),
         text: sac.numeroSac,
         timer: 1500,
         showConfirmButton: false
@@ -470,7 +474,7 @@ function LavageInner() {
     if (sac.etat === "EN_LAVAGE") {
       await Swal.fire({
         icon: 'warning',
-        title: 'Sac déjà en lavage',
+        title: t('lavage.bag_already_in_wash'),
         text: sac.numeroSac,
         timer: 1500,
         showConfirmButton: false
@@ -482,12 +486,12 @@ function LavageInner() {
     
     await Swal.fire({
       icon: 'success',
-      title: '✅ Sac ajouté',
-      text: `${sac.numeroSac} - ${sac.quantiteDeclaree || 0} articles`,
+      title: t('lavage.bag_added'),
+      text: `${sac.numeroSac} - ${sac.quantiteDeclaree || 0} ${t('lavage.items')}`,
       timer: 1000,
       showConfirmButton: false
     });
-  }, [machineInfecte, sacsInfectes, sacsSelectionnes, cycleTermineInfecte, cycleEnCours]);
+  }, [machineInfecte, sacsInfectes, sacsSelectionnes, cycleTermineInfecte, cycleEnCours, t]);
 
   // ─── Retirer un sac ──────────────────────────────────────────────────────
   const retirerSac = useCallback((sac) => {
@@ -499,8 +503,8 @@ function LavageInner() {
     if (sacsSelectionnes.length === 0) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Aucun sac sélectionné',
-        text: 'Scannez au moins un sac avant de continuer.',
+        title: t('lavage.no_bags_selected'),
+        text: t('lavage.no_bags_selected_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -530,29 +534,29 @@ function LavageInner() {
 
       await Swal.fire({
         icon: 'success',
-        title: '🔴 Cycle infecté lancé !',
-        text: `${sacsSelectionnes.length} sac(s) en lavage`,
+        title: t('lavage.infected_cycle_started'),
+        text: `${sacsSelectionnes.length} ${t('lavage.bags_in_wash')}`,
         timer: 2000,
         showConfirmButton: false
       });
     } catch (err) {
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
+        title: t('common.error'),
         text: err.message
       });
     } finally {
       setIsLoading(false);
     }
-  }, [sacsSelectionnes, machineInfecte, agent, chargerSacsInfectes]);
+  }, [sacsSelectionnes, machineInfecte, agent, chargerSacsInfectes, t]);
 
   // ─── Terminer le cycle infecté ──────────────────────────────────────────
   const terminerCycleInfecte = useCallback(async () => {
     if (sacsSelectionnes.length === 0) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Aucun sac à terminer',
-        text: 'Scannez au moins un sac avant de terminer.',
+        title: t('lavage.no_bags_to_finish'),
+        text: t('lavage.no_bags_to_finish_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -561,13 +565,13 @@ function LavageInner() {
 
     const result = await Swal.fire({
       icon: 'question',
-      title: 'Terminer le cycle infecté ?',
-      text: `${sacsSelectionnes.length} sac(s) seront terminés.`,
+      title: t('lavage.finish_infected_cycle'),
+      text: `${sacsSelectionnes.length} ${t('lavage.bags_will_be_finished')}`,
       showCancelButton: true,
       confirmButtonColor: '#7c3aed',
       cancelButtonColor: '#64748b',
-      confirmButtonText: 'Oui, terminer',
-      cancelButtonText: 'Annuler'
+      confirmButtonText: t('lavage.yes_finish'),
+      cancelButtonText: t('common.cancel')
     });
 
     if (!result.isConfirmed) return;
@@ -592,32 +596,32 @@ function LavageInner() {
 
       await Swal.fire({
         icon: 'success',
-        title: '✅ Cycle infecté terminé !',
-        text: `${sacsSelectionnes.length} sac(s) lavés avec succès`,
+        title: t('lavage.infected_cycle_finished'),
+        text: `${sacsSelectionnes.length} ${t('lavage.bags_washed_success')}`,
         timer: 2000,
         showConfirmButton: false
       });
     } catch (err) {
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
+        title: t('common.error'),
         text: err.message
       });
     } finally {
       setIsLoading(false);
     }
-  }, [sacsSelectionnes, agent, chargerSacsInfectes, timerInterval]);
+  }, [sacsSelectionnes, agent, chargerSacsInfectes, timerInterval, t]);
 
   const arreterCycleInfecte = useCallback(async () => {
     const result = await Swal.fire({
       icon: 'warning',
-      title: 'Arrêter le cycle infecté ?',
-      text: `${sacsSelectionnes.length} sac(s) seront arrêtés.`,
+      title: t('lavage.stop_infected_cycle'),
+      text: `${sacsSelectionnes.length} ${t('lavage.bags_will_be_stopped')}`,
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#64748b',
-      confirmButtonText: 'Oui, arrêter',
-      cancelButtonText: 'Annuler'
+      confirmButtonText: t('lavage.yes_stop'),
+      cancelButtonText: t('common.cancel')
     });
 
     if (!result.isConfirmed) return;
@@ -643,21 +647,21 @@ function LavageInner() {
 
       await Swal.fire({
         icon: 'info',
-        title: '⏹️ Cycle infecté arrêté',
-        text: `${sacsSelectionnes.length} sac(s) ont été arrêtés`,
+        title: t('lavage.infected_cycle_stopped'),
+        text: `${sacsSelectionnes.length} ${t('lavage.bags_stopped')}`,
         timer: 2000,
         showConfirmButton: false
       });
     } catch (err) {
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
+        title: t('common.error'),
         text: err.message
       });
     } finally {
       setIsLoading(false);
     }
-  }, [sacsSelectionnes, agent, chargerSacsInfectes, timerInterval]);
+  }, [sacsSelectionnes, agent, chargerSacsInfectes, timerInterval, t]);
 
   // ─── Nouveau cycle infecté ─────────────────────────────────────────────
   const nouveauCycleInfecte = useCallback(() => {
@@ -744,22 +748,22 @@ function LavageInner() {
   }, [lotsDisponibles, lotsSelectionnes, searchLot]);
 
   const getPlaceholder = () => {
-    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
+    if (!agent) return t('lavage.agent_not_connected');
     
-    if (!modeLavage) return "🔧 Scanner le code de la machine...";
+    if (!modeLavage) return t('lavage.scan_machine_code');
     
     if (modeLavage === "NORMAL") {
-      if (etapeBlanc === "MACHINE") return "🔧 Scanner le code de la machine...";
-      if (etapeBlanc === "LOTS") return "📦 Scanner un lot...";
+      if (etapeBlanc === "MACHINE") return t('lavage.scan_machine_code');
+      if (etapeBlanc === "LOTS") return t('lavage.scan_lot');
     }
     
     if (modeLavage === "INFECTE") {
-      if (etapeInfecte === "MACHINE") return "🔧 Scanner le code de la machine...";
-      if (etapeInfecte === "SACS") return "🔴 Scanner un sac infecté...";
-      if (etapeInfecte === "LAVAGE") return "🔴 Scanner un autre sac...";
-      if (etapeInfecte === "TERMINE") return "✅ Cycle terminé";
+      if (etapeInfecte === "MACHINE") return t('lavage.scan_machine_code');
+      if (etapeInfecte === "SACS") return t('lavage.scan_infected_bag');
+      if (etapeInfecte === "LAVAGE") return t('lavage.scan_another_bag');
+      if (etapeInfecte === "TERMINE") return t('lavage.cycle_finished');
     }
-    return "Scanner...";
+    return t('lavage.scan');
   };
 
   const getBorderColor = () => {
@@ -770,9 +774,9 @@ function LavageInner() {
   };
 
   const getModeLabel = () => {
-    if (!modeLavage) return "En attente";
-    if (modeLavage === "NORMAL") return "⬜ Linge Normal";
-    return "🔴 Linge Infecté";
+    if (!modeLavage) return t('lavage.waiting');
+    if (modeLavage === "NORMAL") return t('lavage.normal_linen');
+    return t('lavage.infected_linen');
   };
 
   const getModeColor = () => {
@@ -781,7 +785,6 @@ function LavageInner() {
     return "#dc2626";
   };
 
-  // Filtrer les sacs disponibles
   const sacsDisponibles = sacsInfectes?.filter(s => s.etat === "RECEPTIONNE" || s.etat === "RECEPTION") || [];
   const totalArticles = sacsSelectionnes.reduce((sum, s) => sum + (s.quantiteDeclaree || 0), 0);
 
@@ -835,14 +838,14 @@ function LavageInner() {
               color: "#0f172a",
               margin: 0
             }}>
-              Station de Lavage
+              {t('lavage.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nomPrenom || agent.nom || agent.matricule}` : "Aucun agent connecté"}
+              {agent ? `${t('lavage.agent')}: ${agent.nomPrenom || agent.nom || agent.matricule}` : t('lavage.no_agent_connected')}
             </p>
           </div>
         </div>
@@ -891,7 +894,7 @@ function LavageInner() {
                 </button>
               </div>
             ) : (
-              <div style={{ fontSize: "13px", color: "#94a3b8" }}>Aucun agent connecté</div>
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>{t('lavage.no_agent_connected')}</div>
             )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
@@ -910,7 +913,7 @@ function LavageInner() {
               size="sm"
               onClick={handleResetAll}
             >
-              Reset
+              {t('common.reset')}
             </Button>
           </div>
         </div>
@@ -930,12 +933,12 @@ function LavageInner() {
             color: "#dc2626"
           }}>
             <FaExclamationTriangle size={16} />
-            <span style={{ fontWeight: 600 }}>Aucun agent connecté</span>
-            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour utiliser la station de lavage</span>
+            <span style={{ fontWeight: 600 }}>{t('lavage.no_agent_connected')}</span>
+            <span style={{ color: "#64748b" }}>{t('lavage.no_agent_connect_text')}</span>
           </div>
         )}
 
-        {/* ─── ZONE DE SCAN (exactement comme Pliage) ────────────────────── */}
+        {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
           border: `2px dashed ${getBorderColor()}`
@@ -955,17 +958,17 @@ function LavageInner() {
           </CardContent>
         </Card>
 
-        {/* ─── INFO AGENT (exactement comme Pliage) ───────────────────────── */}
+        {/* ─── INFO AGENT ────────────────────────────────────────────────── */}
         {agent && (
           <Card style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", marginBottom: "16px" }}>
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaSoap color="#22c55e" size={16} />
-                <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt pour le lavage</span>
+                <span style={{ fontWeight: 600, color: "#15803d" }}>{t('lavage.ready_for_wash')}</span>
                 <span style={{ color: "#64748b" }}>
-                  {!modeLavage ? "Scannez une machine" :
-                   modeLavage === "NORMAL" ? "Scannez un lot (état EN_TRI)" :
-                   "Scannez un sac infecté"}
+                  {!modeLavage ? t('lavage.scan_machine') :
+                   modeLavage === "NORMAL" ? t('lavage.scan_lot_status') :
+                   t('lavage.scan_infected_bag')}
                 </span>
               </div>
             </CardContent>
@@ -987,10 +990,10 @@ function LavageInner() {
                     }}>
                       <FaSoap size={36} style={{ opacity: 0.3, marginBottom: "12px" }} />
                       <div style={{ fontSize: "14px", fontWeight: 500 }}>
-                        En attente du scan de la machine
+                        {t('lavage.waiting_machine_scan')}
                       </div>
                       <div style={{ fontSize: "12px", marginTop: "4px" }}>
-                        Scannez le code de la machine dans le champ ci-dessus
+                        {t('lavage.scan_machine_code_instruction')}
                       </div>
                     </div>
                   )}
@@ -1008,7 +1011,7 @@ function LavageInner() {
                           fontWeight: 700, fontSize: "14px",
                           display: "flex", alignItems: "center", gap: "8px"
                         }}>
-                          <FaBoxes color="#64748b" /> Lots prêts
+                          <FaBoxes color="#64748b" /> {t('lavage.ready_lots')}
                           <span style={{
                             background: "#e2e8f0", padding: "2px 8px",
                             borderRadius: "10px", fontSize: "11px", fontWeight: 500
@@ -1019,7 +1022,7 @@ function LavageInner() {
                         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                           <input
                             type="text"
-                            placeholder="Rechercher..."
+                            placeholder={t('common.search')}
                             value={searchLot}
                             onChange={e => setSearchLot(e.target.value)}
                             onFocus={e => e.stopPropagation()}
@@ -1041,12 +1044,12 @@ function LavageInner() {
 
                       {loadingLots ? (
                         <div style={{ textAlign: "center", padding: "24px", color: "#94a3b8" }}>
-                          <FaSpinner style={{ animation: "spin 1s linear infinite" }} /> Chargement...
+                          <FaSpinner style={{ animation: "spin 1s linear infinite" }} /> {t('common.loading')}
                         </div>
                       ) : lotsFiltres.length === 0 ? (
                         <div style={{ textAlign: "center", padding: "30px", color: "#94a3b8", fontSize: "13px" }}>
                           <FaBoxes size={30} style={{ opacity: 0.2, marginBottom: "8px" }} />
-                          <div>Aucun lot disponible</div>
+                          <div>{t('lavage.no_lots_available')}</div>
                         </div>
                       ) : (
                         <div style={{
@@ -1079,17 +1082,17 @@ function LavageInner() {
                     }}>
                       <div style={{ fontSize: "56px", marginBottom: "12px" }}>✅</div>
                       <div style={{ fontWeight: 800, fontSize: "20px", marginBottom: "8px", color: "#15803d" }}>
-                        Lavage terminé !
+                        {t('lavage.wash_completed')}
                       </div>
                       <div style={{ color: "#64748b", marginBottom: "24px", fontSize: "14px" }}>
-                        {lotsSelectionnes.length} lot(s) lavés avec succès
+                        {lotsSelectionnes.length} {t('lavage.lots_washed_success')}
                       </div>
                       <button onClick={nouveauCycleBlanc} style={{
                         padding: "12px 28px", borderRadius: "10px", border: "none",
                         background: "linear-gradient(135deg,#10b981,#059669)",
                         color: "white", fontWeight: 700, cursor: "pointer", fontSize: "15px"
                       }}>
-                        Nouveau cycle →
+                        {t('lavage.new_cycle')} →
                       </button>
                     </div>
                   )}
@@ -1112,10 +1115,10 @@ function LavageInner() {
                     }}>
                       <FaSoap size={36} style={{ opacity: 0.3, marginBottom: "12px" }} />
                       <div style={{ fontSize: "14px", fontWeight: 500 }}>
-                        En attente du scan de la machine
+                        {t('lavage.waiting_machine_scan')}
                       </div>
                       <div style={{ fontSize: "12px", marginTop: "4px" }}>
-                        Scannez le code de la machine dans le champ ci-dessus
+                        {t('lavage.scan_machine_code_instruction')}
                       </div>
                     </div>
                   )}
@@ -1134,7 +1137,7 @@ function LavageInner() {
                           display: "flex", alignItems: "center", gap: "8px",
                           color: "#dc2626"
                         }}>
-                          <FaBiohazard size={14} /> Sacs disponibles
+                          <FaBiohazard size={14} /> {t('lavage.available_bags')}
                           <span style={{
                             background: "#fee2e2", padding: "2px 8px",
                             borderRadius: "10px", fontSize: "11px", fontWeight: 500,
@@ -1160,12 +1163,12 @@ function LavageInner() {
 
                       {loadingSacs ? (
                         <div style={{ textAlign: "center", padding: "24px", color: "#94a3b8" }}>
-                          <FaSpinner style={{ animation: "spin 1s linear infinite" }} /> Chargement...
+                          <FaSpinner style={{ animation: "spin 1s linear infinite" }} /> {t('common.loading')}
                         </div>
                       ) : sacsDisponibles.length === 0 ? (
                         <div style={{ textAlign: "center", padding: "30px", color: "#94a3b8", fontSize: "13px" }}>
                           <FaBoxes size={30} style={{ opacity: 0.2, marginBottom: "8px" }} />
-                          <div>Aucun sac disponible</div>
+                          <div>{t('lavage.no_bags_available')}</div>
                         </div>
                       ) : (
                         <div style={{
@@ -1214,12 +1217,12 @@ function LavageInner() {
                                   </span>
                                   {estSelectionne && (
                                     <Badge style={{ background: "#dc2626", color: "white", fontSize: "9px" }}>
-                                      ✓ Sélectionné
+                                      ✓ {t('lavage.selected')}
                                     </Badge>
                                   )}
                                 </div>
                                 <div style={{ fontSize: "11px", color: "#64748b" }}>
-                                  {sac.quantiteDeclaree || 0} articles
+                                  {sac.quantiteDeclaree || 0} {t('lavage.items')}
                                 </div>
                               </div>
                             );
@@ -1238,17 +1241,17 @@ function LavageInner() {
                     }}>
                       <div style={{ fontSize: "56px", marginBottom: "12px" }}>✅</div>
                       <div style={{ fontWeight: 800, fontSize: "20px", marginBottom: "8px", color: "#15803d" }}>
-                        Cycle infecté terminé !
+                        {t('lavage.infected_cycle_completed')}
                       </div>
                       <div style={{ color: "#64748b", marginBottom: "24px", fontSize: "14px" }}>
-                        {sacsSelectionnes.length} sac(s) lavés avec succès
+                        {sacsSelectionnes.length} {t('lavage.bags_washed_success')}
                       </div>
                       <button onClick={nouveauCycleInfecte} style={{
                         padding: "12px 28px", borderRadius: "10px", border: "none",
                         background: "linear-gradient(135deg,#10b981,#059669)",
                         color: "white", fontWeight: 700, cursor: "pointer", fontSize: "15px"
                       }}>
-                        Nouveau cycle →
+                        {t('lavage.new_cycle')} →
                       </button>
                     </div>
                   )}
@@ -1279,9 +1282,9 @@ function LavageInner() {
             fontSize: "12px", color: "#64748b", flexWrap: "wrap", gap: "8px"
           }}>
             <div style={{ display: "flex", gap: "16px" }}>
-              <span>🧺 Lots : <strong style={{ color: "#0ea5e9" }}>{lotsSelectionnes.length}</strong></span>
-              <span>⚖️ Poids : <strong style={{ color: "#0ea5e9" }}>{poidsTotal.toFixed(1)} kg</strong></span>
-              {machine && <span>🔧 Machine : <strong style={{ color: "#0ea5e9" }}>{machine.code}</strong></span>}
+              <span>🧺 {t('lavage.lots')} : <strong style={{ color: "#0ea5e9" }}>{lotsSelectionnes.length}</strong></span>
+              <span>⚖️ {t('lavage.weight')} : <strong style={{ color: "#0ea5e9" }}>{poidsTotal.toFixed(1)} kg</strong></span>
+              {machine && <span>🔧 {t('lavage.machine')} : <strong style={{ color: "#0ea5e9" }}>{machine.code}</strong></span>}
             </div>
             <span style={{
               padding: "2px 10px", borderRadius: "8px",

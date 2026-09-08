@@ -1,16 +1,44 @@
 .dashboard-wrapper {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    min-height: calc(100vh - var(--navbar-height));
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow-x: hidden;
-    overflow-y: auto;
-        background-image: url("https://images.unsplash.com/photo-1638949493140-edb10b7be2f3?q=80&w=1572&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D");
-
+    overflow: hidden;
+    background-image: url("https://images.unsplash.com/photo-1635274605638-d44babc08a4f?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: width 0.3s ease, left 0.3s ease;
 }
+
+/* ─── Adaptation selon le sidebar ──────────────────────────────────────── */
+
+/* Sidebar fermé (par défaut) */
+.dashboard-wrapper {
+    width: 100vw;
+    left: 0;
+}
+
+/* Sidebar ouvert - le dashboard se décale */
+.dashboard-wrapper.sidebar-open {
+    width: calc(100vw - 260px);
+    left: 260px;
+}
+
+/* Sidebar en mode responsive (mobile) - toujours pleine largeur */
+@media (max-width: 768px) {
+    .dashboard-wrapper {
+        width: 100vw !important;
+        left: 0 !important;
+    }
+}
+
+/* ─── Fin adaptation sidebar ───────────────────────────────────────────── */
+
 .dashboard-wrapper::before {
     content: "";
     position: absolute;
@@ -33,9 +61,8 @@
     width: 100vw;
     height: 100vh;
     object-fit: cover;
-    z-index: 1;
+    z-index: 0;
     filter: blur(6px);
-
     transform: scale(1.05);
 }
 
@@ -43,38 +70,45 @@
     position: relative;
     z-index: 10;
     width: 100%;
-    max-width: 1200px;
-    padding: 2rem;
+    height: 100vh;
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: 2rem;
-    min-height: 100%;
+    gap: 1.5rem;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(2px);
+    transition: width 0.3s ease, height 0.3s ease;
 }
 
 .dashboard-header {
     position: relative;
     text-align: center;
     width: 100%;
-    margin-bottom: 1rem;
+    padding: 0 1.5rem;
+    margin-bottom: 0.5rem;
 }
 
 .dashboard-header h1 {
-    font-size: 2.5rem;
+    font-size: 2.8rem;
     font-weight: 800;
-    margin-bottom: 0.5rem;
+    margin: 0;
     letter-spacing: -0.025em;
     background: linear-gradient(to right, #38bdf8, #011a25);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .dashboard-header p {
     color: #e0f2fe;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 500;
+    margin: 0.25rem 0 0 0;
     text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
@@ -83,14 +117,48 @@
     flex-wrap: wrap;
     gap: 1.5rem;
     width: 100%;
+    max-width: 1400px;
     justify-content: center;
     align-content: center;
+    padding: 0 1.5rem;
+    transition: gap 0.3s ease, max-width 0.3s ease;
 }
 
+/* ─── Ajustement du grid selon le sidebar ────────────────────────────── */
+
+/* Sidebar fermé - pleine largeur (par défaut) */
+.dashboard-grid {
+    max-width: 1400px;
+    gap: 1.8rem;
+}
+
+/* Sidebar ouvert - moins d'espace */
+.dashboard-wrapper.sidebar-open .dashboard-grid {
+    max-width: 1100px;
+    gap: 1.2rem;
+}
+
+/* ─── Fin ajustement ──────────────────────────────────────────────────── */
+
 .dashboard-grid>* {
-    flex: 0 1 360px;
+    flex: 0 1 320px;
+    min-width: 280px;
+    height: 280px;
+    transition: flex 0.3s ease, min-width 0.3s ease, height 0.3s ease;
+}
+
+/* Sidebar fermé - cartes plus grandes (par défaut) */
+.dashboard-grid>* {
+    flex: 0 1 340px;
     min-width: 300px;
     height: 300px;
+}
+
+/* Sidebar ouvert - cartes plus petites */
+.dashboard-wrapper.sidebar-open .dashboard-grid>* {
+    flex: 0 1 280px;
+    min-width: 240px;
+    height: 260px;
 }
 
 .card-inner {
@@ -119,6 +187,7 @@
     opacity: 1;
     transform: scale(1);
     color: #fff;
+    padding: 1.5rem;
 }
 
 .card-front .icon-wrapper {
@@ -126,9 +195,15 @@
     margin-bottom: 0.75rem;
 }
 
+.card-front .icon-wrapper svg {
+    filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.3));
+}
+
 .card-front h3 {
     font-size: 1.15rem;
     font-weight: 700;
+    margin: 0.5rem 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .card-back {
@@ -136,9 +211,11 @@
     opacity: 0;
     transform: scale(0.5);
     pointer-events: none;
-    background: rgba(8, 15, 24, 0.55);
-    border-radius: 12px;
+    background: rgba(8, 15, 24, 0.7);
+    backdrop-filter: blur(8px);
+    border-radius: 16px;
     overflow: hidden;
+    padding: 0.5rem;
 }
 
 .dashboard-card:hover .card-front {
@@ -163,7 +240,7 @@
     height: 100%;
     flex: 1;
     min-height: 0;
-    padding: 1.25rem;
+    padding: 1rem;
     overflow-y: auto;
     align-content: start;
     justify-content: center;
@@ -173,7 +250,7 @@
 
 .sub-module-grid.compact {
     gap: 0.5rem;
-    padding: 1rem;
+    padding: 0.75rem;
 }
 
 .sub-module-grid::-webkit-scrollbar {
@@ -192,24 +269,24 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 0.5rem;
-    min-height: 80px;
+    min-height: 70px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     transition: all 0.2s ease;
     text-decoration: none;
     text-align: center;
 }
 
 .sub-module-grid.compact .sub-module-item {
-    min-height: 60px;
-    padding: 0.4rem;
-    gap: 0.35rem;
+    min-height: 55px;
+    padding: 0.35rem;
+    gap: 0.3rem;
 }
 
 .sub-module-item:hover {
-    background: rgba(56, 189, 248, 0.08);
-    border-color: rgba(56, 189, 248, 0.35);
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.4);
     transform: translateY(-2px);
 }
 
@@ -226,6 +303,7 @@
     font-weight: 600;
     text-align: center;
     line-height: 1.2;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .sub-module-grid.compact .sub-module-item span {
@@ -245,53 +323,145 @@
     font-size: 0.85rem;
     margin-top: 0.5rem;
     font-weight: 500;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-.dashboard-attribution {
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.6);
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-}
+/* ─── Responsive ────────────────────────────────────────────────────────── */
 
-.dashboard-attribution a {
-    color: #38bdf8;
-    text-decoration: underline;
-}
-
-@media (max-width: 768px) {
+@media (max-width: 992px) {
+    .dashboard-wrapper {
+        width: 100vw !important;
+        left: 0 !important;
+    }
+    
+    .dashboard-wrapper.sidebar-open {
+        width: 100vw !important;
+        left: 0 !important;
+    }
+    
     .dashboard-grid {
-        padding: 0 0.75rem 0.75rem;
-        gap: 1rem;
+        max-width: 100% !important;
+        gap: 1.2rem !important;
     }
     
     .dashboard-grid>* {
-        flex: 0 1 280px;
-        min-width: 240px;
-        height: 240px;
+        flex: 0 1 280px !important;
+        min-width: 240px !important;
+        height: 250px !important;
     }
     
     .dashboard-header h1 {
-        font-size: 2rem;
+        font-size: 2.2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-wrapper {
+        height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        width: 100vw !important;
+        left: 0 !important;
     }
     
-    .dashboard-header {
-        padding: 0.5rem 1rem 0;
+    .dashboard-wrapper.sidebar-open {
+        width: 100vw !important;
+        left: 0 !important;
+    }
+    
+    .dashboard-overlay-content {
+        height: auto;
+        min-height: 100vh;
+        padding: 1rem 0.5rem;
+        gap: 1rem;
+        justify-content: flex-start;
+        padding-top: 2rem;
+    }
+    
+    .dashboard-grid {
+        padding: 0 0.75rem;
+        gap: 1rem !important;
+        max-width: 100% !important;
+    }
+    
+    .dashboard-grid>* {
+        flex: 0 1 100% !important;
+        min-width: 0 !important;
+        height: 200px !important;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .dashboard-header p {
+        font-size: 0.95rem;
+    }
+    
+    .card-front h3 {
+        font-size: 1rem;
+    }
+    
+    .sub-module-item {
+        min-height: 60px;
+    }
+    
+    .sub-module-item span {
+        font-size: 0.7rem;
     }
 }
 
 @media (max-width: 480px) {
-    .dashboard-grid>* {
-        flex: 0 1 100%;
-        min-width: 0;
-        height: 200px;
+    .dashboard-overlay-content {
+        padding: 0.5rem;
+        gap: 0.75rem;
+        padding-top: 1.5rem;
     }
     
     .dashboard-grid {
-        padding: 0 0.5rem 0.5rem;
-        gap: 0.75rem;
+        padding: 0 0.5rem;
+        gap: 0.75rem !important;
+    }
+    
+    .dashboard-grid>* {
+        height: 180px !important;
+        flex: 0 1 100% !important;
+        min-width: 0 !important;
     }
     
     .dashboard-header h1 {
-        font-size: 1.6rem;
+        font-size: 1.4rem;
+    }
+    
+    .dashboard-header p {
+        font-size: 0.8rem;
+    }
+    
+    .card-front h3 {
+        font-size: 0.9rem;
+    }
+    
+    .card-description {
+        font-size: 0.7rem;
+    }
+    
+    .sub-module-grid {
+        padding: 0.5rem;
+        gap: 0.4rem;
+    }
+    
+    .sub-module-item {
+        min-height: 45px;
+        padding: 0.3rem;
+        gap: 0.2rem;
+    }
+    
+    .sub-module-item span {
+        font-size: 0.6rem;
+    }
+    
+    .sub-module-icon svg {
+        width: 14px !important;
+        height: 14px !important;
     }
 }

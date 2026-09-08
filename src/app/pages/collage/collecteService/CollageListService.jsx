@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useModal } from "../../../contextes/ModalContext";
 import {
   FaUser, FaTimes, FaBiohazard, FaCheckCircle, FaCheck,
@@ -59,7 +60,7 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
 }
 
 // ─── COMPOSANT : Scan Status ──────────────────────────────────────────────
-function ScanStatus({ loading, success, error, code }) {
+function ScanStatus({ loading, success, error, code, t }) {
   if (loading) {
     return (
       <div style={{
@@ -75,7 +76,7 @@ function ScanStatus({ loading, success, error, code }) {
       }}>
         <FaSpinner className="animate-spin" color="#3b82f6" size={22} />
         <div>
-          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "14px", margin: 0 }}>Scan en cours...</p>
+          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "14px", margin: 0 }}>{t('collecte.scanning')}</p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{code}</p>
         </div>
       </div>
@@ -107,7 +108,7 @@ function ScanStatus({ loading, success, error, code }) {
           <FaCheckCircle color="#22c55e" size={20} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "14px", margin: 0 }}>✓ {success.message || "Succès"}</p>
+          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "14px", margin: 0 }}>✓ {success.message || t('collecte.success')}</p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{success.detail}</p>
         </div>
       </div>
@@ -139,7 +140,7 @@ function ScanStatus({ loading, success, error, code }) {
           <FaExclamationTriangle color="#ef4444" size={18} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "14px", margin: 0 }}>Erreur</p>
+          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "14px", margin: 0 }}>{t('common.error')}</p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{error}</p>
         </div>
       </div>
@@ -150,7 +151,7 @@ function ScanStatus({ loading, success, error, code }) {
 }
 
 // ─── DIALOGUE SAC INFECTÉ ──────────────────────────────────────────────────
-function DlgSacInfecte({ visible, collecteId, onValider, onClose }) {
+function DlgSacInfecte({ visible, collecteId, onValider, onClose, t }) {
   const [etape, setEtape] = useState("CATEGORIE");
   const [catChoisie, setCatChoisie] = useState(null);
   const [quantite, setQuantite] = useState(1);
@@ -210,7 +211,7 @@ function DlgSacInfecte({ visible, collecteId, onValider, onClose }) {
                   {catChoisie.label}
                 </div>
                 <div style={{ fontSize: 11, color: "#64748b" }}>
-                  Combien de {catChoisie.label.toLowerCase()}s infectés ?
+                  {t('collecte.how_many_infected', { label: catChoisie.label.toLowerCase() })}
                 </div>
               </div>
             </div>
@@ -264,7 +265,7 @@ function DlgSacInfecte({ visible, collecteId, onValider, onClose }) {
                 border: "1px solid #e2e8f0", background: "white",
                 color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-              <FaArrowLeft size={10} /> Retour
+              <FaArrowLeft size={10} /> {t('common.back')}
             </button>
             <button onClick={() => setEtape("BAC")}
               style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none",
@@ -289,7 +290,7 @@ function DlgSacInfecte({ visible, collecteId, onValider, onClose }) {
         const res = await apiCall(`/api/collecte/service/${collecteId}/bac`,
           { codeOuTag: codeBac.trim() });
         if (res.typeBac !== "INFECTE") {
-          setBacErr(`Ce bac est de type ${res.typeBac}. Scannez un bac ROUGE.`);
+          setBacErr(t('collecte.errors.bac_not_infected', { type: res.typeBac }));
           return;
         }
         setBacId(res.bacId);
@@ -321,7 +322,7 @@ function DlgSacInfecte({ visible, collecteId, onValider, onClose }) {
               </div>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 15, color: "#1e293b" }}>
-                  Scanner le bac rouge
+                  {t('collecte.scan_red_bac')}
                 </div>
                 <div style={{ fontSize: 11, color: "#64748b" }}>
                   {quantite} {catChoisie.label}{quantite > 1 ? "s" : ""} {catChoisie.emoji}
@@ -351,7 +352,7 @@ function DlgSacInfecte({ visible, collecteId, onValider, onClose }) {
                 {quantite} {catChoisie.label}{quantite > 1 ? "s" : ""}
               </div>
               <div style={{ fontSize: 11, color: "#94a3b8" }}>
-                seront associés au bac rouge scanné
+                {t('collecte.will_be_associated')}
               </div>
             </div>
           </div>
@@ -359,14 +360,14 @@ function DlgSacInfecte({ visible, collecteId, onValider, onClose }) {
           <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: "#dc2626",
               display: "block", marginBottom: 7 }}>
-              🔴 Code du bac rouge
+              🔴 {t('collecte.red_bac_code')}
             </label>
             <div style={{ display: "flex", gap: 7 }}>
               <input
                 value={codeBac}
                 onChange={e => setCodeBac(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleScanBac()}
-                placeholder="Scanner ou saisir..."
+                placeholder={t('collecte.scan_or_enter')}
                 autoFocus
                 style={{ flex: 1, padding: "10px 13px", borderRadius: 9,
                   border: "2px solid #fca5a5", fontSize: 13, outline: "none" }}
@@ -399,7 +400,7 @@ function DlgSacInfecte({ visible, collecteId, onValider, onClose }) {
                 border: "1px solid #e2e8f0", background: "white",
                 color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-              <FaArrowLeft size={10} /> Retour
+              <FaArrowLeft size={10} /> {t('common.back')}
             </button>
           </div>
         </div>
@@ -411,7 +412,7 @@ function DlgSacInfecte({ visible, collecteId, onValider, onClose }) {
 }
 
 // ─── DIALOGUE MANQUANT ─────────────────────────────────────────────────────
-function DlgManquant({ linge, onOk, onClose }) {
+function DlgManquant({ linge, onOk, onClose, t }) {
   if (!linge) return null;
   const c = cat(linge.categorie);
   return (
@@ -430,7 +431,7 @@ function DlgManquant({ linge, onOk, onClose }) {
               alignItems: "center", justifyContent: "center" }}>
               <FaExclamationTriangle size={15} color="#d97706" />
             </div>
-            <div style={{ fontWeight: 800, fontSize: 13 }}>Linge manquant ?</div>
+            <div style={{ fontWeight: 800, fontSize: 13 }}>{t('collecte.missing_linen')}</div>
           </div>
           <button onClick={onClose} style={{ background: "#f1f5f9", border: "none",
             borderRadius: "50%", width: 28, height: 28, cursor: "pointer",
@@ -450,13 +451,13 @@ function DlgManquant({ linge, onOk, onClose }) {
           <button onClick={onClose} style={{ flex: 1, padding: "9px",
             borderRadius: 8, border: "1px solid #e2e8f0", background: "white",
             color: "#64748b", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
-            Annuler
+            {t('common.cancel')}
           </button>
           <button onClick={() => onOk(linge)} style={{ flex: 2, padding: "9px",
             borderRadius: 8, border: "none",
             background: "linear-gradient(135deg,#d97706,#b45309)",
             color: "white", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-            ⚠️ Confirmer
+            ⚠️ {t('collecte.confirm_missing')}
           </button>
         </div>
       </div>
@@ -465,7 +466,7 @@ function DlgManquant({ linge, onOk, onClose }) {
 }
 
 // ─── CARTE LINGE ──────────────────────────────────────────────────────────
-function CarteLinge({ linge, bacBlanc, onBlanc, onPropre, onManquant }) {
+function CarteLinge({ linge, bacBlanc, onBlanc, onPropre, onManquant, t }) {
   const c = cat(linge.categorie);
   const col = ST_COLORS[linge.statut];
   return (
@@ -500,7 +501,7 @@ function CarteLinge({ linge, bacBlanc, onBlanc, onPropre, onManquant }) {
       ) : (
         <div style={{ display: "flex", gap: "4px" }}>
           <button onClick={() => onBlanc(linge)} disabled={!bacBlanc?.bacId}
-            title="Sale → bac blanc"
+            title={t('collecte.sale_to_white')}
             style={{
               width: "28px",
               height: "28px",
@@ -515,7 +516,7 @@ function CarteLinge({ linge, bacBlanc, onBlanc, onPropre, onManquant }) {
             }}>
             <FaCheck size={9} color="#16a34a" />
           </button>
-          <button onClick={() => onPropre(linge)} title="Propre → laisser en place"
+          <button onClick={() => onPropre(linge)} title={t('collecte.propre_keep')}
             style={{
               width: "28px",
               height: "28px",
@@ -529,7 +530,7 @@ function CarteLinge({ linge, bacBlanc, onBlanc, onPropre, onManquant }) {
             }}>
             <FaCheckCircle size={9} color="#0284c7" />
           </button>
-          <button onClick={() => onManquant(linge)} title="Manquant"
+          <button onClick={() => onManquant(linge)} title={t('collecte.missing')}
             style={{
               width: "28px",
               height: "28px",
@@ -550,7 +551,8 @@ function CarteLinge({ linge, bacBlanc, onBlanc, onPropre, onManquant }) {
 }
 
 // ─── PAGE PRINCIPALE ──────────────────────────────────────────────────────
-export default function CollageListService() {
+function CollageListServiceInner() {
+  const { t } = useTranslation();
   const { showAlert, showConfirm } = useModal();
 
   const [etape, setEtape] = useState("SERVICE");
@@ -580,7 +582,7 @@ export default function CollageListService() {
         loading: false,
         success: { 
           message: `👤 ${agentData.nomPrenom || agentData.nom}`, 
-          detail: `Connecté · ${agentData.codeBarre || agentData.matricule}` 
+          detail: `${t('collecte.connected')} · ${agentData.codeBarre || agentData.matricule}` 
         },
         error: null
       });
@@ -588,7 +590,7 @@ export default function CollageListService() {
     } else {
       setEtape("AGENT");
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { agentRef.current = agent; }, [agent]);
   useEffect(() => { collecteRef.current = collecte; }, [collecte]);
@@ -603,7 +605,7 @@ export default function CollageListService() {
 
   const handleService = useCallback(async code => {
     if (!agent) {
-      showAlert("❌ Agent non connecté", "Veuillez vous reconnecter.", "error");
+      showAlert(t('collecte.errors.agent_not_connected'), t('collecte.errors.agent_not_connected_text'), "error");
       return;
     }
     setLoading(true);
@@ -614,8 +616,8 @@ export default function CollageListService() {
       );
       const svc = svcRes.ok ? await svcRes.json() : null;
       if (!svc) {
-        setScanStatus({ loading: false, success: null, error: "Service introuvable" });
-        showAlert("❌ Service introuvable", code, "error");
+        setScanStatus({ loading: false, success: null, error: t('collecte.errors.service_not_found') });
+        showAlert(t('collecte.errors.service_not_found'), code, "error");
         return;
       }
 
@@ -635,16 +637,16 @@ export default function CollageListService() {
       setEtape("BAC");
       setScanStatus({
         loading: false,
-        success: { message: `✅ ${svc.code}`, detail: `${res.nbAttendus} linge(s)` },
+        success: { message: `✅ ${svc.code}`, detail: `${res.nbAttendus} ${t('collecte.linens')}` },
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
-      showAlert("✅ " + svc.code, res.nbAttendus + " linge(s)", "success");
+      showAlert("✅ " + svc.code, res.nbAttendus + " " + t('collecte.linens'), "success");
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
       showAlert("❌ " + e.message, "", "error");
     } finally { setLoading(false); }
-  }, [agent, showAlert]);
+  }, [agent, showAlert, t]);
 
   const handleBac = useCallback(async code => {
     setLoading(true);
@@ -655,29 +657,29 @@ export default function CollageListService() {
         { codeOuTag: code }
       );
       if (res.typeBac === "INFECTE") {
-        setScanStatus({ loading: false, success: null, error: "Bac rouge détecté" });
-        showAlert("⚠️ Bac rouge", "Scannez le bac BLANC d'abord.", "warning");
+        setScanStatus({ loading: false, success: null, error: t('collecte.errors.red_bac_detected') });
+        showAlert(t('collecte.errors.red_bac_detected'), t('collecte.errors.scan_white_first'), "warning");
         return;
       }
       setBacBlanc({ bacId: res.bacId, codeBac: res.codeBac });
       setEtape("SCAN");
       setScanStatus({
         loading: false,
-        success: { message: `✅ Bac blanc : ${res.codeBac}`, detail: "Scannez les linges" },
+        success: { message: `✅ ${t('collecte.white_bac')} : ${res.codeBac}`, detail: t('collecte.scan_linens') },
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
-      showAlert("✅ Bac blanc : " + res.codeBac, "Scannez les linges", "success");
+      showAlert(`✅ ${t('collecte.white_bac')} : ${res.codeBac}`, t('collecte.scan_linens'), "success");
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
       showAlert("❌ " + e.message, "", "error");
     } finally { setLoading(false); }
-  }, [showAlert]);
+  }, [showAlert, t]);
 
   const handleScanBlanc = useCallback(async code => {
     const bac = bacRef.current;
     if (!bac?.bacId) {
-      showAlert("❌ Scannez d'abord le bac blanc", "", "warning");
+      showAlert(t('collecte.errors.scan_white_first'), "", "warning");
       return;
     }
     setLoading(true);
@@ -690,7 +692,7 @@ export default function CollageListService() {
       majLinge(res.lingeId, "BLANC");
       setScanStatus({
         loading: false,
-        success: { message: "✓ Linge scanné", detail: "Ajouté au bac blanc" },
+        success: { message: "✓ " + t('collecte.linen_scanned'), detail: t('collecte.added_to_white_bac') },
         error: null
       });
       setTimeout(() => setScanStatus(null), 1500);
@@ -698,7 +700,7 @@ export default function CollageListService() {
       setScanStatus({ loading: false, success: null, error: e.message });
       showAlert("❌ " + e.message, code, "error");
     } finally { setLoading(false); }
-  }, [showAlert, majLinge]);
+  }, [showAlert, majLinge, t]);
 
   const handlePropre = useCallback(async linge => {
     setLoading(true);
@@ -708,9 +710,9 @@ export default function CollageListService() {
         { codeOuTag: linge.codeBarre }
       );
       majLinge(res.lingeId, "PROPRE");
-      showAlert("🔵 Propre", linge.codeBarre + " — laissé en place", "info");
+      showAlert("🔵 " + t('collecte.propre'), linge.codeBarre + " — " + t('collecte.kept_in_place'), "info");
     } catch (e) { showAlert("❌ " + e.message, "", "error"); } finally { setLoading(false); }
-  }, [showAlert, majLinge]);
+  }, [showAlert, majLinge, t]);
 
   const handleManquant = useCallback(async linge => {
     setDlgManq(null);
@@ -721,9 +723,9 @@ export default function CollageListService() {
         { lingeId: linge.lingeId }
       );
       majLinge(linge.lingeId, "MANQUANT");
-      showAlert("⚠️ Manquant", linge.codeBarre, "warning");
+      showAlert("⚠️ " + t('collecte.missing'), linge.codeBarre, "warning");
     } catch (e) { showAlert("❌ " + e.message, "", "error"); } finally { setLoading(false); }
-  }, [showAlert, majLinge]);
+  }, [showAlert, majLinge, t]);
 
   const handleSacInfecte = useCallback(async ({ bacId, items }) => {
     setDlgSac(false);
@@ -746,22 +748,22 @@ export default function CollageListService() {
         quantite: items[0]?.quantiteDeclaree,
       }]);
       const c = items[0];
-      showAlert("🔴 Sac déclaré",
-        `${c?.quantiteDeclaree} ${c?.categorie?.toLowerCase() || "linge"}(s) infectés`,
+      showAlert("🔴 " + t('collecte.sac_declared'),
+        `${c?.quantiteDeclaree} ${c?.categorie?.toLowerCase() || t('collecte.linen')}${c?.quantiteDeclaree > 1 ? "s" : ""} ${t('collecte.infected')}`,
         "warning");
     } catch (e) { showAlert("❌ " + e.message, "", "error"); } finally { setLoading(false); }
-  }, [agent, showAlert]);
+  }, [agent, showAlert, t]);
 
   const handleCloturer = useCallback(async () => {
     const nbBlancs = collecte?.linges?.filter(l => l.statut === "BLANC").length || 0;
     const nbSacs = sacsDeclares.length;
     if (nbBlancs === 0 && nbSacs === 0) {
-      showAlert("⚠️ Rien à clôturer",
-        "Scannez au moins un linge ou déclarez un sac infecté.", "warning");
+      showAlert("⚠️ " + t('collecte.errors.nothing_to_close'),
+        t('collecte.errors.scan_at_least_one'), "warning");
       return;
     }
-    if (!(await showConfirm("Clôturer la collecte ?",
-      `${nbBlancs} linge(s) blanc${nbBlancs > 1 ? "s" : ""} + ${nbSacs} sac(s) infecté(s)`,
+    if (!(await showConfirm(t('collecte.close_collection'),
+      `${nbBlancs} ${t('collecte.white_linens')}${nbBlancs > 1 ? "s" : ""} + ${nbSacs} ${t('collecte.infected_sacs')}${nbSacs > 1 ? "s" : ""}`,
       "question"))) return;
     setLoading(true);
     try {
@@ -769,7 +771,7 @@ export default function CollageListService() {
       setResume({ ...res, serviceNom: collecte.serviceNom });
       setEtape("RESUME");
     } catch (e) { showAlert("❌ " + e.message, "", "error"); } finally { setLoading(false); }
-  }, [collecte, sacsDeclares, showAlert, showConfirm]);
+  }, [collecte, sacsDeclares, showAlert, showConfirm, t]);
 
   const handleScan = useCallback(async code => {
     setScanVal("");
@@ -796,17 +798,17 @@ export default function CollageListService() {
   const nbInfectes = sacsDeclares.reduce((s, sac) => s + (sac.quantite || 0), 0);
 
   const ETAPES = [
-    { id: "SERVICE", label: "Service", done: !!collecte },
-    { id: "BAC", label: "Bac ⬜", done: !!bacBlanc },
-    { id: "SCAN", label: "Scan", done: etape === "RESUME" },
+    { id: "SERVICE", label: t('collecte.service'), done: !!collecte },
+    { id: "BAC", label: t('collecte.white_bac'), done: !!bacBlanc },
+    { id: "SCAN", label: t('collecte.scan'), done: etape === "RESUME" },
   ];
 
   const getPlaceholder = () => {
-    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
-    if (!collecte) return "🏢 Scanner le code du service...";
-    if (!bacBlanc) return "📦 Scanner le bac blanc...";
-    if (etape === "RESUME") return "🔒 Collecte terminée";
-    return "🏷️ Scanner les linges blancs...";
+    if (!agent) return "👤 " + t('collecte.agent_not_connected');
+    if (!collecte) return "🏢 " + t('collecte.scan_service_code');
+    if (!bacBlanc) return "📦 " + t('collecte.scan_white_bac');
+    if (etape === "RESUME") return "🔒 " + t('collecte.collection_closed');
+    return "🏷️ " + t('collecte.scan_white_linens');
   };
 
   const isCloturee = etape === "RESUME";
@@ -814,9 +816,9 @@ export default function CollageListService() {
   return (
     <div className="collecte-container">
       <DlgSacInfecte visible={dlgSac} collecteId={collecte?.id}
-        onValider={handleSacInfecte} onClose={() => setDlgSac(false)} />
+        onValider={handleSacInfecte} onClose={() => setDlgSac(false)} t={t} />
       <DlgManquant linge={dlgManq}
-        onOk={handleManquant} onClose={() => setDlgManq(null)} />
+        onOk={handleManquant} onClose={() => setDlgManq(null)} t={t} />
 
       {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "32px" }}>
@@ -846,14 +848,14 @@ export default function CollageListService() {
               color: "#0f172a",
               margin: 0
             }}>
-              Collecte du service
+              {t('collecte.service_collection')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nomPrenom || agent.nom}` : "Aucun agent connecté"}
+              {agent ? `${t('collecte.agent')}: ${agent.nomPrenom || agent.nom}` : t('collecte.no_agent_connected')}
             </p>
           </div>
         </div>
@@ -909,7 +911,7 @@ export default function CollageListService() {
                 <FaBuilding color="#0284c7" size={16} />
                 <span style={{ fontWeight: 700, color: "#0284c7", fontSize: "14px" }}>{collecte.serviceNom}</span>
                 <Badge style={{ background: "#e0f2fe", color: "#0284c7", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {collecte.nbAttendus} linges
+                  {collecte.nbAttendus} {t('collecte.linens')}
                 </Badge>
               </div>
             )}
@@ -934,7 +936,7 @@ export default function CollageListService() {
               }}
             >
               <FaRedo size={10} />
-              Reset
+              {t('common.reset')}
             </Button>
           </div>
         </div>
@@ -958,7 +960,7 @@ export default function CollageListService() {
               autoDebounce={true}
               disabled={isCloturee || loading || !agent}
             />
-            {scanStatus && <ScanStatus {...scanStatus} />}
+            {scanStatus && <ScanStatus {...scanStatus} t={t} />}
           </CardContent>
         </Card>
 
@@ -968,8 +970,8 @@ export default function CollageListService() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaExclamationTriangle color="#dc2626" size={16} />
-                <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
-                <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une collecte</span>
+                <span style={{ fontWeight: 600, color: "#dc2626" }}>{t('collecte.no_agent_connected')}</span>
+                <span style={{ color: "#64748b" }}>{t('collecte.connect_to_collect')}</span>
               </div>
             </CardContent>
           </Card>
@@ -980,8 +982,8 @@ export default function CollageListService() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaBuilding color="#7c3aed" size={16} />
-                <span style={{ fontWeight: 600, color: "#7c3aed" }}>Scannez le code du service</span>
-                <span style={{ color: "#64748b" }}>pour commencer la collecte</span>
+                <span style={{ fontWeight: 600, color: "#7c3aed" }}>{t('collecte.scan_service_code')}</span>
+                <span style={{ color: "#64748b" }}>{t('collecte.to_start_collection')}</span>
               </div>
             </CardContent>
           </Card>
@@ -992,8 +994,8 @@ export default function CollageListService() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaBoxes color="#0284c7" size={16} />
-                <span style={{ fontWeight: 600, color: "#0284c7" }}>Scannez le bac blanc</span>
-                <span style={{ color: "#64748b" }}>pour associer les linges</span>
+                <span style={{ fontWeight: 600, color: "#0284c7" }}>{t('collecte.scan_white_bac')}</span>
+                <span style={{ color: "#64748b" }}>{t('collecte.to_associate_linens')}</span>
               </div>
             </CardContent>
           </Card>
@@ -1004,10 +1006,10 @@ export default function CollageListService() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", flexWrap: "wrap" }}>
                 <FaCheckCircle color="#22c55e" size={16} />
-                <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt à collecter</span>
-                <span style={{ color: "#64748b" }}>Scannez les linges à collecter</span>
+                <span style={{ fontWeight: 600, color: "#15803d" }}>{t('collecte.ready_to_collect')}</span>
+                <span style={{ color: "#64748b" }}>{t('collecte.scan_linens_to_collect')}</span>
                 <Badge style={{ background: "#dcfce7", color: "#15803d", fontSize: "10px", padding: "2px 12px", borderRadius: "12px" }}>
-                  Bac {bacBlanc.codeBac}
+                  {t('collecte.bac')} {bacBlanc.codeBac}
                 </Badge>
               </div>
             </CardContent>
@@ -1040,9 +1042,9 @@ export default function CollageListService() {
                     <FaCheckDouble color="#22c55e" size={24} />
                   </div>
                   <div>
-                    <p style={{ fontSize: "20px", fontWeight: 700, color: "#15803d", margin: 0 }}>✓ COLLECTE TERMINÉE</p>
+                    <p style={{ fontSize: "20px", fontWeight: 700, color: "#15803d", margin: 0 }}>✓ {t('collecte.collection_completed')}</p>
                     <p style={{ fontSize: "14px", color: "#059669", margin: 0 }}>
-                      {collecte.nbAttendus} linges traités
+                      {collecte.nbAttendus} {t('collecte.linens_processed')}
                     </p>
                   </div>
                 </div>
@@ -1057,36 +1059,36 @@ export default function CollageListService() {
               marginBottom: "20px"
             }}>
               <StatutCard
-                label="Blancs"
+                label={t('collecte.white')}
                 value={nbBlancs}
                 icon="✅"
                 color="#15803d"
                 bg="#f0fdf4"
-                subValue={`${collecte.nbAttendus} attendus`}
+                subValue={`${collecte.nbAttendus} ${t('collecte.expected')}`}
               />
               <StatutCard
-                label="Infectés"
+                label={t('collecte.infected')}
                 value={nbInfectes}
                 icon="🔴"
                 color="#dc2626"
                 bg="#fef2f2"
-                subValue={`${sacsDeclares.length} sac(s)`}
+                subValue={`${sacsDeclares.length} ${t('collecte.sacs')}`}
               />
               <StatutCard
-                label="Propres"
+                label={t('collecte.propre')}
                 value={nbPropres}
                 icon="🔵"
                 color="#0284c7"
                 bg="#f0f9ff"
-                subValue="Laissés en place"
+                subValue={t('collecte.kept_in_place')}
               />
               <StatutCard
-                label="Manquants"
+                label={t('collecte.missing')}
                 value={nbManq}
                 icon="⚠️"
                 color="#d97706"
                 bg="#fffbeb"
-                subValue="À signaler"
+                subValue={t('collecte.to_report')}
               />
             </div>
 
@@ -1100,7 +1102,7 @@ export default function CollageListService() {
                 marginBottom: "16px"
               }}>
                 <div style={{ fontSize: "12px", color: "#dc2626", fontWeight: 700, marginBottom: "8px" }}>
-                  🔴 Sacs infectés déclarés :
+                  🔴 {t('collecte.infected_sacs_declared')} :
                 </div>
                 {sacsDeclares.map((s, i) => {
                   const c = cat(s.categorie);
@@ -1146,7 +1148,7 @@ export default function CollageListService() {
                   minWidth: "140px"
                 }}>
                 <FaBiohazard size={14} />
-                Déclarer infectés 🔴
+                {t('collecte.declare_infected')} 🔴
               </button>
 
               <button onClick={handleCloturer} disabled={loading}
@@ -1169,7 +1171,7 @@ export default function CollageListService() {
                 }}>
                 {loading
                   ? <FaSpinner style={{ animation: "spin 1s linear infinite" }} />
-                  : <><FaCheckDouble size={12} /> Terminer et clôturer</>}
+                  : <><FaCheckDouble size={12} /> {t('collecte.finish_and_close')}</>}
               </button>
             </div>
           </>
@@ -1186,7 +1188,7 @@ export default function CollageListService() {
           }}>
             <div style={{ fontSize: "48px", marginBottom: "10px" }}>✅</div>
             <div style={{ fontWeight: 900, fontSize: "20px", color: "#15803d", marginBottom: "16px" }}>
-              Collecte terminée — {resume.serviceNom || collecte?.serviceNom}
+              {t('collecte.collection_completed')} — {resume.serviceNom || collecte?.serviceNom}
             </div>
             <div style={{
               display: "grid",
@@ -1195,10 +1197,10 @@ export default function CollageListService() {
               marginBottom: "20px"
             }}>
               {[
-                ["Blancs", resume.nbBlancs, "#dcfce7", "#15803d"],
-                ["Infectés", resume.nbInfectes, "#fee2e2", "#dc2626"],
-                ["Propres", resume.nbPropres, "#dbeafe", "#0284c7"],
-                ["Manq.", resume.nbManquants, "#fef3c7", "#d97706"],
+                [t('collecte.white'), resume.nbBlancs, "#dcfce7", "#15803d"],
+                [t('collecte.infected'), resume.nbInfectes, "#fee2e2", "#dc2626"],
+                [t('collecte.propre'), resume.nbPropres, "#dbeafe", "#0284c7"],
+                [t('collecte.missing_short'), resume.nbManquants, "#fef3c7", "#d97706"],
               ].map(([l, v, bg, co]) => (
                 <div key={l} style={{ background: bg, borderRadius: "10px", padding: "10px 4px" }}>
                   <div style={{ fontSize: "22px", fontWeight: 900, color: co }}>{v || 0}</div>
@@ -1216,8 +1218,8 @@ export default function CollageListService() {
                 fontWeight: 600,
                 marginBottom: "16px"
               }}>
-                🔴 {sacsDeclares.length} sac{sacsDeclares.length > 1 ? "s" : ""} infecté{sacsDeclares.length > 1 ? "s" : ""}
-                → en attente de réception
+                🔴 {sacsDeclares.length} {t('collecte.sac')}{sacsDeclares.length > 1 ? "s" : ""} {t('collecte.infected')}
+                → {t('collecte.waiting_for_reception')}
               </div>
             )}
             <div style={{ display: "flex", gap: "8px" }}>
@@ -1238,7 +1240,7 @@ export default function CollageListService() {
                 fontSize: "13px",
                 cursor: "pointer"
               }}>
-                + Autre service
+                + {t('collecte.another_service')}
               </button>
               <button onClick={reset} style={{
                 flex: 1,
@@ -1251,7 +1253,7 @@ export default function CollageListService() {
                 fontSize: "13px",
                 cursor: "pointer"
               }}>
-                Terminer
+                {t('collecte.finish')}
               </button>
             </div>
           </div>
@@ -1273,4 +1275,8 @@ export default function CollageListService() {
       `}</style>
     </div>
   );
+}
+
+export default function CollageListService() {
+  return <CollageListServiceInner />;
 }

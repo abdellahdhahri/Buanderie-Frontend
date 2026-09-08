@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaTimes, FaBoxes, FaCheckCircle } from "react-icons/fa";
 
 export default function DialoguePliage({ item, onClose }) {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -73,10 +75,10 @@ export default function DialoguePliage({ item, onClose }) {
                 </div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: "17px", color: "#0f172a" }}>
-                    Linge plié
+                    {t('dialogue_pliage.title')}
                   </div>
                   <div style={{ fontSize: "12px", color: "#64748b" }}>
-                    Stockage automatique
+                    {t('dialogue_pliage.subtitle')}
                   </div>
                 </div>
               </div>
@@ -115,7 +117,7 @@ export default function DialoguePliage({ item, onClose }) {
                   textTransform: "uppercase",
                   letterSpacing: "0.5px"
                 }}>
-                  Code
+                  {t('dialogue_pliage.code')}
                 </div>
                 <code style={{
                   fontWeight: 600,
@@ -132,7 +134,7 @@ export default function DialoguePliage({ item, onClose }) {
                   textTransform: "uppercase",
                   letterSpacing: "0.5px"
                 }}>
-                  Catégorie
+                  {t('dialogue_pliage.category')}
                 </div>
                 <span style={{
                   fontWeight: 600,
@@ -149,7 +151,7 @@ export default function DialoguePliage({ item, onClose }) {
                   textTransform: "uppercase",
                   letterSpacing: "0.5px"
                 }}>
-                  Chambre
+                  {t('dialogue_pliage.room')}
                 </div>
                 <span style={{
                   fontWeight: 600,
@@ -166,7 +168,7 @@ export default function DialoguePliage({ item, onClose }) {
                   textTransform: "uppercase",
                   letterSpacing: "0.5px"
                 }}>
-                  Poids
+                  {t('dialogue_pliage.weight')}
                 </div>
                 <span style={{
                   fontWeight: 600,
@@ -185,7 +187,7 @@ export default function DialoguePliage({ item, onClose }) {
               color: "#94a3b8",
               textAlign: "center"
             }}>
-              ⏱️ Fermeture automatique dans 3s
+              ⏱️ {t('dialogue_pliage.auto_close')}
             </div>
           </motion.div>
         </div>

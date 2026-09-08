@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, 
@@ -29,11 +30,12 @@ import Swal from 'sweetalert2';
 import { ProgrammeContext } from "../../contextes/ProgrammeContext";
 import "./ProgrammeList.css";
 
-// ─── Variables d'environnement ──────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 // ─── Composant ModeToggle ────────────────────────────────────────────────────
 function ProgrammeModeToggle({ mode, onChange }) {
+  const { t } = useTranslation();
+
   return (
     <div style={{ 
       display: "flex", 
@@ -61,7 +63,7 @@ function ProgrammeModeToggle({ mode, onChange }) {
           boxShadow: mode === "LAVAGE" ? "0 2px 8px rgba(0,0,0,0.1)" : "none"
         }}
       >
-        <Droplets size={16} /> Lavage
+        <Droplets size={16} /> {t('programmes.lavage')}
       </button>
       <button
         onClick={() => onChange("SECHAGE")}
@@ -81,7 +83,7 @@ function ProgrammeModeToggle({ mode, onChange }) {
           boxShadow: mode === "SECHAGE" ? "0 2px 8px rgba(124,58,237,0.3)" : "none"
         }}
       >
-        <Wind size={16} /> Séchage
+        <Wind size={16} /> {t('programmes.sechage')}
       </button>
     </div>
   );
@@ -100,18 +102,6 @@ const CATEGORY_ICONS = {
   AUTRE: "📦"
 };
 
-const CATEGORY_LABELS = {
-  DRAP: "Drap",
-  TAIE_OREILLER: "Taie d'oreiller",
-  SERVIETTE_BAIN: "Serviette de bain",
-  SERVIETTE_VISAGE: "Serviette de visage",
-  PEIGNOIR: "Peignoir",
-  NAPPE: "Nappe",
-  SERVIETTE_TABLE: "Serviette de table",
-  UNIFORME: "Uniforme",
-  AUTRE: "Autre"
-};
-
 const CATEGORIES = [
   "DRAP",
   "TAIE_OREILLER",
@@ -127,6 +117,8 @@ const CATEGORIES = [
 // ─── Composant Principal ────────────────────────────────────────────────────
 
 export default function ProgrammeList() {
+  const { t } = useTranslation();
+
   const { 
     programmesLavage,
     programmesSechage,
@@ -157,7 +149,6 @@ export default function ProgrammeList() {
     categories: []
   });
 
-  // Chargement initial
   useEffect(() => {
     loadData();
   }, []);
@@ -220,14 +211,14 @@ export default function ProgrammeList() {
 
   const handleDelete = async (id) => {
     const result = await Swal.fire({
-      title: 'Confirmation',
-      text: 'Voulez-vous vraiment supprimer ce programme ?',
+      title: t('programmes.delete_confirm'),
+      text: t('programmes.delete_confirm_text'),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#e03131',
       cancelButtonColor: '#94a3b8',
-      confirmButtonText: 'Oui, supprimer',
-      cancelButtonText: 'Annuler'
+      confirmButtonText: t('programmes.delete_confirm_yes'),
+      cancelButtonText: t('programmes.delete_confirm_no')
     });
 
     if (result.isConfirmed) {
@@ -239,9 +230,9 @@ export default function ProgrammeList() {
         }
         await loadData();
         setSelectedId(null);
-        Swal.fire('Supprimé', 'Programme supprimé avec succès', 'success');
+        Swal.fire(t('common.success'), t('programmes.delete_success'), 'success');
       } catch (error) {
-        Swal.fire('Erreur', error.message || 'Erreur lors de la suppression', 'error');
+        Swal.fire(t('common.error'), error.message || t('programmes.error_text'), 'error');
       }
     }
   };
@@ -250,12 +241,12 @@ export default function ProgrammeList() {
     e.preventDefault();
     
     if (!formData.nom.trim()) {
-      Swal.fire('Erreur', 'Le nom du programme est obligatoire', 'error');
+      Swal.fire(t('common.error'), t('programmes.name_required'), 'error');
       return;
     }
 
     if (formData.categories.length === 0) {
-      Swal.fire('Erreur', 'Veuillez sélectionner au moins une catégorie de linge', 'error');
+      Swal.fire(t('common.error'), t('programmes.categories_required'), 'error');
       return;
     }
 
@@ -280,14 +271,14 @@ export default function ProgrammeList() {
         } else {
           await updateProgrammeSechage(editingProgramme.id, payload);
         }
-        Swal.fire('Modifié', 'Programme mis à jour avec succès', 'success');
+        Swal.fire(t('common.success'), t('programmes.update_success'), 'success');
       } else {
         if (mode === "LAVAGE") {
           await createProgrammeLavage(payload);
         } else {
           await createProgrammeSechage(payload);
         }
-        Swal.fire('Créé', 'Programme créé avec succès', 'success');
+        Swal.fire(t('common.success'), t('programmes.create_success'), 'success');
       }
       
       await loadData();
@@ -303,7 +294,7 @@ export default function ProgrammeList() {
         categories: []
       });
     } catch (error) {
-      Swal.fire('Erreur', error.message || 'Erreur lors de l\'opération', 'error');
+      Swal.fire(t('common.error'), error.message || t('programmes.error_text'), 'error');
     }
   };
 
@@ -317,7 +308,7 @@ export default function ProgrammeList() {
   };
 
   const getCategoryDisplay = (category) => {
-    return CATEGORY_LABELS[category] || category;
+    return t(`categories.${category}`, category);
   };
 
   const getCategoryIcon = (category) => {
@@ -336,7 +327,7 @@ export default function ProgrammeList() {
             </Badge>
           ))
         ) : (
-          <span className="text-xs text-muted-foreground">Toutes catégories</span>
+          <span className="text-xs text-muted-foreground">{t('programmes.no_categories')}</span>
         )}
         {hasCategories && programme.categories.length > 3 && (
           <Badge variant="secondary" className="text-xs">
@@ -354,72 +345,72 @@ export default function ProgrammeList() {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-2">
-<div style={{ marginBottom: "32px" }}>
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    marginBottom: "8px"
-  }}>
-    <div style={{
-      width: "52px",
-      height: "52px",
-      borderRadius: "16px",
-      background: mode === "LAVAGE" 
-        ? "linear-gradient(135deg, #06b6d4, #0891b2)" 
-        : "linear-gradient(135deg, #f59e0b, #d97706)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      boxShadow: mode === "LAVAGE"
-        ? "0 4px 16px rgba(6, 182, 212, 0.25)"
-        : "0 4px 16px rgba(245, 158, 11, 0.25)"
-    }}>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        width="24" 
-        height="24" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-        <line x1="16" y1="2" x2="16" y2="6" />
-        <line x1="8" y1="2" x2="8" y2="6" />
-        <line x1="3" y1="10" x2="21" y2="10" />
-        <circle cx="12" cy="14" r="1" />
-        <circle cx="16" cy="14" r="1" />
-        <circle cx="8" cy="14" r="1" />
-        <circle cx="12" cy="18" r="1" />
-        <circle cx="16" cy="18" r="1" />
-        <circle cx="8" cy="18" r="1" />
-      </svg>
-    </div>
-    <div>
-      <h1 style={{
-        fontSize: "28px",
-        fontWeight: 800,
-        color: "#0f172a",
-        margin: 0
-      }}>
-        {mode === "LAVAGE" ? "Programmes de Lavage" : "Programmes de Séchage"}
-      </h1>
-      <p style={{
-        fontSize: "14px",
-        color: "#64748b",
-        margin: "2px 0 0 0"
-      }}>
-        {mode === "LAVAGE" 
-          ? "Gestion des cycles de lavage et paramètres associés" 
-          : "Gestion des cycles de séchage et paramètres associés"}
-      </p>
-    </div>
-  </div>
-</div>
+        <div style={{ marginBottom: "32px" }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "16px",
+            marginBottom: "8px"
+          }}>
+            <div style={{
+              width: "52px",
+              height: "52px",
+              borderRadius: "16px",
+              background: mode === "LAVAGE" 
+                ? "linear-gradient(135deg, #06b6d4, #0891b2)" 
+                : "linear-gradient(135deg, #f59e0b, #d97706)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              boxShadow: mode === "LAVAGE"
+                ? "0 4px 16px rgba(6, 182, 212, 0.25)"
+                : "0 4px 16px rgba(245, 158, 11, 0.25)"
+            }}>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="24" 
+                height="24" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+                <circle cx="12" cy="14" r="1" />
+                <circle cx="16" cy="14" r="1" />
+                <circle cx="8" cy="14" r="1" />
+                <circle cx="12" cy="18" r="1" />
+                <circle cx="16" cy="18" r="1" />
+                <circle cx="8" cy="18" r="1" />
+              </svg>
+            </div>
+            <div>
+              <h1 style={{
+                fontSize: "28px",
+                fontWeight: 800,
+                color: "#0f172a",
+                margin: 0
+              }}>
+                {mode === "LAVAGE" ? t('programmes.title_lavage') : t('programmes.title_sechage')}
+              </h1>
+              <p style={{
+                fontSize: "14px",
+                color: "#64748b",
+                margin: "2px 0 0 0"
+              }}>
+                {mode === "LAVAGE" 
+                  ? t('programmes.subtitle_lavage')
+                  : t('programmes.subtitle_sechage')}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Mode Toggle & Actions */}
@@ -432,14 +423,14 @@ export default function ProgrammeList() {
           onClick={handleCreate}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
         >
-          <Plus className="w-4 h-4 stroke-[2.5]" /> Nouveau Programme
+          <Plus className="w-4 h-4 stroke-[2.5]" /> {t('programmes.new')}
         </button>
 
         <button
           onClick={() => loadData()}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
         >
-          <RefreshCw className="w-4 h-4" /> Actualiser
+          <RefreshCw className="w-4 h-4" /> {t('programmes.refresh')}
         </button>
 
         <div className="flex-1" />
@@ -448,7 +439,7 @@ export default function ProgrammeList() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Rechercher un programme..."
+            placeholder={t('programmes.search_placeholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-64 h-10 pl-10 pr-4 rounded-lg border border-input bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-sm"
@@ -463,17 +454,17 @@ export default function ProgrammeList() {
             <table className="param-table">
               <thead>
                 <tr>
-                  <th className="text-center py-3 px-4">ID</th>
-                  <th className="text-center py-3 px-4">Nom</th>
-                  <th className="text-center py-3 px-4">Température</th>
-                  <th className="text-center py-3 px-4">Durée</th>
+                  <th className="text-center py-3 px-4">{t('programmes.id')}</th>
+                  <th className="text-center py-3 px-4">{t('programmes.name')}</th>
+                  <th className="text-center py-3 px-4">{t('programmes.temperature_label')}</th>
+                  <th className="text-center py-3 px-4">{t('programmes.duration_label')}</th>
                   {mode === "LAVAGE" ? (
-                    <th className="text-center py-3 px-4">Essorage</th>
+                    <th className="text-center py-3 px-4">{t('programmes.spin_label')}</th>
                   ) : (
-                    <th className="text-center py-3 px-4">Humidité</th>
+                    <th className="text-center py-3 px-4">{t('programmes.humidity_label')}</th>
                   )}
-                  <th className="text-center py-3 px-4">Catégories</th>
-                  <th className="text-center py-3 px-4 actions-th">Actions</th>
+                  <th className="text-center py-3 px-4">{t('programmes.categories_label')}</th>
+                  <th className="text-center py-3 px-4 actions-th">{t('programmes.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -481,13 +472,13 @@ export default function ProgrammeList() {
                   <tr>
                     <td colSpan={7} className="text-center py-8 text-muted-foreground">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                      Chargement en cours...
+                      {t('programmes.loading')}
                     </td>
                   </tr>
                 ) : currentProgrammes.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-8 text-muted-foreground">
-                      Aucun programme trouvé
+                      {searchTerm ? t('programmes.no_match') : t('programmes.no_data')}
                     </td>
                   </tr>
                 ) : (
@@ -554,7 +545,7 @@ export default function ProgrammeList() {
                               }}
                               className="text-[#0ca678] hover:text-[#099268] font-semibold text-sm flex items-center gap-1.5 hover:underline"
                             >
-                              <Edit className="w-4 h-4" /> Modifier
+                              <Edit className="w-4 h-4" /> {t('programmes.edit')}
                             </button>
                             <button
                               onClick={(e) => {
@@ -563,7 +554,7 @@ export default function ProgrammeList() {
                               }}
                               className="text-[#e03131] hover:text-[#c92a2a] font-semibold text-sm flex items-center gap-1.5 hover:underline"
                             >
-                              <Trash2 className="w-4 h-4" /> Supprimer
+                              <Trash2 className="w-4 h-4" /> {t('programmes.delete')}
                             </button>
                           </div>
                         </td>
@@ -583,7 +574,7 @@ export default function ProgrammeList() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-sm text-muted-foreground">{t('programmes.stats_total')}</p>
                 <p className="text-2xl font-bold">{currentProgrammes.length}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
@@ -596,7 +587,7 @@ export default function ProgrammeList() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Température moyenne</p>
+                <p className="text-sm text-muted-foreground">{t('programmes.stats_avg_temp')}</p>
                 <p className="text-2xl font-bold">
                   {currentProgrammes.length > 0 
                     ? Math.round(currentProgrammes.reduce((acc, p) => acc + (p.temperatureCelsius || 0), 0) / currentProgrammes.length)
@@ -613,7 +604,7 @@ export default function ProgrammeList() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Durée moyenne</p>
+                <p className="text-sm text-muted-foreground">{t('programmes.stats_avg_duration')}</p>
                 <p className="text-2xl font-bold">
                   {currentProgrammes.length > 0 
                     ? Math.round(currentProgrammes.reduce((acc, p) => acc + (p.dureeMinutes || 0), 0) / currentProgrammes.length)
@@ -630,7 +621,7 @@ export default function ProgrammeList() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Catégories couvertes</p>
+                <p className="text-sm text-muted-foreground">{t('programmes.stats_categories')}</p>
                 <p className="text-2xl font-bold">
                   {new Set(currentProgrammes.flatMap(p => p.categories || [])).size}
                 </p>
@@ -650,17 +641,19 @@ export default function ProgrammeList() {
           setShowModal(false);
           setEditingProgramme(null);
         }}
-        title={editingProgramme ? `Modifier ${mode === "LAVAGE" ? "le programme de lavage" : "le programme de séchage"}` : `Nouveau programme de ${mode === "LAVAGE" ? "lavage" : "séchage"}`}
+        title={editingProgramme 
+          ? (mode === "LAVAGE" ? t('programmes.edit_lavage') : t('programmes.edit_sechage'))
+          : (mode === "LAVAGE" ? t('programmes.new_lavage') : t('programmes.new_sechage'))}
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nom du programme <span className="text-red-500">*</span>
+              {t('programmes.name')} <span className="text-red-500">*</span>
             </label>
             <Input
               type="text"
-              placeholder="Ex: COTON_60, DELICAT_30..."
+              placeholder={t('programmes.name_placeholder')}
               value={formData.nom}
               onChange={(e) => setFormData({ ...formData, nom: e.target.value.toUpperCase() })}
               required
@@ -670,11 +663,11 @@ export default function ProgrammeList() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Température (°C)
+                {t('programmes.temperature')}
               </label>
               <Input
                 type="number"
-                placeholder="0-100"
+                placeholder={t('programmes.temperature_placeholder')}
                 min="0"
                 max="100"
                 value={formData.temperatureCelsius}
@@ -683,11 +676,11 @@ export default function ProgrammeList() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Durée (minutes)
+                {t('programmes.duration')}
               </label>
               <Input
                 type="number"
-                placeholder="Durée en minutes"
+                placeholder={t('programmes.duration_placeholder')}
                 min="1"
                 value={formData.dureeMinutes}
                 onChange={(e) => setFormData({ ...formData, dureeMinutes: e.target.value })}
@@ -698,11 +691,11 @@ export default function ProgrammeList() {
           {mode === "LAVAGE" ? (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Vitesse d'essorage (RPM)
+                {t('programmes.spin_speed')}
               </label>
               <Input
                 type="number"
-                placeholder="Ex: 1200"
+                placeholder={t('programmes.spin_speed_placeholder')}
                 min="0"
                 value={formData.vitesseEssorageRpm}
                 onChange={(e) => setFormData({ ...formData, vitesseEssorageRpm: e.target.value })}
@@ -711,11 +704,11 @@ export default function ProgrammeList() {
           ) : (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Niveau d'humidité (%)
+                {t('programmes.humidity')}
               </label>
               <Input
                 type="number"
-                placeholder="0-100"
+                placeholder={t('programmes.humidity_placeholder')}
                 min="0"
                 max="100"
                 value={formData.niveauHumidite}
@@ -726,11 +719,11 @@ export default function ProgrammeList() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
+              {t('programmes.description')}
             </label>
             <textarea
               className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px]"
-              placeholder="Description du programme..."
+              placeholder={t('programmes.description_placeholder')}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
@@ -738,7 +731,7 @@ export default function ProgrammeList() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Catégories de linge applicables <span className="text-red-500">*</span>
+              {t('programmes.categories')} <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {CATEGORIES.map((category) => {
@@ -762,11 +755,11 @@ export default function ProgrammeList() {
               })}
             </div>
             <p className="text-xs text-gray-400 mt-2">
-              Sélectionnez au moins une catégorie de linge pour ce programme
+              {t('programmes.categories_placeholder')}
             </p>
             {formData.categories.length === 0 && (
               <p className="text-xs text-red-500 mt-1">
-                ⚠️ Veuillez sélectionner au moins une catégorie
+                ⚠️ {t('programmes.categories_error')}
               </p>
             )}
           </div>
@@ -780,11 +773,11 @@ export default function ProgrammeList() {
                 setEditingProgramme(null);
               }}
             >
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button type="submit">
               <Save className="w-4 h-4 mr-2" />
-              {editingProgramme ? "Enregistrer" : "Créer"}
+              {editingProgramme ? t('programmes.save') : t('programmes.create')}
             </Button>
           </div>
         </form>

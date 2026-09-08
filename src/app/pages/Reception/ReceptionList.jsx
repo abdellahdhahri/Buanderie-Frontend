@@ -1,7 +1,8 @@
 // pages/Reception/ReceptionList.js
 import { useState, useRef, useCallback, useEffect } from "react";
 import React from "react";
-import { User, CheckCircle, XCircle, RotateCcw, Package, ShieldAlert, Wifi, Eye,  } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { User, CheckCircle, XCircle, RotateCcw, Package, ShieldAlert, Wifi, Eye } from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -13,6 +14,8 @@ import { getAgent, isAgentConnected } from "../../services/agentService";
 import Swal from "sweetalert2";
 
 function ReceptionInner() {
+  const { t } = useTranslation();
+
   const {
     agent: agentFromContext,
     bacsRecus = [],
@@ -90,7 +93,7 @@ function ReceptionInner() {
 
   useEffect(() => {
     if (mode !== "BARCODE" || scanValue.trim().length < 3) return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       const code = scanValue.trim();
       setScanValue("");
 
@@ -115,7 +118,7 @@ function ReceptionInner() {
         scanReception(code, agent);
       }
     }, 400);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [scanValue, mode, agent, scanAgent, scanReception]);
 
   const handleSubmit = (e) => {
@@ -148,11 +151,44 @@ function ReceptionInner() {
 
   const handlePortique = async () => {
     const tags = rfidTags.split(/[\s,;\n]+/).map(t => t.trim()).filter(Boolean);
+    
+    if (tags.length === 0) {
+      Swal.fire({
+        title: t('reception_alert.rfid_no_tags'),
+        text: t('reception_alert.rfid_no_tags_text'),
+        icon: "warning",
+        timer: 2000,
+        showConfirmButton: false
+      });
+      return;
+    }
+
     setRfidLoading(true);
-    await passagePortique(rfidCodeBac.trim(), tags, agent);
+    const result = await passagePortique(rfidCodeBac.trim(), tags, agent);
     setRfidCodeBac("");
     setRfidTags("");
     setRfidLoading(false);
+
+    if (result?.success) {
+      Swal.fire({
+        title: t('reception_alert.rfid_success'),
+        text: t('reception_alert.rfid_success_text', { 
+          count: tags.length, 
+          code: rfidCodeBac.trim() 
+        }),
+        icon: "success",
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } else if (result?.error) {
+      Swal.fire({
+        title: t('reception_alert.rfid_error'),
+        text: result.message || t('reception_alert.rfid_error_text'),
+        icon: "error",
+        timer: 2000,
+        showConfirmButton: false
+      });
+    }
   };
 
   const handleReset = () => {
@@ -165,11 +201,11 @@ function ReceptionInner() {
 
   const handleLogout = () => {
     Swal.fire({
-      title: "Déconnecter ?",
+      title: t('reception.confirm_logout'),
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Oui",
-      cancelButtonText: "Annuler",
+      confirmButtonText: t('reception.confirm_logout_yes'),
+      cancelButtonText: t('reception.confirm_logout_no'),
       confirmButtonColor: "#0ea5e9"
     }).then(r => {
       if (r.isConfirmed) {
@@ -181,8 +217,8 @@ function ReceptionInner() {
   };
 
   const getPlaceholder = () => {
-    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
-    return "📦 Scanner un bac ou un sac infecté...";
+    if (!agent) return t('reception.scan_placeholder_no_agent');
+    return t('reception.scan_placeholder');
   };
 
   const getBorderColor = () => {
@@ -234,14 +270,16 @@ function ReceptionInner() {
               color: "#0f172a",
               margin: 0
             }}>
-              Réception
+              {t('reception.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nomPrenom || agent.nom || agent.matricule}` : "Aucun agent connecté"}
+              {agent 
+                ? t('reception.subtitle', { agent: agent.nomPrenom || agent.nom || agent.matricule })
+                : t('reception.subtitle_no_agent')}
             </p>
           </div>
         </div>
@@ -299,7 +337,7 @@ function ReceptionInner() {
                 </button>
               </div>
             ) : (
-              <div style={{ fontSize: "13px", color: "#94a3b8" }}>Aucun agent connecté</div>
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>{t('reception.no_agent_title')}</div>
             )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
@@ -310,7 +348,7 @@ function ReceptionInner() {
               onClick={handleReset}
             >
               <RotateCcw size={12} style={{ marginRight: "4px" }} />
-              Reset
+              {t('reception.reset')}
             </Button>
           </div>
         </div>
@@ -330,8 +368,8 @@ function ReceptionInner() {
             color: "#dc2626"
           }}>
             <XCircle size={16} />
-            <span style={{ fontWeight: 600 }}>Aucun agent connecté</span>
-            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une réception</span>
+            <span style={{ fontWeight: 600 }}>{t('reception.no_agent_title')}</span>
+            <span style={{ color: "#64748b" }}>{t('reception.no_agent_message')}</span>
           </div>
         )}
 
@@ -347,9 +385,9 @@ function ReceptionInner() {
             borderRadius: "12px", 
             border: "1px solid #e2e8f0" 
           }}>
-            <StatCard value={bacsRecus.length || 0} label="Bacs reçus" color="#0ea5e9" />
-            <StatCard value={sacsInfectes.length || 0} label="Sacs infectés" color="#ef4444" />
-            <StatCard value={dernierRecu ? (dernierRecu.type === "BAC" ? "Bac" : "Sac") : "-"} label="Dernier reçu" color="#8b5cf6" />
+            <StatCard value={bacsRecus.length || 0} label={t('reception.bacs_received')} color="#0ea5e9" />
+            <StatCard value={sacsInfectes.length || 0} label={t('reception.sacs_infectes')} color="#ef4444" />
+            <StatCard value={dernierRecu ? (dernierRecu.type === "BAC" ? t('reception.bac') : t('reception.sac_infecte')) : "-"} label={t('reception.last_received')} color="#8b5cf6" />
           </div>
         )}
 
@@ -381,7 +419,7 @@ function ReceptionInner() {
                     </div>
                     <input
                       type="text"
-                      placeholder="👤 Aucun agent connecté — veuillez vous reconnecter"
+                      placeholder={t('reception.scan_placeholder_no_agent')}
                       value={scanValue}
                       onChange={e => setScanValue(e.target.value)}
                       ref={scanInputRef}
@@ -407,7 +445,7 @@ function ReceptionInner() {
                       </div>
                       <input
                         type="text"
-                        placeholder="📦 Code bac"
+                        placeholder={t('reception.rfid_bac_code')}
                         value={rfidCodeBac}
                         onChange={e => setRfidCodeBac(e.target.value)}
                         ref={rfidBacRef}
@@ -428,7 +466,7 @@ function ReceptionInner() {
                       </div>
                       <input
                         type="text"
-                        placeholder="📡 Tags RFID (séparés par virgule)"
+                        placeholder={t('reception.rfid_tags')}
                         value={rfidTags}
                         onChange={e => setRfidTags(e.target.value)}
                         ref={rfidTagsRef}
@@ -469,7 +507,7 @@ function ReceptionInner() {
                       width: "100%"
                     }}
                   >
-                    {rfidLoading ? "⏳ Lecture..." : "✅ Valider le passage"}
+                    {rfidLoading ? t('reception.rfid_loading') : t('reception.rfid_validate')}
                   </button>
                 )}
               </div>
@@ -483,9 +521,9 @@ function ReceptionInner() {
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <Package color="#22c55e" size={16} />
-                <span style={{ fontWeight: 600, color: "#15803d" }}>Prêt pour la réception</span>
+                <span style={{ fontWeight: 600, color: "#15803d" }}>{t('reception.ready')}</span>
                 <span style={{ color: "#64748b" }}>
-                  {mode === "BARCODE" ? "Scannez un bac ou un sac infecté" : "Saisissez le code bac et les tags RFID"}
+                  {mode === "BARCODE" ? t('reception.ready_barcode') : t('reception.ready_rfid')}
                 </span>
               </div>
             </CardContent>
@@ -513,7 +551,7 @@ function ReceptionInner() {
                 fontSize: "12px",
                 fontWeight: 600
               }}>
-                {dernierRecu.type === "BAC" ? "Bac" : "Sac infecté"}
+                {dernierRecu.type === "BAC" ? t('reception.bac') : t('reception.sac_infecte')}
               </span>
               <code style={{
                 padding: "4px 12px",
@@ -551,7 +589,7 @@ function ReceptionInner() {
                     }}
                   >
                     <Eye size={14} />
-                    {afficherLinges ? "Masquer linges" : "Voir linges"}
+                    {afficherLinges ? t('reception.hide_linges') : t('reception.see_linges')}
                   </button>
                   
                   <span style={{ 
@@ -561,14 +599,14 @@ function ReceptionInner() {
                     padding: "2px 10px", 
                     borderRadius: "12px" 
                   }}>
-                    {lingesAffichés.length} linge{lingesAffichés.length > 1 ? "s" : ""}
+                    {lingesAffichés.length} {t('reception.linges_count')}
                   </span>
                 </>
               )}
               
               {dernierRecu.type === "SAC_INFECTE" && (
                 <span style={{ fontSize: "13px", color: "#64748b" }}>
-                  {dernierRecu.data?.quantiteDeclaree || 0} art.
+                  {dernierRecu.data?.quantiteDeclaree || 0} {t('reception.items')}
                 </span>
               )}
             </div>
@@ -599,9 +637,9 @@ function ReceptionInner() {
                 gap: "8px"
               }}>
                 <Package size={18} />
-                Linges du bac {bacEnCours?.code || dernierRecu?.code || ""}
+                {t('reception.bac_linges', { code: bacEnCours?.code || dernierRecu?.code || "" })}
                 <Badge style={{ background: "#bae6fd", color: "#0369a1" }}>
-                  {lingesAffichés.length} linge{lingesAffichés.length > 1 ? "s" : ""}
+                  {lingesAffichés.length} {t('reception.linges_count')}
                 </Badge>
               </div>
               <div style={{ display: "flex", gap: "8px" }}>
@@ -610,7 +648,7 @@ function ReceptionInner() {
                     <svg className="animate-spin w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    Chargement...
+                    {t('reception.loading_linges')}
                   </span>
                 )}
                 <button
@@ -625,7 +663,7 @@ function ReceptionInner() {
                     fontSize: "12px"
                   }}
                 >
-                  ✕ Fermer
+                  ✕ {t('common.close')}
                 </button>
               </div>
             </div>
@@ -635,7 +673,7 @@ function ReceptionInner() {
                 <svg className="animate-spin w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                <p style={{ marginTop: "8px" }}>Chargement des linges...</p>
+                <p style={{ marginTop: "8px" }}>{t('reception.loading_linges')}</p>
               </div>
             ) : lingesAffichés.length === 0 ? (
               <div style={{
@@ -646,8 +684,8 @@ function ReceptionInner() {
                 borderRadius: "10px"
               }}>
                 <Package size={32} style={{ margin: "0 auto 8px", opacity: 0.3 }} />
-                <p style={{ fontWeight: 600 }}>Aucun linge dans ce bac</p>
-                <p style={{ fontSize: "13px" }}>Le bac est vide</p>
+                <p style={{ fontWeight: 600 }}>{t('reception.no_linge')}</p>
+                <p style={{ fontSize: "13px" }}>{t('reception.empty_bac')}</p>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "300px", overflowY: "auto" }}>
@@ -698,7 +736,7 @@ function ReceptionInner() {
                             {linge.codeBarre || "N/A"}
                           </div>
                           <div style={{ fontSize: "11px", color: colors.color, fontWeight: 500 }}>
-                            {linge.categorie || "Non catégorisé"}
+                            {linge.categorie || t('reception.non_categorise')}
                           </div>
                         </div>
                       </div>
@@ -719,11 +757,11 @@ function ReceptionInner() {
                           variant={linge.etat === "RECEPTION" ? "success" : "secondary"}
                           style={{ fontSize: "10px" }}
                         >
-                          {linge.etat || "N/A"}
+                          {t(`reception_status.${linge.etat}`, linge.etat || "N/A")}
                         </Badge>
                         {linge.poids && (
                           <span style={{ fontSize: "10px", color: "#94a3b8" }}>
-                            {linge.poids} kg
+                            {linge.poids} {t('reception.weight')}
                           </span>
                         )}
                       </div>
@@ -746,8 +784,8 @@ function ReceptionInner() {
             color: "#92400e"
           }}>
             <Package size={24} style={{ marginBottom: "8px", opacity: 0.5 }} />
-            <p style={{ fontWeight: 600 }}>Aucun linge dans ce bac</p>
-            <p style={{ fontSize: "13px" }}>Le bac {bacEnCours?.code || ""} est vide</p>
+            <p style={{ fontWeight: 600 }}>{t('reception.no_linge')}</p>
+            <p style={{ fontSize: "13px" }}>{t('reception.empty_bac')} {bacEnCours?.code || ""}</p>
           </div>
         )}
 
@@ -770,12 +808,12 @@ function ReceptionInner() {
               gap: "8px" 
             }}>
               <Package size={16} />
-              Résumé des réceptions
+              {t('reception.summary')}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
               {bacsRecus.length > 0 && (
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600 }}>Bacs reçus</div>
+                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600 }}>{t('reception.bacs_received')}</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
                     {bacsRecus.map((bac, i) => (
                       <span key={i} style={{
@@ -794,7 +832,7 @@ function ReceptionInner() {
               )}
               {sacsInfectes.length > 0 && (
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600 }}>Sacs infectés</div>
+                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600 }}>{t('reception.sacs_infectes')}</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
                     {sacsInfectes.map((sac, i) => (
                       <span key={i} style={{
@@ -829,18 +867,18 @@ function ReceptionInner() {
           <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#64748b" }}>
             {agent && (
               <>
-                <span>Agent: <strong style={{ color: "#0f172a" }}>{agent.nomPrenom || agent.nom || agent.matricule}</strong></span>
-                <span>Matricule: <strong style={{ color: "#0f172a" }}>{agent.codeBarre || agent.matricule}</strong></span>
+                <span>{t('reception.agent')}: <strong style={{ color: "#0f172a" }}>{agent.nomPrenom || agent.nom || agent.matricule}</strong></span>
+                <span>{t('reception.matricule')}: <strong style={{ color: "#0f172a" }}>{agent.codeBarre || agent.matricule}</strong></span>
               </>
             )}
             {!agent && (
-              <span style={{ color: "#dc2626" }}>⚠️ Aucun agent connecté</span>
+              <span style={{ color: "#dc2626" }}>⚠️ {t('reception.no_agent_title')}</span>
             )}
             {bacsRecus.length > 0 && (
-              <span>Bacs: <strong style={{ color: "#3b82f6" }}>{bacsRecus.length}</strong></span>
+              <span>{t('reception.bacs')}: <strong style={{ color: "#3b82f6" }}>{bacsRecus.length}</strong></span>
             )}
             {sacsInfectes.length > 0 && (
-              <span>Sacs: <strong style={{ color: "#dc2626" }}>{sacsInfectes.length}</strong></span>
+              <span>{t('reception.sacs')}: <strong style={{ color: "#dc2626" }}>{sacsInfectes.length}</strong></span>
             )}
           </div>
           <div style={{ display: "flex", gap: "8px", fontSize: "12px", color: "#94a3b8" }}>
