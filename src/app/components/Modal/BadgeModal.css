@@ -1,0 +1,583 @@
+/* ═══════════════════════════════════════════════════════════════
+   ✅ OVERLAY DU MODAL — AU-DESSUS DE TOUT
+   ═══════════════════════════════════════════════════════════════ */
+.modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 999999 !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ✅ MODAL CONTAINER — CENTRÉ, SCROLLABLE
+   ═══════════════════════════════════════════════════════════════ */
+.badge-modal {
+    width: 90% !important;
+    max-width: 900px !important;
+    max-height: calc(100vh - 40px) !important;
+    height: auto !important;
+    position: relative !important;
+    z-index: 1000000 !important;
+    margin: auto !important;
+    background: white !important;
+    border-radius: 16px !important;
+    box-shadow: 0 25px 80px rgba(15, 23, 42, 0.35) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* HEADER (fixe) */
+.badge-modal .modal-header {
+    padding: 16px 24px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    background: white !important;
+    flex-shrink: 0 !important;
+    z-index: 10 !important;
+}
+
+.badge-modal .modal-header h2 {
+    margin: 0 !important;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    color: #2d3748 !important;
+}
+
+.badge-modal .close-btn {
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+    color: #64748b !important;
+    padding: 6px !important;
+    border-radius: 8px !important;
+    transition: all 0.2s !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.badge-modal .close-btn:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+/* BODY (scrollable) */
+.badge-modal-body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    background: #f5f7fa !important;
+    min-height: 0 !important;
+    max-height: calc(100vh - 160px) !important;
+}
+
+.badge-modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+.badge-modal-body::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+.badge-modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+.badge-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* FOOTER (fixe, boutons toujours visibles) */
+.badge-modal .modal-footer {
+    padding: 16px 24px !important;
+    border-top: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 12px !important;
+    background: white !important;
+    flex-shrink: 0 !important;
+    z-index: 10 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONFIGURATEUR DE COULEURS
+   ═══════════════════════════════════════════════════════════════ */
+.badge-controls {
+    padding: 20px 30px;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+.badge-controls h3 {
+    margin: 0 0 15px 0;
+    font-size: 1.1rem;
+    color: #2d3748;
+}
+
+.color-pickers {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.color-picker-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.color-picker-group label {
+    font-size: 0.85rem;
+    color: #4a5568;
+    font-weight: 500;
+}
+
+.color-picker-group input[type="color"] {
+    width: 60px;
+    height: 36px;
+    padding: 2px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    cursor: pointer;
+    background: white;
+}
+
+.customization-section {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 30px;
+}
+
+.logo-upload-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.logo-upload-group label {
+    font-size: 0.85rem;
+    color: #4a5568;
+    font-weight: 500;
+}
+
+.logo-file-input {
+    font-size: 0.85rem;
+    padding: 4px;
+    border: 1px dashed #cbd5e0;
+    border-radius: 6px;
+    cursor: pointer;
+    max-width: 250px;
+    background: white;
+}
+
+.controls-hint {
+    margin: 12px 0 0 0;
+    font-size: 0.85rem;
+    color: #718096;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ZONE D'AFFICHAGE DES BADGES
+   ═══════════════════════════════════════════════════════════════ */
+.badge-preview-area {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 30px;
+    padding: 40px;
+    background: #f5f7fa;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN DU BADGE
+   ═══════════════════════════════════════════════════════════════ */
+.badge-card {
+    width: 320px;
+    height: 500px;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+.badge-decoration {
+    height: 90px;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    width: 100%;
+}
+
+.badge-decoration.badge-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
+
+.badge-decoration.badge-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    z-index: 0;
+}
+
+.badge-content,
+.back-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+    position: relative;
+    box-sizing: border-box;
+    padding-top: 25px;
+}
+
+.wave-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.bottom-wave {
+    transform: rotate(180deg);
+}
+
+.badge-logo-area {
+    margin-bottom: 20px;
+    margin-top: 15px;
+}
+
+.badge-logo-area.small {
+    margin-bottom: 20px;
+    transform: scale(0.85);
+}
+
+.softsys-logo-img {
+    height: 60px;
+    margin-left: 30px;
+    width: auto;
+    object-fit: contain;
+}
+
+.badge-photo-container {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    border: 3px solid var(--badge-primary);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    background: #e2e8f0;
+    margin-bottom: 15px;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.badge-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.badge-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #475569;
+    font-size: 3rem;
+    font-weight: 600;
+    background: #e2e8f0;
+}
+
+.badge-info {
+    text-align: center;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.badge-name {
+    margin: 0 0 5px 0;
+    font-size: 1.5rem;
+    color: #000;
+    font-weight: 700;
+}
+
+.badge-role {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+}
+
+.badge-divider {
+    width: 70%;
+    height: 2px;
+    margin: 8px auto;
+}
+
+.badge-matricule {
+    margin: 0 0 4px 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.badge-company {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.badge-codes {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    align-items: center;
+    width: 100%;
+    margin-top: auto;
+    padding-bottom: 30px;
+    background: transparent !important;
+}
+
+/* ✅ CONTENEUR DU CODE-BARRES — TRANSPARENT */
+.barcode-placeholder {
+    width: 150px;
+    height: 50px;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: none !important;
+}
+
+.barcode-placeholder img,
+.barcode-placeholder svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: fill;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+}
+
+.qrcode-placeholder {
+    width: 55px;
+    height: 55px;
+    padding: 3px;
+    background: #fff;
+}
+
+.qr-squares {
+    width: 100%;
+    height: 100%;
+    background: url('data:image/svg+xml;utf8,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="20" height="20" fill="%23000"/><rect x="40" y="0" width="20" height="20" fill="%23000"/><rect x="0" y="40" width="20" height="20" fill="%23000"/><rect x="5" y="5" width="10" height="10" fill="%23fff"/><rect x="45" y="5" width="10" height="10" fill="%23fff"/><rect x="5" y="45" width="10" height="10" fill="%23fff"/><rect x="25" y="10" width="10" height="10" fill="%23000"/><rect x="40" y="40" width="10" height="10" fill="%23000"/><rect x="25" y="30" width="25" height="10" fill="%23000"/><rect x="10" y="25" width="10" height="10" fill="%23000"/></svg>') center/cover;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ✅ VERSO — TERMS & CONDITIONS (légèrement plus grand et plus gras)
+   ═══════════════════════════════════════════════════════════════ */
+.terms-title {
+    margin: 0 0 18px 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.terms-list {
+    margin: 0;
+    padding-left: 12px;
+    padding-right: 12px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #1e293b;
+    text-align: center;
+    font-weight: 600;
+}
+
+.terms-list li {
+    margin-bottom: 12px;
+    list-style-type: none;
+}
+
+.terms-list li strong {
+    font-weight: 800;
+    color: #185ea5;
+}
+
+.signature-area {
+    width: 100%;
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-end;
+    padding-right: 10px;
+    margin-bottom: 25px;
+}
+
+.signature-placeholder {
+    width: 120px;
+    height: 60px;
+}
+
+.signature-placeholder svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ✅ IMPRESSION DU BADGE — CR80 portrait
+   ═══════════════════════════════════════════════════════════════ */
+@page {
+    size: 54mm 85.6mm;
+    margin: 0;
+}
+
+@media print {
+    body.printing-badge * {
+        visibility: hidden !important;
+    }
+    body.printing-badge {
+        visibility: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    body.printing-badge .badge-print-overlay,
+    body.printing-badge .badge-print-overlay * {
+        visibility: visible !important;
+    }
+
+    body.printing-badge .badge-print-overlay {
+        position: static !important;
+        width: 100% !important;
+        background: transparent !important;
+        z-index: auto !important;
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+        height: auto !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    body.printing-badge .modal-container,
+    body.printing-badge .badge-modal {
+        position: static !important;
+        width: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        display: block !important;
+        overflow: visible !important;
+        height: auto !important;
+        z-index: auto !important;
+    }
+
+    .no-print {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
+    .badge-modal-body {
+        display: block !important;
+        padding: 0 !important;
+        background: transparent !important;
+        overflow: visible !important;
+        max-height: none !important;
+    }
+
+    .badge-preview-area {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+        overflow: visible !important;
+        width: 100% !important;
+    }
+
+    .printable-badge {
+        width: 54mm !important;
+        height: 85.6mm !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        position: relative !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .printable-badge *,
+    .printable-badge svg {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    body.printing-badge #root,
+    body.printing-badge .app-shell,
+    body.printing-badge .main-content,
+    body.printing-badge .fiche-employe-container {
+        display: block !important;
+        position: static !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+        overflow: visible !important;
+        height: auto !important;
+        width: 100% !important;
+        background: transparent !important;
+    }
+}

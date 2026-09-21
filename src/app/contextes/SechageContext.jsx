@@ -22,31 +22,43 @@ export function SechageProvider({ children }) {
   const [lotDialog,        setLotDialog]        = useState(null);
   const [loading,          setLoading]          = useState(false);
 
- const identifierAgent = useCallback(async (code) => {
+const identifierAgent = useCallback(async (codeOrAgent) => {
+  if (codeOrAgent && typeof codeOrAgent === "object") {
+    const a = codeOrAgent;
+    const matricule = a.matricule || a.codeBarre || a.login;
+    setAgent({
+      ...a,
+      matricule,
+      codeBarre: a.codeBarre || matricule,
+      nomPrenom: a.nomPrenom || a.nom || matricule,
+    });
+    return true;
+  }
+
+  // Sinon, flow "scan badge" classique
+  const code = codeOrAgent;
   setLoading(true);
-
   try {
-    const r = await fetch(
-      `${API_URL}/api/sqlserver/personnel/code/${code}?code=${encodeURIComponent(code)}`
-    );
-
+    const r = await fetch(`${API_URL}/api/sqlserver/personnel/code/${code}?code=${encodeURIComponent(code)}`);
     if (r.ok) {
-      setAgent(await r.json());
+      const raw = await r.json();
+      setAgent({
+        ...raw,
+        matricule: raw.matricule || raw.codeBarre || raw.login,
+        codeBarre: raw.codeBarre || raw.matricule || raw.login,
+        nomPrenom: raw.nomPrenom || raw.nom || raw.login || "Inconnu",
+      });
       return true;
     }
-
     showAlert("❌ Agent introuvable", code, "error");
     return false;
-
   } catch {
     showAlert("Erreur réseau", "", "error");
     return false;
-
   } finally {
     setLoading(false);
   }
 }, [showAlert]);
-
   const scannerMachine = useCallback(async (code) => {
     setLoading(true);
     try {
@@ -73,12 +85,33 @@ export function SechageProvider({ children }) {
       const r = await fetch(`${API_URL}/api/lots`);
       if (r.ok) {
         const tous = await r.json();
-       // setLotsDisponibles(tous.filter(l => l.etat === "LAVE" || l.etat === "EN_TRI" || l.etat === "PRET_SECHAGE"));
-        setLotsDisponibles(tous);
+        setLotsDisponibles(tous.filter(l => l.etat === "PRET_SECHAGE"));
+        //setLotsDisponibles(tous);
       console.log("la liste de slots disponible est ================= ",tous)
       }
     } catch {} finally { setLoadingLots(false); }
   }, []);
+const setAgentDirect = useCallback((agentData) => {
+  if (!agentData) { setAgent(null); return; }
+
+  const matricule =
+    agentData.matricule ||
+    agentData.codeBarre  ||
+    agentData.login      ||
+    null;
+
+  if (!matricule) { setAgent(null); return; }
+
+  setAgent({
+    ...agentData,
+    matricule,
+    codeBarre: agentData.codeBarre || matricule,
+    nomPrenom: agentData.nomPrenom || agentData.nom || matricule,
+  });
+}, []);
+
+
+
 
   const scannerLot = useCallback(async (code, poidsActuel) => {
     if (!code?.trim()) return;
@@ -171,7 +204,7 @@ export function SechageProvider({ children }) {
 
   return (
     <SechageContext.Provider value={{
-      agent, identifierAgent,
+      agent, identifierAgent,setAgentDirect,
       etape, machine, lotsDisponibles, lotsSelectionnes,
       cycleId, cycleInfo, loadingLots, poidsTotal, pctCharge,
       scannerMachine, chargerLots, scannerLot,

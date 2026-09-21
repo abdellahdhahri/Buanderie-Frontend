@@ -80,6 +80,21 @@ export const NAV_ITEMS = [
         ),
       },
       {
+  label: "Sacs Infectés",
+  path: "/sacs",
+  privilege: "LIG1401",   
+  icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 8h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 8z" />
+      <path d="M9 8V5a3 3 0 0 1 6 0v3" />
+      <circle cx="12" cy="15" r="1.2" />
+      <path d="M12 13.8v-1.3" />
+      <path d="M13.04 15.6l1.13.65" />
+      <path d="M10.96 15.6l-1.13.65" />
+    </svg>
+  ),
+},
+      {
         label: "Machines",
         path: "/machine",
         privilege: "LIG1203",
@@ -113,18 +128,19 @@ export const NAV_ITEMS = [
             <rect x="9" y="9" width="6" height="6" rx="1" />
           </svg>
         ),
-      },
-      {
-        label: "Agents",
-        path: "/Agents",
-        privilege: "LIG1206",
-        icon: (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-        ),
-      },
+      }
+      // ,
+      // {
+      //   label: "Agents",
+      //   path: "/Agents",
+      //   privilege: "LIG1206",
+      //   icon: (
+      //     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      //       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      //       <circle cx="12" cy="7" r="4" />
+      //     </svg>
+      //   ),
+      // },
     ],
   },
 
@@ -175,20 +191,20 @@ export const NAV_ITEMS = [
           </svg>
         ),
       },
-      {
-        label: "Matériel",
-        path: "/immo",
-        privilege: "LIG1304",
-        icon: (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <rect x="2" y="2" width="20" height="20" rx="2" ry="2" />
-            <line x1="8" y1="2" x2="8" y2="22" />
-            <line x1="16" y1="2" x2="16" y2="22" />
-            <line x1="2" y1="8" x2="22" y2="8" />
-            <line x1="2" y1="16" x2="22" y2="16" />
-          </svg>
-        ),
-      },
+      // {
+      //   label: "Matériel",
+      //   path: "/immo",
+      //   privilege: "LIG1304",
+      //   icon: (
+      //     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      //       <rect x="2" y="2" width="20" height="20" rx="2" ry="2" />
+      //       <line x1="8" y1="2" x2="8" y2="22" />
+      //       <line x1="16" y1="2" x2="16" y2="22" />
+      //       <line x1="2" y1="8" x2="22" y2="8" />
+      //       <line x1="2" y1="16" x2="22" y2="16" />
+      //     </svg>
+      //   ),
+      // },
   {
   label: "etat machines",
   path: "/machines",
@@ -289,7 +305,7 @@ export const NAV_ITEMS = [
       },
       {
         label: "Lavage",
-        path: "/Lavages",
+        path: "/lavages",
         privilege: "LIG1504",
         icon: (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -459,13 +475,9 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const { t, i18n } = useTranslation();
 
  useEffect(() => {
-    console.log('=== DEBUG TRADUCTION ===');
-    console.log('Langue actuelle:', i18n.language);
+
     const bundle = i18n.getResourceBundle(i18n.language, 'translation');
-    console.log('Toutes les clés navigation:', Object.keys(bundle?.navigation || {}));
-    console.log('Test navigation.rh:', t('navigation.rh'));
-    console.log('Test navigation.logout:', t('navigation.logout'));
-    console.log('Test navigation.Historique collectes:', t('navigation.Historique collectes'));
+
   }, [i18n.language, t, i18n]);
   
 

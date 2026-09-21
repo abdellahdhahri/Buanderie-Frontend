@@ -2,7 +2,6 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import Swal from 'sweetalert2';
 import { toast } from 'sonner';
-// URL de l'API - Utilise VITE_API_URL ou fallback
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082/api';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 
@@ -47,11 +46,7 @@ class NotificationService {
         this.subscriptions = [];
         this.active = false;
         
-        // Afficher la configuration au démarrage
-        log('📡 Configuration NotificationService:');
-        log(`   - API_URL: ${API_URL}`);
-        log(`   - WS_ENDPOINT: ${WS_ENDPOINT}`);
-        log(`   - Mode: ${import.meta.env.MODE}`);
+
     }
 
    
@@ -161,11 +156,9 @@ class NotificationService {
         if (this.initialized) return;
         if (this.active) return;
 
-        log('🔧 Initialisation du client WebSocket...');
 
         this.client = new Client({
             webSocketFactory: () => {
-                log('🔄 Création de la connexion WebSocket vers:', WS_ENDPOINT);
                 return new SockJS(WS_ENDPOINT);
             },
 
@@ -365,8 +358,7 @@ class NotificationService {
 
     start() {
         try {
-            log('🔔 Démarrage du service de notification...');
-            log(`📡 Configuration: API=${API_URL}, WS=${WS_ENDPOINT}`);
+        
 
             if (!this.initialized) {
                 this.initialize();

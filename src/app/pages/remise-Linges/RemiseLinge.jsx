@@ -1,4 +1,3 @@
-// pages/RemiseLinge/RemiseLinge.js
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import Swal from "sweetalert2";
@@ -226,10 +225,10 @@ function SuccessAnimation({ show, onComplete }) {
   );
 }
 
-// ─── COMPOSANTS STATISTIQUES ────────────────────────────────────────────
 
 function ProgressionBar({ value, label }) {
   const pct = Math.min(Math.max(value, 0), 100);
+   const { t } = useTranslation();
   const isComplete = pct === 100;
 
   return (
@@ -588,6 +587,7 @@ function RemiseLingeInner() {
   const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const scanInputRef = useRef(null);
+  
 
   // ─── Alertes ─────────────────────────────────────────────────────────────
   const showAlert = useCallback(
@@ -609,7 +609,17 @@ function RemiseLingeInner() {
 
   // ─── Handlers ────────────────────────────────────────────────────────────
   const handleScan = useCallback(
+
+    
     async (code) => {
+       console.log("========== SCAN ==========");
+    console.log("Code reçu :", code);
+    console.log("Étape actuelle :", etape);
+    console.log("Agent remise :", agentRemise);
+    console.log("Agent collecte :", agentCollecte);
+    console.log("Remise :", remise);
+    console.log("==========================");
+
       if (!code?.trim()) return;
 
       setScanValue("");

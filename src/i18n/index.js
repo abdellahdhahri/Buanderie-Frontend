@@ -34,7 +34,6 @@ i18n
 
     supportedLngs: ["fr", "en", "ar"],
 
-    // Important : transforme en-US -> en, fr-FR -> fr
     load: "languageOnly",
 
     detection: {
@@ -53,7 +52,7 @@ i18n
       useSuspense: false,
     },
 
-    debug: true,
+    debug: false,
   });
 
 export default i18n;

@@ -9,7 +9,7 @@ import servietteVisageImage from "../../../../assets/linges/svisage.png";
 import peignoirImage from "../../../../assets/linges/PEIGNOIR.png";
 import nappeImage from "../../../../assets/linges/nape.png";
 import servietteTableImage from "../../../../assets/linges/serviettetable.png";
-import uniformeImage from "../../../../assets/linges/uniforme.png";
+import uniformeImage from "../../../../assets/linges/tenue-de-bloc.jpg";
 import autreImage from "../../../../assets/linges/uniforme.png";
 
 const CATEGORY_IMAGES = {
@@ -24,10 +24,7 @@ const CATEGORY_IMAGES = {
   AUTRE: autreImage,
 };
 
-/**
- * Dialog de sélection de catégorie linge infecté.
- * Design industriel professionnel - tons gris et bleu foncé
- */
+
 export default function DialogCategorie({ onChoisir, onFermer }) {
   const handleImageError = (e) => {
     e.target.style.display = 'none';

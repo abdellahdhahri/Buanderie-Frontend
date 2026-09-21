@@ -1,11 +1,9 @@
 
 import React from "react";
 import { createBrowserRouter } from "react-router-dom";
-
 import { Layout } from "./components/layout/layout";
 import { ProtectedLayout } from "./services/ProtectedLayout";
-
-import ProcessList from "./pages/process/ProcessList";
+import ProcessList from "./pages/auth/auth";
 import DashboardBuanderie from "./pages/Dashboard/BuanderieDashboard";
 import LingeList from "./pages/Linge/LingeList";
 import LavageList from "./pages/lavage/LavageList";
@@ -40,6 +38,8 @@ import ChambreList from "./pages/chambre/ChambreList";
 import InventaireArsenal from "./pages/inventaire/InventaireArsenal";
 import RemiseLinge from "./pages/remise-Linges/RemiseLinge";
 import EtapeList from "./pages/etape/EtapeList";
+import BuanderieWorkflow from "./pages/workflow/BuanderieWorkflow";
+import SacInfecteList from "./pages/sacLinge/SacInfecteList";
 
 
 export const router = createBrowserRouter([
@@ -66,17 +66,22 @@ export const router = createBrowserRouter([
               privileges: ["LIG0"],
             },
           },
+          
 
 
-          /*
-           * ==================================================
-           * ZONE SALE - LIG15
-           * ==================================================
-           */
+          
 
           {
             path: "collecteList",
             Component: CollecteList,
+            handle: {
+              privileges: ["LIG1501"],
+            },
+          },
+          
+          {
+            path: "proc",
+            Component: BuanderieWorkflow,
             handle: {
               privileges: ["LIG1501"],
             },
@@ -194,6 +199,13 @@ export const router = createBrowserRouter([
               privileges: ["LIG1203"],
             },
           },
+           {
+            path: "sacs",
+            Component: SacInfecteList,
+            handle: {
+              privileges: ["LIG1203"],
+            },
+          },
 
           {
             path: "programme",
@@ -215,7 +227,7 @@ export const router = createBrowserRouter([
             path: "agents",
             Component: AgentList,
             handle: {
-              privileges: ["LIG1206"],
+              privileges: ["LIG1204"],
             },
           },
 

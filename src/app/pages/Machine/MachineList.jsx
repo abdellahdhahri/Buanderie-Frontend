@@ -416,8 +416,11 @@ export default function MachineList() {
               className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-[14px] text-sm font-bold text-indigo-700 hover:from-indigo-100 hover:to-purple-100 transition-all shadow-[0_2px_8px_rgba(99,102,241,0.15)] hover:shadow-[0_4px_16px_rgba(99,102,241,0.25)] hover:scale-[1.02]"
             >
               <Upload className="w-4 h-4 stroke-[2.5]" /> 
-              {t('machines.import_btn', { type: activeTab === 'LAVEUR' ? t('machines.laveur') : t('machines.secheur') })}
-            </button>
+{t('machines.import_btn', {
+  type: activeTab === 'LAVEUR'
+    ? t('machines.laveurs')
+    : t('machines.secheurs'),
+})}            </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
 

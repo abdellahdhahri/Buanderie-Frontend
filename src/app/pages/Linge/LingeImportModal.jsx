@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../../components/ui/modal';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
-import { 
-  Search, 
-  Check, 
-  CheckSquare, 
-  Square, 
+import {
+  Search,
+  Check,
+  CheckSquare,
+  Square,
   Package,
   Barcode,
   Loader2,
@@ -24,6 +24,9 @@ import { useLingeContext } from '../../contextes/LingeContext';
 import { useServiceContext } from '../../contextes/ServiceContext';
 import Swal from 'sweetalert2';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
+
+
 const ETATS = {
   SALE: { label: 'Sale', color: '#ef4444', bg: '#fee2e2' },
   PROPRE: { label: 'Propre', color: '#10b981', bg: '#d1fae5' },
@@ -37,6 +40,39 @@ const ETATS = {
   LIVRE: { label: 'Livre', color: '#22c55e', bg: '#dcfce7' },
   HORS_SERVICE: { label: 'Hors service', color: '#dc2626', bg: '#fee2e2' },
   MANQUANT: { label: 'Manquant', color: '#b91c1c', bg: '#fecaca' },
+};
+
+const FAMILLE_TO_CATEGORIE = {
+  18: 'DRAP',
+  19: 'TAIE_OREILLER',
+  20: 'SERVIETTE_BAIN',
+  21: 'SERVIETTE_VISAGE',
+  22: 'PEIGNOIR',
+  23: 'NAPPE',
+  24: 'SERVIETTE_TABLE',
+  25: 'UNIFORME',
+};
+
+
+const normalizeLinge = (raw) => {
+  if (!raw) return null;
+  return {
+    id: raw.Id ?? raw.id,
+    designation: raw.Designation ?? raw.designation ?? 'N/A',
+    codeBarre: raw.CodeBarre ?? raw.codeBarre ?? '',
+    etatActif: raw.EtatActif ?? raw.etatActif ?? 0,
+    etat: (raw.EtatActif === 0) ? 'PROPRE' : 'HORS_SERVICE',
+    prestataireArticleId: raw.PrestataireArticleId ?? raw.prestataireArticleId ?? null,
+    articleFamilleId: raw.ArticleFamilleId ?? raw.articleFamilleId ?? null,
+    categorie:
+      FAMILLE_TO_CATEGORIE[raw.ArticleFamilleId] ||
+      raw.categorie ||
+      'AUTRE',
+    numeroSerie: raw.NumeroSerie ?? raw.numeroSerie ?? null,
+    serviceId: raw.ServiceId ?? raw.serviceId ?? null,
+    serviceNom: raw.ServiceNom ?? raw.serviceNom ?? null,
+    porteurNom: raw.PorteurNom ?? raw.porteurNom ?? null,
+  };
 };
 
 export const LingeImportModal = () => {
@@ -68,7 +104,7 @@ export const LingeImportModal = () => {
     const fetchPersonnel = async () => {
       setIsPersonnelLoading(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8082'}/api/sqlserver/personnel`);
+        const response = await fetch(`${API_URL}/api/sqlserver/personnel`);
         if (response.ok) {
           const data = await response.json();
           setPersonnel(Array.isArray(data) ? data : []);
@@ -90,19 +126,36 @@ export const LingeImportModal = () => {
     }
   }, [isImportModalOpen]);
 
-  const filteredLinges = lingesToImport.filter(l => {
-    const matchSearch = !searchTerm || (
-      (l.designation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (l.codeBarre || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    const matchCategorie = filterCategorie === 'all' || l.categorie === filterCategorie;
-    return matchSearch && matchCategorie;
-  });
+  // ✅ Normalisation des linges dès qu'ils arrivent du contexte
+  const normalizedLinges = useMemo(
+    () => (lingesToImport || []).map(normalizeLinge).filter(Boolean),
+    [lingesToImport]
+  );
 
+  // ✅ Filtrage sur les champs normalisés
+  const filteredLinges = useMemo(() => {
+    return normalizedLinges.filter((l) => {
+      const matchSearch =
+        !searchTerm ||
+        (l.designation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (l.codeBarre || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchCategorie =
+        filterCategorie === 'all' || l.categorie === filterCategorie;
+
+      return matchSearch && matchCategorie;
+    });
+  }, [normalizedLinges, searchTerm, filterCategorie]);
+
+  // ─── Badge état ─────────────────────────────────────────────────────────
   const getEtatBadge = (etat) => {
-    const config = ETATS[etat] || { label: etat || 'Inconnu', color: '#64748b', bg: '#f1f5f9' };
+    const config = ETATS[etat] || {
+      label: etat || 'Inconnu',
+      color: '#64748b',
+      bg: '#f1f5f9',
+    };
     return (
-      <span 
+      <span
         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
         style={{ background: config.bg, color: config.color }}
       >
@@ -113,29 +166,33 @@ export const LingeImportModal = () => {
 
   const getServiceName = (serviceId) => {
     if (!serviceId) return t('linge.unassigned');
-    const service = services.find(s => s.id === serviceId);
+    const service = services.find((s) => s.id === serviceId);
     return service ? service.code || service.nom : t('linge.unassigned');
   };
 
   const getPorteurName = (porteurId) => {
     if (!porteurId) return t('linge.unassigned');
-    const porteur = personnel.find(p => p.id === porteurId);
+    const porteur = personnel.find((p) => p.id === porteurId);
     return porteur ? `${porteur.prenom} ${porteur.nom}` : t('linge.unassigned');
   };
 
-  const isAllSelected = filteredLinges.length > 0 && 
-    filteredLinges.every(l => selectedImportLinges.some(s => s.id === l.id));
+  // ─── Sélection ──────────────────────────────────────────────────────────
+  const isAllSelected =
+    filteredLinges.length > 0 &&
+    filteredLinges.every((l) =>
+      selectedImportLinges.some((s) => s.id === l.id)
+    );
 
   const handleSelectAll = () => {
     if (isAllSelected) {
-      filteredLinges.forEach(l => {
-        if (selectedImportLinges.some(s => s.id === l.id)) {
+      filteredLinges.forEach((l) => {
+        if (selectedImportLinges.some((s) => s.id === l.id)) {
           toggleImportSelection(l.id);
         }
       });
     } else {
-      filteredLinges.forEach(l => {
-        if (!selectedImportLinges.some(s => s.id === l.id)) {
+      filteredLinges.forEach((l) => {
+        if (!selectedImportLinges.some((s) => s.id === l.id)) {
           toggleImportSelection(l.id);
         }
       });
@@ -146,6 +203,7 @@ export const LingeImportModal = () => {
     setSelectedServiceId(serviceId);
   };
 
+  // ─── Import ─────────────────────────────────────────────────────────────
   const handleImport = async () => {
     if (selectedImportLinges.length === 0) {
       Swal.fire({
@@ -171,7 +229,7 @@ export const LingeImportModal = () => {
       return;
     }
 
-    const payload = selectedImportLinges.map(item => ({
+    const payload = selectedImportLinges.map((item) => ({
       id: item.id,
       categorie: item.categorie || 'AUTRE',
       serviceId: parseInt(selectedServiceId),
@@ -193,7 +251,8 @@ export const LingeImportModal = () => {
     }
   };
 
-  const isImportDisabled = selectedImportLinges.length === 0 || !selectedServiceId || isImportLoading;
+  const isImportDisabled =
+    selectedImportLinges.length === 0 || !selectedServiceId || isImportLoading;
 
   return (
     <Modal
@@ -203,12 +262,14 @@ export const LingeImportModal = () => {
       size="xl"
     >
       <div className="space-y-4">
+        {/* Info */}
         <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
           <p className="text-sm font-medium text-slate-700">
             ⚡ {t('linge.import_info')}
           </p>
         </div>
 
+        {/* Sélection du service */}
         <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
           <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
             <Building className="w-4 h-4" />
@@ -219,12 +280,16 @@ export const LingeImportModal = () => {
             value={selectedServiceId || ''}
             onChange={(e) => handleServiceSelect(e.target.value || null)}
             className={`flex-1 px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              !selectedServiceId ? 'border-amber-300 bg-amber-50' : 'border-slate-200'
+              !selectedServiceId
+                ? 'border-amber-300 bg-amber-50'
+                : 'border-slate-200'
             }`}
           >
             <option value="">🔽 {t('common.select_service')}</option>
             {services.map((s) => (
-              <option key={s.id} value={s.id}>{s.code || s.nom}</option>
+              <option key={s.id} value={s.id}>
+                {s.code || s.nom}
+              </option>
             ))}
           </select>
           {selectedServiceId ? (
@@ -238,6 +303,7 @@ export const LingeImportModal = () => {
           )}
         </div>
 
+        {/* Barre de recherche et filtres */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -278,7 +344,9 @@ export const LingeImportModal = () => {
             ) : (
               <Square className="w-4 h-4" />
             )}
-            {isAllSelected ? t('common.deselect_all') : t('common.select_all')}
+            {isAllSelected
+              ? t('common.deselect_all')
+              : t('common.select_all')}
           </Button>
 
           <Button
@@ -294,16 +362,19 @@ export const LingeImportModal = () => {
           </Button>
         </div>
 
+        {/* Compteurs */}
         <div className="flex justify-between items-center text-sm text-slate-500">
           <span>
             {filteredLinges.length} {t('common.items_found')}
           </span>
           <span className="font-medium text-indigo-600">
             {selectedImportLinges.length} {t('common.selected')}
-            {selectedServiceId && ` • ${t('common.service')}: ${getServiceName(selectedServiceId)}`}
+            {selectedServiceId &&
+              ` • ${t('common.service')}: ${getServiceName(selectedServiceId)}`}
           </span>
         </div>
 
+        {/* Tableau */}
         <div className="border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -321,12 +392,24 @@ export const LingeImportModal = () => {
                       )}
                     </button>
                   </th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">{t('common.designation')}</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">{t('common.barcode')}</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">{t('common.category')}</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">{t('common.status')}</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">{t('common.service')}</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">{t('common.carrier')}</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('common.designation')}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('common.barcode')}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('common.category')}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('common.status')}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('common.service')}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('common.carrier')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -347,7 +430,9 @@ export const LingeImportModal = () => {
                   </tr>
                 ) : (
                   filteredLinges.map((linge) => {
-                    const isSelected = selectedImportLinges.some(s => s.id === linge.id);
+                    const isSelected = selectedImportLinges.some(
+                      (s) => s.id === linge.id
+                    );
                     return (
                       <tr
                         key={linge.id}
@@ -368,7 +453,9 @@ export const LingeImportModal = () => {
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-2">
                             <Package className="w-4 h-4 text-slate-400" />
-                            <span className="font-medium text-sm">{linge.designation || 'N/A'}</span>
+                            <span className="font-medium text-sm">
+                              {linge.designation || 'N/A'}
+                            </span>
                           </div>
                         </td>
                         <td className="px-3 py-2">
@@ -378,14 +465,17 @@ export const LingeImportModal = () => {
                         </td>
                         <td className="px-3 py-2">
                           <Badge variant="outline" className="text-xs">
-                            {t(`categories.${linge.categorie}`, linge.categorie || 'AUTRE')}
+                            {t(
+                              `categories.${linge.categorie}`,
+                              linge.categorie || 'AUTRE'
+                            )}
                           </Badge>
                         </td>
-                        <td className="px-3 py-2">
-                          {getEtatBadge(linge.etat)}
-                        </td>
+                        <td className="px-3 py-2">{getEtatBadge(linge.etat)}</td>
                         <td className="px-3 py-2 text-sm">
-                          {linge.serviceNom || getServiceName(linge.serviceId) || '-'}
+                          {linge.serviceNom ||
+                            getServiceName(linge.serviceId) ||
+                            '-'}
                         </td>
                         <td className="px-3 py-2">
                           {linge.porteurNom ? (
@@ -393,7 +483,9 @@ export const LingeImportModal = () => {
                               <User className="w-3 h-3" /> {linge.porteurNom}
                             </span>
                           ) : (
-                            <span className="text-xs text-slate-400">{t('common.unassigned')}</span>
+                            <span className="text-xs text-slate-400">
+                              {t('common.unassigned')}
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -405,6 +497,7 @@ export const LingeImportModal = () => {
           </div>
         </div>
 
+        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between pt-4 border-t border-slate-200">
             <div className="text-sm text-slate-500">
@@ -432,6 +525,7 @@ export const LingeImportModal = () => {
           </div>
         )}
 
+        {/* Actions */}
         <div className="flex justify-between items-center pt-4 border-t border-slate-200">
           <div className="text-sm text-slate-500">
             {selectedImportLinges.length} {t('common.selected')}
@@ -457,12 +551,20 @@ export const LingeImportModal = () => {
             <Button
               onClick={handleImport}
               disabled={isImportDisabled}
-              className={isImportDisabled ? 'opacity-50 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}
-              title={isImportDisabled ? (
-                !selectedServiceId ? t('common.select_service') :
-                selectedImportLinges.length === 0 ? t('common.select_items') :
-                t('common.importing')
-              ) : ''}
+              className={
+                isImportDisabled
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'bg-indigo-600 hover:bg-indigo-700'
+              }
+              title={
+                isImportDisabled
+                  ? !selectedServiceId
+                    ? t('common.select_service')
+                    : selectedImportLinges.length === 0
+                    ? t('common.select_items')
+                    : t('common.importing')
+                  : ''
+              }
             >
               {isImportLoading ? (
                 <>
@@ -472,7 +574,9 @@ export const LingeImportModal = () => {
               ) : (
                 <>
                   <Check className="w-4 h-4 mr-2" />
-                  {t('common.import_count', { count: selectedImportLinges.length })}
+                  {t('common.import_count', {
+                    count: selectedImportLinges.length,
+                  })}
                 </>
               )}
             </Button>

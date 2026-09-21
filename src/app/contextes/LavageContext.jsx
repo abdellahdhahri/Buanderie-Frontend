@@ -29,7 +29,29 @@ export function LavageProvider({ children }) {
 
   const [loading, setLoading] = useState(false);
 
-  // ✅ Récupérer l'agent depuis localStorage (pas d'appel API)
+
+
+  const setAgentDirect = useCallback((agentData) => {
+  if (!agentData) { setAgent(null); return; }
+
+  const matricule =
+    agentData.matricule ||
+    agentData.codeBarre  ||
+    agentData.login      ||
+    null;
+
+  if (!matricule) { setAgent(null); return; }
+
+  setAgent({
+    ...agentData,
+    matricule,
+    codeBarre: agentData.codeBarre || matricule,
+    nomPrenom: agentData.nomPrenom || agentData.nom || matricule,
+  });
+}, []);
+
+
+  //  Récupérer l'agent depuis localStorage 
   const identifierAgent = useCallback(async () => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
@@ -416,7 +438,7 @@ export function LavageProvider({ children }) {
 
   return (
     <LavageContext.Provider value={{
-      agent, identifierAgent,
+      agent, identifierAgent,setAgentDirect,
       etapeBlanc, machine, lotsDisponibles, lotsSelectionnes,
       cycleId, cycleInfo, loadingLots, poidsTotal, pctCharge,
       scannerMachine, chargerLots, scannerLot,

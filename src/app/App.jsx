@@ -13,6 +13,8 @@ import { ProgrammeProvider } from "./contextes/ProgrammeContext";
 import { AuthProvider } from "./contextes/Authentication/AuthContext";
 import { MachineProvider } from "./contextes/MachineContext";
 import { LanguageProvider } from "../i18n/LanguageProvider"; 
+import { ChatbotProvider } from "../app/components/chatbot/ChatbotProvider";
+
 
 import { 
     startNotificationService, 
@@ -32,6 +34,7 @@ export default function App() {
 
     return (
        <I18nextProvider i18n={i18n}>
+        <ChatbotProvider>
             <LanguageProvider> 
                 <ProgrammeProvider>
                     <BacProvider>
@@ -55,6 +58,7 @@ export default function App() {
                     </BacProvider>
                 </ProgrammeProvider>
             </LanguageProvider>
+</ChatbotProvider>
         </I18nextProvider>
     );
 }

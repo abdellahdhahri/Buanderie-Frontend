@@ -7,7 +7,7 @@ import {
   ChevronRight, ChevronDown, Package, User, Building,
   TrendingUp, TrendingDown, CheckCircle, XCircle, 
   AlertCircle, Info, Layers, Grid, List, PieChart,
-  ArrowUpRight, ArrowDownRight, Minus
+  ArrowUpRight, ArrowDownRight, Minus, History,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -32,8 +32,33 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
+
+function extractPersonnelName(personnel) {
+  if (!personnel) return null;
+  
+  // Essayer plusieurs formats possibles
+  if (personnel.nomPrenom) return personnel.nomPrenom;
+  if (personnel.nom_prenom) return personnel.nom_prenom;
+  if (personnel.nomComplet) return personnel.nomComplet;
+  if (personnel.fullName) return personnel.fullName;
+  
+  // Combiner nom + prénom
+  const nom = personnel.nom || personnel.Nom || personnel.lastName || "";
+  const prenom = personnel.prenom || personnel.Prenom || personnel.firstName || "";
+  
+  if (nom || prenom) {
+    return `${nom} ${prenom}`.trim();
+  }
+  
+  // Fallback : matricule
+  if (personnel.matricule) return personnel.matricule;
+  if (personnel.code) return personnel.code;
+  
+  return null;
+}
+
 // ─── Composant de résumé amélioré ──────────────────────────────────────
-function ResumeCollecte({ details, collecte, onViewDetails }) {
+function ResumeCollecte({ details, collecte, onViewDetails, getPersonnelName }) {
   const { t } = useTranslation();
 
   const categories = details?.categories || [];
@@ -128,7 +153,6 @@ function ResumeCollecte({ details, collecte, onViewDetails }) {
                       className="h-full rounded-full"
                       style={{ 
                         background: `linear-gradient(90deg, ${style.color}cc, ${style.color})`,
-                        width: `${pourcentage}%`
                       }}
                     />
                   </div>
@@ -143,7 +167,9 @@ function ResumeCollecte({ details, collecte, onViewDetails }) {
         <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
           <User className="w-4 h-4 text-slate-500" />
           <span className="text-slate-600">{t('historique_collecte.agent')}:</span>
-          <span className="font-medium text-slate-800">{collecte?.agent?.nom || collecte?.personnelId || "N/A"}</span>
+          <span className="font-medium text-slate-800">
+            {getPersonnelName ? getPersonnelName(collecte?.personnelId) : (collecte?.agent?.nom || "N/A")}
+          </span>
         </div>
         <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
           <Building className="w-4 h-4 text-slate-500" />
@@ -180,57 +206,10 @@ function ResumeCollecte({ details, collecte, onViewDetails }) {
   );
 }
 
-// ─── Composant de carte de collecte (vue alternative) ──────────────────
-function CollecteCard({ collecte, index, onExpand, isExpanded, onViewDetails }) {
+// ─── Composant de carte de collecte ──────────────────────────────────
+function CollecteCard({ collecte, index, onExpand, isExpanded, onViewDetails, getPersonnelName, getTypeBadge, getEtatBadge }) {
   const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
-
-  // ✅ Utiliser t directement, pas de useTranslation à l'intérieur
-  const getTypeBadge = useCallback((type) => {
-    const typeConfig = {
-      BLANC: { variant: "info", emoji: "⬜", label: t('historique_collecte.types.BLANC') },
-      INFECTE: { variant: "destructive", emoji: "🔴", label: t('historique_collecte.types.INFECTE') },
-      MIXTE: { variant: "warning", emoji: "🟡", label: t('historique_collecte.types.MIXTE') },
-      PROPRE_EN_PLACE: { variant: "success", emoji: "🟢", label: t('historique_collecte.types.PROPRE_EN_PLACE') },
-      MANQUANT: { variant: "secondary", emoji: "❓", label: t('historique_collecte.types.MANQUANT') },
-    };
-    
-    const config = typeConfig[type] || { variant: "secondary", emoji: "📦", label: type };
-    return <Badge variant={config.variant}>{config.emoji} {config.label}</Badge>;
-  }, [t]);
-
-  const getEtatBadge = useCallback((etat) => {
-    const etatColors = {
-      VERIFIE: { variant: "success", label: t('historique_collecte.etats.VERIFIE') },
-      EN_ATTENTE: { variant: "warning", label: t('historique_collecte.etats.EN_ATTENTE') },
-      NON_VALIDE: { variant: "destructive", label: t('historique_collecte.etats.NON_VALIDE') },
-      EN_TRAITEMENT: { variant: "info", label: t('historique_collecte.etats.EN_TRAITEMENT') },
-      PARTIELLEMENT_LIVREE: { variant: "warning", label: t('historique_collecte.etats.PARTIELLEMENT_LIVREE') },
-      CLOTUREE: { variant: "secondary", label: t('historique_collecte.etats.CLOTUREE') },
-      RECEPTIONNE: { variant: "success", label: t('historique_collecte.etats.RECEPTIONNE') },
-      EN_COURS: { variant: "info", label: t('historique_collecte.etats.EN_COURS') },
-      TERMINE: { variant: "success", label: t('historique_collecte.etats.TERMINE') },
-    };
-    
-    const config = etatColors[etat] || { variant: "secondary", label: etat };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  }, [t]);
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "—";
-    return new Date(dateString).toLocaleString("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const getPersonnelName = (personnelId) => {
-    if (!personnelId) return "N/A";
-    return personnelId;
-  };
 
   return (
     <motion.div
@@ -284,11 +263,7 @@ function CollecteCard({ collecte, index, onExpand, isExpanded, onViewDetails }) 
             >
               <Eye className="w-4 h-4 text-slate-400" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-1 h-8 w-8"
-            >
+            <Button variant="ghost" size="sm" className="p-1 h-8 w-8">
               {isExpanded ? (
                 <ChevronDown className="w-4 h-4 text-slate-400" />
               ) : (
@@ -313,6 +288,7 @@ function CollecteCard({ collecte, index, onExpand, isExpanded, onViewDetails }) 
                 details={collecte.details || collecte.resume}
                 collecte={collecte}
                 onViewDetails={() => onViewDetails(collecte)}
+                getPersonnelName={getPersonnelName}
               />
             </div>
           </motion.div>
@@ -346,23 +322,47 @@ export default function HistoriqueCollecte() {
     dateTo: "",
   });
 
+  /* ═══════════════════════════════════════════════════════════════
+     CHARGEMENT — Collectes + Personnel (nom résolu)
+     ═══════════════════════════════════════════════════════════════ */
   const loadCollectes = useCallback(async () => {
     try {
       setLoading(true);
       const data = await fetchCollectes();
+      const collectesArray = Array.isArray(data) ? data : [];
       
-      const personnelIds = data
-        .map(c => c.personnelId)
-        .filter(id => id != null);
+      // ✅ Récupérer tous les IDs du personnel uniques
+      const personnelIds = [...new Set(
+        collectesArray
+          .map(c => c.personnelId)
+          .filter(id => id != null)
+      )];
       
+      // ✅ Charger les noms du personnel en une seule fois
       if (personnelIds.length > 0) {
         setLoadingPersonnels(true);
-        const personnels = await fetchPersonnelsByIds(personnelIds);
-        setPersonnelsCache(personnels);
-        setLoadingPersonnels(false);
+        try {
+          const personnels = await fetchPersonnelsByIds(personnelIds);
+          
+          // ✅ Normaliser le cache : { id: "Nom Prénom" }
+          const normalizedCache = {};
+          personnels.forEach(p => {
+            const id = p.id || p.Id || p.personnelId;
+            const name = extractPersonnelName(p);
+            if (id != null) {
+              normalizedCache[id] = name || `ID: ${id}`;
+            }
+          });
+          
+          setPersonnelsCache(normalizedCache);
+        } catch (err) {
+          console.error("Erreur chargement personnels:", err);
+        } finally {
+          setLoadingPersonnels(false);
+        }
       }
       
-      setCollectes(Array.isArray(data) ? data : []);
+      setCollectes(collectesArray);
     } catch (error) {
       console.error("Erreur chargement collectes:", error);
       setCollectes([]);
@@ -388,17 +388,27 @@ export default function HistoriqueCollecte() {
     }
   }, []);
 
+  /* ═══════════════════════════════════════════════════════════════
+     CHARGEMENT PERSONNEL INDIVIDUEL
+     ═══════════════════════════════════════════════════════════════ */
   const loadPersonnel = useCallback(async (personnelId) => {
     if (!personnelId) return null;
     if (personnelsCache[personnelId]) return personnelsCache[personnelId];
     
     try {
-      const personnel = await fetchPersonnelById(personnelId);
-      setPersonnelsCache(prev => ({ ...prev, [personnelId]: personnel }));
-      return personnel;
+      const response = await fetch(`${API_URL}/api/sqlserver/personnel/${personnelId}`);
+      if (!response.ok) throw new Error("Personnel introuvable");
+      
+      const personnel = await response.json();
+      const name = extractPersonnelName(personnel) || `ID: ${personnelId}`;
+      
+      setPersonnelsCache(prev => ({ ...prev, [personnelId]: name }));
+      return name;
     } catch (error) {
       console.error("Erreur chargement personnel:", error);
-      return null;
+      const fallback = `ID: ${personnelId}`;
+      setPersonnelsCache(prev => ({ ...prev, [personnelId]: fallback }));
+      return fallback;
     }
   }, [personnelsCache]);
 
@@ -410,12 +420,19 @@ export default function HistoriqueCollecte() {
     setCurrentPage(1);
   }, [filters]);
 
+  /* ═══════════════════════════════════════════════════════════════
+     GET PERSONNEL NAME — Résolution depuis le cache
+     ═══════════════════════════════════════════════════════════════ */
   const getPersonnelName = useCallback((personnelId) => {
     if (!personnelId) return "N/A";
-    const personnel = personnelsCache[personnelId];
-    if (!personnel) return `ID: ${personnelId}`;
-    return personnel.nomPrenom || personnel.nom || personnel.matricule || `ID: ${personnelId}`;
-  }, [personnelsCache]);
+    
+    const cached = personnelsCache[personnelId];
+    if (cached) return cached;
+    
+    // Fallback : déclencher le chargement async (silencieux)
+    loadPersonnel(personnelId);
+    return `ID: ${personnelId}`;
+  }, [personnelsCache, loadPersonnel]);
 
   const getServiceName = useCallback((serviceId) => {
     if (!serviceId) return t('historique_collecte.unassigned');
@@ -447,7 +464,6 @@ export default function HistoriqueCollecte() {
     }
   }, [personnelsCache, loadPersonnel]);
 
-  // ✅ Correction: utiliser t directement, pas de useTranslation à l'intérieur
   const getTypeBadge = useCallback((type) => {
     const typeConfig = {
       BLANC: { variant: "info", emoji: "⬜", label: t('historique_collecte.types.BLANC') },
@@ -510,62 +526,64 @@ export default function HistoriqueCollecte() {
 
   const isLoading = loading || loadingPersonnels;
 
+  /* ═══════════════════════════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════════════════════════ */
   return (
     <div className="space-y-6">
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-extrabold flex items-center gap-2 text-slate-800">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="28" 
-              height="28" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              className="text-[#0794a4]"
+      {/* ═══════════════════════════════════════════════════════════
+          HEADER PREMIUM — Identique aux autres écrans
+          ═══════════════════════════════════════════════════════════ */}
+      <div style={{ marginBottom: "32px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "16px",
+            marginBottom: "8px",
+          }}
+        >
+          <div
+            style={{
+              width: "52px",
+              height: "52px",
+              borderRadius: "16px",
+              background: "linear-gradient(135deg, #f472b6, #ec4899)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              boxShadow: "0 4px 16px rgba(244, 114, 182, 0.25)",
+            }}
+          >
+            <History className="w-6 h-6 stroke-[2.5]" />
+          </div>
+          <div>
+            <h1
+              style={{
+                fontSize: "28px",
+                fontWeight: 800,
+                color: "#0f172a",
+                margin: 0,
+              }}
             >
-              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-              <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-              <line x1="8" y1="11" x2="16" y2="11" />
-              <line x1="8" y1="15" x2="16" y2="15" />
-              <line x1="8" y1="19" x2="13" y2="19" />
-            </svg>
-            {t('historique_collecte.title')}
-          </h1>
-          <p className="text-slate-500 text-sm">
-            {filteredCollectes.length} {t('historique_collecte.collections_found')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex border border-slate-200 rounded-lg overflow-hidden">
-            <button
-              onClick={() => setViewMode("table")}
-              className={`p-1.5 px-3 text-sm font-medium transition-colors ${
-                viewMode === "table" 
-                  ? "bg-[#0794a4] text-white" 
-                  : "bg-white text-slate-500 hover:bg-slate-50"
-              }`}
+              {t('historique_collecte.title')}
+            </h1>
+            <p
+              style={{
+                fontSize: "14px",
+                color: "#64748b",
+                margin: "2px 0 0 0",
+              }}
             >
-              <List className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("cards")}
-              className={`p-1.5 px-3 text-sm font-medium transition-colors ${
-                viewMode === "cards" 
-                  ? "bg-[#0794a4] text-white" 
-                  : "bg-white text-slate-500 hover:bg-slate-50"
-              }`}
-            >
-              <Grid className="w-4 h-4" />
-            </button>
+              {filteredCollectes.length} {t('historique_collecte.collections_found')}
+            </p>
           </div>
         </div>
       </div>
 
+      {/* ═══════ TOOLBAR ═══════ */}
       <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
         <button
           onClick={loadCollectes}
@@ -588,12 +606,37 @@ export default function HistoriqueCollecte() {
         >
           <Filter className="w-4 h-4" /> {t('common.reset')}
         </button>
+
+        <div className="w-px h-8 bg-slate-200 mx-1" />
+
         <div className="flex-1"></div>
-        <div className="text-sm text-slate-400">
-          <span className="font-medium text-slate-600">{filteredCollectes.length}</span> {t('historique_collecte.collections')}
+
+        {/* Toggle vue */}
+        <div className="flex border border-slate-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setViewMode("table")}
+            className={`p-1.5 px-3 text-sm font-medium transition-colors ${
+              viewMode === "table" 
+                ? "bg-[#0794a4] text-white" 
+                : "bg-white text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            <List className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode("cards")}
+            className={`p-1.5 px-3 text-sm font-medium transition-colors ${
+              viewMode === "cards" 
+                ? "bg-[#0794a4] text-white" 
+                : "bg-white text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            <Grid className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
+      {/* ═══════ FILTRES ═══════ */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="md:col-span-2">
           <div className="relative">
@@ -639,6 +682,7 @@ export default function HistoriqueCollecte() {
         </div>
       </div>
 
+      {/* ═══════ LISTE ═══════ */}
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
@@ -664,6 +708,9 @@ export default function HistoriqueCollecte() {
               isExpanded={expandedId === collecte.id}
               onExpand={handleToggleExpand}
               onViewDetails={handleViewDetails}
+              getPersonnelName={getPersonnelName}
+              getTypeBadge={getTypeBadge}
+              getEtatBadge={getEtatBadge}
             />
           ))}
         </div>
@@ -757,6 +804,7 @@ export default function HistoriqueCollecte() {
                                 details={details}
                                 collecte={collecte}
                                 onViewDetails={() => handleViewDetails(collecte)}
+                                getPersonnelName={getPersonnelName}
                               />
                             </td>
                           </tr>
@@ -771,6 +819,7 @@ export default function HistoriqueCollecte() {
         </Card>
       )}
 
+      {/* ═══════ PAGINATION ═══════ */}
       {totalPages > 1 && !isLoading && (
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <div className="text-sm text-slate-500">
@@ -826,6 +875,7 @@ export default function HistoriqueCollecte() {
         </div>
       )}
 
+      {/* ═══════ MODAL DÉTAILS ═══════ */}
       <Modal
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
@@ -874,6 +924,7 @@ export default function HistoriqueCollecte() {
                 details={selectedCollecte.resume}
                 collecte={selectedCollecte}
                 onViewDetails={() => {}}
+                getPersonnelName={getPersonnelName}
               />
             </div>
 

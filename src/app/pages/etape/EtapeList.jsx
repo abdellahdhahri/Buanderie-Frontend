@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
+
 import { useTranslation } from "react-i18next";
 import {
   Plus,
@@ -28,6 +30,7 @@ import { Modal } from "../../components/ui/modal";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEtape, EtapeProvider } from "../../contextes/EtapeContext";
+import BadgeModal from "../../components/Modal/BadgeModal";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -115,6 +118,8 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
   const [selectedPersonnel, setSelectedPersonnel] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [badgeModalOpen, setBadgeModalOpen] = useState(false);
+  const [badgeEmployee, setBadgeEmployee] = useState(null);
   const searchTimeoutRef = useRef(null);
 
   // Recherche de personnels avec debounce
@@ -359,13 +364,15 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => {
-                            Swal.fire({
-                              icon: "info",
-                              title: t('etapes.print_label'),
-                              text: `${t('etapes.print_label_text')} ${p.nom} ${p.prenom || ''}`,
-                              timer: 1500,
-                              showConfirmButton: false
+                            setBadgeEmployee({
+                              nom: p.nom,
+                              prenom: p.prenom || '',
+                              matricule: p.matricule || p.codeBarre,
+                              fonction: p.fonction || 'Agent Buanderie',
+                              service: etape?.nom || etape?.zone || '',
+                              photo: p.photo || null
                             });
+                            setBadgeModalOpen(true);
                           }}
                           className="p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
                           title={t('etapes.print_label')}
@@ -492,6 +499,12 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
           </div>
         </div>
       </Modal>
+
+      <BadgeModal
+        isOpen={badgeModalOpen}
+        onClose={() => setBadgeModalOpen(false)}
+        employee={badgeEmployee}
+      />
     </motion.div>
   );
 }

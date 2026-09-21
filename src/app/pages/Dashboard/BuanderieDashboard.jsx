@@ -11,19 +11,18 @@ import { FaBoxes, FaHandHolding, FaReceipt, FaSoap, FaWind, FaBoxOpen, FaWarehou
 import { VscFilterFilled } from "react-icons/vsc";
 import { NAV_ITEMS } from '../../components/layout/sidebar';
 import SpotlightCard from '../../components/ui/SpotlightCard';
+import LaundryBackground from './LaundryBackground'; 
 import React from "react";
 
-// ─── Mapping des IDs NAV_ITEMS vers les clés de traduction ──────────────
 const SECTION_KEYS = {
-  1: "rh",           // Tableau de Bord
-  2: "params",       // Parametrage
-  3: "suivi",        // Suivi
-  4: "presences",    // Zone Sale
-  5: "paie",         // Zone Propre
-  6: "conges",       // Reporting
+  1: "rh",           
+  2: "params",       
+  3: "suivi",        
+  4: "presences",    
+  5: "paie",         
+  6: "conges",       
 };
 
-// ─── Mapping des IDs enfants vers les clés de traduction ────────────────
 const CHILD_KEYS = {
   "Bacs": "Bacs",
   "Étapes": "Étapes",
@@ -98,6 +97,9 @@ function DashboardBuanderieInner() {
 
   return (
     <div className={`dashboard-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+      {/* ─── Fond animé (position: fixed, derrière le contenu) ─────────────── */}
+      <LaundryBackground />
+
       <div className="dashboard-overlay-content">
         {/* ─── En-tête ──────────────────────────────────────────────────────── */}
         <div className="dashboard-header">

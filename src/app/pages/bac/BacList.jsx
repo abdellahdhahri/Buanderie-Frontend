@@ -28,11 +28,24 @@ import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import BarcodeLabel from "../../components/BarcodeLabel";
+import { useBac } from "../../contextes/BacContext";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export default function BacList() {
   const { t } = useTranslation();
 
-  const [bacs, setBacs] = useState([]);
+  
+  const {
+    bacs,
+    loading: isBacsLoading,
+    fetchBacs,
+    addBac,
+    updateBac,
+    deleteBac,
+    getBacById,
+  } = useBac();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBac, setSelectedBac] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,30 +72,17 @@ export default function BacList() {
   });
 
   useEffect(() => {
-    fetchBacs();
-  }, []);
-
-  const fetchBacs = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("http://localhost:8082/api/bacs");
-      if (response.ok) {
-        const data = await response.json();
-        setBacs(data);
-        await fetchAllBacLingesCount(data);
-      }
-    } catch (err) {
-      console.error("Erreur réseau:", err);
-    } finally {
-      setIsLoading(false);
+  
+    if (bacs && bacs.length > 0) {
+      fetchAllBacLingesCount(bacs);
     }
-  };
+  }, [bacs]);
 
   const fetchAllBacLingesCount = async (bacsData) => {
     const counts = {};
     for (const bac of bacsData) {
       try {
-        const response = await fetch(`http://localhost:8082/api/bacs/bacs/${bac.id}/linges`);
+        const response = await fetch(`${API_URL}/api/bacs/bacs/${bac.id}/linges`);
         if (response.ok) {
           const data = await response.json();
           const linges = Array.isArray(data) ? data : data.content || [];
@@ -98,25 +98,64 @@ export default function BacList() {
     setBacLingesCount(counts);
   };
 
-  const fetchBacLinges = async (bacId) => {
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    await fetchBacs();
+    setIsLoading(false);
+  };
+
+  const fetchBacLinges = async (bac) => {
     setIsLingesLoading(true);
     try {
-      const response = await fetch(`http://localhost:8082/api/bacs/bacs/${bacId}/linges`);
-      if (response.ok) {
-        const data = await response.json();
-        const linges = Array.isArray(data) ? data : data.content || [];
-        setBacLinges(linges);
-        setBacLingesCount(prev => ({ ...prev, [bacId]: linges.length }));
-        return linges;
+      const isSacInfecte = bac.numeroSac?.toUpperCase().startsWith("SAC")
+        || bac.code?.toUpperCase().startsWith("SAC")
+        || bac.typebac === "INFECTE";
+
+      if (isSacInfecte) {
+        const numeroSac = bac.numeroSac || bac.code;
+        const response = await fetch(
+          `${API_URL}/api/sacs-infectes/detail?numeroSac=${encodeURIComponent(numeroSac)}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const items = (data.items || []).map((item, index) => ({
+            id: `sac-item-${data.id}-${index}`,
+            codeBarre: `${data.numeroSac}-${item.categorie}`,
+            categorie: item.categorie,
+            quantiteDeclaree: item.quantiteDeclaree,
+            quantiteComptee: item.quantiteComptee,
+            ecart: item.ecart,
+            isSacItem: true,
+            etat: data.etat || "DECLARE",
+            poids: null,
+            rfidTag: null,
+            sacNumero: data.numeroSac,
+            agentCollecteNom: data.agentCollecteNom,
+          }));
+
+          setBacLinges(items);
+          setBacLingesCount(prev => ({ ...prev, [bac.id]: items.length }));
+          return items;
+        }
       } else {
-        setBacLinges([]);
-        setBacLingesCount(prev => ({ ...prev, [bacId]: 0 }));
-        return [];
+        const response = await fetch(`${API_URL}/api/bacs/bacs/${bac.id}/linges`);
+        if (response.ok) {
+          const data = await response.json();
+          const linges = Array.isArray(data) ? data : data.content || [];
+          setBacLinges(linges);
+          setBacLingesCount(prev => ({ ...prev, [bac.id]: linges.length }));
+          return linges;
+        }
       }
-    } catch (err) {
-      console.error("Erreur chargement linges:", err);
+
       setBacLinges([]);
-      setBacLingesCount(prev => ({ ...prev, [bacId]: 0 }));
+      setBacLingesCount(prev => ({ ...prev, [bac.id]: 0 }));
+      return [];
+    } catch (err) {
+      console.error("Erreur chargement linges/items:", err);
+      setBacLinges([]);
+      setBacLingesCount(prev => ({ ...prev, [bac.id]: 0 }));
       return [];
     } finally {
       setIsLingesLoading(false);
@@ -136,7 +175,7 @@ export default function BacList() {
     setSelectedBacId(bac.id);
     setSelectedBac(bac);
     setSelectedId(null);
-    await fetchBacLinges(bac.id);
+    await fetchBacLinges(bac);
     setPanelOpen(true);
   };
 
@@ -188,6 +227,7 @@ export default function BacList() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
+  // ─── CRUD via contexte ──────────────────────────────────────────────────
   const handleOpenCreateModal = () => {
     setSelectedBac(null);
     setNewRec({
@@ -219,6 +259,7 @@ export default function BacList() {
     setIsModalOpen(true);
   };
 
+  // ✅ Sauvegarde via le contexte (addBac / updateBac)
   const handleSave = async (e) => {
     e.preventDefault();
 
@@ -245,58 +286,46 @@ export default function BacList() {
         observations: newRec.observation || "initialisation dans le systeme",
       };
 
-      const url = selectedBac 
-        ? `http://localhost:8082/api/bacs/${selectedBac.id}`
-        : "http://localhost:8082/api/bacs";
-      
-      const method = selectedBac ? "PUT" : "POST";
+      let result;
 
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMsg = errorText;
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMsg = errorJson.message || errorText;
-        } catch {}
-        throw new Error(errorMsg);
-      }
-
-      const data = await response.json();
-      
       if (selectedBac) {
-        setBacs((prev) => prev.map((r) => (r.id === data.id ? data : r)));
-        Swal.fire({
-          title: "✅",
-          text: t('bacs.update_success'),
-          icon: "success",
-          timer: 1500,
-          showConfirmButton: false,
-        });
+        // ✅ Mise à jour via contexte
+        result = await updateBac(selectedBac.id, payload);
+        if (result.success) {
+          Swal.fire({
+            title: "✅",
+            text: t('bacs.update_success'),
+            icon: "success",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+        } else {
+          throw new Error(result.error);
+        }
       } else {
-        setBacs((prev) => [data, ...prev]);
-        Swal.fire({
-          title: "✅",
-          text: t('bacs.create_success'),
-          icon: "success",
-          timer: 1500,
-          showConfirmButton: false,
-        });
+        // ✅ Création via contexte
+        result = await addBac(payload);
+        if (result.success) {
+          Swal.fire({
+            title: "✅",
+            text: t('bacs.create_success'),
+            icon: "success",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+        } else {
+          throw new Error(result.error);
+        }
       }
 
       setIsModalOpen(false);
-      fetchBacs();
-
+      // ✅ Le contexte a déjà mis à jour la liste, mais on rafraîchit les compteurs
+      await fetchBacs();
     } catch (err) {
       console.error("❌ Erreur:", err);
       Swal.fire({
         title: "❌",
-        text: t('bacs.error_text'),
+        text: err.message || t('bacs.error_text'),
         icon: "error",
       });
     } finally {
@@ -304,6 +333,7 @@ export default function BacList() {
     }
   };
 
+  // ✅ Suppression via le contexte (deleteBac)
   const deleteRec = async (id) => {
     const result = await Swal.fire({
       title: t('bacs.delete_confirm'),
@@ -318,11 +348,9 @@ export default function BacList() {
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`http://localhost:8082/api/bacs/${id}`, {
-          method: "DELETE",
-        });
-        if (response.ok) {
-          setBacs((prev) => prev.filter((r) => r.id !== id));
+        const res = await deleteBac(id);
+        if (res.success) {
+          // ✅ Nettoyer les compteurs locaux
           setBacLingesCount(prev => {
             const newCount = { ...prev };
             delete newCount[id];
@@ -339,8 +367,7 @@ export default function BacList() {
             showConfirmButton: false,
           });
         } else {
-          const error = await response.text();
-          throw new Error(error);
+          throw new Error(res.error);
         }
       } catch (err) {
         console.error("Erreur suppression:", err);
@@ -358,6 +385,7 @@ export default function BacList() {
     setShowDetailModal(true);
   };
 
+  // ─── Filtrage local (via contexte) ──────────────────────────────────────
   const filteredBacs = bacs.filter((r) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -369,9 +397,9 @@ export default function BacList() {
 
   return (
     <div className="relative flex h-full gap-4">
-      <motion.div 
+      <motion.div
         className="transition-all duration-500 ease-in-out"
-        animate={{ 
+        animate={{
           width: panelOpen ? '60%' : '100%',
           transition: { duration: 0.4, ease: "easeInOut" }
         }}
@@ -395,15 +423,15 @@ export default function BacList() {
                 color: "white",
                 boxShadow: "0 4px 16px rgba(245, 158, 11, 0.25)"
               }}>
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  width="24" 
-                  height="24" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
                 >
                   <path d="M3 6h18" />
@@ -522,7 +550,7 @@ export default function BacList() {
             </button>
 
             <button
-              onClick={fetchBacs}
+              onClick={handleRefresh}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> {t('bacs.refresh')}
@@ -559,7 +587,7 @@ export default function BacList() {
                     </tr>
                   </thead>
                   <tbody>
-                    {isLoading ? (
+                    {isBacsLoading ? (
                       <tr>
                         <td colSpan={6} className="text-center py-8 text-muted-foreground">
                           <div className="flex items-center justify-center gap-2">
@@ -661,22 +689,22 @@ export default function BacList() {
         {panelOpen && (
           <motion.div
             initial={{ opacity: 0, x: 100, scale: 0.95 }}
-            animate={{ 
-              opacity: 1, 
-              x: 0, 
+            animate={{
+              opacity: 1,
+              x: 0,
               scale: 1,
-              transition: { 
+              transition: {
                 type: "spring",
                 stiffness: 300,
                 damping: 30,
                 duration: 0.4
               }
             }}
-            exit={{ 
-              opacity: 0, 
-              x: 100, 
+            exit={{
+              opacity: 0,
+              x: 100,
               scale: 0.95,
-              transition: { 
+              transition: {
                 duration: 0.3,
                 ease: "easeInOut"
               }
@@ -730,18 +758,18 @@ export default function BacList() {
                     <motion.div
                       key={linge.id || index}
                       initial={{ opacity: 0, y: 20 }}
-                      animate={{ 
-                        opacity: 1, 
+                      animate={{
+                        opacity: 1,
                         y: 0,
-                        transition: { 
+                        transition: {
                           delay: index * 0.05,
                           duration: 0.3
                         }
                       }}
                       onClick={() => handleRowClick(linge.id)}
                       className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                        selectedId === linge.id 
-                          ? 'bg-blue-50 border-blue-300 shadow-md' 
+                        selectedId === linge.id
+                          ? 'bg-blue-50 border-blue-300 shadow-md'
                           : 'bg-slate-50 border-slate-100 hover:border-blue-200 hover:shadow-md'
                       }`}
                     >

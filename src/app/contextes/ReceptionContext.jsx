@@ -106,124 +106,169 @@ export function ReceptionProvider({ children }) {
     }
   }, []);
 
-  // ─── Scan Réception ──────────────────────────────────────────────────────
+
+
   const scanReception = useCallback(async (code, agentParam) => {
-    const agentUtilise = agentParam || agent;
-    
-    setLoading(true);
-    try {
-      const codeUpper = code.toUpperCase().trim();
-      const estInfecte = codeUpper.startsWith("SAC");
+  const agentUtilise = agentParam || agent;
+  
+  setLoading(true);
+  try {
+    const codeUpper = code.toUpperCase().trim();
+    const estInfecte = codeUpper.startsWith("SAC");
 
-      if (!estInfecte) {
-        // Récupérer le bac
-        const bac = await getBacByCode(codeUpper);
-        if (!bac) {
-          Swal.fire({ 
-            title: "Bac introuvable", 
-            text: `[${codeUpper}]`, 
-            icon: "error" 
-          });
-          return;
-        }
-
-        // Récupérer les linges AVANT réception
-        const linges = await fetchLingesDuBac(bac.id);
-
-        setBacEnCours({ 
-          id: bac.id, 
-          code: codeUpper,
-          ...bac 
+    if (!estInfecte) {
+      // Récupérer le bac
+      const bac = await getBacByCode(codeUpper);
+      if (!bac) {
+        Swal.fire({ 
+          title: "Bac introuvable", 
+          text: `[${codeUpper}]`, 
+          icon: "error" 
         });
-
-        const codeBarre = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
-
-        const res = await fetch(
-  `${API_URL}/api/reception?matricule=${encodeURIComponent(codeBarre)}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              codesBac: [codeUpper], 
-              numerosSacsInfectes: [] 
-            })
-          }
-        );
-        
-        if (!res.ok) {
-          const txt = await res.text();
-          let msg = txt;
-          try { msg = JSON.parse(txt).message || txt; } catch {}
-          throw new Error(msg);
-        }
-        
-        const data = await res.json();
-        const bacRecu = data.bacsRecus?.[0];
-        
-        if (bacRecu && isMounted.current) {
-          setBacsRecus(prev => [...prev, bacRecu]);
-          setDernierRecu({ 
-            type: "BAC", 
-            code: codeUpper, 
-            data: bacRecu 
-          });
-          
-          Swal.fire({ 
-            title: "✅ Bac reçu", 
-            html: `<b>${codeUpper}</b><br/>${linges.length} linge(s) réceptionné(s)`, 
-            icon: "success", 
-            timer: 1500, 
-            showConfirmButton: false 
-          });
-        }
-      } else {
-        const codeBarre = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
-        
-        const res = await fetch(
-          `${API_URL}/api/sacs-infectes/recevoir?numeroSac=${codeUpper}&code=${encodeURIComponent(codeBarre)}`,
-          { method: "PUT" }
-        );
-        
-        if (!res.ok) {
-          const txt = await res.text();
-          let msg = txt;
-          try { msg = JSON.parse(txt).message || txt; } catch {}
-          throw new Error(msg);
-        }
-        
-        const sac = await res.json();
-        if (isMounted.current) {
-          setSacsInfectes(prev => [...prev, sac]);
-          setDernierRecu({ 
-            type: "SAC_INFECTE", 
-            code: codeUpper, 
-            data: sac 
-          });
-          
-          let details = `<b>${codeUpper}</b><br/>`;
-          if (sac.quantiteDeclaree) details += `${sac.quantiteDeclaree} articles`;
-          if (sac.agentCollecteNom) details += ` • ${sac.agentCollecteNom}`;
-          
-          Swal.fire({ 
-            title: "🔴 Sac infecté reçu", 
-            html: details, 
-            icon: "warning", 
-            timer: 2500, 
-            showConfirmButton: false 
-          });
-        }
+        return;
       }
-    } catch (err) {
-      console.error("❌ Erreur scanReception:", err);
-      Swal.fire({ 
-        title: "Erreur", 
-        text: err.message, 
-        icon: "error" 
+
+      const linges = await fetchLingesDuBac(bac.id);
+
+      setBacEnCours({ 
+        id: bac.id, 
+        code: codeUpper,
+        ...bac 
       });
-    } finally {
-      if (isMounted.current) setLoading(false);
+
+      const codeBarre = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
+
+      const res = await fetch(
+        `${API_URL}/api/reception?matricule=${encodeURIComponent(codeBarre)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            codesBac: [codeUpper], 
+            numerosSacsInfectes: [] 
+          })
+        }
+      );
+      
+      if (!res.ok) {
+        const txt = await res.text();
+        let msg = txt;
+        try { msg = JSON.parse(txt).message || txt; } catch {}
+        throw new Error(msg);
+      }
+      
+      const data = await res.json();
+      const bacRecu = data.bacsRecus?.[0];
+      
+      if (bacRecu && isMounted.current) {
+        setBacsRecus(prev => [...prev, bacRecu]);
+        setDernierRecu({ 
+          type: "BAC", 
+          code: codeUpper, 
+          data: bacRecu 
+        });
+        
+        Swal.fire({ 
+          title: "✅ Bac reçu", 
+          html: `<b>${codeUpper}</b><br/>${linges.length} linge(s) réceptionné(s)`, 
+          icon: "success", 
+          timer: 1500, 
+          showConfirmButton: false 
+        });
+      }
+    } else {
+
+      const matricule = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
+      
+      const res = await fetch(
+        `${API_URL}/api/sacs-infectes/recevoir?numeroSac=${encodeURIComponent(codeUpper)}&matricule=${encodeURIComponent(matricule)}`,
+        { 
+          method: "PUT",
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+      
+      if (!res.ok) {
+        const txt = await res.text();
+        let msg = txt;
+        try { msg = JSON.parse(txt).message || txt; } catch {}
+        throw new Error(msg);
+      }
+      
+      const sac = await res.json();
+      
+      if (isMounted.current) {
+        setSacsInfectes(prev => [...prev, sac]);
+        setDernierRecu({ 
+          type: "SAC_INFECTE", 
+          code: codeUpper, 
+          data: sac 
+        });
+        
+        let details = `<b>${codeUpper}</b><br/>`;
+        if (sac.quantiteDeclaree) details += `${sac.quantiteDeclaree} articles`;
+        if (sac.agentCollecteNom) details += ` • ${sac.agentCollecteNom}`;
+        
+        Swal.fire({ 
+          title: "🔴 Sac infecté reçu", 
+          html: details, 
+          icon: "warning", 
+          timer: 2500, 
+          showConfirmButton: false 
+        });
+      }
     }
-  }, [agent, getBacByCode, fetchLingesDuBac]);
+  } catch (err) {
+    console.error("❌ Erreur scanReception:", err);
+    Swal.fire({ 
+      title: "Erreur", 
+      text: err.message, 
+      icon: "error" 
+    });
+  } finally {
+    if (isMounted.current) setLoading(false);
+  }
+}, [agent, getBacByCode, fetchLingesDuBac]);
+
+
+const fetchItemsDuSac = useCallback(async (numeroSac) => {
+  if (!numeroSac) return [];
+  setLoadingLinges(true);
+  try {
+    const res = await fetch(`${API_URL}/api/sacs-infectes/detail?numeroSac=${encodeURIComponent(numeroSac)}`);
+    if (res.ok) {
+      const data = await res.json();
+      // Transformer les items pour les afficher comme des linges
+      const items = data.items || [];
+      const formattedItems = items.map((item, index) => ({
+        id: `sac-item-${index}`,
+        codeBarre: `${data.numeroSac}-${item.categorie}`,
+        categorie: item.categorie,
+        quantiteDeclaree: item.quantiteDeclaree,
+        quantiteComptee: item.quantiteComptee,
+        ecart: item.ecart,
+        isSacItem: true,
+        // Ajouter des infos supplémentaires pour l'affichage
+        rfidTag: null,
+        etat: "DECLARE",
+        poids: null,
+        sacNumero: data.numeroSac,
+      }));
+      if (isMounted.current) {
+        setLingesAffichés(formattedItems);
+        setAfficherLinges(true);
+      }
+      return formattedItems;
+    }
+    return [];
+  } catch (err) {
+    console.error("❌ Erreur fetchItemsDuSac:", err);
+    return [];
+  } finally {
+    if (isMounted.current) setLoadingLinges(false);
+  }
+}, []);
+
 
   // ─── Passage RFID ──────────────────────────────────────────────────────
   const passagePortique = useCallback(async (codeBac, tags, agentParam) => {
@@ -359,7 +404,7 @@ export function ReceptionProvider({ children }) {
       afficherLinges,
       loadingLinges,
       rfidResultat,
-      loading,
+      loading,fetchItemsDuSac,
       scanAgent,
       deconnecterAgent,
       fetchLingesDuBac,

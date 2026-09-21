@@ -674,16 +674,20 @@ export default function DistributionChambre() {
       return;
     }
 
-    if (etape === "DISTRIBUER") {
-      try {
-        const agentTrouve = await fetchAgentByCode(code.trim());
-        if (agentTrouve) {
-          await cloturerDistribution();
-          return;
-        }
-      } catch (e) {}
+    // if (etape === "DISTRIBUER") {
+    //   try {
+    //     const agentTrouve = await fetchAgentByCode(code.trim());
+    //     if (agentTrouve) {
+    //       await cloturerDistribution();
+    //       return;
+    //     }
+    //   } catch (e) {}
       
-      await handleScanLinge(code);
+    //   await handleScanLinge(code);
+    // }
+     if (etape === "DISTRIBUER") {
+         await handleScanLinge(code.trim());
+
     }
   }, [etape, loading, handleChambre, handleScanLinge, cloturerDistribution]);
 

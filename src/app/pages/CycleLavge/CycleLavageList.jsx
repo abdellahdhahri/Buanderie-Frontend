@@ -155,8 +155,7 @@ export default function CycleLavageList() {
           cycle.numeroCycle?.toLowerCase().includes(term) ||
           cycle.machine?.code?.toLowerCase().includes(term) ||
           cycle.machine?.reference?.toLowerCase().includes(term) ||
-          cycle.programmeLavage?.nom?.toLowerCase().includes(term) ||
-          cycle.agent?.nom?.toLowerCase().includes(term)
+          cycle.programmeLavage?.nom?.toLowerCase().includes(term)
       );
     }
 
@@ -165,7 +164,7 @@ export default function CycleLavageList() {
       const from = new Date(filters.dateFrom);
       from.setHours(0, 0, 0, 0);
       result = result.filter(
-        (cycle) => cycle.dateCreation && new Date(cycle.dateCreation) >= from
+        (cycle) => cycle.dateDebut && new Date(cycle.dateDebut) >= from
       );
     }
 
@@ -174,7 +173,7 @@ export default function CycleLavageList() {
       const to = new Date(filters.dateTo);
       to.setHours(23, 59, 59, 999);
       result = result.filter(
-        (cycle) => cycle.dateCreation && new Date(cycle.dateCreation) <= to
+        (cycle) => cycle.dateDebut && new Date(cycle.dateDebut) <= to
       );
     }
 
@@ -197,19 +196,68 @@ export default function CycleLavageList() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = filteredCycles.slice(startIndex, startIndex + itemsPerPage);
 
-  // ─── Récupération des linges d'un cycle ──────────────────────────────────
+  // ─── Récupération des linges d'un cycle (CORRIGÉE) ──────────────────────
   const fetchCycleLinges = async (cycleId) => {
     setIsLingesLoading(true);
+    setCycleLinges([]);
+    
     try {
-      const response = await fetch(`${API_URL}/api/lavage/cycles/${cycleId}/linges`);
+      console.log(`🔍 Récupération des linges pour le cycle ${cycleId}...`);
+      
+      // Tentative 1: Endpoint standard
+      let response = await fetch(`${API_URL}/api/lavage/cycles/${cycleId}/linges`);
+      
+      if (!response.ok) {
+        // Tentative 2: Endpoint alternatif
+        response = await fetch(`${API_URL}/api/cycles/${cycleId}/linges`);
+      }
+      
       if (response.ok) {
         const data = await response.json();
-        setCycleLinges(data);
+        console.log("📦 Données reçues:", data);
+        
+        let linges = [];
+        
+        if (Array.isArray(data)) {
+          linges = data;
+        } else if (data.content && Array.isArray(data.content)) {
+          linges = data.content;
+        } else if (data.items && Array.isArray(data.items)) {
+          linges = data.items;
+        } else if (data._embedded && data._embedded.linges) {
+          linges = data._embedded.linges;
+        }
+        
+        if (linges.length > 0) {
+          console.log(`✅ ${linges.length} linges trouvés`);
+          setCycleLinges(linges);
+        } else {
+          console.log("ℹ️ Aucun linge trouvé pour ce cycle");
+          setCycleLinges([]);
+        }
       } else {
-        setCycleLinges([]);
+        console.warn("⚠️ Aucun endpoint trouvé pour les linges du cycle");
+        
+        // Si nous avons déjà les données du cycle, essayer d'extraire les informations des items
+        if (selectedCycle && selectedCycle.items && selectedCycle.items.length > 0) {
+          console.log("📋 Extraction des items du cycle...");
+          const linges = selectedCycle.items.map((item, index) => ({
+            id: item.id || index,
+            lingeId: item.id || index,
+            codeBarre: item.codeBarre || `ITEM-${item.id || index}`,
+            categorie: item.categorie || selectedCycle.programmeLavage?.categories?.[0] || "Non catégorisé",
+            poids: item.poidsCharge || 0,
+            etat: item.etat || "COLLECTE",
+            rfidTag: item.rfidTag || null,
+            lotId: item.sourceId || null,
+          }));
+          setCycleLinges(linges);
+        } else {
+          setCycleLinges([]);
+        }
       }
     } catch (err) {
-      console.error("Erreur chargement linges:", err);
+      console.error("❌ Erreur chargement linges:", err);
       setCycleLinges([]);
     } finally {
       setIsLingesLoading(false);
@@ -226,10 +274,30 @@ export default function CycleLavageList() {
       }, 300);
       return;
     }
+    
     setSelectedCycleId(cycle.id);
     setSelectedCycle(cycle);
-    await fetchCycleLinges(cycle.id);
-    setPanelOpen(true);
+    
+    // Vérifier si le cycle contient déjà des items
+    if (cycle.items && cycle.items.length > 0) {
+      console.log(`📋 ${cycle.items.length} items trouvés dans le cycle`);
+      const linges = cycle.items.map((item, index) => ({
+        id: item.id || index,
+        lingeId: item.id || index,
+        codeBarre: item.codeBarre || `ITEM-${item.id || index}`,
+        categorie: item.categorie || cycle.programmeLavage?.categories?.[0] || "Non catégorisé",
+        poids: item.poidsCharge || 0,
+        etat: item.etat || "COLLECTE",
+        rfidTag: item.rfidTag || null,
+        lotId: item.sourceId || null,
+      }));
+      setCycleLinges(linges);
+      setPanelOpen(true);
+    } else {
+      // Si pas d'items, faire l'appel API
+      await fetchCycleLinges(cycle.id);
+      setPanelOpen(true);
+    }
   };
 
   const handleClosePanel = () => {
@@ -259,11 +327,11 @@ export default function CycleLavageList() {
         <div style="font-size:9pt; margin-bottom:3mm; border:1px solid #ddd; padding:3mm; border-radius:4px;">
           <div style="display:flex; justify-content:space-between; padding:2px 0;">
             <span><strong>${t('cycles.print_date')}:</strong></span>
-            <span>${cycle.dateCreation ? new Date(cycle.dateCreation).toLocaleDateString('fr-FR') : 'N/A'}</span>
+            <span>${cycle.dateDebut ? new Date(cycle.dateDebut).toLocaleDateString('fr-FR') : 'N/A'}</span>
           </div>
           <div style="display:flex; justify-content:space-between; padding:2px 0;">
             <span><strong>${t('cycles.print_time')}:</strong></span>
-            <span>${cycle.dateCreation ? new Date(cycle.dateCreation).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 'N/A'}</span>
+            <span>${cycle.dateDebut ? new Date(cycle.dateDebut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 'N/A'}</span>
           </div>
           <div style="display:flex; justify-content:space-between; padding:2px 0;">
             <span><strong>${t('cycles.print_status')}:</strong></span>
@@ -280,6 +348,10 @@ export default function CycleLavageList() {
           <div style="display:flex; justify-content:space-between; padding:2px 0;">
             <span><strong>${t('cycles.print_agent')}:</strong></span>
             <span>${cycle.agent?.nom || 'N/A'}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:2px 0;">
+            <span><strong>${t('cycles.print_items')}:</strong></span>
+            <span>${cycle.items?.length || 0}</span>
           </div>
         </div>
         
@@ -566,7 +638,7 @@ export default function CycleLavageList() {
                       <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('cycles.numero')}</th>
                       <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('cycles.machine')}</th>
                       <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('cycles.programme')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('cycles.agent')}</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('cycles.date_debut')}</th>
                       <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('cycles.status')}</th>
                       <th className="text-center py-3 px-4 text-sm font-medium text-slate-500" style={{ width: "100px" }}>{t('cycles.actions')}</th>
                     </tr>
@@ -629,8 +701,16 @@ export default function CycleLavageList() {
                           </td>
                           <td className="text-center py-3 px-4">
                             <div className="flex items-center justify-center gap-2">
-                              <User className="w-4 h-4 text-slate-400" />
-                              <span className="text-sm">{cycle.agent?.nom || "N/A"}</span>
+                              <Calendar className="w-4 h-4 text-slate-400" />
+                              <span className="text-sm">
+                                {cycle.dateDebut ? new Date(cycle.dateDebut).toLocaleString("fr-FR", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                }) : "—"}
+                              </span>
                             </div>
                           </td>
                           <td className="text-center py-3 px-4">
@@ -751,13 +831,18 @@ export default function CycleLavageList() {
               ) : cycleLinges.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">
                   <Package className="w-12 h-12 mx-auto opacity-30 mb-3" />
-                  <p className="text-sm">{t('cycles.no_linge')}</p>
+                  <p className="text-sm font-medium">{t('cycles.no_linge')}</p>
+                  {selectedCycle?.items?.length > 0 && (
+                    <p className="text-xs mt-1 text-slate-300">
+                      {selectedCycle.items.length} items dans le cycle
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
                   {cycleLinges.map((linge, index) => (
                     <motion.div
-                      key={linge.lingeId || index}
+                      key={linge.lingeId || linge.id || index}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ 
                         opacity: 1, 
@@ -832,10 +917,10 @@ export default function CycleLavageList() {
               <div className="mt-1">{getStatusBadge(selectedCycle.statut)}</div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.creation_date')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.date_debut')}</label>
               <div className="flex items-center gap-2 p-2 rounded-lg border border-input bg-slate-50">
                 <Calendar className="w-4 h-4 text-slate-400" />
-                <span>{formatDate(selectedCycle.dateCreation)}</span>
+                <span>{formatDate(selectedCycle.dateDebut)}</span>
               </div>
             </div>
 
@@ -908,6 +993,26 @@ export default function CycleLavageList() {
               </div>
             </div>
 
+            {/* Items */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.items')}</label>
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <p className="text-sm font-medium">
+                  {selectedCycle.items?.length || 0} {t('cycles.items_count')}
+                </p>
+                {selectedCycle.items && selectedCycle.items.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedCycle.items.map((item, idx) => (
+                      <Badge key={idx} variant="outline" className="text-xs">
+                        {item.id || `#${idx + 1}`}
+                        {item.poidsCharge && ` (${item.poidsCharge} kg)`}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Agent */}
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.agent')}</label>
@@ -939,8 +1044,25 @@ export default function CycleLavageList() {
             onClick={() => {
               if (selectedCycle) {
                 setSelectedCycleId(selectedCycle.id);
-                fetchCycleLinges(selectedCycle.id);
-                setPanelOpen(true);
+                setSelectedCycle(selectedCycle);
+                // Vérifier si le cycle contient des items
+                if (selectedCycle.items && selectedCycle.items.length > 0) {
+                  const linges = selectedCycle.items.map((item, index) => ({
+                    id: item.id || index,
+                    lingeId: item.id || index,
+                    codeBarre: item.codeBarre || `ITEM-${item.id || index}`,
+                    categorie: item.categorie || selectedCycle.programmeLavage?.categories?.[0] || "Non catégorisé",
+                    poids: item.poidsCharge || 0,
+                    etat: item.etat || "COLLECTE",
+                    rfidTag: item.rfidTag || null,
+                    lotId: item.sourceId || null,
+                  }));
+                  setCycleLinges(linges);
+                  setPanelOpen(true);
+                } else {
+                  fetchCycleLinges(selectedCycle.id);
+                  setPanelOpen(true);
+                }
                 setShowDetailModal(false);
               }
             }}

@@ -263,8 +263,8 @@ export const MachineProvider = ({ children }) => {
   // ─── Auto-refresh toutes les 5 secondes ──────────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
-      loadCycles(); // Rafraîchir uniquement les cycles pour la minuterie
-    }, 5000);
+      loadCycles(); 
+    }, 50000);
     return () => clearInterval(interval);
   }, [loadCycles]);
 
