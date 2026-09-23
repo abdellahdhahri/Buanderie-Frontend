@@ -20,7 +20,10 @@ import {
   Layers,
   UserPlus,
   UserMinus,
-  Loader2
+  Loader2,
+  BarChart3,
+  TrendingUp,
+  Clock
 } from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -31,6 +34,10 @@ import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEtape, EtapeProvider } from "../../contextes/EtapeContext";
 import BadgeModal from "../../components/Modal/BadgeModal";
+import {
+  fetchStatistiquesPersonnel,
+  getTypeOperationInfo,
+} from "../../services/statistiqueService";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -40,6 +47,119 @@ function LoadingSpinner() {
     <div className="flex items-center justify-center py-12">
       <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
     </div>
+  );
+}
+
+// ─── Barre de répartition par type d'opération (style Tailwind) ──────────
+function TypeOperationBarTW({ type, count, total }) {
+  const info = getTypeOperationInfo(type);
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+
+  return (
+    <div className="mb-2">
+      <div className="flex justify-between text-xs mb-1">
+        <span className="text-slate-600">
+          {info.emoji} {info.label}
+        </span>
+        <span className="font-semibold text-slate-800">
+          {count} <span className="text-slate-400">({pct}%)</span>
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${pct}%`, background: info.color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Carte de rendement d'un personnel (repliable) ────────────────────────
+function PersonnelStatCard({ stat, rang }) {
+  const [ouvert, setOuvert] = useState(false);
+  const types = Object.entries(stat.operationsParType || {});
+  const medailles = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-2.5"
+    >
+      <button
+        onClick={() => setOuvert(!ouvert)}
+        className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50/80 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          {medailles[rang] ? (
+            <span className="text-lg">{medailles[rang]}</span>
+          ) : (
+            <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-[11px] font-bold flex items-center justify-center">
+              {rang}
+            </span>
+          )}
+          <div className="text-left">
+            <p className="font-semibold text-slate-800 text-sm">{stat.nomPrenom}</p>
+            <p className="text-[11px] text-slate-400 font-mono">{stat.matricule}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {stat.moyenneParJour !== null && stat.moyenneParJour !== undefined && (
+            <div className="text-right hidden sm:block">
+              <p className="text-[9px] text-slate-400 uppercase tracking-wide">Cadence</p>
+              <p className="text-xs font-semibold text-sky-600">{stat.moyenneParJour}/j</p>
+            </div>
+          )}
+          <div className="text-right">
+            <p className="text-[9px] text-slate-400 uppercase tracking-wide">Total</p>
+            <p className="text-lg font-extrabold text-slate-800">{stat.totalOperations}</p>
+          </div>
+          <ChevronRight
+            className={`w-4 h-4 text-slate-400 transition-transform ${
+              ouvert ? "rotate-90" : ""
+            }`}
+          />
+        </div>
+      </button>
+
+      <AnimatePresence>
+        {ouvert && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3.5 pb-3.5 pt-1 border-t border-slate-100">
+              {types.length === 0 ? (
+                <p className="text-xs text-slate-400 py-2">Aucun détail disponible</p>
+              ) : (
+                types
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([type, count]) => (
+                    <TypeOperationBarTW
+                      key={type}
+                      type={type}
+                      count={count}
+                      total={stat.totalOperations}
+                    />
+                  ))
+              )}
+              {(stat.premiereOperation || stat.derniereOperation) && (
+                <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-400">
+                  <Clock className="w-3 h-3" />
+                  <span>
+                    {stat.premiereOperation?.slice(0, 10)} → {stat.derniereOperation?.slice(0, 10)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -122,49 +242,116 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
   const [badgeEmployee, setBadgeEmployee] = useState(null);
   const searchTimeoutRef = useRef(null);
 
+  // ── Onglet actif : "personnel" | "stats" ──────────────────────────────
+  const [activeTab, setActiveTab] = useState("personnel");
+  const [statsData, setStatsData] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState(null);
+
+  // Revenir sur l'onglet "personnel" à chaque changement d'étape
+  useEffect(() => {
+    setActiveTab("personnel");
+  }, [etape?.id]);
+
+  const chargerStats = useCallback(async () => {
+    if (!personnels || personnels.length === 0) {
+      setStatsData([]);
+      return;
+    }
+    setStatsLoading(true);
+    setStatsError(null);
+    try {
+      const allStats = await fetchStatistiquesPersonnel();
+      const idsEtape = new Set(personnels.map((p) => p.id));
+      const filtered = allStats.filter((s) => idsEtape.has(s.personnelId));
+      setStatsData(filtered);
+    } catch (e) {
+      setStatsError(e.message);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [personnels]);
+
+  useEffect(() => {
+    if (activeTab === "stats") {
+      chargerStats();
+    }
+  }, [activeTab, chargerStats]);
+
   // Recherche de personnels avec debounce
-  const searchPersonnels = useCallback(async (query) => {
-    if (!query || query.length < 2) {
+const searchPersonnels = useCallback(async (query) => {
+  if (!query || query.length < 2) {
+    setPersonnelSuggestions([]);
+    return;
+  }
+
+  setIsSearching(true);
+  try {
+    const token = localStorage.getItem('auth');
+    let tokenValue = '';
+    if (token) {
+      try {
+        const parsed = JSON.parse(token);
+        tokenValue = parsed.token || '';
+      } catch {
+        tokenValue = token;
+      }
+    }
+
+    const response = await fetch(`${API_URL}/api/sqlserver/personnel`, {
+      headers: {
+        ...(tokenValue ? { 'Authorization': `Bearer ${tokenValue}` } : {})
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      console.error("❌ Erreur HTTP personnel:", response.status, errorText);
       setPersonnelSuggestions([]);
       return;
     }
 
-    setIsSearching(true);
-    try {
-      const token = localStorage.getItem('auth');
-      let tokenValue = '';
-      if (token) {
-        try {
-          const parsed = JSON.parse(token);
-          tokenValue = parsed.token || '';
-        } catch {
-          tokenValue = token;
-        }
-      }
+    const data = await response.json();
 
-      const response = await fetch(`${API_URL}/api/sqlserver/personnel`, {
-        headers: {
-          ...(tokenValue ? { 'Authorization': `Bearer ${tokenValue}` } : {})
-        }
-      });
+    const list = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.content)
+      ? data.content
+      : null;
 
-      if (response.ok) {
-        const data = await response.json();
-        const filtered = data.filter(p => 
-          p.nom?.toLowerCase().includes(query.toLowerCase()) ||
-          p.prenom?.toLowerCase().includes(query.toLowerCase()) ||
-          p.codeBarre?.toLowerCase().includes(query.toLowerCase()) ||
-          p.matricule?.toLowerCase().includes(query.toLowerCase())
-        );
-        setPersonnelSuggestions(filtered.slice(0, 20));
-      }
-    } catch (error) {
-      console.error("Erreur recherche personnels:", error);
-    } finally {
-      setIsSearching(false);
+    if (!list) {
+      console.error("❌ Format de réponse inattendu pour la liste des personnels.");
+      setPersonnelSuggestions([]);
+      return;
     }
-  }, []);
 
+    // ✅ Normalisation PascalCase (API SQL Server) → camelCase (attendu par le composant)
+    const normalized = list.map((p) => ({
+      id: p.Id ?? p.id,
+      nom: p.Nom ?? p.nom ?? "",
+      prenom: p.Prenom ?? p.prenom ?? "",
+      nomPrenom: p.NomPrenom ?? p.nomPrenom ?? `${p.Nom ?? ""} ${p.Prenom ?? ""}`.trim(),
+      matricule: p.Matricule ?? p.matricule ?? p.CodeBarre ?? p.codeBarre,
+      codeBarre: p.CodeBarre ?? p.codeBarre,
+      fonction: p.Fonction ?? p.fonction,
+    }));
+
+    const filtered = normalized.filter(p =>
+      p.nom?.toLowerCase().includes(query.toLowerCase()) ||
+      p.prenom?.toLowerCase().includes(query.toLowerCase()) ||
+      p.codeBarre?.toLowerCase().includes(query.toLowerCase()) ||
+      p.matricule?.toLowerCase().includes(query.toLowerCase())
+    );
+    setPersonnelSuggestions(filtered.slice(0, 20));
+  } catch (error) {
+    console.error("Erreur recherche personnels:", error);
+    setPersonnelSuggestions([]);
+  } finally {
+    setIsSearching(false);
+  }
+}, []);
   // Debounce sur la recherche
   useEffect(() => {
     clearTimeout(searchTimeoutRef.current);
@@ -180,29 +367,43 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
     setPersonnelSuggestions([]);
   };
 
-  const handleAddPersonnel = async () => {
+const handleAddPersonnel = async () => {
     if (!selectedPersonnel) {
-      Swal.fire({
-        icon: "warning",
-        title: t('etapes.select_personnel'),
-        text: t('etapes.select_personnel_text'),
-        timer: 1500,
-        showConfirmButton: false
-      });
-      return;
+        Swal.fire({
+            icon: "warning",
+            title: t('etapes.select_personnel'),
+            text: t('etapes.select_personnel_text'),
+            timer: 1500,
+            showConfirmButton: false
+        });
+        return;
     }
 
     setIsAdding(true);
+
     try {
-      await addPersonnelToEtape(etape?.id, selectedPersonnel.codeBarre);
-      setSelectedPersonnel(null);
-      setSearchPersonnel("");
-      setShowAddModal(false);
-      if (onRefresh) onRefresh();
+
+        console.log("👤 Personnel sélectionné :", selectedPersonnel);
+        console.log("🆔 personnelId :", selectedPersonnel.id);
+        console.log("🧺 lingeEtapeId :", etape?.id);
+
+        await addPersonnelToEtape(
+            etape?.id,
+            selectedPersonnel.id
+        );
+
+        setSelectedPersonnel(null);
+        setSearchPersonnel("");
+        setShowAddModal(false);
+
+        if (onRefresh) {
+            onRefresh();
+        }
+
     } finally {
-      setIsAdding(false);
+        setIsAdding(false);
     }
-  };
+};
 
   const handleRemove = async (personnel) => {
     const result = await Swal.fire({
@@ -292,106 +493,177 @@ function PersonnelPanel({ etape, isOpen, onClose, onRefresh }) {
 
       {/* Contenu */}
       <div className="p-4 overflow-y-auto h-[calc(100%-80px)]">
-        {/* Barre d'outils */}
-        <div className="flex items-center gap-3 mb-4">
+
+        {/* Sélecteur d'onglets */}
+        <div className="flex gap-1 p-1 bg-slate-100 rounded-xl mb-4">
           <button
-            onClick={() => {
-              setShowAddModal(true);
-            }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
+            onClick={() => setActiveTab("personnel")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === "personnel"
+                ? "bg-white text-purple-700 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" /> {t('etapes.add_personnel')}
+            <Users className="w-4 h-4" /> {t('etapes.personnel_count')}s
           </button>
-
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder={t('etapes.search_personnel')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-9 pl-10 pr-3 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-300"
-            />
-          </div>
-
           <button
-            onClick={onRefresh}
-            className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-500 hover:text-slate-700"
-            title={t('common.refresh')}
+            onClick={() => setActiveTab("stats")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === "stats"
+                ? "bg-white text-purple-700 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <BarChart3 className="w-4 h-4" /> Rendement
           </button>
         </div>
 
-        {/* Tableau des personnels */}
-        {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
-          </div>
-        ) : filteredPersonnels.length === 0 ? (
-          <div className="text-center py-12 text-slate-400">
-            <Users className="w-12 h-12 mx-auto opacity-30 mb-3" />
-            <p className="text-sm font-medium">{t('etapes.no_personnel')}</p>
-            <p className="text-xs">{t('etapes.no_personnel_text')}</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.code')}</th>
-                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.last_name')}</th>
-                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.first_name')}</th>
-                  <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('common.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPersonnels.map((p, index) => (
-                  <motion.tr
-                    key={p.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ 
-                      opacity: 1, 
-                      y: 0,
-                      transition: { delay: index * 0.05, duration: 0.2 }
-                    }}
-                    className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                  >
-                    <td className="text-center py-2.5 px-3 font-mono text-xs text-slate-600">{p.codeBarre}</td>
-                    <td className="text-center py-2.5 px-3 font-medium text-slate-800">{p.nom}</td>
-                    <td className="text-center py-2.5 px-3 text-slate-600">{p.prenom || "—"}</td>
-                    <td className="text-center py-2.5 px-3">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          onClick={() => {
-                            setBadgeEmployee({
-                              nom: p.nom,
-                              prenom: p.prenom || '',
-                              matricule: p.matricule || p.codeBarre,
-                              fonction: p.fonction || 'Agent Buanderie',
-                              service: etape?.nom || etape?.zone || '',
-                              photo: p.photo || null
-                            });
-                            setBadgeModalOpen(true);
-                          }}
-                          className="p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
-                          title={t('etapes.print_label')}
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleRemove(p)}
-                          className="p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-red-600"
-                          title={t('etapes.remove')}
-                        >
-                          <UserMinus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+        {/* ── Onglet Personnel ─────────────────────────────────────────── */}
+        {activeTab === "personnel" && (
+          <>
+            {/* Barre d'outils */}
+            <div className="flex items-center gap-3 mb-4">
+              <button
+                onClick={() => {
+                  setShowAddModal(true);
+                }}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" /> {t('etapes.add_personnel')}
+              </button>
+
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder={t('etapes.search_personnel')}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full h-9 pl-10 pr-3 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-300"
+                />
+              </div>
+
+              <button
+                onClick={onRefresh}
+                className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-500 hover:text-slate-700"
+                title={t('common.refresh')}
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            {/* Tableau des personnels */}
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+              </div>
+            ) : filteredPersonnels.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                <Users className="w-12 h-12 mx-auto opacity-30 mb-3" />
+                <p className="text-sm font-medium">{t('etapes.no_personnel')}</p>
+                <p className="text-xs">{t('etapes.no_personnel_text')}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.code')}</th>
+                      <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.last_name')}</th>
+                      <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.first_name')}</th>
+                      <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('common.actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPersonnels.map((p, index) => (
+                      <motion.tr
+                        key={p.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ 
+                          opacity: 1, 
+                          y: 0,
+                          transition: { delay: index * 0.05, duration: 0.2 }
+                        }}
+                        className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="text-center py-2.5 px-3 font-mono text-xs text-slate-600">{p.codeBarre}</td>
+                        <td className="text-center py-2.5 px-3 font-medium text-slate-800">{p.nom}</td>
+                        <td className="text-center py-2.5 px-3 text-slate-600">{p.prenom || "—"}</td>
+                        <td className="text-center py-2.5 px-3">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => {
+                                setBadgeEmployee({
+                                  nom: p.nom,
+                                  prenom: p.prenom || '',
+                                  matricule: p.matricule || p.codeBarre,
+                                  fonction: p.fonction || 'Agent Buanderie',
+                                  service: etape?.nom || etape?.zone || '',
+                                  photo: p.photo || null
+                                });
+                                setBadgeModalOpen(true);
+                              }}
+                              className="p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
+                              title={t('etapes.print_label')}
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleRemove(p)}
+                              className="p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-red-600"
+                              title={t('etapes.remove')}
+                            >
+                              <UserMinus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Onglet Rendement ─────────────────────────────────────────── */}
+        {activeTab === "stats" && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-slate-500">
+                {statsData.reduce((s, x) => s + x.totalOperations, 0)} opérations · {statsData.length} agent
+                {statsData.length > 1 ? "s" : ""}
+              </p>
+              <button
+                onClick={chargerStats}
+                className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors text-slate-500"
+                title={t('common.refresh')}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${statsLoading ? "animate-spin" : ""}`} />
+              </button>
+            </div>
+
+            {statsLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="w-7 h-7 text-purple-500 animate-spin" />
+              </div>
+            ) : statsError ? (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs">
+                {statsError}
+              </div>
+            ) : statsData.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                <TrendingUp className="w-10 h-10 mx-auto opacity-30 mb-2" />
+                <p className="text-sm font-medium">Aucune donnée de rendement</p>
+                <p className="text-xs">Les statistiques apparaîtront après les premières opérations</p>
+              </div>
+            ) : (
+              statsData
+                .sort((a, b) => b.totalOperations - a.totalOperations)
+                .map((stat, i) => (
+                  <PersonnelStatCard key={stat.personnelId} stat={stat} rang={i + 1} />
+                ))
+            )}
           </div>
         )}
       </div>

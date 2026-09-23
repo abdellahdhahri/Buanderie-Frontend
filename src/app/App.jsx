@@ -58,7 +58,7 @@ export default function App() {
                     </BacProvider>
                 </ProgrammeProvider>
             </LanguageProvider>
-</ChatbotProvider>
+            </ChatbotProvider>
         </I18nextProvider>
     );
 }

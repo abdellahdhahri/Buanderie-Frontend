@@ -1,18 +1,34 @@
-
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 /**
  * Normalise les données d'un agent
  */
-export const normalizeAgent = (agentData) => ({
-  matricule: agentData.codeBarre || agentData.matricule,
-  nom: agentData.nom || "Inconnu",
-  prenom: agentData.prenom || "",
-  nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
-  codeBarre: agentData.codeBarre || agentData.matricule,
-  id: agentData.id,
-  poste: agentData.poste || agentData.fonction || "AGENT_REMISE"
-});
+export const normalizeAgent = (agentData) => {
+  // On tente plusieurs noms de clés possibles pour l'ID numérique
+  const resolvedId =
+    agentData.Id ??
+    agentData.idPersonnel ??
+    agentData.personnelId ??
+    agentData.codePersonnel ??
+    null;
+
+  if (resolvedId === null || resolvedId === undefined) {
+    console.warn(
+      "⚠️ Aucun champ ID reconnu dans la réponse agent. Clés disponibles :",
+      Object.keys(agentData)
+    );
+  }
+
+  return {
+    matricule: agentData.codeBarre || agentData.matricule,
+    nom: agentData.nom || "Inconnu",
+    prenom: agentData.prenom || "",
+    nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
+    codeBarre: agentData.codeBarre || agentData.matricule,
+    id: resolvedId,
+    poste: agentData.poste || agentData.fonction || "AGENT_REMISE"
+  };
+};
 
 /**
  * Récupère l'agent depuis localStorage (clé 'auth')
@@ -89,18 +105,26 @@ export const fetchAgentByMatricule = async (code) => {
     throw new Error(`Agent [${code}] introuvable`);
   }
   const data = await response.json();
+  console.log("🔍 Réponse brute personnel:", data);
   return normalizeAgent(data);
 };
 
 /**
- *   Crée une nouvelle remise - Correction
+ * Crée une nouvelle remise
  */
 export const createRemise = async (matriculeAgentRemise, id) => {
+  if (id === undefined || id === null) {
+    throw new Error(
+      "Impossible de créer la remise : l'ID de l'agent collecte est manquant. " +
+      "Vérifie le champ ID renvoyé par /api/sqlserver/personnel/code/{code}."
+    );
+  }
+
   const token = getTokenFromStorage();
-  
+
   const url = `${API_URL}/api/remises-linge?matriculeAgentRemise=${encodeURIComponent(matriculeAgentRemise)}&id=${id}`;
   console.log("📡 Appel API création remise:", url);
-  
+
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -121,6 +145,7 @@ export const createRemise = async (matriculeAgentRemise, id) => {
 
   return response.json();
 };
+
 /**
  * Récupère le statut d'une collecte
  */

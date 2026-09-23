@@ -118,6 +118,41 @@ export async function annulerCollecteVide(collecteId) {
   );
   return res.data;
 }
+
+
+export const declarerLingeInfecte = async (
+  collecteId,
+  lingeId,
+  codeSacInfecte
+) => {
+  const response = await fetch(
+    `${API_URL}/api/collecte/chambre/declarer-linge-infecte` +
+    `?collecteId=${encodeURIComponent(collecteId)}` +
+    `&lingeId=${encodeURIComponent(lingeId)}` +
+    `&codeSacInfecte=${encodeURIComponent(codeSacInfecte)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+  if (!response.ok) {
+    let message = "Erreur lors de la déclaration du linge infecté.";
+
+    try {
+      const error = await response.json();
+      message = error.message || message;
+    } catch {}
+
+    throw new Error(message);
+  }
+
+  return response.json();
+};
+
+
 // ─── 6. Déclarer un linge propre ──────────────────────────────────────────
 export const marquerLingePropre = async (collecteId, codeOuTag) => {
   if (!collecteId) throw new Error("Collecte obligatoire");

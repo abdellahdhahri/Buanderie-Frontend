@@ -68,7 +68,7 @@ function DashboardBuanderieInner() {
         setIsSidebarOpen(sidebar.classList.contains('sidebar--open'));
       }
     };
-        const observer = new MutationObserver(handleSidebarChange);
+    const observer = new MutationObserver(handleSidebarChange);
     const sidebar = document.querySelector('.sidebar');
     if (sidebar) {
       observer.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
