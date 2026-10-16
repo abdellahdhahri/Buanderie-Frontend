@@ -200,70 +200,176 @@
 }
 
 /* ==========================================================================
-   🚨 POP-UP MODAL HIGH-CONTRAST BUTTONS SYSTEM (NO WHITE TEXT)
+   ✨ FORMULAIRES DANS LES MODALES — champs et boutons fins, style unifié
+   S'applique à tout ce qui est dans .popup-modal (composants UI, champs bruts,
+   styles en ligne). Ajouter la classe .modal-bare pour exclure un élément.
    ========================================================================== */
 
-/* 1. Primary & Default Buttons inside Popups
-   - Soft Mint Background with Deep Emerald Clinical Text (High Contrast & Modern) */
+/* ── Étiquettes ─────────────────────────────────────────────────────────── */
+.popup-modal label:not(.modal-bare) {
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  color: #475569 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+/* ── Champs texte, listes, zones de texte ───────────────────────────────── */
+.popup-modal input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not(.modal-bare),
+.popup-modal select:not(.modal-bare),
+.popup-modal textarea:not(.modal-bare) {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  font-size: 13.5px !important;
+  font-weight: 400 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  outline: none !important;
+}
+
+.popup-modal input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not(.modal-bare),
+.popup-modal select:not(.modal-bare) {
+  height: 40px !important;
+}
+
+.popup-modal input::placeholder,
+.popup-modal textarea::placeholder {
+  color: #94a3b8 !important;
+  font-weight: 400 !important;
+}
+
+.popup-modal input:not([type="checkbox"]):not([type="radio"]):not(.modal-bare):hover,
+.popup-modal select:not(.modal-bare):hover,
+.popup-modal textarea:not(.modal-bare):hover {
+  border-color: #cbd5e1 !important;
+}
+
+.popup-modal input:not([type="checkbox"]):not([type="radio"]):not(.modal-bare):focus,
+.popup-modal select:not(.modal-bare):focus,
+.popup-modal textarea:not(.modal-bare):focus {
+  border-color: rgba(20, 184, 166, 0.7) !important;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12) !important;
+}
+
+.popup-modal input:disabled:not(.modal-bare),
+.popup-modal select:disabled:not(.modal-bare),
+.popup-modal textarea:disabled:not(.modal-bare) {
+  background-color: #f8fafc !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed !important;
+}
+
+/* Flèche fine et uniforme pour les listes déroulantes */
+.popup-modal select:not(.modal-bare):not([multiple]) {
+  appearance: none !important;
+  padding-right: 36px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+}
+
+.popup-modal input[type="checkbox"],
+.popup-modal input[type="radio"] {
+  accent-color: #0d9488;
+}
+
+/* ── Boutons ────────────────────────────────────────────────────────────── */
+/* Base commune aux boutons d'action (validation, annulation, suppression) */
+.popup-modal button[type="submit"],
+.popup-modal button[data-variant],
 .popup-modal button.bg-teal-600,
 .popup-modal button.bg-primary,
-.popup-modal button:not([class*="bg-"]):not([class*="border"]):not([class*="text-"]):not([className*="text-slate-400"]) {
-  background-color: #effdfa !important;
-  color: #0f766e !important;
-  border: 1px solid rgba(13, 148, 136, 0.26) !important;
-  box-shadow: 0 2px 6px rgba(13, 148, 136, 0.04) !important;
-  text-shadow: none !important;
-}
-
-.popup-modal button.bg-teal-600:hover,
-.popup-modal button.bg-primary:hover,
-.popup-modal button:not([class*="bg-"]):not([class*="border"]):not([class*="text-"]):not([className*="text-slate-400"]):hover {
-  background-color: #ccfbf1 !important;
-  color: #0d9488 !important;
-  border-color: rgba(13, 148, 136, 0.45) !important;
-  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.12) !important;
-}
-
-/* 2. Danger / Destructive Buttons inside Popups
-   - Soft Red/Pink Background with Deep Medical Red Text */
+.popup-modal button[style*="linear-gradient"],
+.popup-modal button[style*="rgb(226, 232, 240)"],
 .popup-modal button.bg-red-500,
 .popup-modal button.bg-destructive,
 .popup-modal button.bg-danger {
-  background-color: #fef2f2 !important;
-  color: #b91c1c !important;
-  border: 1px solid rgba(239, 68, 68, 0.26) !important;
-  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.04) !important;
+  border-radius: 10px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.005em !important;
   text-shadow: none !important;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease !important;
 }
 
-.popup-modal button.bg-red-500:hover,
-.popup-modal button.bg-destructive:hover,
-.popup-modal button.bg-danger:hover {
-  background-color: #fee2e2 !important;
-  color: #991b1b !important;
-  border-color: rgba(239, 68, 68, 0.45) !important;
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.12) !important;
+.popup-modal button[type="submit"]:active,
+.popup-modal button[style*="linear-gradient"]:active {
+  transform: scale(0.985);
 }
 
-/* 3. Outline & Secondary Buttons inside Popups
-   - White Background with a Very Light Mint/Teal Border & Elegant Slate Text */
-.popup-modal button.border-slate-200,
-.popup-modal button.border {
-  background-color: #ffffff !important;
-  border-color: rgba(13, 148, 136, 0.18) !important;
+/* Principal — teal profond, reflet interne discret */
+.popup-modal button[type="submit"]:not([data-variant="outline"]):not([data-variant="ghost"]):not([data-variant="secondary"]):not(.bg-red-500):not(.bg-destructive),
+.popup-modal button.bg-teal-600,
+.popup-modal button.bg-primary,
+.popup-modal button[style*="linear-gradient"] {
+  background: #0f766e !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 1px 2px rgba(15, 118, 110, 0.35),
+    0 4px 12px -4px rgba(15, 118, 110, 0.45) !important;
+}
+
+.popup-modal button[type="submit"]:not([data-variant="outline"]):not([data-variant="ghost"]):not([data-variant="secondary"]):not(.bg-red-500):not(.bg-destructive):hover:not(:disabled),
+.popup-modal button.bg-teal-600:hover:not(:disabled),
+.popup-modal button.bg-primary:hover:not(:disabled),
+.popup-modal button[style*="linear-gradient"]:hover:not(:disabled) {
+  background: #115e59 !important;
+}
+
+/* Secondaire — blanc, contour fin */
+.popup-modal button[data-variant="outline"],
+.popup-modal button[style*="rgb(226, 232, 240)"] {
+  background: #ffffff !important;
   color: #334155 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.01) !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
 }
 
-.popup-modal button.border-slate-200:hover,
-.popup-modal button.border:hover {
-  background-color: #f8fafc !important;
-  border-color: rgba(13, 148, 136, 0.35) !important;
-  color: #0f766e !important;
+.popup-modal button[data-variant="outline"]:hover:not(:disabled),
+.popup-modal button[style*="rgb(226, 232, 240)"]:hover:not(:disabled) {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
 }
 
-/* 4. Close and Small Raw Utility Buttons inside Popups (ensure high contrast and no white text) */
-.popup-modal button.text-slate-400:hover {
-  background-color: rgba(13, 148, 136, 0.1) !important;
-  color: #0f766e !important;
+/* Danger — rouge sobre */
+.popup-modal button.bg-red-500,
+.popup-modal button.bg-destructive,
+.popup-modal button.bg-danger {
+  background: #ffffff !important;
+  color: #b91c1c !important;
+  border: 1px solid #fecaca !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+}
+
+.popup-modal button.bg-red-500:hover:not(:disabled),
+.popup-modal button.bg-destructive:hover:not(:disabled),
+.popup-modal button.bg-danger:hover:not(:disabled) {
+  background: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+}
+
+.popup-modal button:disabled {
+  opacity: 0.45 !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+}
+
+/* ── Mode sombre ────────────────────────────────────────────────────────── */
+.dark .popup-modal label:not(.modal-bare) {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .popup-modal input:not([type="checkbox"]):not([type="radio"]):not(.modal-bare),
+.dark .popup-modal select:not(.modal-bare),
+.dark .popup-modal textarea:not(.modal-bare),
+.dark .popup-modal button[data-variant="outline"],
+.dark .popup-modal button[style*="rgb(226, 232, 240)"] {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
 }

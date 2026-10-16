@@ -63,7 +63,18 @@
     "type": "Type",
     "error": "Error",
     "warning": "Warning",
-    "info": "Information"
+    "info": "Information",
+    "copy": "Copy",
+    "undefined": "Undefined",
+    "view": "View",
+    "no_match": "No matching results",
+    "no_items": "No items",
+    "importing": "Importing…",
+    "finish": "Finish",
+    "clear": "Clear",
+    "delete_confirm": "Confirm deletion?",
+    "delete_confirm_text": "This action cannot be undone.",
+    "delete_confirm_yes": "Yes, delete"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -103,7 +114,20 @@
     "Historique collectes": "Collection History",
     "historique": "History",
     "statistiques": "Statistics",
-    "reclamations": "Complaints"
+    "reclamations": "Complaints",
+    "home": "Home",
+    "Sacs Infectés": "Infected bags",
+    "Collecte service": "Service collection",
+    "Collecte uniformes": "Uniform collection",
+    "Collecte linge": "Linen collection",
+    "Distribution uniformes": "Uniform distribution",
+    "Distribution chambres": "Room distribution",
+    "Historique livraisons": "Delivery history",
+    "Gestion réclamations": "Complaint management",
+    "Paramètres": "Settings",
+    "Workflow": "Laundry workflow",
+    "Stockage Arsenal": "Arsenal storage",
+    "Suivi du stock": "Stock tracking"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -273,7 +297,12 @@
     "import_no_selection_title": "No selection",
     "import_no_selection_text": "Please select at least one linen to import",
     "import_service_required_title": "Service required",
-    "import_service_required_text": "Please select a service for the imported linens"
+    "import_service_required_text": "Please select a service for the imported linens",
+    "updated_success": "Linen updated successfully",
+    "deleted_success": "Linen deleted successfully",
+    "confirm_delete": "Confirm deletion",
+    "confirm_delete_text": "This action cannot be undone. Do you really want to delete this linen?",
+    "no_linge_selected_error": "No linen selected."
   },
   "linge_etat": {
     "SALE": "Dirty",
@@ -294,7 +323,12 @@
     "PROPRE_PRET": "Clean",
     "RECEPTIONNE": "Received",
     "DISTRIBUE": "Distributed",
-    "PRET_LIVRAISON": "Ready for delivery"
+    "PRET_LIVRAISON": "Ready for delivery",
+    "EN_SECHAGE_REPASSAGE": "Drying / ironing",
+    "INFECTE_COLLECTE": "Infected – collected",
+    "INFECTE_EN_LAVAGE": "Infected – washing",
+    "INFECTE_LAVE": "Infected – washed",
+    "INFECTE_ECART": "Infected – discrepancy"
   },
   "bacs": {
     "title": "Container Management",
@@ -333,7 +367,14 @@
     "reference_required": "Reference required",
     "reference_required_text": "Please enter a reference.",
     "error": "Error",
-    "error_text": "An error occurred."
+    "error_text": "An error occurred.",
+    "view_linges": "View linens",
+    "print_code": "Print code",
+    "print_label": "Print label",
+    "details": "Details",
+    "status_undefined": "Undefined",
+    "select_status": "Select a status",
+    "select_type": "Select a type"
   },
   "bac_status": {
     "BLANC": "White",
@@ -342,7 +383,16 @@
     "EN_RECEPTION": "In reception",
     "EN_ATTENTE_COLLECTE": "Waiting",
     "COLLECTE_EN_COURS": "Collection in progress",
-    "COLLECTE_TERMINEE": "Collection completed"
+    "COLLECTE_TERMINEE": "Collection completed",
+    "VIDE": "Empty",
+    "PLEIN": "Full",
+    "EN_COURS": "In progress",
+    "TERMINE": "Completed",
+    "A_RECEPER": "To be received",
+    "RECEPTIONNE": "Received",
+    "EN_STOCK": "In stock",
+    "DISPONIBLE": "Available",
+    "OCCUPE": "Occupied"
   },
   "linge_status": {
     "COLLECTE": "Collection",
@@ -420,7 +470,24 @@
       "previous": "Previous",
       "next": "Next",
       "page": "Page"
-    }
+    },
+    "kpi_total": "Rooms",
+    "kpi_total_hint": "Registered in the system",
+    "kpi_services": "Services covered",
+    "kpi_services_hint": "At least one room assigned",
+    "kpi_barcode": "Labelled",
+    "kpi_barcode_hint": "With a barcode",
+    "kpi_unassigned": "No service",
+    "kpi_unassigned_hint": "Need to be assigned to a service",
+    "kpi_unassigned_ok": "All rooms are assigned",
+    "all_services": "All services",
+    "view_table": "Table view",
+    "view_grid": "Floor plan view",
+    "close": "Close",
+    "beds_total": "Beds",
+    "clear_filters": "Clear filters",
+    "empty_hint": "Create your first room to get started.",
+    "empty_search_hint": "Try another code or remove the service filter."
   },
   "etapes": {
     "title": "Step Management",
@@ -607,7 +674,8 @@
   "machine_type": {
     "LAVEUR": "🧺 Washer",
     "SECHEUR": "🌬️ Dryer",
-    "LAVEUR_SECHEUR": "🧺🌬️ Washer/Dryer"
+    "LAVEUR_SECHEUR": "🧺🌬️ Washer/Dryer",
+    "AUTRE": "Other"
   },
   "machine_category": {
     "LINGES_INFECTE": "Infected linens",
@@ -677,6 +745,8 @@
   "categories": {
     "DRAP": "Sheet",
     "TAIE_OREILLER": "Pillowcase",
+    "COUETTE": "Duvet",
+    "CHAMP_OPERATOIRE": "Surgical drape",
     "SERVIETTE_BAIN": "Bath towel",
     "SERVIETTE_VISAGE": "Face towel",
     "PEIGNOIR": "Bathrobe",
@@ -689,6 +759,8 @@
     "title_rfid": "RFID Tracking",
     "title_barcode": "Item Tracking",
     "title_3d": "Linen Tracking",
+    "room": "Room",
+    "service": "Service",
     "subtitle_rfid": "RFID Search",
     "subtitle_barcode": "Item Search",
     "search_placeholder_rfid": "Scan or enter RFID tag...",
@@ -732,7 +804,9 @@
       "PROPRE": "Clean",
       "MANQUANT": "Missing",
       "SALE": "Dirty"
-    }
+    },
+    "recent_activity": "Recent steps",
+    "view_full_journal": "View full history"
   },
   "cycles": {
     "title": "Wash Cycles",
@@ -791,7 +865,10 @@
     "etat_LAVE": "Washed",
     "etat_SECHE": "Dry",
     "etat_STOCKE": "Stored",
-    "etat_SALE": "Dirty"
+    "etat_SALE": "Dirty",
+    "print_items": "Items",
+    "items": "Items",
+    "items_count": "item(s)"
   },
   "machines_dashboard": {
     "title": "Washing Machines",
@@ -842,7 +919,17 @@
     "agent": "Agent",
     "weight": "Weight",
     "capacity": "Capacity",
-    "empty": "—"
+    "empty": "—",
+    "cycles_done": "{{count}} finished",
+    "cycle_start": "Start",
+    "observation": "Note",
+    "load": "Load",
+    "filter_dryers": "Dryers",
+    "section_dryers": "Dryers",
+    "status_drying": "Drying in progress",
+    "dryer_cycle_hint": "Detailed tracking in the Drying screen.",
+    "btn_start_dry": "Start drying",
+    "new_dry": "New drying"
   },
   "inventaire": {
     "title": "Inventory",
@@ -1140,7 +1227,9 @@
     "machine": "Machine",
     "infecte_bags_in_wash": "Infected bags in wash",
     "scan_infected_bags": "Scan infected bags",
-    "bag_in_wash": "bag in wash"
+    "bag_in_wash": "bag in wash",
+    "stop_infected_cycle": "Stop the infected cycle?",
+    "agent_not_connected": "👤 Agent not connected — please log in again"
   },
   "lot_dialog": {
     "suggested_program": "Suggested program",
@@ -1180,7 +1269,8 @@
     "step_machine": "Machine",
     "step_lots": "Lots",
     "step_in_progress": "In progress",
-    "step_completed": "Completed"
+    "step_completed": "Completed",
+    "agent_not_connected": "👤 Agent not connected — please log in again"
   },
   "lot_dialog_sechage": {
     "lot": "Lot",
@@ -1264,7 +1354,8 @@
         "description": "Distribution of staff uniforms",
         "badge": "Staff"
       }
-    }
+    },
+    "keyboard_hint": "Tap a card or press 1, 2 or 3"
   },
   "distribution_chambre": {
     "title": "Distribution — Room",
@@ -1310,7 +1401,8 @@
     "reset_title": "Reset",
     "reset_text": "The current distribution will be abandoned.",
     "yes_reset": "Yes, reset",
-    "scan_agent_to_close": "Scan your agent badge to close the distribution"
+    "scan_agent_to_close": "Scan your agent badge to close the distribution",
+    "agent_not_connected_placeholder": "👤 Agent not connected — please log in again"
   },
   "distribution_uniforme": {
     "title": "Distribution — Uniforms",
@@ -1350,7 +1442,8 @@
     "scan_personnel_first_text": "Please scan a personnel badge before distributing a uniform.",
     "reset_title": "Reset",
     "reset_text": "The current distribution will be abandoned.",
-    "yes_reset": "Yes, reset"
+    "yes_reset": "Yes, reset",
+    "agent_not_connected_placeholder": "👤 Agent not connected — please log in again"
   },
   "livraison": {
     "title": "Distribution",
@@ -1399,7 +1492,8 @@
     "reset_title": "Reset",
     "reset_text": "The current distribution will be abandoned.",
     "yes_reset": "Yes, reset",
-    "reset_success": "Reset"
+    "reset_success": "Reset",
+    "agent_not_connected_placeholder": "👤 Agent not connected — please log in again"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1455,7 +1549,12 @@
     "thu": "Thu",
     "fri": "Fri",
     "sat": "Sat",
-    "sun": "Sun"
+    "sun": "Sun",
+    "incomplete_linens": "Incomplete linen",
+    "incomplete_linens_hint": "View incomplete linen",
+    "drag_hint": "Drag the cards to rearrange them",
+    "reset_layout": "Reset layout",
+    "drag_card": "Drag to move"
   },
   "historique": {
     "title": "Activity Log",
@@ -1481,7 +1580,17 @@
     "no_remarks": "No remarks",
     "collection_info": "Collection information",
     "number": "Number",
-    "type": "Type",
+    "type": {
+      "COLLECTE": "Collection",
+      "RECEPTION": "Reception",
+      "TRI": "Sorting",
+      "LAVAGE": "Washing",
+      "SECHAGE": "Drying",
+      "PLIAGE": "Folding",
+      "STOCKAGE": "Storage",
+      "LIVRAISON": "Delivery",
+      "CHANGEMENT_ETAT": "State change"
+    },
     "room": "Room",
     "collection_state": "Collection state",
     "delete_confirm_title": "Delete this entry?",
@@ -1507,17 +1616,6 @@
       "RECEPTIONNE": "Received",
       "DISTRIBUE": "Distributed"
     },
-    "type": {
-      "COLLECTE": "Collection",
-      "RECEPTION": "Reception",
-      "TRI": "Sorting",
-      "LAVAGE": "Washing",
-      "SECHAGE": "Drying",
-      "PLIAGE": "Folding",
-      "STOCKAGE": "Storage",
-      "LIVRAISON": "Delivery",
-      "CHANGEMENT_ETAT": "State change"
-    },
     "poste": {
       "COLLECTE": "Collection",
       "RECEPTION": "Reception",
@@ -1528,7 +1626,13 @@
       "STOCKAGE": "Storage",
       "LIVRAISON": "Delivery",
       "CHEF": "Team Leader"
-    }
+    },
+    "columns_button": "Columns",
+    "columns_title": "Columns to display",
+    "columns_hint": "Choose which columns are visible in the table",
+    "columns_count": "{{count}} / {{total}} columns shown",
+    "columns_show_all": "Show all",
+    "columns_reset": "Default"
   },
   "reclamations": {
     "title": "Complaints Management",
@@ -1586,6 +1690,33 @@
       "A_REFORMER": "Needs reshaping",
       "MAL_LAVE": "Poorly washed",
       "AUTRE": "Other"
+    },
+    "sheet_title": "Complaint sheet",
+    "article_concerned": "Item concerned",
+    "wearer": "Wearer",
+    "wash_count": "Washes",
+    "linen_state": "Linen status",
+    "no_description": "No description provided.",
+    "declared_by": "Reported by",
+    "matricule": "Employee ID",
+    "progress": "Progress",
+    "view_tracking": "Tracking",
+    "print_sheet": "Print sheet",
+    "kpi_total_hint": "{{open}} open · {{progress}} in progress",
+    "kpi_todo": "To handle",
+    "kpi_todo_hint": "Open or in progress",
+    "kpi_todo_none": "Nothing pending",
+    "kpi_resolution": "Resolution rate",
+    "kpi_resolution_hint": "{{resolved}} resolved · {{closed}} closed",
+    "kpi_top_type": "Main reason",
+    "kpi_top_type_hint": "{{count}} complaint(s)",
+    "all_types": "All reasons",
+    "unit": "complaint(s)",
+    "postes": {
+      "AGENT_RECEPTION": "Reception agent",
+      "AGENT_COLLECTE": "Collection agent",
+      "AGENT_LAVAGE": "Washing agent",
+      "RESPONSABLE": "Supervisor"
     }
   },
   "historique_collecte": {
@@ -1635,7 +1766,61 @@
       "MIXTE": "Mixed",
       "PROPRE_EN_PLACE": "Clean in place",
       "MANQUANT": "Missing"
-    }
+    },
+    "report_title": "Collection report",
+    "location": "Location",
+    "ended_at": "Completed on",
+    "completion": "Completion",
+    "outcome": "Outcome",
+    "processed": "Processed",
+    "processed_short": "processed",
+    "collected": "Collected",
+    "expected": "Expected",
+    "category": "Category",
+    "sign_agent": "Agent signature",
+    "sign_manager": "Supervisor approval",
+    "printed_on": "Printed on",
+    "opened": "Opened",
+    "ended": "Completed",
+    "in_progress": "Collection in progress",
+    "bed": "Bed",
+    "created_at": "Created on",
+    "pieces": "item(s)",
+    "no_categories": "No items recorded for this collection.",
+    "expected_hint": "Light part of the bar: expected quantity.",
+    "timeline": "Timeline",
+    "not_finished": "Not finished yet",
+    "information": "Information",
+    "print_report": "Print report",
+    "unknown_agent": "Agent not specified",
+    "subtitle": "Traceability of all collections: rooms, services and uniforms.",
+    "kpi_collections": "Collections",
+    "kpi_done": "{{count}} completed",
+    "kpi_pieces": "Items processed",
+    "kpi_pieces_hint": "White, clean, infected and missing",
+    "kpi_completion_hint": "Processed / expected items",
+    "kpi_alerts": "Alerts",
+    "kpi_alerts_hint": "{{infected}} infected · {{missing}} missing",
+    "alert_infected": "{{count}} presumed infected item(s)",
+    "alert_missing": "{{count}} missing item(s)",
+    "source": "Source",
+    "all_sources": "All",
+    "all_states": "All statuses",
+    "date_from": "From",
+    "date_to": "To",
+    "today": "Today",
+    "last_7": "7 days",
+    "last_30": "30 days",
+    "progress": "Progress",
+    "source_room": "Room",
+    "source_service": "Service",
+    "source_uniform": "Uniforms",
+    "source_linen": "Service linen",
+    "source_other": "Collection",
+    "white_collected": "White",
+    "clean_in_place": "Clean in place",
+    "missing": "Missing",
+    "etat_running": "In progress"
   },
   "auth": {
     "title": "Authentication",
@@ -1752,7 +1937,8 @@
       "bac_not_infected": "This bin is type {{type}}. Scan a RED bin.",
       "nothing_to_close": "⚠️ Nothing to close",
       "scan_at_least_one": "Scan at least one linen or declare an infected bag."
-    }
+    },
+    "agent_not_connected": "👤 Agent not connected — please log in again"
   },
   "collecte_uniforme": {
     "title": "Uniform Collection",
@@ -1903,7 +2089,8 @@
         "label": "Room Collection",
         "description": "Collection of room linens"
       }
-    }
+    },
+    "keyboard_hint": "Tap a card or press 1, 2 or 3"
   },
   "buanderie": {
     "title": "Laundry",
@@ -1916,8 +2103,8 @@
       "lavage": "4 - Washing",
       "sechoir": "5 - Drying",
       "pliage": "6 - Folding",
-      "stockage": "7 - Storage",
-      "livraison": "8 - Delivery"
+      "stockage": "8 - Arsenal storage",
+      "livraison": "7 - Delivery"
     }
   },
   "dashboard_buanderie": {
@@ -1999,7 +2186,9 @@
       "conforme": "Compliant",
       "ecart": "Discrepancy",
       "en_attente": "Pending"
-    }
+    },
+    "no_selection": "No bag selected",
+    "no_selection_text": "Select a bag before printing its barcode."
   },
   "notifications": {
     "title": "Notifications",
@@ -2035,7 +2224,11 @@
       "bac": "Bin",
       "sac": "Infected bag",
       "linge": "Linen",
-      "default": "Item"
+      "default": "Item",
+      "lot": "Batch",
+      "machine": "Machine",
+      "arsenal": "Arsenal",
+      "immobilisation": "Asset"
     }
   },
   "linge": {
@@ -2099,10 +2292,83 @@
     "details": "Linen details",
     "collection_type": "Collection type",
     "print_label_question": "Do you want to print the label?",
-      "import_destination_service": "Destination service"
-
+    "import_destination_service": "Destination service",
+    "form_subtitle": "Fill in the linen details",
+    "carrier_hint": "Type a name, first name, ID or barcode to filter",
+    "sections": {
+      "identification": "Identification",
+      "identification_hint": "Barcode and RFID tag",
+      "identification_auto": "The barcode will be generated automatically",
+      "characteristics": "Characteristics",
+      "characteristics_hint": "Category, weight and lifespan",
+      "assignment": "Assignment",
+      "assignment_hint": "Department and wearer",
+      "tracking": "Tracking",
+      "status_notes": "Status & notes",
+      "status_notes_hint": "Current status and notes"
+    },
+    "incomplets": {
+      "title": "Incomplete linen",
+      "subtitle": "Active linen missing at least one required detail. Fix them with “Edit”.",
+      "all": "All",
+      "quit": "View all linen",
+      "missing": "Missing details",
+      "attributs": {
+        "POIDS": "Weight",
+        "DUREE_VIE": "Lifespan",
+        "CATEGORIE": "Category",
+        "SERVICE": "Department",
+        "DESIGNATION": "Designation"
+      }
+    },
+    "import_info": "Select the linens to import, then choose the destination service.",
+    "import_no_selection_title": "No linen selected",
+    "import_no_selection_text": "Select at least one linen to import.",
+    "import_service_required_title": "Service required",
+    "import_service_required_text": "Choose the destination service before importing.",
+    "filters": {
+      "clear": "Clear filters",
+      "stats": "Show statistics",
+      "export": "Export to Excel"
+    },
+    "stats": {
+      "title": "Linen statistics",
+      "subtitle": "Computed on all linens matching the filters, across all pages.",
+      "no_filter": "No filter: all linens",
+      "total": "Linens",
+      "with_wearer": "{{count}} with a wearer",
+      "total_weight": "Total weight (kg)",
+      "avg_weight": "Average weight (kg)",
+      "avg": "Average",
+      "rfid": "With RFID tag",
+      "avg_lifespan": "Average lifespan",
+      "no_service": "No service",
+      "no_service_count": "{{count}} without service",
+      "all_assigned": "All assigned to a service",
+      "by_status": "By status",
+      "by_category": "By category",
+      "by_service": "By service",
+      "load_error": "Unable to load statistics"
+    },
+    "export": {
+      "button": "Export to Excel",
+      "empty": "No linen to export with these filters.",
+      "error": "Export failed",
+      "sheet_linges": "Linens",
+      "sheet_summary": "Summary",
+      "title": "Linen inventory",
+      "generated": "Generated on",
+      "indicator": "Indicator",
+      "value": "Value",
+      "barcode": "Barcode",
+      "weight": "Weight (kg)",
+      "lifespan": "Lifespan",
+      "wearer": "Wearer",
+      "bin": "Bin",
+      "lot": "Batch"
+    }
   },
-   "chatbot": {
+  "chatbot": {
     "title": "Laundry Assistant",
     "subtitle": "Your smart assistant",
     "online": "Online",
@@ -2129,6 +2395,363 @@
       "missing_linens": "Are there any missing linens?",
       "infected_linens": "How many infected linens were presumed?",
       "today_collections": "How many collections were done today?"
+    }
+  },
+  "category_picker": {
+    "selected": "{{count}} / {{total}} selected",
+    "select_all": "Select all",
+    "clear": "Clear"
+  },
+  "settings": {
+    "tabs": {
+      "scan": "Scanning",
+      "scan_hint": "Barcode or RFID",
+      "labels": "Labels",
+      "labels_hint": "Content and size",
+      "voice": "Voice assistant",
+      "voice_hint": "Language, speed, repetition",
+      "preferences": "Preferences",
+      "preferences_hint": "Display, thresholds, categories"
+    },
+    "scan": {
+      "title": "Linen identification mode",
+      "desc": "Choose how linen is identified on scanning screens. Your choice is saved on this device.",
+      "barcode": "Barcode",
+      "barcode_hint": "Read barcode labels with a handheld scanner",
+      "rfid": "RFID",
+      "rfid_hint": "Contactless reading of RFID chips sewn into the linen",
+      "applies_to": "Applies to the Linen, Reception, Sorting, Folding, Storage and Tracking screens.",
+      "reader_title": "Reader",
+      "reader_desc": "Automatic validation of codes sent by the barcode scanner or RFID reader.",
+      "delay": "Delay before validation",
+      "delay_hint": "Wait after the last character received. Increase it if codes get cut off.",
+      "min_length": "Minimum code length",
+      "min_length_hint": "Shorter entries are not validated automatically.",
+      "beep": "Beep on each scan",
+      "beep_hint": "Sound confirmation when a code is validated.",
+      "beep_test": "Try it"
+    },
+    "reset_section": "Default values",
+    "never": "Never",
+    "voice": {
+      "title": "Voice assistant",
+      "desc": "Default settings for the collection, distribution and washing screens. Each screen keeps its own button to mute or change language.",
+      "test": "Play a sample",
+      "test_name": "Agent",
+      "enabled": "On when screens open",
+      "enabled_hint": "Off: screens open muted.",
+      "lang": "Default language",
+      "rate": "Voice speed",
+      "repeat": "Repeat the instruction",
+      "repeat_hint": "If the agent does nothing, the assistant repeats the last instruction.",
+      "stop": "Stop",
+      "voice": "Voice",
+      "auto": "Automatic",
+      "voice_hint": "\"Automatic\" picks the clearest voice available.",
+      "edge_hint": "Only standard voices are available. For a clearer, natural voice (especially in Arabic), open the application in Microsoft Edge.",
+      "no_voice": "No voice installed for this language on this computer.",
+      "quality_natural": "natural",
+      "quality_standard": "standard",
+      "rate_hint_ar": "The Arabic voice is already slightly slowed down for clarity."
+    },
+    "prefs": {
+      "display_title": "Display",
+      "display_desc": "How lists and dates are shown.",
+      "page_size": "Rows per page",
+      "page_size_hint": "Linen, History, Assets.",
+      "date_style": "Date format",
+      "date_example": "Example: {{value}}",
+      "thresholds_title": "Thresholds",
+      "thresholds_desc": "Alert levels shown on the sorting, washing and drying screens.",
+      "lot_full": "Batch considered full from",
+      "lot_full_hint": "The basket turns red and shows “Full”. It turns orange 20 points earlier.",
+      "refresh_title": "Automatic refresh",
+      "refresh_desc": "How often live screens update. Increase it on a slow network.",
+      "refresh_stats": "Statistics dashboard",
+      "refresh_tracking": "Linen tracking (LIVE)",
+      "refresh_distribution": "Department distribution (comparison)",
+      "dashboard_title": "Dashboard",
+      "dashboard_desc": "Cards shown at the top of the Statistics screen.",
+      "categories_title": "Categories in use",
+      "categories_desc": "Categories offered when entering data (linen, programmes, batches, collection). Search filters keep every category.",
+      "refresh_machines": "Washing machines"
+    },
+    "title": "Settings",
+    "subtitle": "Manage your account, security and preferences.",
+    "appearance": {
+      "light": "Light",
+      "light_hint": "Bright, ideal during the day",
+      "dark": "Dark",
+      "dark_hint": "Easier on the eyes in low light",
+      "system": "System",
+      "system_hint": "Follows your Windows setting",
+      "theme_title": "Theme",
+      "theme_desc": "Choose how the application looks. Your choice is remembered.",
+      "language_title": "Language",
+      "language_desc": "Display language of the interface."
+    },
+    "establishment": {
+      "bad_type": "Unsupported format (PNG, JPG, WebP or SVG).",
+      "bad_url": "The address must start with http:// or https://",
+      "saved": "Establishment settings saved.",
+      "save_error": "Could not save: the logo may be too large.",
+      "reset_done": "Default values restored.",
+      "title": "Establishment identity",
+      "desc": "Name and logo shown on the login page and labels.",
+      "reset": "Default values",
+      "name": "Establishment name",
+      "name_required": "The name is required.",
+      "city": "City",
+      "logo": "Logo",
+      "processing": "Processing image…",
+      "drop": "Drop an image here or click to browse",
+      "remove_logo": "Back to the default logo",
+      "logo_url": "Or use an image URL",
+      "apply": "Apply",
+      "preview": "Login page preview",
+      "local_note": "These settings are saved in this browser. Repeat on each workstation until they are stored on the server.",
+      "too_big": "Image too large ({{max}} MB maximum).",
+      "formats": "PNG, JPG, WebP or SVG · transparent background recommended · {{max}} MB max."
+    },
+    "notifications": {
+      "display_title": "Display",
+      "display_desc": "How new notifications are shown to you.",
+      "popup": "Real-time popup",
+      "popup_hint": "Shows an alert at the top of the screen for each new notification.",
+      "sound": "Sound",
+      "sound_hint": "Plays a subtle sound.",
+      "types_title": "Notification types",
+      "types_desc": "Choose which events you want to be alerted about.",
+      "reclamation": "Complaints",
+      "reclamation_hint": "New complaint or status change.",
+      "fin_de_vie": "Linen end of life",
+      "fin_de_vie_hint": "Linen that has reached its maximum number of cycles.",
+      "stock_uniforme": "Uniform stock",
+      "stock_uniforme_hint": "Uniform available or low stock."
+    },
+    "profile": {
+      "user": "User",
+      "account": "User account",
+      "admin": "Administrator",
+      "info_title": "Account information",
+      "info_desc": "Data from your account, read-only.",
+      "login": "Username",
+      "matricule": "Employee ID",
+      "badge": "Badge code",
+      "email": "Email",
+      "service": "Service",
+      "position": "Position",
+      "contact_admin": "To change this information, contact your administrator.",
+      "privileges": "{{count}} access rights"
+    },
+    "security": {
+      "not_connected": "Form is valid. Saving will be connected to the server soon.",
+      "password_title": "Password",
+      "password_desc": "Choose a strong password you don't use anywhere else.",
+      "update_password": "Update",
+      "current": "Current password",
+      "new": "New password",
+      "same_as_current": "The new password must be different from the current one.",
+      "confirm": "Confirm new password",
+      "mismatch": "Passwords do not match.",
+      "rules_title": "Your password must contain",
+      "session_title": "Session",
+      "session_desc": "Device currently signed in to your account.",
+      "this_device": "This device",
+      "logout": "Log out"
+    }
+  },
+  "modal": {
+    "fields_count": "{{count}} fields",
+    "fields_count_one": "{{count}} field",
+    "fields_count_other": "{{count}} fields",
+    "identification": "Identification",
+    "characteristics": "Characteristics",
+    "general_info": "General information",
+    "execution": "Execution",
+    "movement": "Movement",
+    "collection": "Collection"
+  },
+  "label_settings": {
+    "title": "Labels",
+    "desc": "Choose what appears on each type of label. Settings are saved on this device.",
+    "reset": "Default settings",
+    "print_test": "Print a test",
+    "size": "Size",
+    "elements": "Elements",
+    "fields_title": "Information",
+    "preview_hint": "Preview with sample data · {{size}}",
+    "element": {
+      "header": "Header (item type)",
+      "date": "Print date",
+      "barcode": "Barcode",
+      "codeText": "Human-readable code",
+      "colorBand": "Colour band",
+      "logo": "Establishment logo",
+      "establishment": "Establishment name"
+    }
+  },
+  "stockageArsenal": {
+    "title": "Arsenal storage",
+    "subtitle": "Storing linen in the arsenals",
+    "tabs": {
+      "rangement": "Storing",
+      "stock": "Arsenal stock",
+      "localiser": "Locate an item"
+    },
+    "steps": {
+      "agent": "Agent",
+      "remises": "Delivery",
+      "quantite": "Quantity",
+      "etagere": "Shelf",
+      "unParUn": "One by one",
+      "label": "Storage steps"
+    },
+    "choose_arsenal": "Choose the arsenal",
+    "no_arsenals": "No arsenal available",
+    "change_arsenal": "Change",
+    "arsenal": "Arsenal",
+    "shelf": "Shelf",
+    "no_shelves": "No shelf for this arsenal",
+    "scan_agent_title": "Scan the agent's badge",
+    "scan_agent_placeholder": "Scan agent badge...",
+    "change_agent": "Change agent",
+    "remises_title": "Deliveries to store",
+    "no_remises": "No delivery to store for this agent",
+    "remise": "Delivery",
+    "to_store": "to store",
+    "back_to_remises": "Back to deliveries",
+    "quantity_title": "Counted quantity",
+    "quantity_placeholder": "Number of items",
+    "quantity_hint": "Count the items physically received and enter the number.",
+    "invalid_quantity": "Enter a valid quantity (positive whole number).",
+    "counted": "Counted",
+    "shelf_title": "Scan or choose the shelf",
+    "scan_shelf_placeholder": "Scan the shelf code...",
+    "no_shelf_selected": "No shelf selected",
+    "unknown_shelf": "Unknown shelf in this arsenal: {{code}}",
+    "validate": "Confirm storage",
+    "stored_all": "Items stored successfully",
+    "one_by_one_intro": "Scan a shelf, then each item. The shelf stays active until you scan another one.",
+    "active_shelf": "Active shelf",
+    "change_shelf": "Change shelf",
+    "shelf_active": "Active shelf: {{shelf}}",
+    "scan_shelf_first": "Scan a shelf first",
+    "scan_linge_or_shelf": "Scan an item (or another shelf)...",
+    "remaining": "Left to store",
+    "remaining_linges": "Remaining items",
+    "nothing_left": "All items of this delivery are stored",
+    "remise_done": "Delivery fully stored",
+    "finish": "Finish",
+    "stock_title": "Stock — {{arsenal}}",
+    "linges_in_stock": "items in stock",
+    "empty_arsenal": "Empty arsenal",
+    "empty_shelf": "Empty shelf",
+    "shelf_content": "{{count}} item(s)",
+    "locate_title": "Locate an item",
+    "locate_placeholder": "Scan the item code...",
+    "not_stored": "This item is not stored in any arsenal.",
+    "choose_arsenal_hint": "Select the arsenal where you are storing the linen (keys 1 to 9 for speed).",
+    "step_n": "Step {{n}}",
+    "step_of": "Step {{n}} of {{total}}",
+    "mode": "Mode",
+    "scan_agent_hint": "Present the badge of the agent who delivered the linen: their deliveries to store show up right away.",
+    "remises_hint": "Tap the delivery you are storing.",
+    "no_remises_hint": "All of this agent's deliveries are already stored.",
+    "store_this": "Store this delivery",
+    "to_choose": "To choose",
+    "next_shelf": "Choose the shelf",
+    "shelf_hint": "Scan the shelf label, or tap it in the list below, then confirm.",
+    "validate_into": "Store {{count}} item(s) on {{shelf}}",
+    "choose_shelf_first": "Choose a shelf",
+    "one_by_one_title": "Quantity mismatch — store one by one",
+    "remise_done_hint": "All items are stored. Tap “Finish” to go back to deliveries.",
+    "stored": "stored",
+    "scan_title": "Scan",
+    "journal_empty": "Scanned items will appear here.",
+    "shelves_count": "{{count}} shelf(s)",
+    "shelves_used": "{{count}} in use",
+    "locate_hint": "Scan an item to find which arsenal and shelf it is stored on.",
+    "not_stored_title": "Item not stored",
+    "agent_title": "Identify the collection agent",
+    "pick_agent_hint": "Search the agent by name or ID, then tap them: their deliveries to store show up.",
+    "agent_mode_scan": "Scan badge",
+    "agent_mode_list": "Pick from list",
+    "search_agent": "Search an agent (name, ID…)",
+    "agents_found": "{{count}} agent(s)",
+    "refine_search": "refine your search (first {{max}} shown)",
+    "no_agent_found": "No matching agent",
+    "track_title": "Progress",
+    "n_to_store": "{{count}} to store",
+    "n_counted": "{{count}} counted",
+    "or_pick_shelf": "Or pick from the list",
+    "scan_title_one_by_one": "Scan each item",
+    "progress_label": "{{done}} of {{total}} stored",
+    "last_scans": "Latest scans",
+    "finish_hint": "Items not scanned will stay to be stored.",
+    "before_start": "To begin",
+    "in_progress": "In progress"
+  },
+  "dialogue_rangement": {
+    "badge": "Folded · quality check passed",
+    "title": "Store this item",
+    "text": "Place it on its department shelf in the laundry.",
+    "shelf_of": "Department shelf",
+    "location": "Clean area — laundry",
+    "unknown_service": "Department not set",
+    "service": "Department",
+    "done": "Done, stored",
+    "auto_close": "Closes automatically",
+    "next_hint": "You can also scan the next item right away."
+  },
+  "suiviStock": {
+    "title": "Stock tracking",
+    "last_calc": "Last computed",
+    "refresh": "Refresh",
+    "auto_on": "Auto-update · 30 s",
+    "auto_off": "Auto-update paused",
+    "pause": "Pause",
+    "resume": "Resume",
+    "refresh_failed": "Refresh failed",
+    "load_error": "Unable to load stock tracking",
+    "retry": "Retry",
+    "empty": "No linen in the inventory",
+    "total_parc": "Total inventory",
+    "total": "Total",
+    "see_linges": "See items",
+    "repartition": "Inventory by zone",
+    "by_category": "By category",
+    "by_service": "By department",
+    "category": "Category",
+    "service": "Department",
+    "click_cell": "Click a number to see the items",
+    "search_service": "Search a department…",
+    "services_count": "{{count}} department(s)",
+    "no_services": "No department",
+    "no_service_match": "No matching department",
+    "service_view": "Department view",
+    "back_global": "Back to global view",
+    "all_zones": "All zones",
+    "linges_count": "{{count}} item(s)",
+    "no_linges": "No item for this filter",
+    "page_of": "Page {{page}} / {{total}}",
+    "col_code": "Barcode",
+    "col_designation": "Designation",
+    "col_category": "Category",
+    "col_state": "State",
+    "col_location": "Location",
+    "loc_shelf": "Shelf {{id}}",
+    "loc_room": "Room {{id}}",
+    "loc_bed": "Bed {{id}}",
+    "zones": {
+      "OFFICE": "Office",
+      "STOCK_NON_RANGE": "Unshelved stock",
+      "CHAMBRES": "Rooms",
+      "PORTEURS": "Wearers",
+      "A_RANGER": "To store",
+      "SALE": "Dirty",
+      "CIRCUIT_BUANDERIE": "Laundry circuit",
+      "PERTES": "Losses"
     }
   }
 }

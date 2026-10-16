@@ -19,6 +19,10 @@ import {
 } from "../../services/distributionUniformeService";
 import Swal from "sweetalert2";
 import "../Linge/WorkflowList.css";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import MuteButton from "../../components/utils/MuteButton";
+import { useVoiceGuide } from "../../hooks/useVoiceGuide";
+import { getSetting } from "../../utils/appSettings";
 
 // ─── ScanStatus ──────────────────────────────────────────────────────────────
 function ScanStatus({ loading, success, error, code }) {
@@ -341,6 +345,13 @@ export default function DistributionUniforme() {
   const personnelRef = useRef(null);
   const scanInputRef = useRef(null);
 
+  // Assistant vocal
+  const [voiceLang, setVoiceLang] = useState(() => getSetting("voice.lang"));
+  const voice = useVoiceGuide(voiceLang);
+  const voiceRef = useRef(voice);
+  useEffect(() => { voiceRef.current = voice; }, [voice]);
+  useEffect(() => () => voiceRef.current.cancel(), []);
+
   useEffect(() => { agentRef.current = agent; }, [agent]);
   useEffect(() => { personnelRef.current = personnel; }, [personnel]);
 
@@ -362,6 +373,7 @@ export default function DistributionUniforme() {
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
+      setTimeout(() => voiceRef.current.sayBienvenueDistributionUniforme(agentData.nomPrenom || agentData.nom || ""), 600);
     } else {
       console.warn("⚠️ Aucun agent trouvé dans le stockage");
       setEtape("PERSONNEL");
@@ -388,6 +400,7 @@ export default function DistributionUniforme() {
   // ─── Clôturer la distribution ──────────────────────────────────────────
   const cloturerDistribution = useCallback(async () => {
     if (distribues.length === 0) {
+      voice.sayAucunUniformeDistribue();
       await Swal.fire({
         icon: 'warning',
         title: t('distribution_uniforme.no_uniform_distributed_title'),
@@ -404,6 +417,7 @@ export default function DistributionUniforme() {
       uniformes: distribues
     });
     setEtape("RESUME");
+    voice.sayDistributionUniformeTerminee(personnel.nom, distribues.length);
     setScanStatus({
       loading: false,
       success: { 
@@ -414,7 +428,7 @@ export default function DistributionUniforme() {
     });
     setTimeout(() => setScanStatus(null), 2000);
     return true;
-  }, [distribues, personnel, t]);
+  }, [distribues, personnel, t, voice]);
 
   // ─── Scan Personnel ──────────────────────────────────────────────────────
   const handlePersonnel = useCallback(async code => {
@@ -442,6 +456,7 @@ export default function DistributionUniforme() {
       setDisponibles(data.disponibles || []);
       setDistribues([]);
       setEtape("DISTRIBUER");
+      voice.sayPersonnelDistribution(data.personnelNom, data.disponibles?.length || 0);
       setScanStatus({
         loading: false,
         success: { 
@@ -460,6 +475,8 @@ export default function DistributionUniforme() {
       });
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
+      if (/réseau|network|fetch/i.test(e.message || "")) voice.sayErreurReseau();
+      else voice.sayErreurGenerique(e.message);
       await Swal.fire({
         icon: 'error',
         title: t('common.error'),
@@ -468,11 +485,12 @@ export default function DistributionUniforme() {
     } finally {
       setLoading(false);
     }
-  }, [agent, t]);
+  }, [agent, t, voice]);
 
   // ─── Scan Uniforme ──────────────────────────────────────────────────────
   const handleScanUniforme = useCallback(async code => {
     if (!personnel) {
+      voice.sayScannerPersonnelDabord();
       await Swal.fire({
         icon: 'warning',
         title: t('distribution_uniforme.scan_personnel_first_title'),
@@ -495,6 +513,7 @@ export default function DistributionUniforme() {
       setDisponibles(prev => prev.filter(l => l.lingeId !== data.lingeId));
       setEnPossession(prev => [...prev, data]);
       setDistribues(prev => [...prev, data]);
+      voice.sayUniformeDistribue(distribues.length + 1);
 
       setScanStatus({
         loading: false,
@@ -514,6 +533,7 @@ export default function DistributionUniforme() {
       });
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
+      voice.sayErreurGenerique(e.message);
       await Swal.fire({
         icon: 'error',
         title: t('common.error'),
@@ -524,13 +544,14 @@ export default function DistributionUniforme() {
     } finally {
       setLoading(false);
     }
-  }, [personnel, agent, t]);
+  }, [personnel, agent, distribues.length, t, voice]);
 
   // ─── Retirer un uniforme ──────────────────────────────────────────────
   const handleRetirer = useCallback(async (linge) => {
     setEnPossession(prev => prev.filter(l => l.lingeId !== linge.lingeId));
     setDisponibles(prev => [...prev, linge]);
     setDistribues(prev => prev.filter(l => l.lingeId !== linge.lingeId));
+    voice.sayUniformeRetire();
 
     await Swal.fire({
       icon: 'info',
@@ -539,7 +560,7 @@ export default function DistributionUniforme() {
       timer: 1000,
       showConfirmButton: false
     });
-  }, [t]);
+  }, [t, voice]);
 
   // ─── Gestion scan ──────────────────────────────────────────────────────
   const handleScan = useCallback(async code => {
@@ -615,26 +636,16 @@ export default function DistributionUniforme() {
   return (
     <div className="collecte-container">
 
-      <div style={{ marginBottom: "32px" }}>
+      <div style={{
+        marginBottom: "32px", display: "flex", alignItems: "center",
+        justifyContent: "space-between", flexWrap: "wrap", gap: "12px"
+      }}>
         <div style={{
           display: "flex",
           alignItems: "center",
-          gap: "16px",
-          marginBottom: "8px"
+          gap: "16px"
         }}>
-          <div style={{
-            width: "56px",
-            height: "56px",
-            borderRadius: "18px",
-            background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            boxShadow: "0 6px 20px rgba(124, 58, 237, 0.3)"
-          }}>
-            <FaUserTie size={26} />
-          </div>
+          <PageHeaderIcon size={56} />
           <div>
             <h1 style={{
               fontSize: "28px",
@@ -653,6 +664,14 @@ export default function DistributionUniforme() {
             </p>
           </div>
         </div>
+
+        <MuteButton
+          muted={voice.muted}
+          onToggle={voice.toggleMute}
+          speaking={voice.speaking}
+          lang={voiceLang}
+          onLangChange={setVoiceLang}
+        />
       </div>
 
       <div style={{

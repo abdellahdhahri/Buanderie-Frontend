@@ -198,7 +198,8 @@ export const MachineImportModal = () => {
     <Modal
       isOpen={isImportModalOpen}
       onClose={() => setIsImportModalOpen(false)}
-      title={`📥 ${t('machines.import', { type: typeLabelSingular })}`}
+      title={t('machines.import', { type: typeLabelSingular })}
+      variant="import"
       size="xl"
     >
       <div className="space-y-4">

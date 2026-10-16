@@ -8,11 +8,13 @@ import { Button } from "../../components/ui/button";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import MuteButton from "../../components/utils/MuteButton";
 
-import { cat, ST_COLORS } from "./collecteUtils";
+import { cat } from "./collecteUtils";
 import { useVoiceGuide } from "../../hooks/useVoiceGuide";
+import { getSetting, bipScan } from "../../utils/appSettings";
 
 import {
   fetchChambreByCode,
+  fetchLitsChambre,
   fetchAgentByCode,
   ouvrirCollecteChambre,
   scannerLit,
@@ -27,12 +29,11 @@ import {
 import { getAgent, isAgentConnected } from "../../services/agentService";
 
 import "../Linge/WorkflowList.css";
-
-
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { LitTile, LitDialog, LegendeLits } from "./components/ChambreLits";
 
 
 const Icons = {
-  /* ─── Bâtiment / Chambre ─── */
   Building: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -42,7 +43,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Porte / Door open ─── */
   DoorOpen: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -54,7 +54,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Lit ─── */
   Bed: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -65,7 +64,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Check circle (Propre) ─── */
   CheckCircle: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -74,7 +72,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Alert triangle (Manquant) ─── */
   AlertTriangle: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -84,7 +81,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Biohazard (Infecté) ─── */
   Biohazard: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -99,7 +95,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── User / Agent ─── */
   User: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -108,7 +103,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── X / Close ─── */
   X: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -117,7 +111,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Refresh / Reset ─── */
   Refresh: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -128,7 +121,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Loader / Spinner ─── */
   Loader: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -136,7 +128,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Shield / Protection ─── */
   Shield: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -145,7 +136,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Package / Bac ─── */
   Package: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -156,7 +146,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Sparkles / Décoratif ─── */
   Sparkles: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -164,7 +153,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Activity / Pulse ─── */
   Activity: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -172,7 +160,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Layers / List ─── */
   Layers: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -182,7 +169,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Info ─── */
   Info: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -192,7 +178,6 @@ const Icons = {
     </svg>
   ),
 
-  /* ─── Check Double (Validé) ─── */
   CheckCheck: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -200,8 +185,30 @@ const Icons = {
       <path d="m22 10-7.5 7.5L13 16" />
     </svg>
   ),
+
+  Square: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+    </svg>
+  ),
+
+  SquareCheck: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <path d="m8 12 3 3 5-6" />
+    </svg>
+  ),
 };
 
+
+const calculerStatutLit = (linges) => {
+  if (!linges.length || linges.some((lg) => !lg.statut)) return "";
+  if (linges.some((lg) => lg.statut === "INFECTE")) return "INFECTE";
+  if (linges.some((lg) => lg.statut === "BLANC")) return "BLANC";
+  return "TRAITE";
+};
 
 
 function ScanStatus({ loading, success, error, code }) {
@@ -301,9 +308,6 @@ function ScanStatus({ loading, success, error, code }) {
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DialogueManquant — Design premium avec SVG
-   ═══════════════════════════════════════════════════════════════════════════ */
 function DialogueManquant({ linge, onConfirmer, onFermer }) {
   if (!linge) return null;
   const c = cat(linge.categorie);
@@ -329,7 +333,6 @@ function DialogueManquant({ linge, onConfirmer, onFermer }) {
           animation: "scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1)",
         }}
       >
-        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{
@@ -364,7 +367,6 @@ function DialogueManquant({ linge, onConfirmer, onFermer }) {
           </button>
         </div>
 
-        {/* Card linge */}
         <div style={{
           padding: 14, background: c.bg, borderRadius: 14, marginBottom: 18,
           display: "flex", alignItems: "center", gap: 12,
@@ -377,7 +379,6 @@ function DialogueManquant({ linge, onConfirmer, onFermer }) {
           </div>
         </div>
 
-        {/* Avertissement */}
         <div style={{
           padding: "12px 14px", borderRadius: 12, marginBottom: 20,
           background: "linear-gradient(135deg, #fffbeb, #fef3c7)",
@@ -392,7 +393,6 @@ function DialogueManquant({ linge, onConfirmer, onFermer }) {
           </p>
         </div>
 
-        {/* Actions */}
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={onFermer}
@@ -430,9 +430,6 @@ function DialogueManquant({ linge, onConfirmer, onFermer }) {
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DialogueInfecte — Design premium avec SVG + procédure
-   ═══════════════════════════════════════════════════════════════════════════ */
 function DialogueInfecte({ linge, onFermer, onScanner }) {
   if (!linge) return null;
   const c = cat(linge.categorie);
@@ -458,7 +455,6 @@ function DialogueInfecte({ linge, onFermer, onScanner }) {
           animation: "scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1)",
         }}
       >
-        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{
@@ -490,7 +486,6 @@ function DialogueInfecte({ linge, onFermer, onScanner }) {
           </button>
         </div>
 
-        {/* Card linge */}
         <div style={{
           padding: 14, background: c.bg, borderRadius: 14, marginBottom: 18,
           display: "flex", alignItems: "center", gap: 12,
@@ -503,7 +498,6 @@ function DialogueInfecte({ linge, onFermer, onScanner }) {
           </div>
         </div>
 
-        {/* Procédure */}
         <div style={{
           padding: 16, borderRadius: 14, marginBottom: 20,
           background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
@@ -541,7 +535,6 @@ function DialogueInfecte({ linge, onFermer, onScanner }) {
           </div>
         </div>
 
-        {/* Actions */}
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={onFermer}
@@ -579,306 +572,6 @@ function DialogueInfecte({ linge, onFermer, onScanner }) {
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   BoutonDeclaration — Bouton d'action premium avec SVG
-   ═══════════════════════════════════════════════════════════════════════════ */
-function BoutonDeclaration({ type, onClick, title }) {
-  const themes = {
-    propre: {
-      gradient: "linear-gradient(135deg, #0ea5e9, #0284c7)",
-      shadow: "rgba(2,132,199,0.35)",
-      hoverShadow: "rgba(2,132,199,0.5)",
-      Icon: Icons.CheckCircle,
-    },
-    manquant: {
-      gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
-      shadow: "rgba(217,119,6,0.35)",
-      hoverShadow: "rgba(217,119,6,0.5)",
-      Icon: Icons.AlertTriangle,
-    },
-    infecte: {
-      gradient: "linear-gradient(135deg, #ef4444, #dc2626)",
-      shadow: "rgba(220,38,38,0.35)",
-      hoverShadow: "rgba(220,38,38,0.5)",
-      Icon: Icons.Biohazard,
-    },
-  };
-
-  const theme = themes[type];
-  const IconComponent = theme.Icon;
-
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      style={{
-        width: 36, height: 36, borderRadius: 11,
-        border: "none", background: theme.gradient,
-        color: "white", cursor: "pointer",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: `0 3px 10px ${theme.shadow}`,
-        transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
-        e.currentTarget.style.boxShadow = `0 6px 16px ${theme.hoverShadow}`;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0) scale(1)";
-        e.currentTarget.style.boxShadow = `0 3px 10px ${theme.shadow}`;
-      }}
-      onMouseDown={(e) => {
-        e.currentTarget.style.transform = "translateY(0) scale(0.92)";
-      }}
-      onMouseUp={(e) => {
-        e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
-      }}
-    >
-      <IconComponent size={14} color="white" strokeWidth={2.5} />
-    </button>
-  );
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   LingeRow — Ligne de linge premium
-   ═══════════════════════════════════════════════════════════════════════════ */
-function LingeRow({ linge, stLit, onPropre, onManquant, onInfecte }) {
-  const c = cat(linge.categorie);
-  const col = ST_COLORS[linge.statut];
-
-  return (
-    <div
-      style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: "10px 14px", borderRadius: 12, marginBottom: 6,
-        background: linge.statut
-          ? `linear-gradient(135deg, ${col?.bg || "#f8fafc"}, ${col?.bg || "#f1f5f9"})`
-          : "linear-gradient(135deg, #ffffff, #f8fafc)",
-        border: `1.5px solid ${col?.b || "#e2e8f0"}`,
-        transition: "all 0.2s",
-        boxShadow: linge.statut ? "none" : "0 1px 3px rgba(15,23,42,0.04)",
-      }}
-      onMouseEnter={(e) => {
-        if (!linge.statut) {
-          e.currentTarget.style.boxShadow = "0 4px 12px rgba(15,23,42,0.08)";
-          e.currentTarget.style.borderColor = "#cbd5e1";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!linge.statut) {
-          e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,42,0.04)";
-          e.currentTarget.style.borderColor = "#e2e8f0";
-        }
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0, flex: 1 }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 11,
-          background: c.bg, display: "flex", alignItems: "center",
-          justifyContent: "center", fontSize: 19, flexShrink: 0,
-          border: `1px solid ${c.color}20`,
-        }}>
-          {c.emoji}
-        </div>
-
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{
-            fontSize: 12.5, fontWeight: 700, color: c.color,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {c.label}
-          </div>
-          <code style={{
-            fontSize: 10.5, color: "#94a3b8", fontWeight: 600,
-            display: "block", overflow: "hidden",
-            textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {linge.codeBarre}
-          </code>
-        </div>
-      </div>
-
-      <div style={{ flexShrink: 0 }}>
-        {linge.statut ? (
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            fontSize: 10, fontWeight: 800, letterSpacing: "0.4px",
-            padding: "5px 12px", borderRadius: 20,
-            background: col?.tag, color: col?.tc,
-            textTransform: "uppercase", whiteSpace: "nowrap",
-            border: `1px solid ${col?.b}`,
-          }}>
-            {col?.lbl}
-          </span>
-        ) : (
-          !stLit && (
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <BoutonDeclaration type="propre" onClick={() => onPropre(linge)} title="Déclarer propre" />
-              <BoutonDeclaration type="manquant" onClick={() => onManquant(linge)} title="Déclarer manquant" />
-              <BoutonDeclaration type="infecte" onClick={() => onInfecte(linge)} title="Déclarer infecté" />
-            </div>
-          )
-        )}
-      </div>
-    </div>
-  );
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   CarteLit — Carte de lit premium avec SVG
-   ═══════════════════════════════════════════════════════════════════════════ */
-function CarteLit({ lit, onPropre, onManquant, onInfecte }) {
-  const traites = lit.linges.filter((l) => l.statut).length;
-  const stLit = lit.statut;
-  const totalLinges = lit.linges.length;
-
-  const theme = stLit === "BLANC"
-    ? {
-        border: "#86efac",
-        bg: "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
-        headerBg: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
-        headerBorder: "#86efac",
-        iconColor: "#15803d",
-        titleColor: "#14532d",
-        badgeBg: "#dcfce7",
-        badgeColor: "#15803d",
-        badgeText: "BLANC",
-        badgeIcon: <Icons.CheckCheck size={11} color="#15803d" strokeWidth={3} />,
-      }
-    : stLit === "INFECTE"
-    ? {
-        border: "#fca5a5",
-        bg: "linear-gradient(135deg, #fef2f2, #fee2e2)",
-        headerBg: "linear-gradient(135deg, #fee2e2, #fecaca)",
-        headerBorder: "#fca5a5",
-        iconColor: "#dc2626",
-        titleColor: "#7f1d1d",
-        badgeBg: "#fee2e2",
-        badgeColor: "#dc2626",
-        badgeText: "INFECTÉ",
-        badgeIcon: <Icons.Biohazard size={11} color="#dc2626" strokeWidth={2.5} />,
-      }
-    : {
-        border: "#e2e8f0",
-        bg: "linear-gradient(135deg, #ffffff, #f8fafc)",
-        headerBg: "linear-gradient(135deg, #f8fafc, #f1f5f9)",
-        headerBorder: "#e2e8f0",
-        iconColor: "#64748b",
-        titleColor: "#0f172a",
-        badgeBg: null,
-        badgeColor: null,
-        badgeText: null,
-      };
-
-  const progressPercent = totalLinges > 0 ? (traites / totalLinges) * 100 : 0;
-
-  return (
-    <div style={{
-      borderRadius: 16, border: `1.5px solid ${theme.border}`,
-      background: theme.bg, overflow: "hidden", marginBottom: 12,
-      transition: "all 0.25s",
-      boxShadow: "0 2px 8px rgba(15,23,42,0.04)",
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: "14px 18px", display: "flex", justifyContent: "space-between",
-        alignItems: "center", borderBottom: `1.5px solid ${theme.headerBorder}`,
-        background: theme.headerBg,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: "white", display: "flex",
-            alignItems: "center", justifyContent: "center",
-            boxShadow: "0 2px 8px rgba(15,23,42,0.08)",
-            border: `1px solid ${theme.headerBorder}`,
-          }}>
-            <Icons.Bed size={18} color={theme.iconColor} strokeWidth={2.2} />
-          </div>
-
-          <div>
-            <div style={{
-              fontWeight: 800, fontSize: 15, color: theme.titleColor,
-              letterSpacing: "-0.01em",
-            }}>
-              Lit {lit.codeLit}
-            </div>
-            <div style={{ fontSize: 11, color: "#64748b", fontWeight: 500, marginTop: 2 }}>
-              {totalLinges} linge{totalLinges > 1 ? "s" : ""}
-              {!stLit && ` · ${traites}/${totalLinges} traité${traites > 1 ? "s" : ""}`}
-            </div>
-          </div>
-
-          {lit.estInfecte && !stLit && (
-            <span style={{
-              fontSize: 10, padding: "5px 11px", borderRadius: 20,
-              background: "#fee2e2", color: "#dc2626", fontWeight: 800,
-              border: "1px solid #fca5a5", letterSpacing: "0.4px",
-              display: "inline-flex", alignItems: "center", gap: 5,
-            }}>
-              <Icons.Biohazard size={10} color="#dc2626" strokeWidth={2.5} />
-              INFECTÉ
-            </span>
-          )}
-        </div>
-
-        {stLit && (
-          <span style={{
-            fontSize: 10.5, fontWeight: 800, letterSpacing: "0.5px",
-            padding: "7px 14px", borderRadius: 20,
-            background: theme.badgeBg, color: theme.badgeColor,
-            border: `1px solid ${theme.headerBorder}`,
-            textTransform: "uppercase",
-            display: "inline-flex", alignItems: "center", gap: 6,
-          }}>
-            {theme.badgeIcon}
-            {theme.badgeText}
-          </span>
-        )}
-      </div>
-
-      {/* Barre de progression */}
-      {!stLit && totalLinges > 0 && (
-        <div style={{ padding: "12px 18px 0 18px" }}>
-          <div style={{
-            height: 4, borderRadius: 2, background: "#f1f5f9",
-            overflow: "hidden", position: "relative",
-          }}>
-            <div style={{
-              height: "100%", width: `${progressPercent}%`,
-              background: progressPercent === 100
-                ? "linear-gradient(90deg, #10b981, #059669)"
-                : "linear-gradient(90deg, #3b82f6, #2563eb)",
-              borderRadius: 2, transition: "width 0.4s cubic-bezier(0.4,0,0.2,1)",
-              boxShadow: "0 0 8px rgba(59,130,246,0.4)",
-            }} />
-          </div>
-        </div>
-      )}
-
-      {/* Liste des linges */}
-      <div style={{ padding: "14px 14px" }}>
-        {lit.linges.map((linge) => (
-          <LingeRow
-            key={linge.lingeId}
-            linge={linge}
-            stLit={stLit}
-            onPropre={onPropre}
-            onManquant={onManquant}
-            onInfecte={onInfecte}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   StatutCard — Carte statistique premium avec SVG
-   ═══════════════════════════════════════════════════════════════════════════ */
 function StatutCard({ label, value, icon, color, bg }) {
   return (
     <div
@@ -931,14 +624,11 @@ function StatutCard({ label, value, icon, color, bg }) {
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   PAGE PRINCIPALE
-   ═══════════════════════════════════════════════════════════════════════════ */
 function ColageListInner() {
   const { t } = useTranslation();
   const { showAlert, showConfirm } = useModal();
 
-  const [voiceLang, setVoiceLang] = useState("fr");
+  const [voiceLang, setVoiceLang] = useState(() => getSetting("voice.lang"));
   const voice = useVoiceGuide(voiceLang);
   const voiceRef = useRef(voice);
 
@@ -948,6 +638,9 @@ function ColageListInner() {
   const [agent, setAgent] = useState(null);
   const [collecte, setCollecte] = useState(null);
   const [litEnCours, setLitEnCours] = useState(null);
+  // Lit déjà traité ouvert en consultation (sans sélection)
+  const [litConsulte, setLitConsulte] = useState(null);
+  const [selection, setSelection] = useState([]);
   const [scanVal, setScanVal] = useState("");
   const [loading, setLoading] = useState(false);
   const [dlgManq, setDlgManq] = useState(null);
@@ -987,19 +680,18 @@ function ColageListInner() {
     setCollecte((p) =>
       p ? {
         ...p,
-        lits: p.lits.map((l) =>
-          l.litId !== litId ? l : {
-            ...l, statut,
-            linges: l.linges.map((lg) => ({
-              ...lg,
-              statut: codes.includes(lg.codeBarre) ? statut : lg.statut,
-              sacInfecteId:
-                statut === "INFECTE" && codes.includes(lg.codeBarre)
-                  ? sacInfecteId ?? lg.sacInfecteId ?? null
-                  : lg.sacInfecteId ?? null,
-            })),
-          }
-        ),
+        lits: p.lits.map((l) => {
+          if (l.litId !== litId) return l;
+          const linges = l.linges.map((lg) => ({
+            ...lg,
+            statut: codes.includes(lg.codeBarre) ? statut : lg.statut,
+            sacInfecteId:
+              statut === "INFECTE" && codes.includes(lg.codeBarre)
+                ? sacInfecteId ?? lg.sacInfecteId ?? null
+                : lg.sacInfecteId ?? null,
+          }));
+          return { ...l, linges, statut: calculerStatutLit(linges) };
+        }),
       } : p
     );
   }, []);
@@ -1008,19 +700,31 @@ function ColageListInner() {
     setCollecte((p) =>
       p ? {
         ...p,
-        lits: p.lits.map((l) => ({
-          ...l,
-          linges: l.linges.map((lg) =>
+        lits: p.lits.map((l) => {
+          if (!l.linges.some((lg) => lg.lingeId === lingeId)) return l;
+          const linges = l.linges.map((lg) =>
             lg.lingeId === lingeId ? {
               ...lg, statut,
               sacInfecteId: statut === "INFECTE"
                 ? sacInfecteId ?? lg.sacInfecteId ?? null
                 : lg.sacInfecteId,
             } : lg
-          ),
-        })),
+          );
+          return { ...l, linges, statut: calculerStatutLit(linges) };
+        }),
       } : p
     );
+  }, []);
+
+  const annulerSelection = useCallback(() => {
+    setLitEnCours(null);
+    setLitConsulte(null);
+    setSelection([]);
+  }, []);
+
+  // Un linge déclaré (propre / manquant / infecté) sort de la sélection
+  const retirerDeSelection = useCallback((lingeId) => {
+    setSelection((s) => s.filter((id) => id !== lingeId));
   }, []);
 
   const handleChambre = useCallback(async (code) => {
@@ -1037,17 +741,34 @@ function ColageListInner() {
         ch.codeBarre || ch.code || code,
         agent.codeBarre || agent.matricule
       );
+      const litsCollecte = (res.lits || []).map((l) => ({
+        ...l, statut: l.statut || "",
+        linges: (l.linges || []).map((lg) => ({
+          ...lg, sacInfecteId: lg.sacInfecteId ?? null,
+        })),
+      }));
+
+      // Ajouter les lits de la chambre sans linge, pour afficher tous les lits
+      let tousLesLits = [];
+      try {
+        tousLesLits = await fetchLitsChambre(ch.Id ?? ch.id ?? ch.chambreId);
+      } catch (err) {
+        console.warn("Lits de la chambre indisponibles :", err);
+      }
+      const litsVides = tousLesLits
+        .filter((l) => !litsCollecte.some(
+          (lc) => String(lc.litId) === String(l.id) || (l.code && lc.codeLit === l.code)
+        ))
+        .map((l) => ({ litId: l.id, codeLit: l.code || `#${l.id}`, statut: "", linges: [] }));
+
       setCollecte({
         id: res.collecteId,
         codeChambre: res.codeChambre,
-        lits: (res.lits || []).map((l) => ({
-          ...l, statut: l.statut || "",
-          linges: (l.linges || []).map((lg) => ({
-            ...lg, sacInfecteId: lg.sacInfecteId ?? null,
-          })),
-        })),
+        lits: [...litsCollecte, ...litsVides].sort((a, b) =>
+          String(a.codeLit).localeCompare(String(b.codeLit), undefined, { numeric: true })
+        ),
       });
-      setLitEnCours(null);
+      annulerSelection();
       setEtape("SCAN");
       setScanStatus({
         loading: false,
@@ -1061,7 +782,7 @@ function ColageListInner() {
       voiceRef.current.sayChambreIdentifiee(res.codeChambre, res.nbLits, res.nbLinges);
       setTimeout(() => {
         if (!collecteRef.current) return;
-        voiceRef.current.sayGuidePropresManquants();
+        voiceRef.current.sayGuideChambre();
       }, 3500);
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
@@ -1074,24 +795,29 @@ function ColageListInner() {
     } finally {
       setLoading(false);
     }
-  }, [agent, showAlert, voice]);
+  }, [agent, showAlert, voice, annulerSelection]);
 
-  const handleScannerLit = useCallback(async (litId) => {
-    if (!collecte) return;
+  const handleSelectionnerLit = useCallback(async (lit) => {
+    if (!collecte || !lit) return;
     setLoading(true);
-    setScanStatus({ loading: true, code: `lit-${litId}` });
+    setScanStatus({ loading: true, code: `Lit ${lit.codeLit}` });
     try {
-      const res = await scannerLit(collecte.id, litId);
+      const res = await scannerLit(collecte.id, lit.litId);
+      const nonTraites = lit.linges.filter((lg) => !lg.statut).map((lg) => lg.lingeId);
+      setLitConsulte(null);
       setLitEnCours({
         litId: res.litId, codeLit: res.codeLit,
         estInfecte: res.estInfecte, nbLinges: res.nbLinges,
         actionSuivante: res.actionSuivante,
       });
+      setSelection(nonTraites);
       setScanStatus({
         loading: false,
         success: {
           message: res.estInfecte ? `Lit ${res.codeLit} — infecté` : `Lit ${res.codeLit} — normal`,
-          detail: res.estInfecte ? "Scannez le sac rouge" : "Scannez le bac blanc",
+          detail: res.estInfecte
+            ? "Cochez les linges puis scannez le sac rouge"
+            : "Cochez les linges puis scannez le bac blanc",
         },
         error: null,
       });
@@ -1107,29 +833,88 @@ function ColageListInner() {
     }
   }, [collecte, showAlert, voice]);
 
+  const toggleSelection = useCallback((lingeId) => {
+    setSelection((s) => s.includes(lingeId) ? s.filter((id) => id !== lingeId) : [...s, lingeId]);
+  }, []);
+
+  const lingesSelectionnables = (() => {
+    if (!litEnCours || !collecte) return [];
+    const lit = collecte.lits.find((l) => l.litId === litEnCours.litId);
+    return lit ? lit.linges.filter((lg) => !lg.statut).map((lg) => lg.lingeId) : [];
+  })();
+
+  const toutCoche = lingesSelectionnables.length > 0
+    && lingesSelectionnables.every((id) => selection.includes(id));
+
+  const toggleTout = () => {
+    if (toutCoche) {
+      setSelection([]);
+      voice.sayToutDecoche();
+    } else {
+      setSelection(lingesSelectionnables);
+      voice.sayToutCoche(lingesSelectionnables.length);
+    }
+  };
+
+  // Clic sur un lit : à collecter → sélection (scanner-lit), déjà traité → consultation
+  const handleClickLit = useCallback((lit) => {
+    if (!lit.linges.length) { voice.sayLitVide(lit.codeLit); return; }
+    if (litEnCours?.litId === lit.litId) return;
+    if (lit.statut) {
+      setLitEnCours(null);
+      setSelection([]);
+      setLitConsulte(lit.litId);
+      voice.sayLitDejaTraite(lit.codeLit);
+      return;
+    }
+    handleSelectionnerLit(lit);
+  }, [litEnCours, handleSelectionnerLit, voice]);
+
+  const litOuvertId = litEnCours?.litId ?? litConsulte;
+  const litOuvert = litOuvertId != null
+    ? collecte?.lits?.find((l) => l.litId === litOuvertId) || null
+    : null;
+
   const handleTraiterContenant = useCallback(async (codeContenant) => {
     if (!collecte || !litEnCours) return;
+    if (selection.length === 0) {
+      showAlert("Aucun linge coché", "Touchez au moins un linge avant de scanner le contenant.", "warning");
+      voice.saySelectionVide();
+      return;
+    }
     setLoading(true);
     setScanStatus({ loading: true, code: codeContenant });
     try {
-      const res = await traiterLitAvecContenant(collecte.id, litEnCours.litId, codeContenant);
+      const res = await traiterLitAvecContenant(
+        collecte.id, litEnCours.litId, codeContenant, selection
+      );
       const estInfecte = res.typeContenant === "SAC_INFECTE";
       const statut = estInfecte ? "INFECTE" : "BLANC";
       const sacId = res.sacInfecteId ?? res.sacInfecte?.id ?? null;
       majLit(litEnCours.litId, statut, res.codes || [], sacId);
+
       const codeLit = litEnCours.codeLit;
-      setLitEnCours(null);
+      const restants = lingesSelectionnables.length - (res.nbTraites || 0);
+      annulerSelection();
+
       setScanStatus({
         loading: false,
         success: {
-          message: estInfecte ? `Sac traité` : `Bac traité`,
-          detail: `${res.nbTraites} linges · Lit ${codeLit}`,
+          message: estInfecte ? `Sac ${codeContenant} associé` : `Bac ${codeContenant} associé`,
+          detail: restants > 0
+            ? `${res.nbTraites} linge(s) · Lit ${codeLit} · ${restants} restant(s) à déclarer`
+            : `${res.nbTraites} linge(s) · Lit ${codeLit}`,
         },
         error: null,
       });
-      setTimeout(() => setScanStatus(null), 2500);
+      setTimeout(() => setScanStatus(null), 3000);
       if (estInfecte) voice.saySacInfecteOk(res.nbTraites, codeContenant);
       else voice.sayBacBlancOk(res.nbTraites, codeContenant);
+      if (restants > 0) {
+        setTimeout(() => {
+          voiceRef.current.sayLingesRestantsLit(restants);
+        }, 2500);
+      }
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
       showAlert("Erreur", e.message, "error");
@@ -1137,13 +922,14 @@ function ColageListInner() {
     } finally {
       setLoading(false);
     }
-  }, [collecte, litEnCours, majLit, showAlert, voice]);
+  }, [collecte, litEnCours, selection, lingesSelectionnables.length, majLit, annulerSelection, showAlert, voice]);
 
   const handlePropre = useCallback(async (linge) => {
     setLoading(true);
     try {
       await marquerLingePropre(collecteRef.current?.id, linge.codeBarre);
       majLinge(linge.lingeId, "PROPRE");
+      retirerDeSelection(linge.lingeId);
       showAlert("Propre", linge.codeBarre, "info");
       voice.sayLingePropre();
     } catch (e) {
@@ -1152,7 +938,7 @@ function ColageListInner() {
     } finally {
       setLoading(false);
     }
-  }, [majLinge, showAlert, voice]);
+  }, [majLinge, retirerDeSelection, showAlert, voice]);
 
   const handleManquant = useCallback(async (linge) => {
     setDlgManq(null);
@@ -1160,6 +946,7 @@ function ColageListInner() {
     try {
       await marquerLingeManquant(collecteRef.current?.id, linge.lingeId);
       majLinge(linge.lingeId, "MANQUANT");
+      retirerDeSelection(linge.lingeId);
       showAlert("Manquant", linge.codeBarre, "warning");
       voice.sayLingeManquant();
     } catch (e) {
@@ -1168,11 +955,11 @@ function ColageListInner() {
     } finally {
       setLoading(false);
     }
-  }, [majLinge, showAlert, voice]);
+  }, [majLinge, retirerDeSelection, showAlert, voice]);
 
   const handleInfecte = useCallback((linge) => {
     setDlgInfecte(linge);
-    voice.say("Ce linge va être déclaré infecté. Placez-le dans un sac infecté puis scannez le sac.");
+    voice.sayGuideInfecte();
   }, [voice]);
 
   const handleScannerSacPourInfecte = useCallback((linge) => {
@@ -1182,7 +969,7 @@ function ColageListInner() {
     setTimeout(() => {
       if (scanInputRef.current) scanInputRef.current.focus();
     }, 150);
-    voice.say("Scannez maintenant le code du sac infecté.");
+    voice.sayScannerSacInfecte();
   }, [voice]);
 
   const handleDeclarerInfecte = useCallback(async (codeSac) => {
@@ -1196,6 +983,7 @@ function ColageListInner() {
       );
       const sacId = res?.sacInfecteId ?? res?.sacInfecte?.id ?? null;
       majLinge(lingeInfecteEnCours.lingeId, "INFECTE", sacId);
+      retirerDeSelection(lingeInfecteEnCours.lingeId);
       setScanStatus({
         loading: false,
         success: {
@@ -1206,7 +994,7 @@ function ColageListInner() {
       });
       setLingeInfecteEnCours(null);
       setTimeout(() => setScanStatus(null), 3000);
-      voice.say("Le linge a été déclaré infecté et associé au sac infecté.");
+      voice.sayLingeInfecteOk();
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
       showAlert("Erreur déclaration infecté", e.message, "error");
@@ -1214,16 +1002,16 @@ function ColageListInner() {
     } finally {
       setLoading(false);
     }
-  }, [collecte, lingeInfecteEnCours, majLinge, showAlert, voice]);
+  }, [collecte, lingeInfecteEnCours, majLinge, retirerDeSelection, showAlert, voice]);
 
   const handleCloturer = useCallback(async () => {
     if (!collecte) return;
-    const nonTr = collecte?.lits?.filter((l) => !l.statut) || [];
+    const nonTr = collecte?.lits?.filter((l) => !l.statut && l.linges.length > 0) || [];
     if (nonTr.length > 0) {
       voice.sayClotureRestants(nonTr.length);
       const ok = await showConfirm(
         "Lits non traités",
-        `${nonTr.length} lit(s) non traité(s). Clôturer quand même ?`,
+        `${nonTr.length} lit(s) avec des linges sans statut. Clôturer quand même ?`,
         "question"
       );
       if (!ok) return;
@@ -1233,7 +1021,7 @@ function ColageListInner() {
       const res = await cloturerCollecte(collecte.id);
       if (res.annulee) {
         showAlert("Collecte annulée", res.message || "Aucun linge collecté.", "info");
-        setCollecte(null); setLitEnCours(null); setEtape("CHAMBRE");
+        setCollecte(null); annulerSelection(); setEtape("CHAMBRE");
         return;
       }
       showAlert(
@@ -1246,7 +1034,7 @@ function ColageListInner() {
         res.nbBlancs || 0, res.nbInfectes || 0,
         res.nbPropres || 0, res.nbManquants || 0
       );
-      setCollecte(null); setLitEnCours(null);
+      setCollecte(null); annulerSelection();
       setLingeInfecteEnCours(null); setEtape("CHAMBRE");
       setScanStatus({
         loading: false,
@@ -1260,7 +1048,7 @@ function ColageListInner() {
     } finally {
       setLoading(false);
     }
-  }, [collecte, showAlert, showConfirm, voice]);
+  }, [collecte, showAlert, showConfirm, voice, annulerSelection]);
 
   const handleScan = useCallback(async (code) => {
     if (!code) return;
@@ -1271,44 +1059,50 @@ function ColageListInner() {
       const lit = collecteRef.current?.lits?.find(
         (l) => l.codeLit === code || String(l.litId) === code
       );
-      if (lit && !lit.statut) { await handleScannerLit(lit.litId); return; }
+      if (lit && !lit.statut && lit.linges.length > 0) { await handleSelectionnerLit(lit); return; }
       try {
         const ag = await fetchAgentByCode(code);
         if (ag && collecte) { await handleCloturer(); return; }
       } catch {}
-      showAlert("Code non reconnu", "Scannez un lit, un bac, un sac infecté ou votre badge.", "error");
+      showAlert("Code non reconnu", "Cliquez sur un lit, ou scannez un lit ou votre badge.", "error");
       voice.sayCodeNonReconnu();
     }
   }, [
     lingeInfecteEnCours, etape, litEnCours, collecte,
     handleDeclarerInfecte, handleChambre, handleTraiterContenant,
-    handleScannerLit, handleCloturer, showAlert, voice,
+    handleSelectionnerLit, handleCloturer, showAlert, voice,
   ]);
 
   const totalLits = collecte?.lits?.length || 0;
+  // Les lits sans linge n'ont rien à collecter : exclus de la progression
+  const litsAvecLinge = collecte?.lits?.filter((l) => l.linges.length > 0).length || 0;
   const traites = collecte?.lits?.filter((l) => l.statut).length || 0;
-  const nonTraites = totalLits - traites;
+  const nonTraites = litsAvecLinge - traites;
   const nbBlancs = collecte?.lits?.filter((l) => l.statut === "BLANC").length || 0;
   const nbInfectes = collecte?.lits?.filter((l) => l.statut === "INFECTE").length || 0;
 
+  const aucunLingeTraite = !collecte?.lits?.some((l) => l.linges.some((lg) => lg.statut));
+
   const reset = async () => {
     voice.cancel();
-    if (collecte && traites === 0) {
-      try { await annulerCollecteVide(collecte.id); } catch {}
+    if (collecte && aucunLingeTraite) {
+      try { await annulerCollecteVide(collecte.id); }
+      catch (e) { console.warn("Annulation de la collecte vide impossible :", e); }
     }
-    setAgent(null); setCollecte(null); setLitEnCours(null);
+    setAgent(null); setCollecte(null); annulerSelection();
     setLingeInfecteEnCours(null); setDlgInfecte(null);
     setEtape("CHAMBRE"); setScanVal(""); setScanStatus(null);
   };
 
   useEffect(() => {
-    if (scanVal.trim().length < 2) return;
+    if (scanVal.trim().length < (Number(getSetting("scan.minLength")) || 3)) return;
     clearTimeout(scanTimeoutRef.current);
     scanTimeoutRef.current = setTimeout(() => {
       const code = scanVal.trim();
       setScanVal("");
+      bipScan();
       handleScan(code);
-    }, 300);
+    }, Math.max(100, (Number(getSetting("scan.delayMs")) || 400) - 100)); // un peu avant le champ de scan : évite un double envoi
     return () => clearTimeout(scanTimeoutRef.current);
   }, [scanVal, handleScan]);
 
@@ -1329,10 +1123,10 @@ function ColageListInner() {
     if (!collecte) return "Scannez le code de la chambre...";
     if (litEnCours) {
       return litEnCours.actionSuivante === "SCANNER_SAC_INFECTE"
-        ? `Scanner le sac rouge — Lit ${litEnCours.codeLit}...`
-        : `Scanner le bac blanc — Lit ${litEnCours.codeLit}...`;
+        ? `Scanner le sac rouge — ${selection.length} linge(s) coché(s) — Lit ${litEnCours.codeLit}...`
+        : `Scanner le bac blanc — ${selection.length} linge(s) coché(s) — Lit ${litEnCours.codeLit}...`;
     }
-    return "Scanner un lit ou votre badge pour clôturer...";
+    return "Cliquez sur un lit, ou scannez votre badge pour clôturer...";
   };
 
   const borderColor = !agent
@@ -1358,21 +1152,13 @@ function ColageListInner() {
         onScanner={handleScannerSacPourInfecte}
       />
 
-      {/* ═══ Header premium ═══ */}
       <div style={{ marginBottom: 28 }}>
         <div style={{
           display: "flex", alignItems: "center",
           justifyContent: "space-between", flexWrap: "wrap", gap: 12,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{
-              width: 60, height: 60, borderRadius: 20,
-              background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 10px 28px rgba(124,58,237,0.35)",
-            }}>
-              <Icons.DoorOpen size={28} color="white" strokeWidth={2.2} />
-            </div>
+            <PageHeaderIcon size={60} />
             <div>
               <h1 style={{
                 fontSize: 28, fontWeight: 800, color: "#0f172a",
@@ -1413,7 +1199,6 @@ function ColageListInner() {
         boxShadow: "0 12px 40px rgba(15,23,42,0.06)",
       }}>
 
-        {/* ═══ Barre agent + chambre ═══ */}
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
           marginBottom: 20, flexWrap: "wrap", gap: 10,
@@ -1477,7 +1262,6 @@ function ColageListInner() {
           )}
         </div>
 
-        {/* ═══ Zone scan ═══ */}
         <Card style={{
           marginBottom: 20,
           border: `2px dashed ${borderColor}`,
@@ -1512,7 +1296,7 @@ function ColageListInner() {
               </div>
             )}
 
-            {etape === "SCAN" && collecte && !lingeInfecteEnCours && (
+            {etape === "SCAN" && collecte && !lingeInfecteEnCours && !litEnCours && (
               <div style={{
                 marginTop: 10, padding: "10px 15px", borderRadius: 10,
                 background: "linear-gradient(135deg, #fef3c7, #fde68a)",
@@ -1522,7 +1306,7 @@ function ColageListInner() {
                 fontWeight: 600,
               }}>
                 <Icons.Info size={14} color="#92400e" strokeWidth={2.2} />
-                Scannez votre badge pour clôturer la collecte
+                Cliquez sur un lit pour voir ses linges · scannez votre badge pour clôturer la collecte
               </div>
             )}
 
@@ -1531,71 +1315,26 @@ function ColageListInner() {
           </CardContent>
         </Card>
 
-        {/* ═══ Lit en cours ═══ */}
-        {litEnCours && etape === "SCAN" && (
-          <Card style={{
-            marginBottom: 16, borderRadius: 14,
-            background: litEnCours.actionSuivante === "SCANNER_SAC_INFECTE"
-              ? "linear-gradient(135deg, #fef2f2, #fee2e2)"
-              : "linear-gradient(135deg, #f0fdf4, #dcfce7)",
-            border: `2px solid ${litEnCours.actionSuivante === "SCANNER_SAC_INFECTE" ? "#fca5a5" : "#bbf7d0"}`,
-            boxShadow: "0 4px 16px rgba(15,23,42,0.06)",
-          }}>
-            <CardContent className="p-5">
-              <div style={{
-                display: "flex", justifyContent: "space-between",
-                alignItems: "center", flexWrap: "wrap", gap: 12,
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{
-                    width: 52, height: 52, borderRadius: 14,
-                    background: "white", display: "flex",
-                    alignItems: "center", justifyContent: "center",
-                    boxShadow: "0 3px 10px rgba(15,23,42,0.1)",
-                    border: `1.5px solid ${litEnCours.actionSuivante === "SCANNER_SAC_INFECTE" ? "#fca5a5" : "#86efac"}`,
-                  }}>
-                    {litEnCours.actionSuivante === "SCANNER_SAC_INFECTE" ? (
-                      <Icons.Biohazard size={26} color="#dc2626" strokeWidth={2.2} />
-                    ) : (
-                      <Icons.CheckCircle size={26} color="#15803d" strokeWidth={2.2} />
-                    )}
-                  </div>
-
-                  <div>
-                    <div style={{
-                      fontWeight: 800, fontSize: 15,
-                      color: litEnCours.actionSuivante === "SCANNER_SAC_INFECTE" ? "#dc2626" : "#15803d",
-                    }}>
-                      Lit {litEnCours.codeLit}
-                      {litEnCours.actionSuivante === "SCANNER_SAC_INFECTE" ? " — Infecté" : " — Normal"}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 3, fontWeight: 500 }}>
-                      {litEnCours.actionSuivante === "SCANNER_SAC_INFECTE"
-                        ? "Scannez le sac rouge pour valider"
-                        : "Scannez le bac blanc pour valider"}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setLitEnCours(null)}
-                  style={{
-                    padding: "9px 17px", borderRadius: 10,
-                    border: "1px solid #e2e8f0", background: "white",
-                    color: "#64748b", cursor: "pointer", fontSize: 12,
-                    fontWeight: 700, transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "white"; }}
-                >
-                  Annuler
-                </button>
-              </div>
-            </CardContent>
-          </Card>
+        {litOuvert && etape === "SCAN" && (
+          <LitDialog
+            lit={litOuvert}
+            enSelection={!!litEnCours}
+            actionSuivante={litEnCours?.actionSuivante}
+            selection={selection}
+            nbSelectionnables={lingesSelectionnables.length}
+            toutCoche={toutCoche}
+            onToggle={toggleSelection}
+            onToggleTout={toggleTout}
+            onFermer={annulerSelection}
+            onPropre={handlePropre}
+            onManquant={(l) => setDlgManq(l)}
+            onInfecte={handleInfecte}
+            scanStatus={scanStatus}
+            lingeInfecte={lingeInfecteEnCours}
+            t={t}
+          />
         )}
 
-        {/* ═══ Aucun agent ═══ */}
         {!agent && (
           <Card style={{
             background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
@@ -1624,7 +1363,6 @@ function ColageListInner() {
           </Card>
         )}
 
-        {/* ═══ Aucune chambre ═══ */}
         {agent && !collecte && (
           <Card style={{
             background: "linear-gradient(135deg, #faf5ff, #f3e8ff)",
@@ -1645,7 +1383,7 @@ function ColageListInner() {
                     Scannez le code de la chambre
                   </div>
                   <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
-                    pour démarrer une nouvelle collecte
+                    après être sorti de la chambre avec le linge
                   </div>
                 </div>
               </div>
@@ -1653,7 +1391,6 @@ function ColageListInner() {
           </Card>
         )}
 
-        {/* ═══ Stats + Lits ═══ */}
         {etape === "SCAN" && collecte && (
           <>
             <div style={{
@@ -1692,7 +1429,6 @@ function ColageListInner() {
             </div>
 
             <div style={{ paddingTop: 20, borderTop: "1.5px solid #e2e8f0" }}>
-              {/* Header section lits */}
               <div style={{
                 display: "flex", justifyContent: "space-between",
                 alignItems: "center", marginBottom: 18,
@@ -1730,26 +1466,25 @@ function ColageListInner() {
                   }}>
                     <div style={{
                       height: "100%",
-                      width: `${totalLits > 0 ? (traites / totalLits) * 100 : 0}%`,
+                      width: `${litsAvecLinge > 0 ? (traites / litsAvecLinge) * 100 : 0}%`,
                       background: "linear-gradient(90deg, #7c3aed, #6d28d9)",
                       transition: "width 0.4s ease",
                     }} />
                   </div>
                   <div style={{ fontSize: 11.5, color: "#7c3aed", fontWeight: 800, minWidth: 32, textAlign: "right" }}>
-                    {totalLits > 0 ? Math.round((traites / totalLits) * 100) : 0}%
+                    {litsAvecLinge > 0 ? Math.round((traites / litsAvecLinge) * 100) : 0}%
                   </div>
                 </div>
               </div>
 
-              {/* Liste des lits */}
-              <div style={{ maxHeight: 560, overflowY: "auto", paddingRight: 4 }}>
+              <LegendeLits />
+              <div className="lits-grid" style={{ maxHeight: 620, overflowY: "auto", padding: 4 }}>
                 {collecte.lits.map((lit) => (
-                  <CarteLit
+                  <LitTile
                     key={lit.litId}
                     lit={lit}
-                    onPropre={handlePropre}
-                    onManquant={(l) => setDlgManq(l)}
-                    onInfecte={handleInfecte}
+                    active={litOuvertId === lit.litId}
+                    onClick={handleClickLit}
                   />
                 ))}
               </div>

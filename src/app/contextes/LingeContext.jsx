@@ -3,17 +3,7 @@ import React, { createContext, useState, useEffect, useContext, useCallback } fr
 import { useModal } from "./ModalContext";
 import Swal from 'sweetalert2';
 
-export const CATEGORIES = [
-  "DRAP",
-  "TAIE_OREILLER",
-  "SERVIETTE_BAIN",
-  "SERVIETTE_VISAGE",
-  "PEIGNOIR",
-  "NAPPE",
-  "SERVIETTE_TABLE",
-  "UNIFORME",
-  "AUTRE"
-];
+export { CATEGORIES_LINGE as CATEGORIES } from "../constants/categoriesLinge";
 
 export const LingeContext = createContext();
 

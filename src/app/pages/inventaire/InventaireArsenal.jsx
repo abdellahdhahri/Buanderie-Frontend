@@ -33,6 +33,7 @@ import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import printJS from "print-js";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -393,36 +394,7 @@ export default function InventaireArsenal() {
               gap: "16px",
               marginBottom: "8px"
             }}>
-              <div style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "16px",
-                background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                boxShadow: "0 4px 16px rgba(14, 165, 233, 0.25)"
-              }}>
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  width="24" 
-                  height="24" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                >
-                  <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
-                  <line x1="4" y1="10" x2="20" y2="10" />
-                  <line x1="10" y1="4" x2="10" y2="20" />
-                  <circle cx="12" cy="14" r="1" />
-                  <circle cx="16" cy="14" r="1" />
-                  <circle cx="8" cy="14" r="1" />
-                </svg>
-              </div>
+              <PageHeaderIcon size={52} />
               <div>
                 <h1 style={{
                   fontSize: "28px",

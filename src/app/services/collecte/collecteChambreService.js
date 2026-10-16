@@ -56,6 +56,20 @@ export const fetchChambreByCode = async (code) => {
   return handleResponse(response);
 };
 
+// ─── 1b. Tous les lits d'une chambre (y compris ceux sans linge) ───────────
+export const fetchLitsChambre = async (chambreId) => {
+  if (chambreId == null) return [];
+  const response = await fetch(
+    `${API_URL}/api/sqlserver/lits/chambre/${encodeURIComponent(chambreId)}`,
+    { method: "GET", headers: getHeaders() }
+  );
+  const data = await handleResponse(response);
+  return (Array.isArray(data) ? data : []).map((l) => ({
+    id: l.Id ?? l.id,
+    code: l.Code ?? l.code ?? l.CodeBarre ?? l.codeBarre,
+  }));
+};
+
 // ─── 2. Récupérer un agent ─────────────────────────────────────────────────
 export const fetchAgentByCode = async (code) => {
   if (!code) throw new Error("Code agent obligatoire");
@@ -112,12 +126,18 @@ export const traiterLitAvecContenant = async (collecteId, litId, codeContenant) 
   );
   return handleResponse(response);
 };
-export async function annulerCollecteVide(collecteId) {
-  const res = await api.post(
-    `/api/collecte-chambre/${collecteId}/annuler-si-vide`
+// ─── 5b. Annuler une collecte sans aucun linge traité ──────────────────────
+export const annulerCollecteVide = async (collecteId) => {
+  if (!collecteId) return null;
+  const response = await fetch(
+    `${API_URL}/api/collecte-chambre/${encodeURIComponent(collecteId)}/annuler-si-vide`,
+    {
+      method: "POST",
+      headers: getHeaders(),
+    }
   );
-  return res.data;
-}
+  return handleResponse(response);
+};
 
 
 export const declarerLingeInfecte = async (

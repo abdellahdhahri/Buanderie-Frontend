@@ -21,6 +21,10 @@ import { Input } from "../../components/ui/input";
 import { motion } from "framer-motion";
 
 import BadgeModal from "../../components/Modal/BadgeModal";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { DetailModal } from "../../components/ui/modal-kit";
 
 const API_URL =
     import.meta.env.VITE_API_URL || "http://localhost:8082";
@@ -530,6 +534,12 @@ export default function AgentList() {
         );
     });
 
+    // Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun)
+    const { sortedItems: sortedAgents, requestSort, directionFor } = useSortableData(filteredAgents, {
+      nomPrenom: (a) => a.nomPrenom || `${a.prenom || ""} ${a.nom || ""}`.trim(),
+      service: (a) => a.serviceCode || a.service,
+    });
+
     // ─────────────────────────────────────────────────────────────────────────
     // COULEUR SERVICE
     // ─────────────────────────────────────────────────────────────────────────
@@ -782,25 +792,7 @@ export default function AgentList() {
                                 }}
                             >
 
-                                <div
-                                    style={{
-                                        width: "52px",
-                                        height: "52px",
-                                        borderRadius: "16px",
-                                        background:
-                                            "linear-gradient(135deg, #0ea5e9, #0284c7)",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        color: "white",
-                                        boxShadow:
-                                            "0 4px 16px rgba(14, 165, 233, 0.25)"
-                                    }}
-                                >
-
-                                    <UserCheck size={24} />
-
-                                </div>
+                                <PageHeaderIcon size={52} section="params" icon={<UserCheck />} />
 
                                 <div>
 
@@ -1270,43 +1262,35 @@ export default function AgentList() {
 
                             <CardContent className="p-0">
 
-                                <div className="overflow-x-auto">
+                                <div className="premium-table-wrap">
 
-                                    <table className="w-full">
+                                    <table className="premium-table">
 
-                                        <thead
-                                            className="
-                                                border-b
-                                                border-border
-                                                bg-muted/50
-                                            "
-                                        >
+                                        <thead>
 
                                             <tr>
 
-                                                <th className="text-center py-3 px-4 text-sm font-medium">
-                                                    Matricule
-                                                </th>
+                                                <SortableHeader direction={directionFor("matricule")} onSort={() => requestSort("matricule")} align="center">
+Matricule
+</SortableHeader>
 
-                                                <th className="text-center py-3 px-4 text-sm font-medium">
-                                                    Nom & Prénom
-                                                </th>
+                                                <SortableHeader direction={directionFor("nomPrenom")} onSort={() => requestSort("nomPrenom")} align="center">
+Nom & Prénom
+</SortableHeader>
 
-                                                <th className="text-center py-3 px-4 text-sm font-medium">
-                                                    Fonction
-                                                </th>
+                                                <SortableHeader direction={directionFor("fonctionCode")} onSort={() => requestSort("fonctionCode")} align="center">
+Fonction
+</SortableHeader>
 
-                                                <th className="text-center py-3 px-4 text-sm font-medium">
-                                                    Service
-                                                </th>
+                                                <SortableHeader direction={directionFor("service")} onSort={() => requestSort("service")} align="center">
+Service
+</SortableHeader>
 
-                                                <th className="text-center py-3 px-4 text-sm font-medium">
-                                                    Code Barre
-                                                </th>
+                                                <SortableHeader direction={directionFor("codeBarre")} onSort={() => requestSort("codeBarre")} align="center">
+Code Barre
+</SortableHeader>
 
-                                                <th className="text-center py-3 px-4 text-sm font-medium">
-                                                    Actions
-                                                </th>
+                                                <th style={{ textAlign: "center" }}>Actions</th>
 
                                             </tr>
 
@@ -1354,7 +1338,7 @@ export default function AgentList() {
 
                                                 </tr>
 
-                                            ) : filteredAgents.length === 0 ? (
+                                            ) : sortedAgents.length === 0 ? (
 
                                                 <tr>
 
@@ -1377,7 +1361,7 @@ export default function AgentList() {
 
                                             ) : (
 
-                                                filteredAgents.map(
+                                                sortedAgents.map(
                                                     (agent) => (
 
                                                         <tr
@@ -1718,323 +1702,45 @@ export default function AgentList() {
             {/* MODAL DETAILS */}
             {/* ================================================================= */}
 
-            <Modal
-                isOpen={showDetailModal}
-                onClose={() =>
-                    setShowDetailModal(false)
-                }
-                title={
-                    `Détails de l'agent - ${
-                        selectedAgentDetail?.matricule ||
-                        "N/A"
-                    }`
-                }
-                size="lg"
-            >
-
-                {selectedAgentDetail && (
-
-                    <div className="grid grid-cols-2 gap-4">
-
-                        <div>
-
-                            <label
-                                className="
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-700
-                                    mb-2
-                                "
-                            >
-                                ID
-                            </label>
-
-                            <Input
-                                value={
-                                    selectedAgentDetail.id ??
-                                    ""
-                                }
-                                disabled
-                            />
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                className="
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-700
-                                    mb-2
-                                "
-                            >
-                                Matricule
-                            </label>
-
-                            <Input
-                                value={
-                                    selectedAgentDetail.matricule ??
-                                    ""
-                                }
-                                disabled
-                            />
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                className="
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-700
-                                    mb-2
-                                "
-                            >
-                                Nom
-                            </label>
-
-                            <Input
-                                value={
-                                    selectedAgentDetail.nom ??
-                                    ""
-                                }
-                                disabled
-                            />
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                className="
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-700
-                                    mb-2
-                                "
-                            >
-                                Prénom
-                            </label>
-
-                            <Input
-                                value={
-                                    selectedAgentDetail.prenom ??
-                                    ""
-                                }
-                                disabled
-                            />
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                className="
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-700
-                                    mb-2
-                                "
-                            >
-                                Nom & Prénom
-                            </label>
-
-                            <Input
-                                value={
-                                    selectedAgentDetail.nomPrenom ||
-                                    "-"
-                                }
-                                disabled
-                            />
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                className="
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-700
-                                    mb-2
-                                "
-                            >
-                                Code Barre
-                            </label>
-
-                            <Input
-                                value={
-                                    selectedAgentDetail.codeBarre ||
-                                    "-"
-                                }
-                                disabled
-                            />
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                className="
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-700
-                                    mb-2
-                                "
-                            >
-                                Fonction
-                            </label>
-
-                            <Input
-                                value={
-                                    selectedAgentDetail.fonctionCode ||
-                                    selectedAgentDetail.fonction ||
-                                    "-"
-                                }
-                                disabled
-                            />
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                className="
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-700
-                                    mb-2
-                                "
-                            >
-                                Service
-                            </label>
-
-                            <div className="mt-1">
-
-                                {getServiceBadge(
-                                    selectedAgentDetail.serviceCode ||
-                                    selectedAgentDetail.service
-                                )}
-
-                            </div>
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                className="
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-700
-                                    mb-2
-                                "
-                            >
-                                Pointeuse Actif
-                            </label>
-
-                            <div className="mt-1">
-
-                                {getStatutBadge(
-                                    selectedAgentDetail.pointeuseActif
-                                )}
-
-                            </div>
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                className="
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-700
-                                    mb-2
-                                "
-                            >
-                                Administrateur
-                            </label>
-
-                            <div className="mt-1">
-
-                                {getStatutBadge(
-                                    selectedAgentDetail.administrateur
-                                )}
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                )}
-
-                <div
-                    className="
-                        flex
-                        justify-end
-                        gap-3
-                        mt-6
-                    "
+            <DetailModal
+              isOpen={showDetailModal}
+              onClose={() => setShowDetailModal(false)}
+              title="Détails de l'agent"
+              subtitle={selectedAgentDetail?.matricule || undefined}
+              heading={selectedAgentDetail && (
+                selectedAgentDetail.nomPrenom ||
+                `${selectedAgentDetail.prenom || ""} ${selectedAgentDetail.nom || ""}`.trim()
+              )}
+              badges={selectedAgentDetail && getServiceBadge(selectedAgentDetail.serviceCode || selectedAgentDetail.service)}
+              sections={selectedAgentDetail ? [
+                { title: "Identification", icon: "id", items: [
+                  { label: "ID", value: selectedAgentDetail.id, mono: true },
+                  { label: "Matricule", value: selectedAgentDetail.matricule, mono: true },
+                  { label: "Code Barre", value: selectedAgentDetail.codeBarre, mono: true },
+                ] },
+                { title: "Personne", icon: "people", items: [
+                  { label: "Nom", value: selectedAgentDetail.nom },
+                  { label: "Prénom", value: selectedAgentDetail.prenom },
+                  { label: "Fonction", value: selectedAgentDetail.fonctionCode || selectedAgentDetail.fonction },
+                ] },
+                { title: "Accès", icon: "specs", items: [
+                  { label: "Pointeuse active", render: getStatutBadge(selectedAgentDetail.pointeuseActif) },
+                  { label: "Administrateur", render: getStatutBadge(selectedAgentDetail.administrateur) },
+                ] },
+              ] : []}
+              actions={selectedAgentDetail && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    openBadgeModal(selectedAgentDetail);
+                  }}
                 >
-
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-
-                            if (
-                                selectedAgentDetail
-                            ) {
-
-                                setShowDetailModal(false);
-
-                                openBadgeModal(
-                                    selectedAgentDetail
-                                );
-
-                            }
-
-                        }}
-                    >
-
-                        <Printer
-                            className="
-                                w-4
-                                h-4
-                                mr-2
-                            "
-                        />
-
-                        Imprimer le badge
-
-                    </Button>
-
-                    <Button
-                        onClick={() =>
-                            setShowDetailModal(false)
-                        }
-                    >
-
-                        Fermer
-
-                    </Button>
-
-                </div>
-
-            </Modal>
+                  <Printer className="w-4 h-4" />
+                  Imprimer le badge
+                </Button>
+              )}
+            />
 
             {/* ================================================================= */}
             {/* TON BADGE MODAL */}

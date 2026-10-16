@@ -1,173 +1,371 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Plus, Search, Edit, Trash2, ChevronRight, ChevronDown,
-  Barcode, RefreshCw, Building2, Loader2, Bed, Home,
-  Activity, CheckCircle2, AlertTriangle, LayoutGrid, List,
-  DoorOpen, Sparkles, HeartPulse, Users, X, Leaf,
+  Plus, Search, Edit, Trash2, ChevronRight, ChevronLeft,
+  RefreshCw, LayoutGrid, List, X,
 } from "lucide-react";
-import { Modal } from "../../components/ui/modal";
-import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Card, CardContent } from "../../components/ui/card";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import BarcodeLabel from "../../components/BarcodeLabel";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { FormModal, FormSection } from "../../components/ui/modal-kit";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
+// Palette du template (layout.css / kpi-card)
+const C = {
+  teal: "#0d9488",
+  green: "#0ca678",
+  orange: "#e67700",
+  red: "#e03131",
+  blue: "#006f94",
+  sky: "#0ea5e9",
+  violet: "#6741d9",
+};
+
 /* ═══════════════════════════════════════════════════════════════
-   STAT CARD — Palette verte douce
+   ICÔNES — même convention que sidebarIcons : grille 24,
+   trait 1.7 arrondi, remplissage translucide (duotone)
    ═══════════════════════════════════════════════════════════════ */
-function StatCard({ icon: Icon, label, value, sublabel, gradient, delay = 0 }) {
+const tint = { fill: "currentColor", fillOpacity: 0.16 };
+const dot = { fill: "currentColor", stroke: "none" };
+
+function Glyph({ children, size = 22, className = "", style }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+      style={style}
+    >
+      {children}
+    </svg>
+  );
+}
+
+// Porte de chambre avec plaque numérotée
+const IconDoor = (p) => (
+  <Glyph {...p}>
+    <path d="M5 21V4.5A1.5 1.5 0 0 1 6.5 3h11A1.5 1.5 0 0 1 19 4.5V21" {...tint} />
+    <path d="M3 21h18" />
+    <rect x="9" y="6" width="6" height="3" rx="1" />
+    <circle cx="15.5" cy="13.5" r="1" {...dot} />
+  </Glyph>
+);
+
+// Bâtiment hospitalier (services)
+const IconHospital = (p) => (
+  <Glyph {...p}>
+    <path d="M4 21V8.5A1.5 1.5 0 0 1 5.5 7H9V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7h3.5A1.5 1.5 0 0 1 20 8.5V21" {...tint} />
+    <path d="M2.5 21h19" />
+    <path d="M12 9.5v4M10 11.5h4" />
+    <path d="M10 21v-3.5h4V21" />
+  </Glyph>
+);
+
+// Étiquette code-barres
+const IconBarcodeTag = (p) => (
+  <Glyph {...p}>
+    <rect x="3" y="5" width="18" height="14" rx="2.5" {...tint} />
+    <path d="M7 9v6M10 9v6M12.5 9v6M15 9v6M17 9v6" />
+  </Glyph>
+);
+
+// Chambre sans service : porte en pointillés + point d'interrogation
+const IconUnassigned = (p) => (
+  <Glyph {...p}>
+    <path d="M5 21V4.5A1.5 1.5 0 0 1 6.5 3h11A1.5 1.5 0 0 1 19 4.5V21" strokeDasharray="2.5 2.5" />
+    <path d="M3 21h18" />
+    <path d="M10 9.5a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2v.5" />
+    <circle cx="12" cy="15.8" r=".9" {...dot} />
+  </Glyph>
+);
+
+// Bouclier biologique (lit infecté)
+const IconBiohazard = (p) => (
+  <Glyph {...p}>
+    <path d="M12 3l7 3v5.5c0 4.3-3 7.9-7 9.5-4-1.6-7-5.2-7-9.5V6z" {...tint} />
+    <circle cx="12" cy="11.5" r="1.6" />
+    <path d="M12 7.5v2.4M8.6 13.5l2-1.1M15.4 13.5l-2-1.1" />
+  </Glyph>
+);
+
+/* ═══════════════════════════════════════════════════════════════
+   ILLUSTRATIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+// Lit vu de côté : libre (draps tirés) / occupé (patient sous la couverture)
+function BedIllustration({ occupied, color }) {
+  return (
+    <svg viewBox="0 0 96 56" className="w-full h-full" aria-hidden="true">
+      <defs>
+        <linearGradient id={`blanket-${occupied ? "o" : "f"}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={color} stopOpacity="0.35" />
+          <stop offset="1" stopColor={color} stopOpacity="0.15" />
+        </linearGradient>
+      </defs>
+      {/* ombre */}
+      <ellipse cx="48" cy="51" rx="40" ry="2.5" fill={color} opacity="0.12" />
+      {/* tête et pied de lit */}
+      <path d="M10 49V18a3 3 0 0 1 3-3h0a3 3 0 0 1 3 3v31" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M86 49V30a3 3 0 0 0-3-3h0a3 3 0 0 0-3 3v19" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
+      {/* sommier */}
+      <rect x="13" y="38" width="70" height="6" rx="3" fill={color} opacity="0.85" />
+      {/* matelas */}
+      <rect x="16" y="31" width="64" height="8" rx="4" fill="currentColor" className="text-white" stroke={color} strokeOpacity="0.35" strokeWidth="1.2" />
+      {/* oreiller */}
+      <rect x="19" y="25" width="17" height="7.5" rx="3.75" fill="currentColor" className="text-white" stroke={color} strokeOpacity="0.55" strokeWidth="1.4" />
+      {occupied ? (
+        <>
+          {/* tête du patient */}
+          <circle cx="29" cy="23" r="5.2" fill={color} opacity="0.9" />
+          {/* couverture bombée */}
+          <path d="M33 33c4-8 14-9 22-7.5 8 1.5 16 2 23 6.5v2.5H33z" fill={`url(#blanket-o)`} stroke={color} strokeWidth="1.4" strokeLinejoin="round" />
+          <path d="M45 27.5c2 2 2.5 4 2.5 6" fill="none" stroke={color} strokeOpacity="0.5" strokeWidth="1.2" strokeLinecap="round" />
+        </>
+      ) : (
+        <>
+          {/* drap plié */}
+          <path d="M40 31.5h38a2 2 0 0 1 2 2v1H40z" fill={`url(#blanket-f)`} stroke={color} strokeWidth="1.2" strokeLinejoin="round" />
+          {/* éclat "prêt" */}
+          <path d="M66 13v6M63 16h6" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M75 8v3.5M73.25 9.75h3.5" stroke={color} strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+// Mini plan de chambre (vue grille)
+function RoomPlan({ color, beds = 2 }) {
+  const slots = Array.from({ length: Math.min(Math.max(beds, 1), 3) });
+  return (
+    <svg viewBox="0 0 120 64" className="w-full h-full" aria-hidden="true">
+      <rect x="2" y="2" width="116" height="60" rx="10" fill={color} fillOpacity="0.06" stroke={color} strokeOpacity="0.35" strokeWidth="1.5" />
+      {/* fenêtre */}
+      <path d="M40 2h40" stroke={color} strokeWidth="4" strokeLinecap="round" opacity="0.45" />
+      {/* porte + arc d'ouverture */}
+      <path d="M2 40v14" stroke="currentColor" className="text-white" strokeWidth="4" />
+      <path d="M2 40a14 14 0 0 1 14 14" fill="none" stroke={color} strokeOpacity="0.5" strokeWidth="1.2" strokeDasharray="2.5 2.5" />
+      <path d="M2 40h14" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      {/* lits */}
+      {slots.map((_, i) => {
+        const x = 30 + i * 30;
+        return (
+          <g key={i}>
+            <rect x={x} y="12" width="20" height="32" rx="4" fill="currentColor" className="text-white" stroke={color} strokeWidth="1.5" />
+            <rect x={x + 4} y="15" width="12" height="6" rx="3" fill={color} fillOpacity="0.25" />
+            <path d={`M${x} 27h20`} stroke={color} strokeOpacity="0.4" strokeWidth="1.2" />
+          </g>
+        );
+      })}
+      {/* table de chevet */}
+      <rect x="100" y="12" width="10" height="10" rx="2.5" fill={color} fillOpacity="0.2" />
+    </svg>
+  );
+}
+
+// Illustration d'état vide : plan d'étage + loupe
+function EmptyIllustration({ searching }) {
+  return (
+    <svg viewBox="0 0 200 140" className="w-48 h-auto mx-auto" aria-hidden="true">
+      <ellipse cx="100" cy="128" rx="70" ry="6" fill={C.teal} opacity="0.08" />
+      <rect x="30" y="22" width="140" height="92" rx="14" fill={C.teal} fillOpacity="0.05" stroke={C.teal} strokeOpacity="0.3" strokeWidth="1.6" />
+      <path d="M30 68h140M100 22v92" stroke={C.teal} strokeOpacity="0.25" strokeWidth="1.4" strokeDasharray="4 4" />
+      {[[44, 34], [114, 34], [44, 80], [114, 80]].map(([x, y], i) => (
+        <g key={i} opacity={i === 3 ? 0.35 : 0.8}>
+          <rect x={x} y={y} width="42" height="22" rx="5" fill="currentColor" className="text-white" stroke={C.teal} strokeOpacity="0.5" strokeWidth="1.4" />
+          <rect x={x + 4} y={y + 5} width="9" height="12" rx="3" fill={C.teal} fillOpacity="0.22" />
+        </g>
+      ))}
+      {searching ? (
+        <g transform="translate(128 74)">
+          <circle cx="18" cy="18" r="16" fill="currentColor" className="text-white" stroke={C.sky} strokeWidth="3" />
+          <path d="M30 30l12 12" stroke={C.sky} strokeWidth="5" strokeLinecap="round" />
+          <path d="M12 18h12" stroke={C.sky} strokeWidth="2.4" strokeLinecap="round" />
+        </g>
+      ) : (
+        <g transform="translate(138 80)">
+          <circle cx="14" cy="14" r="14" fill={C.teal} />
+          <path d="M14 8v12M8 14h12" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+        </g>
+      )}
+    </svg>
+  );
+}
+
+// Anneau d'occupation (occupés / libres / autres)
+function OccupancyRing({ occupied, free, total, size = 108 }) {
+  const r = 42;
+  const circ = 2 * Math.PI * r;
+  const occLen = total ? (occupied / total) * circ : 0;
+  const freeLen = total ? (free / total) * circ : 0;
+  const pct = total ? Math.round((occupied / total) * 100) : 0;
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true" className="-rotate-90">
+      <circle cx="50" cy="50" r={r} fill="none" stroke="currentColor" className="text-slate-100" strokeWidth="9" />
+      <motion.circle
+        cx="50" cy="50" r={r} fill="none" stroke={C.green} strokeWidth="9" strokeLinecap="round"
+        strokeDasharray={`${freeLen} ${circ}`}
+        initial={{ strokeDashoffset: freeLen }}
+        animate={{ strokeDashoffset: -occLen }}
+        transition={{ duration: 0.9, ease: "easeOut" }}
+      />
+      <motion.circle
+        cx="50" cy="50" r={r} fill="none" stroke={C.orange} strokeWidth="9" strokeLinecap="round"
+        initial={{ strokeDasharray: `0 ${circ}` }}
+        animate={{ strokeDasharray: `${occLen} ${circ}` }}
+        transition={{ duration: 0.9, ease: "easeOut" }}
+      />
+      <text
+        x="50" y="50" textAnchor="middle" dominantBaseline="central"
+        transform="rotate(90 50 50)"
+        className="fill-current text-slate-800"
+        style={{ fontSize: 20, fontWeight: 800 }}
+      >
+        {pct}%
+      </text>
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   KPI — style kpi-card du template, icône duotone à droite
+   ═══════════════════════════════════════════════════════════════ */
+function KpiTile({ icon: Icon, label, value, hint, color, delay = 0 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-      className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_28px_rgba(0,0,0,0.06)] transition-all group"
+      transition={{ delay, duration: 0.35, ease: "easeOut" }}
+      className="group relative overflow-hidden flex items-center justify-between gap-4 bg-white border border-slate-200/70 rounded-[20px] px-6 py-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 transition-all duration-300"
     >
       <div
-        className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-[0.08] blur-2xl group-hover:opacity-[0.14] transition-opacity duration-500"
-        style={{ background: gradient }}
+        className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500"
+        style={{ background: color }}
       />
-
-      <div className="relative flex items-start justify-between mb-4">
-        <div
-          className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm"
-          style={{ background: gradient }}
-        >
-          <Icon className="w-6 h-6 text-white stroke-[2.5]" />
-        </div>
-        <div className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse mt-2" />
+      <div className="relative min-w-0">
+        <p className="text-xs font-bold tracking-wider text-slate-400 uppercase truncate">{label}</p>
+        <p className="text-3xl font-extrabold text-slate-800 tracking-tight tabular-nums mt-1">{value}</p>
+        {hint && <p className="text-[11px] text-slate-500 font-medium mt-1 truncate">{hint}</p>}
       </div>
-
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
-        {label}
-      </p>
-      <p className="text-3xl font-black text-slate-900 leading-none tabular-nums">
-        {value}
-      </p>
-      {sublabel && (
-        <p className="text-xs text-slate-500 mt-1.5 font-medium">{sublabel}</p>
-      )}
+      <div
+        className="relative w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300"
+        style={{ color, background: `${color}14`, border: `1px solid ${color}26` }}
+      >
+        <Icon size={28} />
+      </div>
     </motion.div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   BED CARD — État 0 = Libre (vert), 2 = Occupé (orange)
+   CARTE LIT — 0 = libre, 2 = occupé
    ═══════════════════════════════════════════════════════════════ */
-function BedCard({ lit, isSelected, onClick, t, index }) {
+function BedCard({ lit, isSelected, onClick, t, index, chambreCode }) {
   const isFree = lit.etat === 0;
   const isOccupied = lit.etat === 2;
-  const isInfected = lit.infecte;
-
-  const theme = isFree
-    ? {
-        bg: "bg-white",
-        border: "border-[#22c55e]/30",
-        iconBg: "bg-[#22c55e]",
-        iconColor: "text-white",
-        bar: "bg-[#22c55e]",
-        badge: "bg-[#dcfce7] text-[#15803d] border-[#22c55e]/25",
-        label: t("chambre.free"),
-        hover: "hover:border-[#22c55e]/60 hover:shadow-[0_8px_24px_rgba(34,197,94,0.15)]",
-      }
-    : isOccupied
-    ? {
-        bg: "bg-white",
-        border: "border-[#f97316]/30",
-        iconBg: "bg-[#f97316]",
-        iconColor: "text-white",
-        bar: "bg-[#f97316]",
-        badge: "bg-[#ffedd5] text-[#c2410c] border-[#f97316]/25",
-        label: t("chambre.occupied"),
-        hover: "hover:border-[#f97316]/60 hover:shadow-[0_8px_24px_rgba(249,115,22,0.15)]",
-      }
-    : {
-        bg: "bg-white",
-        border: "border-slate-200",
-        iconBg: "bg-slate-400",
-        iconColor: "text-white",
-        bar: "bg-slate-400",
-        badge: "bg-slate-100 text-slate-600 border-slate-200",
-        label: t("chambre.unknown"),
-        hover: "hover:border-slate-300 hover:shadow-md",
-      };
+  const color = isFree ? C.green : isOccupied ? C.orange : "#94a3b8";
+  const label = isFree ? t("chambre.free") : isOccupied ? t("chambre.occupied") : t("chambre.unknown");
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.3 }}
-      whileHover={{ y: -2 }}
-      whileTap={{ scale: 0.98 }}
+      transition={{ delay: index * 0.04, duration: 0.25 }}
       onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl border-2 ${theme.bg} ${theme.border} ${theme.hover} cursor-pointer transition-all ${
-        isSelected ? "ring-2 ring-[#059669] ring-offset-2 shadow-lg" : "shadow-sm"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick()}
+      className={`group relative rounded-2xl border bg-white cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0d9488]/40 ${
+        isSelected ? "border-[#0d9488] ring-2 ring-[#0d9488]/20" : "border-slate-200"
       }`}
     >
-      <div className={`absolute top-0 left-0 right-0 h-1 ${isInfected ? "bg-[#d97706]" : theme.bar}`} />
-
-      <AnimatePresence>
-        {isSelected && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0 }}
-            className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#059669] flex items-center justify-center shadow-md z-10"
+      {/* Illustration */}
+      <div
+        className="relative h-[92px] rounded-t-2xl px-4 pt-3 overflow-hidden"
+        style={{ background: `linear-gradient(180deg, ${color}12, transparent)` }}
+      >
+        <BedIllustration occupied={isOccupied} color={color} />
+        {lit.infecte && (
+          <span
+            className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+            style={{ color: C.red, background: `${C.red}14`, border: `1px solid ${C.red}33` }}
+            title={t("chambre.infected")}
           >
-            <CheckCircle2 className="w-4 h-4 text-white stroke-[3]" />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="p-4">
-        <div className="flex items-start gap-3 mb-3">
-          <div className={`w-11 h-11 rounded-xl ${theme.iconBg} flex items-center justify-center flex-shrink-0 shadow-sm`}>
-            <Bed className={`w-5 h-5 ${theme.iconColor} stroke-[2.5]`} />
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <p className="font-black text-sm text-slate-900 truncate">
-              {lit.code || `LIT-${lit.id}`}
-            </p>
-            <p className="text-[11px] text-slate-500 truncate font-medium mt-0.5">
-              {lit.description || t("chambre.standard_bed")}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap mb-3">
-          <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-black uppercase tracking-wider ${theme.badge}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${theme.bar} ${isOccupied ? "animate-pulse" : ""}`} />
-            {theme.label}
+            <IconBiohazard size={14} />
+            {t("chambre.infected")}
           </span>
-
-          {isInfected && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#fef3c7] border border-[#d97706]/25 text-[10px] font-black uppercase tracking-wider text-[#b45309]">
-              <AlertTriangle className="w-2.5 h-2.5 stroke-[3]" />
-              {t("chambre.infected")}
-            </span>
+        )}
+        <AnimatePresence>
+          {isSelected && (
+            <motion.span
+              initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+              className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center text-white shadow"
+              style={{ background: C.teal }}
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+            </motion.span>
           )}
-        </div>
+        </AnimatePresence>
+      </div>
 
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400">
-            <Barcode className="w-3 h-3" />
-            <span className="truncate max-w-[100px]">
-              {lit.codeBarre || `#${String(lit.id).padStart(4, "0")}`}
-            </span>
+      {/* Infos */}
+      <div className="px-4 pb-3.5 pt-2.5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-bold text-sm text-slate-800 truncate">{lit.code || `LIT-${lit.id}`}</p>
+            <p className="text-[11px] text-slate-500 truncate">{lit.description || t("chambre.standard_bed")}</p>
           </div>
-          <BarcodeLabel item={lit} />
+          <span
+            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide shrink-0"
+            style={{ color, background: `${color}14` }}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${isOccupied ? "animate-pulse" : ""}`} style={{ background: color }} />
+            {label}
+          </span>
+        </div>
+        <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+          <span className="premium-table__code truncate max-w-[140px]">
+            {lit.codeBarre || `#${String(lit.id).padStart(4, "0")}`}
+          </span>
+          <BarcodeLabel item={lit} type="lit" ctx={{ chambre: chambreCode }} />
         </div>
       </div>
     </motion.div>
   );
 }
 
+// Bouton de la barre d'outils (style du template)
+function ToolbarButton({ color, icon: Icon, children, className = "", ...props }) {
+  return (
+    <button
+      type="button"
+      {...props}
+      className={`flex items-center gap-2 px-5 py-2.5 bg-white border rounded-[14px] text-sm font-bold transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100 ${className}`}
+      style={{ color, borderColor: `${color}4d` }}
+      onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.background = `${color}0d`; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = ""; }}
+    >
+      <Icon className="w-4 h-4 stroke-[2.5]" />
+      {children}
+    </button>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════
-   COMPOSANT PRINCIPAL — FULL WIDTH, palette verte douce
+   COMPOSANT PRINCIPAL
    ═══════════════════════════════════════════════════════════════ */
 export default function ChambreList() {
   const { t } = useTranslation();
@@ -176,6 +374,7 @@ export default function ChambreList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedChambre, setSelectedChambre] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [serviceFilter, setServiceFilter] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [chambreLits, setChambreLits] = useState([]);
@@ -236,7 +435,7 @@ export default function ChambreList() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, serviceFilter]);
 
   const fetchChambreLits = useCallback(async (chambreId) => {
     setIsLitsLoading(true);
@@ -256,12 +455,16 @@ export default function ChambreList() {
     }
   }, []);
 
+  const closePanel = useCallback(() => {
+    setExpandedId(null);
+    setSelectedId(null);
+    setChambreLits([]);
+  }, []);
+
   const toggleExpand = useCallback(
     (chambre) => {
       if (expandedId === chambre.id) {
-        setExpandedId(null);
-        setSelectedId(null);
-        setChambreLits([]);
+        closePanel();
       } else {
         setExpandedId(chambre.id);
         setSelectedChambre(chambre);
@@ -269,7 +472,7 @@ export default function ChambreList() {
         fetchChambreLits(chambre.id);
       }
     },
-    [expandedId, fetchChambreLits]
+    [expandedId, fetchChambreLits, closePanel]
   );
 
   const getServiceName = useCallback(
@@ -281,15 +484,23 @@ export default function ChambreList() {
     [services, t]
   );
 
-  const stats = useMemo(() => {
+  // Indicateurs globaux (sur toutes les chambres)
+  const kpis = useMemo(() => {
     const total = chambres.length;
-    const totalLits = chambreLits.length;
+    const servicesCovered = new Set(chambres.filter((c) => c.serviceId).map((c) => c.serviceId)).size;
+    const withBarcode = chambres.filter((c) => c.codeBarre).length;
+    const unassigned = chambres.filter((c) => !c.serviceId).length;
+    return { total, servicesCovered, withBarcode, unassigned };
+  }, [chambres]);
+
+  // Indicateurs de la chambre ouverte
+  const bedStats = useMemo(() => {
+    const total = chambreLits.length;
     const occupied = chambreLits.filter((l) => l.etat === 2).length;
     const free = chambreLits.filter((l) => l.etat === 0).length;
     const infected = chambreLits.filter((l) => l.infecte).length;
-    const occupancy = totalLits > 0 ? Math.round((occupied / totalLits) * 100) : 0;
-    return { total, totalLits, occupied, free, infected, occupancy };
-  }, [chambres, chambreLits]);
+    return { total, occupied, free, infected };
+  }, [chambreLits]);
 
   const handleOpenCreateModal = useCallback(() => {
     setSelectedChambre(null);
@@ -355,653 +566,589 @@ export default function ChambreList() {
       if (result.isConfirmed) {
         try {
           setChambres((prev) => prev.filter((r) => r.id !== id));
-          if (expandedId === id) {
-            setExpandedId(null);
-            setChambreLits([]);
-          }
+          if (expandedId === id) closePanel();
           Swal.fire({ title: t("chambre.alerts.deleted"), icon: "success", timer: 1500, showConfirmButton: false });
         } catch (err) {
           Swal.fire({ title: t("chambre.alerts.error"), text: err.message, icon: "error" });
         }
       }
     },
-    [expandedId, t]
+    [expandedId, closePanel, t]
   );
 
+  // Services réellement utilisés par au moins une chambre (pour le filtre)
+  const usedServices = useMemo(() => {
+    const ids = new Set(chambres.map((c) => c.serviceId).filter(Boolean));
+    return services.filter((s) => ids.has(s.id));
+  }, [chambres, services]);
+
   const filteredChambres = useMemo(() => {
-    if (!searchTerm) return chambres;
     const term = searchTerm.toLowerCase();
-    return chambres.filter(
-      (r) =>
+    return chambres.filter((r) => {
+      if (serviceFilter === "none" && r.serviceId) return false;
+      if (serviceFilter && serviceFilter !== "none" && String(r.serviceId) !== serviceFilter) return false;
+      if (!term) return true;
+      return (
         r.code?.toLowerCase().includes(term) ||
-        r.codeBarre?.toLowerCase().includes(term)
-    );
-  }, [chambres, searchTerm]);
+        r.codeBarre?.toLowerCase().includes(term) ||
+        getServiceName(r.serviceId).toLowerCase().includes(term)
+      );
+    });
+  }, [chambres, searchTerm, serviceFilter, getServiceName]);
 
   const totalPages = Math.max(1, Math.ceil(filteredChambres.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentData = filteredChambres.slice(startIndex, startIndex + itemsPerPage);
+
+  // Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun)
+  const { sortedItems: sortedChambres, requestSort, directionFor } = useSortableData(filteredChambres, {
+    service: (c) => getServiceName(c.serviceId),
+  });
+  const currentData = sortedChambres.slice(startIndex, startIndex + itemsPerPage);
+
+  const panelOpen = expandedId !== null;
+  const openChambre = chambres.find((c) => c.id === expandedId) || selectedChambre;
+
+  /* ─── Rendu ─────────────────────────────────────────────────── */
+  const emptyState = (
+    <div className="text-center py-16 px-6">
+      <EmptyIllustration searching={!!(searchTerm || serviceFilter)} />
+      <h3 className="text-lg font-bold text-slate-800 mt-5">
+        {searchTerm || serviceFilter ? t("chambre.no_match") : t("chambre.no_data")}
+      </h3>
+      <p className="text-sm text-slate-500 mt-1">
+        {searchTerm || serviceFilter
+          ? t("chambre.empty_search_hint", "Essayez un autre code ou retirez le filtre de service.")
+          : t("chambre.empty_hint", "Créez votre première chambre pour commencer.")}
+      </p>
+      {searchTerm || serviceFilter ? (
+        <button
+          type="button"
+          onClick={() => { setSearchTerm(""); setServiceFilter(""); }}
+          className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-[12px] border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+        >
+          <X className="w-4 h-4" /> {t("chambre.clear_filters", "Réinitialiser les filtres")}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleOpenCreateModal}
+          className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-[12px] text-sm font-bold text-white shadow-sm hover:shadow-md transition-all"
+          style={{ background: `linear-gradient(135deg, ${C.green}, ${C.teal})` }}
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" /> {t("chambre.new")}
+        </button>
+      )}
+    </div>
+  );
+
+  const loadingState = (
+    <div className="p-4 space-y-2">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-2 py-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 animate-pulse" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-32 rounded bg-slate-100 animate-pulse" />
+            <div className="h-2.5 w-20 rounded bg-slate-100 animate-pulse" />
+          </div>
+          <div className="h-6 w-24 rounded-full bg-slate-100 animate-pulse" />
+        </div>
+      ))}
+    </div>
+  );
 
   return (
-    <div className="w-full min-h-screen bg-slate-50">
-      {/* ═══════════════════════════════════════════════════════════
-          HERO HEADER — Vert sauge doux, pleine largeur
-          ═══════════════════════════════════════════════════════════ */}
-      <div className="relative w-full overflow-hidden bg-gradient-to-r from-[#064e3b] via-[#059669] to-[#34d399]">
-        {/* Motifs décoratifs discrets */}
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.9) 1px, transparent 1px)`,
-            backgroundSize: "24px 24px",
-          }}
-        />
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-[#a7f3d0]/20 blur-3xl" />
-
-        <div className="relative px-6 lg:px-10 py-8 lg:py-10">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            {/* Identité */}
-            <div className="flex items-center gap-5">
-              <motion.div
-                initial={{ scale: 0, rotate: -20 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                className="relative"
-              >
-                <div className="w-16 h-16 rounded-2xl bg-white/15 backdrop-blur-xl border border-white/30 flex items-center justify-center shadow-2xl">
-                  <Home className="w-8 h-8 text-white stroke-[2.5]" />
-                </div>
-                <Leaf className="absolute -top-1.5 -right-1.5 w-5 h-5 text-[#a7f3d0] fill-[#a7f3d0]" />
-              </motion.div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-[10px] font-black uppercase tracking-widest text-white">
-                    <HeartPulse className="w-3 h-3" />
-                    Hospital Module
-                  </span>
-                </div>
-                <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tight leading-none mb-2">
-                  {t("chambre.title")}
-                </h1>
-                <p className="text-white/75 text-sm font-medium">
-                  {t("chambre.subtitle")}
-                </p>
-              </div>
-            </div>
-
-            {/* Stats pills + refresh */}
-            <div className="flex items-center gap-3">
-              <div className="hidden lg:flex items-center gap-2">
-                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur-xl border border-white/20">
-                  <CheckCircle2 className="w-4 h-4 text-[#a7f3d0]" />
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-wider text-white/60">Libres</p>
-                    <p className="text-base font-black text-white leading-none">{stats.free}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur-xl border border-white/20">
-                  <Users className="w-4 h-4 text-[#fed7aa]" />
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-wider text-white/60">Occupés</p>
-                    <p className="text-base font-black text-white leading-none">{stats.occupied}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur-xl border border-white/20">
-                  <Activity className="w-4 h-4 text-[#a7f3d0]" />
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-wider text-white/60">Taux</p>
-                    <p className="text-base font-black text-white leading-none">{stats.occupancy}%</p>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={fetchChambres}
-                className="group w-12 h-12 rounded-xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/20 transition-all"
-                title={t("chambre.refresh")}
-              >
-                <RefreshCw
-                  className={`w-5 h-5 text-white stroke-[2.5] ${
-                    isLoading ? "animate-spin" : "group-hover:rotate-180 transition-transform duration-500"
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-
-          {/* Barre d'occupation */}
-          <div className="mt-8 pt-6 border-t border-white/10">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-white/80">
-                <Activity className="w-4 h-4" />
-                <span className="text-[11px] font-black uppercase tracking-widest">
-                  Taux d'occupation global
-                </span>
-              </div>
-              <span className="text-2xl font-black text-white tabular-nums">
-                {stats.occupancy}
-                <span className="text-sm text-white/60 ml-0.5">%</span>
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${stats.occupancy}%` }}
-                transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
-                className="h-full rounded-full bg-gradient-to-r from-[#a7f3d0] via-white to-[#a7f3d0]"
-              />
+    <div className="relative flex flex-col lg:flex-row gap-4 h-full">
+      {/* ═══ COLONNE PRINCIPALE ═══ */}
+      <div className="flex-1 min-w-0 space-y-4">
+        {/* En-tête (identique aux autres pages) */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <PageHeaderIcon size={52} />
+            <div>
+              <h1 className="text-[28px] font-extrabold text-slate-900 m-0 leading-tight">{t("chambre.title")}</h1>
+              <p className="text-sm text-slate-500 mt-0.5">{t("chambre.subtitle")}</p>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ═══════════════════════════════════════════════════════════
-          CONTENU — PLEINE LARGEUR
-          ═══════════════════════════════════════════════════════════ */}
-      <div className="w-full px-6 lg:px-10 py-6 space-y-6">
-
-        {/* ═══ STATS CARDS ═══ */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            icon={DoorOpen}
-            label={t("chambre.title")}
-            value={stats.total}
-            sublabel="Total enregistrées"
-            gradient="linear-gradient(135deg, #059669, #10b981)"
-            delay={0}
-          />
-          <StatCard
-            icon={Users}
-            label="Lits occupés"
-            value={stats.occupied}
-            sublabel={`${stats.occupancy}% d'occupation`}
-            gradient="linear-gradient(135deg, #ea580c, #f97316)"
-            delay={0.05}
-          />
-          <StatCard
-            icon={CheckCircle2}
-            label="Disponibles"
-            value={stats.free}
-            sublabel="Prêts à l'admission"
-            gradient="linear-gradient(135deg, #16a34a, #22c55e)"
-            delay={0.1}
-          />
-          <StatCard
-            icon={AlertTriangle}
-            label="Infectés"
-            value={stats.infected}
-            sublabel="À désinfecter"
-            gradient="linear-gradient(135deg, #d97706, #f59e0b)"
-            delay={0.15}
-          />
+        {/* KPI */}
+        <div className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${panelOpen ? "2xl:grid-cols-4" : "xl:grid-cols-4"}`}>
+          <KpiTile icon={IconDoor} color={C.teal} delay={0}
+            label={t("chambre.kpi_total", "Chambres")} value={kpis.total}
+            hint={t("chambre.kpi_total_hint", "Enregistrées dans le système")} />
+          <KpiTile icon={IconHospital} color={C.sky} delay={0.05}
+            label={t("chambre.kpi_services", "Services couverts")} value={kpis.servicesCovered}
+            hint={t("chambre.kpi_services_hint", "Au moins une chambre rattachée")} />
+          <KpiTile icon={IconBarcodeTag} color={C.violet} delay={0.1}
+            label={t("chambre.kpi_barcode", "Étiquetées")} value={kpis.withBarcode}
+            hint={t("chambre.kpi_barcode_hint", "Avec code-barres")} />
+          <KpiTile icon={IconUnassigned} color={kpis.unassigned ? C.orange : C.green} delay={0.15}
+            label={t("chambre.kpi_unassigned", "Sans service")} value={kpis.unassigned}
+            hint={kpis.unassigned
+              ? t("chambre.kpi_unassigned_hint", "À rattacher à un service")
+              : t("chambre.kpi_unassigned_ok", "Toutes sont rattachées")} />
         </div>
 
-        {/* ═══ TOOLBAR ═══ */}
-        <div className="flex flex-wrap items-center gap-3 p-3 rounded-2xl bg-white border border-slate-200 shadow-sm">
-          <button
-            onClick={handleOpenCreateModal}
-            className="group relative flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-[#059669] to-[#10b981] text-white text-sm font-black shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-            <Plus className="relative w-4 h-4 stroke-[3] group-hover:rotate-90 transition-transform duration-300" />
-            <span className="relative">{t("chambre.new")}</span>
-          </button>
+        {/* Barre d'outils */}
+        <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+          <ToolbarButton color={C.green} icon={Plus} onClick={handleOpenCreateModal}>
+            {t("chambre.new")}
+          </ToolbarButton>
 
-          <div className="w-px h-8 bg-slate-200" />
+          <div className="w-px h-[30px] bg-slate-200 mx-1" />
 
-          <button
-            disabled={!expandedId}
-            onClick={() => selectedChambre && handleOpenEditModal(selectedChambre)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm font-bold text-[#006f94] hover:border-[#006f94]/50 hover:bg-[#006f94]/5 hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-          >
-            <Edit className="w-4 h-4 stroke-[2.5]" />
+          <ToolbarButton color={C.blue} icon={Edit} disabled={!panelOpen}
+            onClick={() => openChambre && handleOpenEditModal(openChambre)}>
             <span className="hidden sm:inline">{t("chambre.edit")}</span>
-          </button>
+          </ToolbarButton>
+          <ToolbarButton color={C.red} icon={Trash2} disabled={!panelOpen}
+            onClick={() => expandedId && deleteRec(expandedId)}>
+            <span className="hidden sm:inline">{t("chambre.delete")}</span>
+          </ToolbarButton>
 
           <button
-            disabled={!expandedId}
-            onClick={() => expandedId && deleteRec(expandedId)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm font-bold text-[#dc2626] hover:border-[#dc2626]/50 hover:bg-[#dc2626]/5 hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+            type="button"
+            onClick={fetchChambres}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
           >
-            <Trash2 className="w-4 h-4 stroke-[2.5]" />
-            <span className="hidden sm:inline">{t("chambre.delete")}</span>
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">{t("chambre.refresh")}</span>
           </button>
 
           <div className="flex-1" />
 
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl">
-            <button
-              onClick={() => setViewMode("table")}
-              className={`p-2 rounded-lg transition-all ${
-                viewMode === "table" ? "bg-white shadow-sm text-[#059669]" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <List className="w-4 h-4 stroke-[2.5]" />
-            </button>
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-lg transition-all ${
-                viewMode === "grid" ? "bg-white shadow-sm text-[#059669]" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4 stroke-[2.5]" />
-            </button>
-          </div>
-        </div>
-
-        {/* ═══ RECHERCHE ═══ */}
-        <div className="relative group">
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#10b981] to-[#34d399] opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity" />
-          <div className="relative flex items-center bg-white rounded-2xl border-2 border-slate-200 focus-within:border-transparent transition-all">
-            <Search className="absolute left-5 w-5 h-5 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder={t("chambre.search_placeholder")}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-14 pl-14 pr-14 bg-transparent rounded-2xl text-base font-medium focus:outline-none placeholder:text-slate-400"
-            />
-            {searchTerm && (
+          <div className="flex items-center bg-slate-100 p-1 rounded-[12px]" role="group">
+            {[
+              { mode: "table", icon: List, label: t("chambre.view_table", "Vue tableau") },
+              { mode: "grid", icon: LayoutGrid, label: t("chambre.view_grid", "Vue plan") },
+            ].map(({ mode, icon: Icon, label }) => (
               <button
-                onClick={() => setSearchTerm("")}
-                className="absolute right-5 w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                title={label}
+                aria-pressed={viewMode === mode}
+                className={`p-2 rounded-[9px] transition-all ${
+                  viewMode === mode ? "bg-white shadow-sm text-[#0d9488]" : "text-slate-500 hover:text-slate-700"
+                }`}
               >
-                <X className="w-4 h-4 text-slate-500" />
+                <Icon className="w-4 h-4 stroke-[2.5]" />
               </button>
-            )}
+            ))}
           </div>
         </div>
 
-        {/* ═══ CONTENU PRINCIPAL ═══ */}
-        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full border-4 border-[#10b981]/10" />
-                <div className="absolute inset-0 w-20 h-20 rounded-full border-4 border-transparent border-t-[#10b981] animate-spin" />
-                <Bed className="absolute inset-0 m-auto w-8 h-8 text-[#059669]" />
+        {/* Recherche + filtre service */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder={t("chambre.search_placeholder")}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full h-10 pl-10 pr-9 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                    aria-label={t("chambre.clear_filters", "Réinitialiser les filtres")}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
-              <p className="text-sm font-bold text-slate-500">{t("chambre.loading")}</p>
-            </div>
-          ) : currentData.length === 0 ? (
-            <div className="text-center py-24 px-6">
-              <div className="relative inline-block mb-6">
-                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#d1fae5] to-[#a7f3d0] flex items-center justify-center mx-auto">
-                  <Home className="w-12 h-12 text-[#059669]" />
-                </div>
-                <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-yellow-400 fill-yellow-400" />
+              <div className="relative sm:w-60">
+                <IconHospital size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select
+                  value={serviceFilter}
+                  onChange={(e) => setServiceFilter(e.target.value)}
+                  className="w-full h-10 pl-10 pr-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">{t("chambre.all_services", "Tous les services")}</option>
+                  {usedServices.map((s) => (
+                    <option key={s.id} value={String(s.id)}>{s.code}</option>
+                  ))}
+                  <option value="none">{t("chambre.not_assigned")}</option>
+                </select>
               </div>
-              <h3 className="text-xl font-black text-slate-900 mb-2">
-                {searchTerm ? t("chambre.no_match") : t("chambre.no_data")}
-              </h3>
             </div>
-          ) : viewMode === "table" ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gradient-to-r from-[#ecfdf5]/60 via-white to-[#ecfdf5]/40 border-b border-slate-200">
-                  <tr>
-                    <th className="w-14 py-4 px-4"></th>
-                    <th className="text-left py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      {t("chambre.code")}
-                    </th>
-                    <th className="text-left py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      {t("chambre.code_barre")}
-                    </th>
-                    <th className="text-left py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      {t("chambre.service")}
-                    </th>
-                    <th className="text-right py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      {t("chambre.actions")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentData.map((chambre, idx) => {
-                    const isExpanded = expandedId === chambre.id;
-                    return (
-                      <React.Fragment key={chambre.id}>
-                        <motion.tr
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.03 }}
-                          className={`border-b border-slate-100 transition-colors ${
-                            isExpanded ? "bg-gradient-to-r from-[#ecfdf5]/70 via-white to-white" : "hover:bg-slate-50/70"
-                          }`}
-                        >
-                          <td className="py-3.5 px-4">
-                            <button
-                              onClick={() => toggleExpand(chambre)}
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                                isExpanded
-                                  ? "bg-gradient-to-br from-[#059669] to-[#10b981] text-white shadow-md"
-                                  : "bg-slate-100 text-slate-500 hover:bg-[#d1fae5] hover:text-[#059669]"
-                              }`}
-                            >
-                              {isExpanded ? (
-                                <ChevronDown className="w-4 h-4 stroke-[3]" />
-                              ) : (
-                                <ChevronRight className="w-4 h-4 stroke-[3]" />
-                              )}
-                            </button>
-                          </td>
+          </CardContent>
+        </Card>
 
-                          <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="relative">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d1fae5] to-[#a7f3d0] border border-[#059669]/20 flex items-center justify-center">
-                                  <Home className="w-5 h-5 text-[#059669] stroke-[2.5]" />
+        {/* Liste */}
+        {viewMode === "table" ? (
+          <Card>
+            <CardContent className="p-0">
+              {isLoading ? loadingState : currentData.length === 0 ? emptyState : (
+                <div className="premium-table-wrap">
+                  <table className="premium-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 56 }} aria-label={t("chambre.show_beds")} />
+                        <SortableHeader direction={directionFor("code")} onSort={() => requestSort("code")}>
+                          {t("chambre.code")}
+                        </SortableHeader>
+                        <SortableHeader direction={directionFor("codeBarre")} onSort={() => requestSort("codeBarre")}>
+                          {t("chambre.code_barre")}
+                        </SortableHeader>
+                        <SortableHeader direction={directionFor("service")} onSort={() => requestSort("service")}>
+                          {t("chambre.service")}
+                        </SortableHeader>
+                        <th style={{ textAlign: "right", paddingRight: 20 }}>{t("chambre.actions")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentData.map((chambre) => {
+                        const isOpen = expandedId === chambre.id;
+                        const assigned = !!chambre.serviceId;
+                        return (
+                          <tr
+                            key={chambre.id}
+                            onClick={() => toggleExpand(chambre)}
+                            className={isOpen ? "is-selected" : ""}
+                            style={{ cursor: "pointer" }}
+                          >
+                            <td style={{ textAlign: "center" }}>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); toggleExpand(chambre); }}
+                                className={`premium-table__icon-btn ${isOpen ? "is-open" : ""}`}
+                                title={isOpen ? t("chambre.hide_beds") : t("chambre.show_beds")}
+                              >
+                                {isOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                              </button>
+                            </td>
+                            <td>
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                  style={{ color: C.teal, background: `${C.teal}14`, border: `1px solid ${C.teal}26` }}
+                                >
+                                  <IconDoor size={20} />
                                 </div>
-                                {isExpanded && (
-                                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#22c55e] border-2 border-white animate-pulse" />
-                                )}
+                                <div>
+                                  <div className="premium-table__primary">{chambre.code || `CH-${chambre.id}`}</div>
+                                  <span className="premium-table__muted">#{String(chambre.id).padStart(4, "0")}</span>
+                                </div>
                               </div>
-                              <div>
-                                <p className="font-black text-slate-900 text-sm leading-tight">
-                                  {chambre.code || `CH-${chambre.id}`}
-                                </p>
-                                <p className="text-[10px] text-slate-400 font-mono">
-                                  #{String(chambre.id).padStart(4, "0")}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            {chambre.codeBarre ? (
-                              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
-                                <Barcode className="w-3 h-3 text-[#34d399]" />
-                                <span className="font-mono text-[11px] font-bold text-[#34d399] tracking-widest">
-                                  {chambre.codeBarre}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-slate-300 italic">—</span>
-                            )}
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#ecfeff] border border-[#0891b2]/25">
-                              <Building2 className="w-3.5 h-3.5 text-[#0891b2]" />
-                              <span className="text-[11px] font-black text-[#0891b2] uppercase tracking-wider">
+                            </td>
+                            <td>
+                              {chambre.codeBarre
+                                ? <span className="premium-table__code">{chambre.codeBarre}</span>
+                                : <span className="premium-table__muted">—</span>}
+                            </td>
+                            <td>
+                              <span
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+                                style={assigned
+                                  ? { color: C.sky, background: `${C.sky}14` }
+                                  : { color: C.orange, background: `${C.orange}14` }}
+                              >
+                                {assigned ? <IconHospital size={14} /> : <IconUnassigned size={14} />}
                                 {getServiceName(chambre.serviceId)}
                               </span>
-                            </div>
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <div className="flex items-center justify-end gap-1">
-                              <BarcodeLabel item={chambre} />
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleOpenEditModal(chambre); }}
-                                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#006f94] hover:bg-[#006f94]/10 transition-all"
-                              >
-                                <Edit className="w-3.5 h-3.5 stroke-[2.5]" />
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); deleteRec(chambre.id); }}
-                                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#dc2626] hover:bg-[#dc2626]/10 transition-all"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 stroke-[2.5]" />
-                              </button>
-                            </div>
-                          </td>
-                        </motion.tr>
-
-                        {/* Panneau lits */}
-                        <AnimatePresence initial={false}>
-                          {isExpanded && (
-                            <tr>
-                              <td colSpan={5} className="p-0">
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: "auto", opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-                                  className="overflow-hidden"
+                            </td>
+                            <td style={{ textAlign: "right", paddingRight: 20 }} onClick={(e) => e.stopPropagation()}>
+                              <div className="premium-table__actions">
+                                <BarcodeLabel item={chambre} type="chambre" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditModal(chambre)}
+                                  className="premium-table__icon-btn"
+                                  title={t("chambre.edit")}
                                 >
-                                  <div className="bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]/40 px-6 lg:px-10 py-6 border-l-4 border-[#10b981]">
-                                    {/* En-tête */}
-                                    <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-                                      <div className="flex items-center gap-3">
-                                        <div className="relative">
-                                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#059669] to-[#34d399] flex items-center justify-center shadow-md">
-                                            <Bed className="w-5 h-5 text-white stroke-[2.5]" />
-                                          </div>
-                                          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-white border-2 border-[#10b981] flex items-center justify-center">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                                          </span>
-                                        </div>
-                                        <div>
-                                          <h3 className="font-black text-slate-900 text-base">
-                                            {t("chambre.beds")}
-                                          </h3>
-                                          <p className="text-[11px] text-slate-500 font-medium">
-                                            Chambre <span className="font-black text-[#059669]">{chambre.code}</span>
-                                          </p>
-                                        </div>
-                                      </div>
-
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200">
-                                          <Activity className="w-3.5 h-3.5 text-slate-400" />
-                                          <span className="text-xs font-black text-slate-700">
-                                            {isLitsLoading ? "…" : chambreLits.length}{" "}
-                                            {t("chambre.bed")}{chambreLits.length > 1 ? "s" : ""}
-                                          </span>
-                                        </div>
-
-                                        {!isLitsLoading && chambreLits.length > 0 && (
-                                          <>
-                                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#dcfce7] border border-[#22c55e]/25">
-                                              <span className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse" />
-                                              <span className="text-xs font-black text-[#15803d]">
-                                                {chambreLits.filter((l) => l.etat === 0).length} libres
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ffedd5] border border-[#f97316]/25">
-                                              <span className="w-2 h-2 rounded-full bg-[#f97316] animate-pulse" />
-                                              <span className="text-xs font-black text-[#c2410c]">
-                                                {chambreLits.filter((l) => l.etat === 2).length} occupés
-                                              </span>
-                                            </div>
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {/* Grille lits */}
-                                    {isLitsLoading ? (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                                        {[1, 2, 3, 4].map((i) => (
-                                          <div key={i} className="h-36 rounded-2xl bg-slate-100 animate-pulse" />
-                                        ))}
-                                      </div>
-                                    ) : chambreLits.length === 0 ? (
-                                      <div className="text-center py-12 rounded-2xl bg-white border-2 border-dashed border-slate-200">
-                                        <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-[#ecfdf5] to-[#d1fae5] flex items-center justify-center mb-3">
-                                          <Bed className="w-8 h-8 text-[#059669]" />
-                                        </div>
-                                        <p className="text-sm text-slate-500 font-bold">{t("chambre.no_beds")}</p>
-                                      </div>
-                                    ) : (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                                        {chambreLits.map((lit, i) => (
-                                          <BedCard
-                                            key={lit.id}
-                                            lit={lit}
-                                            index={i}
-                                            isSelected={selectedId === lit.id}
-                                            onClick={() =>
-                                              setSelectedId((prev) => (prev === lit.id ? null : lit.id))
-                                            }
-                                            t={t}
-                                          />
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </motion.div>
-                              </td>
-                            </tr>
-                          )}
-                        </AnimatePresence>
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            /* Vue GRILLE */
-            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-              {currentData.map((chambre, idx) => (
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteRec(chambre.id)}
+                                  className="premium-table__icon-btn is-danger"
+                                  title={t("chambre.delete")}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : isLoading ? (
+          <Card><CardContent className="p-0">{loadingState}</CardContent></Card>
+        ) : currentData.length === 0 ? (
+          <Card><CardContent className="p-0">{emptyState}</CardContent></Card>
+        ) : (
+          /* Vue plan : une carte par chambre */
+          <div className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${panelOpen ? "2xl:grid-cols-3" : "lg:grid-cols-3 2xl:grid-cols-4"}`}>
+            {currentData.map((chambre, idx) => {
+              const isOpen = expandedId === chambre.id;
+              const assigned = !!chambre.serviceId;
+              const accent = assigned ? C.teal : C.orange;
+              return (
                 <motion.div
                   key={chambre.id}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.04 }}
-                  className="group relative overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-[#059669]/40 hover:shadow-lg transition-all"
+                  transition={{ delay: idx * 0.03 }}
+                  onClick={() => toggleExpand(chambre)}
+                  className={`group relative bg-white rounded-[20px] border cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)] ${
+                    isOpen ? "border-[#0d9488] ring-2 ring-[#0d9488]/20" : "border-slate-200/70 shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
+                  }`}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#059669] to-[#34d399]" />
-
-                  <div className="p-5">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#d1fae5] to-[#a7f3d0] border border-[#059669]/20 flex items-center justify-center mb-4">
-                      <Home className="w-6 h-6 text-[#059669] stroke-[2.5]" />
-                    </div>
-
-                    <h3 className="font-black text-lg text-slate-900 mb-1">
-                      {chambre.code || `CH-${chambre.id}`}
-                    </h3>
-                    <p className="text-[11px] text-slate-400 font-mono mb-3">
-                      #{String(chambre.id).padStart(4, "0")}
-                    </p>
-
-                    <div className="flex items-center gap-2 mb-4">
-                      <Building2 className="w-3.5 h-3.5 text-[#0891b2]" />
-                      <span className="text-xs font-black text-[#0891b2] uppercase tracking-wider">
+                  <div className="h-[88px] p-3 pb-0">
+                    <RoomPlan color={accent} beds={2} />
+                  </div>
+                  <div className="p-4 pt-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="font-extrabold text-base text-slate-800 truncate">{chambre.code || `CH-${chambre.id}`}</h3>
+                        <p className="premium-table__muted">#{String(chambre.id).padStart(4, "0")}</p>
+                      </div>
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
+                        style={assigned ? { color: C.sky, background: `${C.sky}14` } : { color: C.orange, background: `${C.orange}14` }}
+                      >
+                        {assigned ? <IconHospital size={13} /> : <IconUnassigned size={13} />}
                         {getServiceName(chambre.serviceId)}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
                       <button
+                        type="button"
                         onClick={() => toggleExpand(chambre)}
-                        className="flex items-center gap-1.5 text-xs font-black text-[#059669] hover:text-[#064e3b] transition-colors"
+                        className="inline-flex items-center gap-1 text-xs font-bold transition-colors"
+                        style={{ color: C.teal }}
                       >
-                        <Bed className="w-3.5 h-3.5" />
-                        Voir les lits
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        {isOpen ? t("chambre.hide_beds") : t("chambre.show_beds")}
+                        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isOpen ? "rotate-180" : "group-hover:translate-x-0.5"}`} />
                       </button>
-                      <div className="flex items-center gap-1">
-                        <BarcodeLabel item={chambre} />
-                        <button
-                          onClick={() => handleOpenEditModal(chambre)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-[#006f94] hover:bg-[#006f94]/10 transition-all"
-                        >
-                          <Edit className="w-3 h-3 stroke-[2.5]" />
+                      <div className="premium-table__actions">
+                        <BarcodeLabel item={chambre} type="chambre" />
+                        <button type="button" onClick={() => handleOpenEditModal(chambre)} className="premium-table__icon-btn" title={t("chambre.edit")}>
+                          <Edit className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => deleteRec(chambre.id)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-[#dc2626] hover:bg-[#dc2626]/10 transition-all"
-                        >
-                          <Trash2 className="w-3 h-3 stroke-[2.5]" />
+                        <button type="button" onClick={() => deleteRec(chambre.id)} className="premium-table__icon-btn is-danger" title={t("chambre.delete")}>
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
                   </div>
                 </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
-        {/* ═══ PAGINATION ═══ */}
-        {totalPages > 1 && (
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200">
-            <div className="text-sm text-slate-600 font-medium">
-              <span className="font-black text-[#059669]">{currentData.length > 0 ? startIndex + 1 : 0}</span>
-              {" — "}
-              <span className="font-black text-[#059669]">{Math.min(startIndex + itemsPerPage, filteredChambres.length)}</span>
-              {" sur "}
-              <span className="font-black text-slate-900">{filteredChambres.length}</span>
-              {" chambres"}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)} className="rounded-xl">
-                {t("chambre.pagination.previous")}
-              </Button>
-              <div className="flex items-center gap-1 px-2">
-                <span className="px-3 py-1.5 rounded-xl bg-gradient-to-br from-[#059669] to-[#10b981] text-white text-sm font-black shadow-md">
-                  {currentPage}
-                </span>
-                <span className="text-slate-400 text-sm font-bold">/</span>
-                <span className="px-3 py-1.5 text-slate-700 text-sm font-black">{totalPages}</span>
+        {/* Pagination */}
+        {!isLoading && filteredChambres.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+            <p className="text-sm text-slate-500">
+              {t("chambre.pagination.showing")}{" "}
+              <span className="font-bold text-slate-800">{startIndex + 1}</span>{" "}
+              {t("chambre.pagination.to")}{" "}
+              <span className="font-bold text-slate-800">{Math.min(startIndex + itemsPerPage, filteredChambres.length)}</span>{" "}
+              {t("chambre.pagination.of")}{" "}
+              <span className="font-bold text-slate-800">{filteredChambres.length}</span>{" "}
+              {t("chambre.pagination.rooms")}
+            </p>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  className="h-9 px-3 inline-flex items-center gap-1 rounded-[12px] border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" /> <span className="hidden sm:inline">{t("chambre.pagination.previous")}</span>
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                  .map((p, i, arr) => (
+                    <React.Fragment key={p}>
+                      {i > 0 && p - arr[i - 1] > 1 && <span className="px-1 text-slate-400">…</span>}
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(p)}
+                        className={`h-9 min-w-9 px-3 rounded-[12px] text-sm font-bold transition-all ${
+                          p === currentPage
+                            ? "text-white shadow-sm"
+                            : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                        style={p === currentPage ? { background: `linear-gradient(135deg, ${C.green}, ${C.teal})` } : undefined}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  className="h-9 px-3 inline-flex items-center gap-1 rounded-[12px] border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span className="hidden sm:inline">{t("chambre.pagination.next")}</span> <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
-              <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)} className="rounded-xl">
-                {t("chambre.pagination.next")}
-              </Button>
-            </div>
+            )}
           </div>
         )}
       </div>
 
+      {/* ═══ PANNEAU LATÉRAL — lits de la chambre ═══ */}
+      <AnimatePresence>
+        {panelOpen && openChambre && (
+          <motion.aside
+            key="panel"
+            initial={{ opacity: 0, x: 60 }}
+            animate={{ opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 30 } }}
+            exit={{ opacity: 0, x: 60, transition: { duration: 0.2 } }}
+            className="w-full lg:w-[420px] xl:w-[460px] shrink-0 bg-white rounded-[20px] border border-slate-200 shadow-[0_20px_50px_rgba(15,23,42,0.10)] overflow-hidden lg:sticky lg:top-20 lg:h-[calc(100vh-120px)] flex flex-col"
+          >
+            {/* En-tête du panneau */}
+            <div className="relative p-5 border-b border-slate-100" style={{ background: `linear-gradient(135deg, ${C.teal}12, ${C.sky}08 60%, transparent)` }}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white"
+                    style={{ background: `linear-gradient(135deg, ${C.green}, ${C.teal})`, boxShadow: `0 6px 18px ${C.teal}40` }}
+                  >
+                    <IconDoor size={24} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{t("chambre.beds")}</p>
+                    <h3 className="text-lg font-extrabold text-slate-900 truncate">{openChambre.code || `CH-${openChambre.id}`}</h3>
+                    <p className="text-xs text-slate-500 truncate">{getServiceName(openChambre.serviceId)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <BarcodeLabel item={openChambre} type="chambre" />
+                  <button
+                    type="button"
+                    onClick={closePanel}
+                    className="premium-table__icon-btn"
+                    title={t("chambre.close", "Fermer")}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Synthèse d'occupation */}
+              <div className="mt-5 flex items-center gap-5">
+                {isLitsLoading ? (
+                  <div className="w-[96px] h-[96px] rounded-full border-[9px] border-slate-100 animate-pulse shrink-0" />
+                ) : (
+                  <div className="shrink-0"><OccupancyRing occupied={bedStats.occupied} free={bedStats.free} total={bedStats.total} size={96} /></div>
+                )}
+                <div className="flex-1 grid grid-cols-2 gap-2">
+                  {[
+                    { label: t("chambre.beds_total", "Lits"), value: bedStats.total, color: "#64748b" },
+                    { label: t("chambre.free"), value: bedStats.free, color: C.green },
+                    { label: t("chambre.occupied"), value: bedStats.occupied, color: C.orange },
+                    { label: t("chambre.infected"), value: bedStats.infected, color: C.red },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-xl bg-white border border-slate-100 px-3 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full" style={{ background: s.color }} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">{s.label}</span>
+                      </div>
+                      <p className="text-lg font-extrabold text-slate-800 tabular-nums leading-tight mt-0.5">
+                        {isLitsLoading ? "…" : s.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Liste des lits */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {isLitsLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-[170px] rounded-2xl bg-slate-100 animate-pulse" />
+                  ))}
+                </div>
+              ) : chambreLits.length === 0 ? (
+                <div className="text-center py-12 px-4 rounded-2xl border-2 border-dashed border-slate-200">
+                  <div className="w-32 h-20 mx-auto opacity-60">
+                    <BedIllustration occupied={false} color="#94a3b8" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-600 mt-3">{t("chambre.no_beds")}</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
+                  {chambreLits.map((lit, i) => (
+                    <BedCard
+                      key={lit.id}
+                      lit={lit}
+                      index={i}
+                      isSelected={selectedId === lit.id}
+                      chambreCode={openChambre.code}
+                      onClick={() => setSelectedId((prev) => (prev === lit.id ? null : lit.id))}
+                      t={t}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
       {/* ═══ MODAL ═══ */}
-      <Modal
+      <FormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={
-          selectedChambre
-            ? `${t("chambre.modal.edit_title")} #${selectedChambre.id}`
-            : t("chambre.modal.new_title")
-        }
-        size="lg"
+        title={selectedChambre
+          ?`${t("chambre.modal.edit_title")} #${selectedChambre.id}`
+          : t("chambre.modal.new_title")}
+        mode={selectedChambre ? "edit" : "create"}
+        size={"lg"}
+        onSubmit={handleSave}
+        saving={isSaving}
       >
-        <form onSubmit={handleSave} className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label={t("chambre.form.code_label")}
-              value={newRec.code}
-              onChange={(e) => setNewRec({ ...newRec, code: e.target.value.toUpperCase() })}
-              placeholder={t("chambre.form.code_placeholder")}
-              required
-            />
-            <div>
-              <label className="block text-sm font-bold mb-2 text-slate-700">
-                {t("chambre.form.service_label")}
-              </label>
-              <select
-                value={newRec.serviceId || ""}
-                onChange={(e) =>
-                  setNewRec({
-                    ...newRec,
-                    serviceId: e.target.value ? parseInt(e.target.value) : "",
-                  })
-                }
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-[#059669] focus:ring-2 focus:ring-[#059669]/20 transition-all"
-              >
-                <option value="">{t("chambre.form.no_service")}</option>
-                {services.map((service) => (
-                  <option key={service.id} value={service.id}>{service.code}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)} type="button" disabled={isSaving}>
-              {t("chambre.form.cancel")}
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSaving}
-              className="bg-gradient-to-br from-[#059669] to-[#10b981] hover:from-[#047857] hover:to-[#059669]"
+        <FormSection title={t("modal.general_info", "Informations générales")} icon="specs" columns={2}>
+          <Input
+            label={t("chambre.form.code_label")}
+            value={newRec.code}
+            onChange={(e) => setNewRec({ ...newRec, code: e.target.value.toUpperCase() })}
+            placeholder={t("chambre.form.code_placeholder")}
+            required
+          />
+          <div>
+            <label className="block text-sm font-bold mb-2 text-slate-700">
+              {t("chambre.form.service_label")}
+            </label>
+            <select
+              value={newRec.serviceId || ""}
+              onChange={(e) =>
+                setNewRec({
+                  ...newRec,
+                  serviceId: e.target.value ? parseInt(e.target.value) : "",
+                })
+              }
+              className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/20 transition-all"
             >
-              {isSaving ? t("chambre.form.saving") : selectedChambre ? t("chambre.form.update") : t("chambre.form.create")}
-            </Button>
+              <option value="">{t("chambre.form.no_service")}</option>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>{service.code}</option>
+              ))}
+            </select>
           </div>
-        </form>
-      </Modal>
+        </FormSection>
+      </FormModal>
     </div>
   );
 }

@@ -1,130 +1,110 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MESSAGES } from "../../app/constants/voiceMessages";
+import { getSetting } from "../utils/appSettings";
+import {
+  hasSpeech, loadVoices, prepareText, splitSentences, makeUtterance, playChime, isForeignForArabic,
+} from "../utils/voiceEngine";
 
-const LANG_CONFIG = {
-  fr: { lang: "fr-FR", rate: 1.0,  pitch: 1.0 },
-  ar: { lang: "ar-SA", rate: 0.95, pitch: 1.0 },
-};
-
-const SOUNDS = {
-  succes:  { freq: 880, duration: 0.15, type: "sine"     },
-  erreur:  { freq: 220, duration: 0.3,  type: "sawtooth" },
-  alerte:  { freq: 440, duration: 0.4,  type: "square"   },
-  infecte: { freq: 300, duration: 0.5,  type: "sawtooth" },
-};
-
-function playBeep(type = "succes", muted = false) {
-  if (muted) return;
-  try {
-    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const cfg  = SOUNDS[type] || SOUNDS.succes;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = cfg.type;
-    osc.frequency.setValueAtTime(cfg.freq, ctx.currentTime);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + cfg.duration);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + cfg.duration);
-  } catch {}
-}
+// Sons qui interrompent la phrase en cours (l'agent doit réagir tout de suite)
+const URGENT = new Set(["erreur", "infecte"]);
 
 export function useVoiceGuide(lang = "fr") {
-  const [muted,    setMuted]    = useState(false);
+  // Activation par défaut réglée dans Paramètres › Assistant vocal
+  const [muted,    setMuted]    = useState(() => !getSetting("voice.enabled"));
   const [speaking, setSpeaking] = useState(false);
 
-  const queueRef       = useRef([]);
-  const speakingRef    = useRef(false);
-  const muteRef        = useRef(false);
-  const lastMessageRef = useRef(null);
-  const lastSoundRef   = useRef(null);
+  const queueRef       = useRef([]);   // phrases en attente
+  const muteRef        = useRef(muted);
+  const lastRef        = useRef(null); // { text, soundType } pour la répétition
   const idleTimerRef   = useRef(null);
+  const tokenRef       = useRef(0);    // invalide les lectures obsolètes
 
-  useEffect(() => { muteRef.current = muted; }, [muted]);
+  muteRef.current = muted;
 
+  const voiceOptions = () => ({
+    rate: getSetting("voice.rate"),
+    voiceName: getSetting(lang === "ar" ? "voice.voiceAr" : "voice.voiceFr"),
+  });
+
+  // Lit les phrases de la file une par une
   const processQueue = useCallback(() => {
-    if (speakingRef.current || queueRef.current.length === 0) return;
-    const { text, cfg } = queueRef.current.shift();
-    if (!text) { processQueue(); return; }
-    speakingRef.current = true;
+    if (!hasSpeech()) return;
+    const synth = window.speechSynthesis;
+    if (synth.speaking || synth.pending) return;
+    const next = queueRef.current.shift();
+    if (!next) { setSpeaking(false); return; }
+    const utt = makeUtterance(next, lang, voiceOptions());
+    // À la fin d'une phrase on enchaîne sur la file actuelle (elle a pu être
+    // remplacée par une consigne plus récente entre-temps)
+    utt.onend = utt.onerror = () => setTimeout(processQueue, 120);
     setSpeaking(true);
-    const utt    = new SpeechSynthesisUtterance(text);
-    utt.lang     = cfg.lang;
-    utt.rate     = cfg.rate;
-    utt.pitch    = cfg.pitch;
-    const voices = window.speechSynthesis.getVoices();
-    const best   = voices.find(v => v.lang.startsWith(cfg.lang.split("-")[0]))
-                || voices.find(v => v.lang === cfg.lang)
-                || null;
-    if (best) utt.voice = best;
-    utt.onend = utt.onerror = () => {
-      speakingRef.current = false;
-      setSpeaking(false);
-      setTimeout(processQueue, 80);
-    };
-    window.speechSynthesis.speak(utt);
-  }, []);
+    synth.speak(utt);
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const speak = useCallback((text, soundType = null) => {
-    if (muteRef.current || !text) return;
-
-    lastMessageRef.current = text;
-    lastSoundRef.current   = soundType;
-
+  const scheduleRepeat = useCallback(() => {
     clearTimeout(idleTimerRef.current);
+    const repeatMs = (Number(getSetting("voice.repeatSeconds")) || 0) * 1000;
+    if (repeatMs <= 0) return;
     idleTimerRef.current = setTimeout(() => {
-      if (!lastMessageRef.current || muteRef.current) return;
-      const cfg    = LANG_CONFIG[lang] || LANG_CONFIG.fr;
-      if (lastSoundRef.current) playBeep(lastSoundRef.current, muteRef.current);
-      const utt    = new SpeechSynthesisUtterance(lastMessageRef.current);
-      utt.lang     = cfg.lang;
-      utt.rate     = cfg.rate;
-      utt.pitch    = cfg.pitch;
-      const voices = window.speechSynthesis.getVoices();
-      const best   = voices.find(v => v.lang.startsWith(cfg.lang.split("-")[0])) || null;
-      if (best) utt.voice = best;
-      window.speechSynthesis.speak(utt);
-      idleTimerRef.current = setTimeout(() => {
-        if (lastMessageRef.current && !muteRef.current)
-          speak(lastMessageRef.current, lastSoundRef.current);
-      }, 20_000);
-    }, 20_000);
+      const last = lastRef.current;
+      if (!last || muteRef.current) return;
+      // eslint-disable-next-line no-use-before-define
+      speak(last.text, last.soundType, { repeat: true });
+    }, repeatMs);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (soundType) playBeep(soundType, muteRef.current);
-    const cfg = LANG_CONFIG[lang] || LANG_CONFIG.fr;
-    queueRef.current.push({ text, cfg });
+  const speak = useCallback(async (text, soundType = null, { repeat = false } = {}) => {
+    if (muteRef.current || !text || !hasSpeech()) return;
+    if (!repeat) lastRef.current = { text, soundType };
+
+    // La dernière consigne remplace celles qui n'ont pas encore été lues :
+    // pas de retard quand l'agent scanne vite
+    const token = ++tokenRef.current;
+    queueRef.current = [];
+    if (URGENT.has(soundType)) window.speechSynthesis.cancel();
+
+    const delay = soundType ? playChime(soundType) : 0;
+    await loadVoices();
+    if (delay) await new Promise((r) => setTimeout(r, delay));
+    if (token !== tokenRef.current || muteRef.current) return;
+
+    if (!window.speechSynthesis.speaking) window.speechSynthesis.cancel(); // vide un éventuel blocage
+    queueRef.current = splitSentences(prepareText(text, lang));
     processQueue();
-  }, [lang, processQueue]);
+    scheduleRepeat();
+  }, [lang, processQueue, scheduleRepeat]);
 
   const cancel = useCallback(() => {
-    window.speechSynthesis.cancel();
-    queueRef.current       = [];
-    speakingRef.current    = false;
+    tokenRef.current++;
+    if (hasSpeech()) window.speechSynthesis.cancel();
+    queueRef.current = [];
     setSpeaking(false);
     clearTimeout(idleTimerRef.current);
-    lastMessageRef.current = null;
+    lastRef.current = null;
   }, []);
 
   const toggleMute = useCallback(() => {
     setMuted(m => {
-      if (!m) {
-        cancel();
-        clearTimeout(idleTimerRef.current);
-      }
+      if (!m) cancel();
       return !m;
     });
   }, [cancel]);
 
+  // Précharge les voix ; coupe la voix en quittant l'écran ou en changeant de langue
   useEffect(() => {
-    const load = () => window.speechSynthesis.getVoices();
-    load();
-    window.speechSynthesis.onvoiceschanged = load;
-    return () => { window.speechSynthesis.onvoiceschanged = null; };
-  }, []);
+    loadVoices();
+    return () => {
+      tokenRef.current++;
+      clearTimeout(idleTimerRef.current);
+      if (hasSpeech()) window.speechSynthesis.cancel();
+    };
+  }, [lang]);
 
   const M = MESSAGES[lang] || MESSAGES.fr;
+  // Message dans la langue choisie, avec repli sur le français
+  const msg = (key, ...args) => (M[key] || MESSAGES.fr[key])?.(...args);
+  // Détail d'erreur venant du serveur : ignoré s'il n'est pas dans la langue de la voix
+  const detail = (text) => (lang === "ar" && isForeignForArabic(text) ? "" : text || "");
 
   return {
     muted,
@@ -144,7 +124,7 @@ export function useVoiceGuide(lang = "fr") {
     sayLitVide:               (code)          => speak(M.lit_vide(code), "alerte"),
     sayBacBlancOk:            (nb, code)      => speak(M.bac_blanc_ok(nb, code), "succes"),
     saySacInfecteOk:          (nb, code)      => speak(M.sac_infecte_ok(nb, code), "alerte"),
-    sayContenantErreur:       (msg)           => speak(M.contenant_erreur(msg), "erreur"),
+    sayContenantErreur:       (msg)           => speak(M.contenant_erreur(detail(msg)), "erreur"),
     sayLingePropre:           ()              => speak(M.linge_propre(), "succes"),
     sayLingeManquant:         ()              => speak(M.linge_manquant(), "alerte"),
     sayLingeDejaTraite:       ()              => speak(M.linge_deja_traite(), "alerte"),
@@ -154,8 +134,50 @@ export function useVoiceGuide(lang = "fr") {
     sayClotureRestants:       (n)             => speak(M.cloture_lits_restants(n), "alerte"),
     sayClotureErreur:         ()              => speak(M.cloture_erreur(), "erreur"),
     sayErreurReseau:          ()              => speak(M.erreur_reseau(), "erreur"),
-    sayErreurGenerique:       (msg)           => speak(M.erreur_generique(msg), "erreur"),
+    sayErreurGenerique:       (msg)           => speak(M.erreur_generique(detail(msg)), "erreur"),
     sayCodeNonReconnu:        ()              => speak(M.code_non_reconnu(), "alerte"),
+
+    // ── Dialogue du lit (écran tactile) ──────────────────────────────
+    sayGuideChambre:          ()              => speak(msg("guide_chambre")),
+    saySelectionVide:         ()              => speak(msg("selection_vide"), "alerte"),
+    sayToutCoche:             (n)             => speak(msg("tout_coche", n)),
+    sayToutDecoche:           ()              => speak(msg("tout_decoche")),
+    sayLingesRestantsLit:     (n)             => speak(msg("linges_restants_lit", n), "alerte"),
+    sayGuideInfecte:          ()              => speak(msg("guide_infecte"), "infecte"),
+    sayScannerSacInfecte:     ()              => speak(msg("scanner_sac_infecte")),
+    sayLingeInfecteOk:        ()              => speak(msg("linge_infecte_ok"), "infecte"),
+
+    // ── DISTRIBUTION CHAMBRE ─────────────────────────────────────────
+    sayBienvenueDistribution: (nom)           => speak(msg("bienvenue_distribution", nom), "succes"),
+    sayChambreDistribution:   (code, l, d)    => speak(msg("chambre_distribution", code, l, d), "succes"),
+    sayChambreDistributionVide: (code)        => speak(msg("chambre_distribution_vide", code), "alerte"),
+    sayLitDistribution:       (code, inf)     => speak(msg("lit_distribution", code, inf), inf ? "infecte" : null),
+    sayChoisirLit:            ()              => speak(msg("choisir_lit"), "alerte"),
+    sayLingePose:             (code, nb)      => speak(msg("linge_pose", code, nb), "succes"),
+    sayTousLingesPoses:       ()              => speak(msg("tous_linges_poses"), "succes"),
+    sayAucunLingeDistribue:   ()              => speak(msg("aucun_linge_distribue"), "alerte"),
+    sayDistributionTerminee:  (ch, nb, lits)  => speak(msg("distribution_terminee", ch, nb, lits), "succes"),
+
+    // Annonce générique par clé de message : sayMsg("lavage_termine", "succes")
+    sayMsg:                   (key, sound = null, ...args) => speak(msg(key, ...args), sound),
+
+    // ── DISTRIBUTION SERVICE ─────────────────────────────────────────
+    sayBienvenueDistributionService: (nom)    => speak(msg("bienvenue_distribution_service", nom), "succes"),
+    sayServiceDistribution:   (nom, reste)    => speak(msg("service_distribution", nom, reste), "succes"),
+    sayArticleLivre:          (reste)         => speak(msg("article_livre", reste), "succes"),
+    sayArticleRefuse:         (m)             => speak(msg("article_refuse", detail(m)), "erreur"),
+    sayDistributionServiceComplete: ()        => speak(msg("distribution_service_complete"), "succes"),
+    sayArticlesRestantsCloture: (n)           => speak(msg("articles_restants_cloture", n), "alerte"),
+    sayDistributionServiceCloturee: (nom)     => speak(msg("distribution_service_cloturee", nom), "succes"),
+
+    // ── DISTRIBUTION UNIFORME ────────────────────────────────────────
+    sayBienvenueDistributionUniforme: (nom)   => speak(msg("bienvenue_distribution_uniforme", nom), "succes"),
+    sayPersonnelDistribution: (nom, nb)       => speak(msg("personnel_distribution", nom, nb), nb > 0 ? "succes" : "alerte"),
+    sayScannerPersonnelDabord: ()             => speak(msg("scanner_personnel_d_abord"), "alerte"),
+    sayUniformeDistribue:     (n)             => speak(msg("uniforme_distribue", n), "succes"),
+    sayUniformeRetire:        ()              => speak(msg("uniforme_retire")),
+    sayAucunUniformeDistribue: ()             => speak(msg("aucun_uniforme_distribue"), "alerte"),
+    sayDistributionUniformeTerminee: (nom, n) => speak(msg("distribution_uniforme_terminee", nom, n), "succes"),
 
     // ── GUIDE CHAMBRE ──────────────────────────────────────────────
     sayGuidePropresManquants: ()              => speak(M.guide_propre_manquant(), null),
@@ -165,13 +187,13 @@ export function useVoiceGuide(lang = "fr") {
     sayBienvenueService:      (nom)           => speak(M.bienvenue_service(nom), "succes"),
     sayServiceIdentifie:      (code, nb)      => speak(M.service_identifie(code, nb), "succes"),
     sayBacBlancOkService:     (code)          => speak(M.bac_blanc_ok_service(code), "succes"),
-    sayLingeBlanc:            ()              => speak(M.linge_blanc_ok?.("") || "Collecté en blanc.", "succes"),
+    sayLingeBlanc:            ()              => speak(msg("linge_blanc_ok"), "succes"),
     sayLingePropresService:   ()              => speak(M.linge_propre_service(), "succes"),
     sayLingeManquantService:  ()              => speak(M.linge_manquant_service(), "alerte"),
     saySacInfecteDeclare:     (total)         => speak(M.sac_infecte_declare(total), "infecte"),
-    sayTousTraitesService:    ()              => speak(M.tous_traites_service?.() || "Tous les linges sont traités.", "succes"),
+    sayTousTraitesService:    ()              => speak(msg("tous_traites_service"), "succes"),
     sayClotureOkService:      (s, b, i, m)   => speak(M.cloture_ok_service(s, b, i, m), "succes"),
-    sayClotureErreurService:  ()              => speak(M.cloture_erreur_service?.() || "Impossible de clôturer.", "erreur"),
+    sayClotureErreurService:  ()              => speak(msg("cloture_erreur_service"), "erreur"),
 
     // ── UNIFORME ───────────────────────────────────────────────────
     sayBienvenueUniforme:     (nom)           => speak(M.bienvenue_uniforme(nom), "succes"),

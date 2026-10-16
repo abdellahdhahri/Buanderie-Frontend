@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, X, Circle } from "lucide-react";
-import { useChatbot } from "./ChatbotProvider";
+import { useChatbot, BUBBLE_SIZE } from "./ChatbotProvider";
 import { ChatMessage } from "./ChatMessage";
 import { ChatSuggestions } from "./ChatSuggestions";
 import { ChatInput } from "./ChatInput";
@@ -13,9 +13,35 @@ import {
   detectContext,
 } from "../../config/chatbotSuggestions";
 
+const EDGE = 16; // marge minimale avec les bords de l'écran
+const GAP = 16;  // espace entre la bulle et la fenêtre
+
+// Place la fenêtre à côté de la bulle, du côté où il y a le plus de place
+const computePlacement = (bubble, viewport) => {
+  const width = Math.min(400, viewport.width - 2 * EDGE);
+  const height = Math.min(600, viewport.height - 2 * EDGE - BUBBLE_SIZE - GAP);
+  const clamp = (v, max) => Math.min(Math.max(v, EDGE), Math.max(max, EDGE));
+
+  const onRight = bubble.x + BUBBLE_SIZE / 2 > viewport.width / 2;
+  const onBottom = bubble.y + BUBBLE_SIZE / 2 > viewport.height / 2;
+
+  const left = clamp(onRight ? bubble.x + BUBBLE_SIZE - width : bubble.x, viewport.width - width - EDGE);
+  const top = clamp(
+    onBottom ? bubble.y - GAP - height : bubble.y + BUBBLE_SIZE + GAP,
+    viewport.height - height - EDGE
+  );
+
+  return {
+    left, top, width, height,
+    origin: `${onBottom ? "bottom" : "top"} ${onRight ? "right" : "left"}`,
+    fromY: onBottom ? 20 : -20,
+  };
+};
+
 export const ChatbotWindow = () => {
   const { t } = useTranslation();
-  const { isOpen, close } = useChatbot();
+  const { isOpen, close, bubble, viewport } = useChatbot();
+  const placement = computePlacement(bubble, viewport);
 
   const [messages, setMessages] = useState([]);
   const [suggestions, setSuggestions] = useState(INITIAL_SUGGESTIONS);
@@ -104,17 +130,17 @@ export const ChatbotWindow = () => {
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          initial={{ opacity: 0, y: placement.fromY, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          exit={{ opacity: 0, y: placement.fromY, scale: 0.95 }}
           transition={{ type: "spring", stiffness: 300, damping: 28 }}
           style={{
             position: "fixed",
-            bottom: "100px",
-            right: "24px",
-            width: "min(400px, calc(100vw - 32px))",
-            height: "min(600px, calc(100vh - 140px))",
-            maxHeight: "calc(100vh - 140px)",
+            left: placement.left,
+            top: placement.top,
+            width: placement.width,
+            height: placement.height,
+            transformOrigin: placement.origin,
             borderRadius: "20px",
             background: "white",
             overflow: "hidden",

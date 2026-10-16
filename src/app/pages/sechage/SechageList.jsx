@@ -5,12 +5,14 @@ import { SechageProvider, useSechage } from "../../contextes/SechageContext";
 import { getAgent, isAgentConnected } from "../../services/agentService";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import CarteLot from "../../components/utils/CarteLot";
+import { LotBasketCard } from "../../components/utils/shared/LotBasket";
 import LotInfoDialogSechage from "../../components/utils/LotInfoDialogSechage";
 import RecapSechage from "../../components/utils/RecapSechage";
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import "../Linge/WorkflowList.css";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 MachineCard — carte hero de la machine (sécheur)
@@ -232,187 +234,6 @@ function EtapeProgress({ etape }) {
   );
 }
 
-function CarteLotSechageCreative({ lot, selectionne, onClick }) {
-  const { t } = useTranslation();
-
-  const getCategorieColor = (cat) => {
-    const c = (cat || "").toUpperCase();
-    if (c.includes("BLANC"))     return { main: "#0891b2", bg: "#ecfeff", bd: "#a5f3fc", emoji: "⚪" };
-    if (c.includes("COULEUR"))   return { main: "#7c3aed", bg: "#f5f3ff", bd: "#ddd6fe", emoji: "🎨" };
-    if (c.includes("INFECTE"))   return { main: "#dc2626", bg: "#fef2f2", bd: "#fecaca", emoji: "🦠" };
-    if (c.includes("DRAP"))      return { main: "#0ea5e9", bg: "#f0f9ff", bd: "#bae6fd", emoji: "🛏️" };
-    if (c.includes("SERVIETTE")) return { main: "#f59e0b", bg: "#fffbeb", bd: "#fde68a", emoji: "🧻" };
-    if (c.includes("TAIE"))      return { main: "#10b981", bg: "#ecfdf5", bd: "#a7f3d0", emoji: "🛏️" };
-    return { main: "#64748b", bg: "#f8fafc", bd: "#e2e8f0", emoji: "🧺" };
-  };
-
-  const color = getCategorieColor(lot.categorie);
-
-  return (
-    <div
-      onClick={() => onClick?.(lot)}
-      style={{
-        position: "relative",
-        padding: "14px",
-        borderRadius: "14px",
-        border: `2px solid ${selectionne ? color.main : "#e2e8f0"}`,
-        background: selectionne
-          ? `linear-gradient(135deg, ${color.bg} 0%, #ffffff 100%)`
-          : "white",
-        cursor: "pointer",
-        transition: "all 0.18s ease",
-        boxShadow: selectionne
-          ? `0 6px 18px ${color.main}25`
-          : "0 1px 3px rgba(0,0,0,0.04)",
-        overflow: "hidden"
-      }}
-      onMouseEnter={e => {
-        if (!selectionne) {
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)";
-          e.currentTarget.style.borderColor = color.main;
-        }
-      }}
-      onMouseLeave={e => {
-        if (!selectionne) {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)";
-          e.currentTarget.style.borderColor = "#e2e8f0";
-        }
-      }}
-    >
-      {/* Bande colorée en haut */}
-      <div style={{
-        position: "absolute",
-        top: 0, left: 0, right: 0,
-        height: "4px",
-        background: `linear-gradient(90deg, ${color.main}, ${color.main}80)`
-      }} />
-
-      {/* Badge sélectionné */}
-      {selectionne && (
-        <div style={{
-          position: "absolute",
-          top: "10px",
-          right: "10px",
-          width: "22px",
-          height: "22px",
-          borderRadius: "50%",
-          background: color.main,
-          color: "white",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "12px",
-          fontWeight: 700,
-          boxShadow: `0 2px 8px ${color.main}50`
-        }}>
-          ✓
-        </div>
-      )}
-
-      {/* En-tête : emoji + code */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", marginTop: "2px" }}>
-        <span style={{ fontSize: "20px", lineHeight: 1 }}>{color.emoji}</span>
-        <span style={{
-          fontWeight: 800,
-          fontSize: "13px",
-          color: "#0f172a",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap"
-        }}>
-          {lot.codeLot}
-        </span>
-      </div>
-
-      {/* Catégorie */}
-      <div style={{
-        display: "inline-block",
-        padding: "2px 8px",
-        borderRadius: "6px",
-        background: color.bg,
-        color: color.main,
-        fontSize: "10px",
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "0.3px",
-        marginBottom: "10px"
-      }}>
-        {lot.categorie || "—"}
-      </div>
-
-      {/* Statistiques */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "8px",
-        padding: "8px 10px",
-        borderRadius: "10px",
-        background: "#f8fafc",
-        border: "1px solid #f1f5f9"
-      }}>
-        <div>
-          <div style={{ fontSize: "9px", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase" }}>
-            {t('sechage.lots')}
-          </div>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
-            {lot.nbPieces ?? lot.quantite ?? "—"}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: "9px", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase" }}>
-            {t('sechage.weight')}
-          </div>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
-            {(lot.poidsActuel ?? 0).toFixed(1)} kg
-          </div>
-        </div>
-      </div>
-
-      {/* Humidité (spécifique séchage) */}
-      {lot.tauxHumidite !== undefined && (
-        <div style={{
-          marginTop: "8px",
-          padding: "6px 8px",
-          borderRadius: "8px",
-          background: lot.tauxHumidite > 60 ? "#fef2f2" : "#f0fdf4",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          fontSize: "10px"
-        }}>
-          <span style={{ color: "#64748b", fontWeight: 600 }}>💧 Humidité</span>
-          <span style={{
-            fontWeight: 800,
-            color: lot.tauxHumidite > 60 ? "#dc2626" : "#15803d"
-          }}>
-            {lot.tauxHumidite}%
-          </span>
-        </div>
-      )}
-
-      {/* État */}
-      {lot.etat && (
-        <div style={{
-          marginTop: "8px",
-          fontSize: "10px",
-          color: "#64748b",
-          display: "flex",
-          alignItems: "center",
-          gap: "4px"
-        }}>
-          <span style={{
-            width: "6px", height: "6px", borderRadius: "50%",
-            background: lot.etat === "PRET_SECHAGE" ? "#22c55e" : "#f59e0b"
-          }} />
-          {lot.etat}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function SechageInner() {
   const { t } = useTranslation();
 
@@ -513,19 +334,7 @@ function SechageInner() {
       {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "32px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
-          <div style={{
-            width: "52px", height: "52px", borderRadius: "16px",
-            background: "linear-gradient(135deg, #0891b2, #0e7490)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "white", boxShadow: "0 4px 16px rgba(8, 145, 178, 0.25)"
-          }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2v4" /><path d="M12 18v4" /><path d="M4 12H2" /><path d="M22 12h-2" />
-              <path d="M19 5l-3 3" /><path d="M8 16l-3 3" /><path d="M16 16l3 3" /><path d="M5 5l3 3" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </div>
+          <PageHeaderIcon size={52} />
           <div>
             <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
               {t('sechage.title')}
@@ -692,15 +501,16 @@ function SechageInner() {
                       </div>
                     ) : (
                       <div style={{
-                        display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px,1fr))",
-                        gap: "12px", maxHeight: "420px", overflowY: "auto", padding: "4px"
+                        display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))",
+                        gap: "14px", maxHeight: "560px", overflowY: "auto", padding: "4px"
                       }}>
                         {lotsFiltres.map(lot => (
-                          <CarteLotSechageCreative
+                          <LotBasketCard
                             key={lot.id}
                             lot={lot}
-                            selectionne={!!lotsSelectionnes.find(ls => ls.lot.id === lot.id)}
-                            onClick={(l) => {
+                            t={t}
+                            selected={!!lotsSelectionnes.find(ls => ls.lot.id === lot.id)}
+                            onSelect={(l) => {
                               const deja = !!lotsSelectionnes.find(ls => ls.lot.id === l.id);
                               if (deja) retirerLot(l.codeLot);
                               else scannerLot(l.codeLot, poidsTotal);

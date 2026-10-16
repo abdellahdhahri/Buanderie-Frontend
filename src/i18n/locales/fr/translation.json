@@ -63,7 +63,18 @@
     "type": "Type",
     "error": "Erreur",
     "warning": "Avertissement",
-    "info": "Information"
+    "info": "Information",
+    "copy": "Copier",
+    "undefined": "Non défini",
+    "view": "Voir",
+    "no_match": "Aucun résultat correspondant",
+    "no_items": "Aucun élément",
+    "importing": "Importation…",
+    "finish": "Terminer",
+    "clear": "Effacer",
+    "delete_confirm": "Confirmer la suppression ?",
+    "delete_confirm_text": "Cette action est irréversible.",
+    "delete_confirm_yes": "Oui, supprimer"
   },
   "navigation": {
     "dashboard": "Tableau de bord",
@@ -103,7 +114,20 @@
     "Historique collectes": "Historique collectes",
     "historique": "Historique",
     "statistiques": "Statistiques",
-    "reclamations": "Réclamations"
+    "reclamations": "Réclamations",
+    "home": "Accueil",
+    "Sacs Infectés": "Sacs infectés",
+    "Collecte service": "Collecte service",
+    "Collecte uniformes": "Collecte uniformes",
+    "Collecte linge": "Collecte linge",
+    "Distribution uniformes": "Distribution uniformes",
+    "Distribution chambres": "Distribution chambres",
+    "Historique livraisons": "Historique livraisons",
+    "Gestion réclamations": "Gestion des réclamations",
+    "Paramètres": "Paramètres",
+    "Workflow": "Processus buanderie",
+    "Stockage Arsenal": "Stockage Arsenal",
+    "Suivi du stock": "Suivi du stock"
   },
   "nav": {
     "dashboard": "Tableau de bord",
@@ -277,7 +301,8 @@
     "import_no_selection_title": "Aucune sélection",
     "import_no_selection_text": "Veuillez sélectionner au moins un linge à importer",
     "import_service_required_title": "Service requis",
-    "import_service_required_text": "Veuillez sélectionner un service pour les linges importés"
+    "import_service_required_text": "Veuillez sélectionner un service pour les linges importés",
+    "no_linge_selected_error": "Aucun linge sélectionné."
   },
   "linge_etat": {
     "SALE": "Sale",
@@ -298,7 +323,12 @@
     "PROPRE_PRET": "Propre",
     "RECEPTIONNE": "Réceptionné",
     "DISTRIBUE": "Distribué",
-    "PRET_LIVRAISON": "Prêt livraison"
+    "PRET_LIVRAISON": "Prêt livraison",
+    "EN_SECHAGE_REPASSAGE": "Séchage / repassage",
+    "INFECTE_COLLECTE": "Infecté – collecté",
+    "INFECTE_EN_LAVAGE": "Infecté – en lavage",
+    "INFECTE_LAVE": "Infecté – lavé",
+    "INFECTE_ECART": "Infecté – écart"
   },
   "bacs": {
     "title": "Gestion des Bacs",
@@ -343,7 +373,8 @@
     "details": "Détails",
     "status_undefined": "Non défini",
     "select_status": "Choisir un statut",
-    "select_type": "Choisir un type"
+    "select_type": "Choisir un type",
+    "view_linges": "Voir les linges"
   },
   "bac_status": {
     "BLANC": "Blanc",
@@ -439,7 +470,24 @@
       "previous": "Précédent",
       "next": "Suivant",
       "page": "Page"
-    }
+    },
+    "kpi_total": "Chambres",
+    "kpi_total_hint": "Enregistrées dans le système",
+    "kpi_services": "Services couverts",
+    "kpi_services_hint": "Au moins une chambre rattachée",
+    "kpi_barcode": "Étiquetées",
+    "kpi_barcode_hint": "Avec code-barres",
+    "kpi_unassigned": "Sans service",
+    "kpi_unassigned_hint": "À rattacher à un service",
+    "kpi_unassigned_ok": "Toutes sont rattachées",
+    "all_services": "Tous les services",
+    "view_table": "Vue tableau",
+    "view_grid": "Vue plan",
+    "close": "Fermer",
+    "beds_total": "Lits",
+    "clear_filters": "Réinitialiser les filtres",
+    "empty_hint": "Créez votre première chambre pour commencer.",
+    "empty_search_hint": "Essayez un autre code ou retirez le filtre de service."
   },
   "etapes": {
     "title": "Gestion des Étapes",
@@ -626,7 +674,8 @@
   "machine_type": {
     "LAVEUR": "🧺 Laveur",
     "SECHEUR": "🌬️ Sécheur",
-    "LAVEUR_SECHEUR": "🧺🌬️ Laveur/Sécheur"
+    "LAVEUR_SECHEUR": "🧺🌬️ Laveur/Sécheur",
+    "AUTRE": "Autre"
   },
   "machine_category": {
     "LINGES_INFECTE": "Linges infectés",
@@ -696,6 +745,8 @@
   "categories": {
     "DRAP": "Drap",
     "TAIE_OREILLER": "Taie d'oreiller",
+    "COUETTE": "Couette",
+    "CHAMP_OPERATOIRE": "Champ opératoire",
     "SERVIETTE_BAIN": "Serviette de bain",
     "SERVIETTE_VISAGE": "Serviette de visage",
     "PEIGNOIR": "Peignoir",
@@ -708,6 +759,8 @@
     "title_rfid": "Traçabilité RFID",
     "title_barcode": "Suivi d'article",
     "title_3d": "Suivi du Linge",
+    "room": "Chambre",
+    "service": "Service",
     "subtitle_rfid": "Recherche RFID",
     "subtitle_barcode": "Recherche d'article",
     "search_placeholder_rfid": "Scanner ou saisir le tag RFID...",
@@ -751,7 +804,9 @@
       "PROPRE": "Propre",
       "MANQUANT": "Manquant",
       "SALE": "Sale"
-    }
+    },
+    "recent_activity": "Dernières étapes",
+    "view_full_journal": "Voir tout l'historique"
   },
   "cycles": {
     "title": "Cycles de Lavage",
@@ -810,7 +865,10 @@
     "etat_LAVE": "Lavé",
     "etat_SECHE": "Séché",
     "etat_STOCKE": "Stocké",
-    "etat_SALE": "Sale"
+    "etat_SALE": "Sale",
+    "print_items": "Articles",
+    "items": "Articles",
+    "items_count": "article(s)"
   },
   "machines_dashboard": {
     "title": "Machines de Lavage",
@@ -861,7 +919,17 @@
     "agent": "Agent",
     "weight": "Poids",
     "capacity": "Capacité",
-    "empty": "—"
+    "empty": "—",
+    "cycles_done": "{{count}} terminé(s)",
+    "cycle_start": "Début",
+    "observation": "Observation",
+    "load": "Charge",
+    "filter_dryers": "Sécheurs",
+    "section_dryers": "Sécheurs",
+    "status_drying": "Séchage en cours",
+    "dryer_cycle_hint": "Suivi détaillé dans l'écran Séchage.",
+    "btn_start_dry": "Démarrer un séchage",
+    "new_dry": "Nouveau séchage"
   },
   "inventaire": {
     "title": "Inventaire",
@@ -1159,7 +1227,9 @@
     "machine": "Machine",
     "infecte_bags_in_wash": "Sacs infectés en lavage",
     "scan_infected_bags": "Scanner les sacs infectés",
-    "bag_in_wash": "sac en lavage"
+    "bag_in_wash": "sac en lavage",
+    "stop_infected_cycle": "Arrêter le cycle infecté ?",
+    "agent_not_connected": "👤 Agent non connecté — veuillez vous reconnecter"
   },
   "lot_dialog": {
     "suggested_program": "Programme suggéré",
@@ -1199,7 +1269,8 @@
     "step_machine": "Machine",
     "step_lots": "Lots",
     "step_in_progress": "En cours",
-    "step_completed": "Terminé"
+    "step_completed": "Terminé",
+    "agent_not_connected": "👤 Agent non connecté — veuillez vous reconnecter"
   },
   "lot_dialog_sechage": {
     "lot": "Lot",
@@ -1283,7 +1354,8 @@
         "description": "Distribution des uniformes du personnel",
         "badge": "Personnel"
       }
-    }
+    },
+    "keyboard_hint": "Touchez une carte ou appuyez sur 1, 2 ou 3"
   },
   "distribution_chambre": {
     "title": "Distribution — Chambre",
@@ -1329,7 +1401,8 @@
     "reset_title": "Réinitialiser",
     "reset_text": "La distribution en cours sera abandonnée.",
     "yes_reset": "Oui, réinitialiser",
-    "scan_agent_to_close": "Scanner votre badge agent pour clôturer la distribution"
+    "scan_agent_to_close": "Scanner votre badge agent pour clôturer la distribution",
+    "agent_not_connected_placeholder": "👤 Agent non connecté — veuillez vous reconnecter"
   },
   "distribution_uniforme": {
     "title": "Distribution — Uniformes",
@@ -1369,7 +1442,8 @@
     "scan_personnel_first_text": "Veuillez scanner un badge personnel avant de distribuer un uniforme.",
     "reset_title": "Réinitialiser",
     "reset_text": "La distribution en cours sera abandonnée.",
-    "yes_reset": "Oui, réinitialiser"
+    "yes_reset": "Oui, réinitialiser",
+    "agent_not_connected_placeholder": "👤 Agent non connecté — veuillez vous reconnecter"
   },
   "livraison": {
     "title": "Distribution",
@@ -1418,7 +1492,8 @@
     "reset_title": "Réinitialiser",
     "reset_text": "La distribution en cours sera abandonnée.",
     "yes_reset": "Oui, réinitialiser",
-    "reset_success": "Réinitialisé"
+    "reset_success": "Réinitialisé",
+    "agent_not_connected_placeholder": "👤 Agent non connecté — veuillez vous reconnecter"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -1474,7 +1549,12 @@
     "thu": "Jeu",
     "fri": "Ven",
     "sat": "Sam",
-    "sun": "Dim"
+    "sun": "Dim",
+    "incomplete_linens": "Linges incomplets",
+    "incomplete_linens_hint": "Voir les linges incomplets",
+    "drag_hint": "Glissez les cartes pour les réorganiser",
+    "reset_layout": "Réinitialiser la disposition",
+    "drag_card": "Glisser pour déplacer"
   },
   "historique": {
     "title": "Journal des Activités",
@@ -1500,7 +1580,17 @@
     "no_remarks": "Aucune remarque",
     "collection_info": "Informations collecte",
     "number": "Numéro",
-    "type": "Type",
+    "type": {
+      "COLLECTE": "Collecte",
+      "RECEPTION": "Réception",
+      "TRI": "Tri",
+      "LAVAGE": "Lavage",
+      "SECHAGE": "Séchage",
+      "PLIAGE": "Pliage",
+      "STOCKAGE": "Stockage",
+      "LIVRAISON": "Livraison",
+      "CHANGEMENT_ETAT": "Changement d'état"
+    },
     "room": "Chambre",
     "collection_state": "État collecte",
     "delete_confirm_title": "Supprimer cette entrée ?",
@@ -1526,17 +1616,6 @@
       "RECEPTIONNE": "Réceptionné",
       "DISTRIBUE": "Distribué"
     },
-    "type": {
-      "COLLECTE": "Collecte",
-      "RECEPTION": "Réception",
-      "TRI": "Tri",
-      "LAVAGE": "Lavage",
-      "SECHAGE": "Séchage",
-      "PLIAGE": "Pliage",
-      "STOCKAGE": "Stockage",
-      "LIVRAISON": "Livraison",
-      "CHANGEMENT_ETAT": "Changement d'état"
-    },
     "poste": {
       "COLLECTE": "Collecte",
       "RECEPTION": "Réception",
@@ -1547,7 +1626,13 @@
       "STOCKAGE": "Stockage",
       "LIVRAISON": "Livraison",
       "CHEF": "Chef"
-    }
+    },
+    "columns_button": "Colonnes",
+    "columns_title": "Colonnes à afficher",
+    "columns_hint": "Choisissez les colonnes visibles dans le tableau",
+    "columns_count": "{{count}} / {{total}} colonnes affichées",
+    "columns_show_all": "Tout afficher",
+    "columns_reset": "Par défaut"
   },
   "reclamations": {
     "title": "Gestion des Réclamations",
@@ -1605,6 +1690,33 @@
       "A_REFORMER": "À reformer",
       "MAL_LAVE": "Mal lavé",
       "AUTRE": "Autre"
+    },
+    "sheet_title": "Fiche de réclamation",
+    "article_concerned": "Article concerné",
+    "wearer": "Porteur",
+    "wash_count": "Lavages",
+    "linen_state": "État du linge",
+    "no_description": "Aucune description saisie.",
+    "declared_by": "Déclarée par",
+    "matricule": "Matricule",
+    "progress": "Avancement",
+    "view_tracking": "Suivi",
+    "print_sheet": "Imprimer la fiche",
+    "kpi_total_hint": "{{open}} ouverte(s) · {{progress}} en cours",
+    "kpi_todo": "À traiter",
+    "kpi_todo_hint": "Ouvertes ou en cours",
+    "kpi_todo_none": "Rien en attente",
+    "kpi_resolution": "Taux de résolution",
+    "kpi_resolution_hint": "{{resolved}} résolue(s) · {{closed}} fermée(s)",
+    "kpi_top_type": "Motif principal",
+    "kpi_top_type_hint": "{{count}} réclamation(s)",
+    "all_types": "Tous les motifs",
+    "unit": "réclamation(s)",
+    "postes": {
+      "AGENT_RECEPTION": "Agent de réception",
+      "AGENT_COLLECTE": "Agent de collecte",
+      "AGENT_LAVAGE": "Agent de lavage",
+      "RESPONSABLE": "Responsable"
     }
   },
   "historique_collecte": {
@@ -1654,7 +1766,61 @@
       "MIXTE": "Mixte",
       "PROPRE_EN_PLACE": "Propre en place",
       "MANQUANT": "Manquant"
-    }
+    },
+    "report_title": "Rapport de collecte",
+    "location": "Lieu",
+    "ended_at": "Terminée le",
+    "completion": "Complétude",
+    "outcome": "Résultat",
+    "processed": "Traitées",
+    "processed_short": "traitées",
+    "collected": "Collecté",
+    "expected": "Attendu",
+    "category": "Catégorie",
+    "sign_agent": "Signature de l'agent",
+    "sign_manager": "Visa du responsable",
+    "printed_on": "Imprimé le",
+    "opened": "Ouverte",
+    "ended": "Terminée",
+    "in_progress": "En cours de collecte",
+    "bed": "Lit",
+    "created_at": "Créée le",
+    "pieces": "pièce(s)",
+    "no_categories": "Aucune pièce enregistrée pour cette collecte.",
+    "expected_hint": "Partie claire de la barre : quantité attendue.",
+    "timeline": "Chronologie",
+    "not_finished": "Pas encore terminée",
+    "information": "Informations",
+    "print_report": "Imprimer le rapport",
+    "unknown_agent": "Agent non renseigné",
+    "subtitle": "Traçabilité de toutes les collectes : chambres, services et uniformes.",
+    "kpi_collections": "Collectes",
+    "kpi_done": "{{count}} terminée(s)",
+    "kpi_pieces": "Pièces traitées",
+    "kpi_pieces_hint": "Blanc, propre, infecté et manquant",
+    "kpi_completion_hint": "Pièces traitées / attendues",
+    "kpi_alerts": "Alertes",
+    "kpi_alerts_hint": "{{infected}} infectée(s) · {{missing}} manquante(s)",
+    "alert_infected": "{{count}} pièce(s) infectée(s) présumée(s)",
+    "alert_missing": "{{count}} pièce(s) manquante(s)",
+    "source": "Origine",
+    "all_sources": "Toutes",
+    "all_states": "Tous les états",
+    "date_from": "Du",
+    "date_to": "Au",
+    "today": "Aujourd'hui",
+    "last_7": "7 jours",
+    "last_30": "30 jours",
+    "progress": "Progression",
+    "source_room": "Chambre",
+    "source_service": "Service",
+    "source_uniform": "Uniformes",
+    "source_linen": "Linge de service",
+    "source_other": "Collecte",
+    "white_collected": "Blanc",
+    "clean_in_place": "Propre en place",
+    "missing": "Manquant",
+    "etat_running": "En cours"
   },
   "auth": {
     "title": "Authentification",
@@ -1771,7 +1937,8 @@
       "bac_not_infected": "Ce bac est de type {{type}}. Scannez un bac ROUGE.",
       "nothing_to_close": "⚠️ Rien à clôturer",
       "scan_at_least_one": "Scannez au moins un linge ou déclarez un sac infecté."
-    }
+    },
+    "agent_not_connected": "👤 Agent non connecté — veuillez vous reconnecter"
   },
   "collecte_uniforme": {
     "title": "Collecte Uniformes",
@@ -1922,7 +2089,8 @@
         "label": "Collecte Chambre",
         "description": "Collecte des linges des chambres"
       }
-    }
+    },
+    "keyboard_hint": "Touchez une carte ou appuyez sur 1, 2 ou 3"
   },
   "buanderie": {
     "title": "Buanderie",
@@ -1935,8 +2103,8 @@
       "lavage": "4 - Lavage",
       "sechoir": "5 - Séchoir",
       "pliage": "6 - Pliage",
-      "stockage": "7 - Stockage",
-      "livraison": "8 - Livraison"
+      "stockage": "8 - Stockage arsenal",
+      "livraison": "7 - Livraison"
     }
   },
   "dashboard_buanderie": {
@@ -2018,7 +2186,9 @@
       "conforme": "Conforme",
       "ecart": "Écart",
       "en_attente": "En attente"
-    }
+    },
+    "no_selection": "Aucun sac sélectionné",
+    "no_selection_text": "Sélectionnez un sac avant d'imprimer son code-barres."
   },
   "notifications": {
     "title": "Notifications",
@@ -2054,7 +2224,11 @@
       "bac": "Bac",
       "sac": "Sac infecté",
       "linge": "Linge",
-      "default": "Article"
+      "default": "Article",
+      "lot": "Lot",
+      "machine": "Machine",
+      "arsenal": "Arsenal",
+      "immobilisation": "Immobilisation"
     }
   },
   "linge": {
@@ -2118,10 +2292,83 @@
     "details": "Détails du linge",
     "collection_type": "Type de collecte",
     "print_label_question": "Voulez-vous imprimer l'étiquette ?",
-      "import_destination_service": "Service de destination"
-
+    "import_destination_service": "Service de destination",
+    "form_subtitle": "Remplissez les informations du linge",
+    "carrier_hint": "Tapez un nom, prénom, matricule ou code-barre pour filtrer",
+    "sections": {
+      "identification": "Identification",
+      "identification_hint": "Code-barres et tag RFID",
+      "identification_auto": "Le code-barres sera généré automatiquement",
+      "characteristics": "Caractéristiques",
+      "characteristics_hint": "Catégorie, poids et durée de vie",
+      "assignment": "Affectation",
+      "assignment_hint": "Service et porteur",
+      "tracking": "Suivi",
+      "status_notes": "État & observations",
+      "status_notes_hint": "Statut actuel et notes"
+    },
+    "incomplets": {
+      "title": "Linges incomplets",
+      "subtitle": "Linges actifs dont au moins une information obligatoire manque. Corrigez-les avec « Modifier ».",
+      "all": "Tous",
+      "quit": "Voir tous les linges",
+      "missing": "Informations manquantes",
+      "attributs": {
+        "POIDS": "Poids",
+        "DUREE_VIE": "Durée de vie",
+        "CATEGORIE": "Catégorie",
+        "SERVICE": "Service",
+        "DESIGNATION": "Désignation"
+      }
+    },
+    "import_info": "Sélectionnez les linges à importer puis choisissez le service de destination.",
+    "import_no_selection_title": "Aucun linge sélectionné",
+    "import_no_selection_text": "Sélectionnez au moins un linge à importer.",
+    "import_service_required_title": "Service requis",
+    "import_service_required_text": "Choisissez le service de destination avant d'importer.",
+    "filters": {
+      "clear": "Supprimer les filtres",
+      "stats": "Afficher les statistiques",
+      "export": "Exporter en Excel"
+    },
+    "stats": {
+      "title": "Statistiques des linges",
+      "subtitle": "Calculées sur tous les linges correspondant aux filtres, toutes pages confondues.",
+      "no_filter": "Aucun filtre : tous les linges",
+      "total": "Linges",
+      "with_wearer": "{{count}} avec porteur",
+      "total_weight": "Poids total (kg)",
+      "avg_weight": "Poids moyen (kg)",
+      "avg": "Moyenne",
+      "rfid": "Avec tag RFID",
+      "avg_lifespan": "Durée de vie moyenne",
+      "no_service": "Sans service",
+      "no_service_count": "{{count}} sans service",
+      "all_assigned": "Tous rattachés à un service",
+      "by_status": "Par état",
+      "by_category": "Par catégorie",
+      "by_service": "Par service",
+      "load_error": "Impossible de charger les statistiques"
+    },
+    "export": {
+      "button": "Exporter en Excel",
+      "empty": "Aucun linge à exporter avec ces filtres.",
+      "error": "L'export a échoué",
+      "sheet_linges": "Linges",
+      "sheet_summary": "Synthèse",
+      "title": "Inventaire des linges",
+      "generated": "Généré le",
+      "indicator": "Indicateur",
+      "value": "Valeur",
+      "barcode": "Code-barres",
+      "weight": "Poids (kg)",
+      "lifespan": "Durée de vie",
+      "wearer": "Porteur",
+      "bin": "Bac",
+      "lot": "Lot"
+    }
   },
-   "chatbot": {
+  "chatbot": {
     "title": "Assistant Buanderie",
     "subtitle": "Votre assistant intelligent",
     "online": "En ligne",
@@ -2148,6 +2395,363 @@
       "missing_linens": "Y a-t-il des linges manquants ?",
       "infected_linens": "Combien de linges infectés ont été présumés ?",
       "today_collections": "Combien de collectes ont été réalisées aujourd'hui ?"
+    }
+  },
+  "category_picker": {
+    "selected": "{{count}} / {{total}} sélectionnée(s)",
+    "select_all": "Tout sélectionner",
+    "clear": "Effacer"
+  },
+  "settings": {
+    "tabs": {
+      "scan": "Lecture / Scan",
+      "scan_hint": "Code-barres ou RFID",
+      "labels": "Étiquettes",
+      "labels_hint": "Contenu et format",
+      "voice": "Assistant vocal",
+      "voice_hint": "Langue, vitesse, répétition",
+      "preferences": "Préférences",
+      "preferences_hint": "Affichage, seuils, catégories"
+    },
+    "scan": {
+      "title": "Mode d'identification des linges",
+      "desc": "Choisissez comment les linges sont identifiés dans les écrans de scan. Le choix est mémorisé sur ce poste.",
+      "barcode": "Code-barres",
+      "barcode_hint": "Lecture des étiquettes code-barres avec une douchette",
+      "rfid": "RFID",
+      "rfid_hint": "Lecture sans contact des puces RFID cousues dans le linge",
+      "applies_to": "S'applique aux écrans Linges, Réception, Tri, Pliage, Stockage et Suivi.",
+      "reader_title": "Lecteur",
+      "reader_desc": "Validation automatique des codes envoyés par la douchette ou le lecteur RFID.",
+      "delay": "Délai avant validation",
+      "delay_hint": "Attente après le dernier caractère reçu. Augmentez-le si des codes sont coupés.",
+      "min_length": "Longueur minimale d'un code",
+      "min_length_hint": "Les saisies plus courtes ne sont pas validées automatiquement.",
+      "beep": "Bip à chaque scan",
+      "beep_hint": "Confirmation sonore quand un code est validé.",
+      "beep_test": "Essayer"
+    },
+    "reset_section": "Valeurs par défaut",
+    "never": "Jamais",
+    "voice": {
+      "title": "Assistant vocal",
+      "desc": "Réglages par défaut des écrans de collecte, de distribution et de lavage. Chaque écran garde son bouton pour couper le son ou changer de langue.",
+      "test": "Écouter un exemple",
+      "test_name": "Agent",
+      "enabled": "Activé à l'ouverture des écrans",
+      "enabled_hint": "Désactivé : les écrans s'ouvrent en mode muet.",
+      "lang": "Langue par défaut",
+      "rate": "Vitesse de la voix",
+      "repeat": "Répéter la consigne",
+      "repeat_hint": "Si l'agent ne fait rien, l'assistant répète la dernière consigne.",
+      "stop": "Arrêter",
+      "voice": "Voix",
+      "auto": "Automatique",
+      "voice_hint": "« Automatique » choisit la voix la plus claire disponible.",
+      "edge_hint": "Seules des voix standard sont disponibles. Pour une voix naturelle, plus claire (surtout en arabe), ouvrez l'application dans Microsoft Edge.",
+      "no_voice": "Aucune voix installée pour cette langue sur ce poste.",
+      "quality_natural": "naturelle",
+      "quality_standard": "standard",
+      "rate_hint_ar": "La voix arabe est déjà légèrement ralentie pour être plus claire."
+    },
+    "prefs": {
+      "display_title": "Affichage",
+      "display_desc": "Présentation des listes et des dates.",
+      "page_size": "Lignes par page",
+      "page_size_hint": "Linges, Historique, Immobilisations.",
+      "date_style": "Format de date",
+      "date_example": "Exemple : {{value}}",
+      "thresholds_title": "Seuils",
+      "thresholds_desc": "Niveaux d'alerte affichés dans les écrans de tri, de lavage et de séchage.",
+      "lot_full": "Lot considéré plein à partir de",
+      "lot_full_hint": "Le panier passe au rouge et affiche « Plein ». Il devient orange 20 points avant.",
+      "refresh_title": "Rafraîchissement automatique",
+      "refresh_desc": "Fréquence de mise à jour des écrans en direct. Augmentez-la sur un réseau lent.",
+      "refresh_stats": "Tableau de bord Statistiques",
+      "refresh_tracking": "Suivi d'un linge (LIVE)",
+      "refresh_distribution": "Distribution service (comparatif)",
+      "dashboard_title": "Tableau de bord",
+      "dashboard_desc": "Cartes affichées en haut de l'écran Statistiques.",
+      "categories_title": "Catégories utilisées",
+      "categories_desc": "Catégories proposées à la saisie (linges, programmes, lots, collecte). Les filtres de recherche gardent toutes les catégories.",
+      "refresh_machines": "Machines de lavage"
+    },
+    "title": "Paramètres",
+    "subtitle": "Gérez votre compte, votre sécurité et vos préférences.",
+    "appearance": {
+      "light": "Clair",
+      "light_hint": "Lumineux, idéal en journée",
+      "dark": "Sombre",
+      "dark_hint": "Repose les yeux en faible lumière",
+      "system": "Système",
+      "system_hint": "Suit le réglage de Windows",
+      "theme_title": "Thème",
+      "theme_desc": "Choisissez l'apparence de l'application. Votre choix est mémorisé.",
+      "language_title": "Langue",
+      "language_desc": "Langue d'affichage de l'interface."
+    },
+    "establishment": {
+      "bad_type": "Format non pris en charge (PNG, JPG, WebP ou SVG).",
+      "bad_url": "L'adresse doit commencer par http:// ou https://",
+      "saved": "Paramètres de l'établissement enregistrés.",
+      "save_error": "Enregistrement impossible : le logo est peut-être trop lourd.",
+      "reset_done": "Valeurs par défaut restaurées.",
+      "title": "Identité de l'établissement",
+      "desc": "Nom et logo affichés sur la page de connexion et les étiquettes.",
+      "reset": "Valeurs par défaut",
+      "name": "Nom de l'établissement",
+      "name_required": "Le nom est obligatoire.",
+      "city": "Ville",
+      "logo": "Logo",
+      "processing": "Traitement de l'image…",
+      "drop": "Glissez une image ici ou cliquez pour parcourir",
+      "remove_logo": "Revenir au logo par défaut",
+      "logo_url": "Ou utiliser l'adresse d'une image",
+      "apply": "Appliquer",
+      "preview": "Aperçu de la page de connexion",
+      "local_note": "Ces paramètres sont enregistrés sur ce navigateur. Répétez l'opération sur chaque poste tant qu'ils ne sont pas stockés sur le serveur.",
+      "too_big": "Image trop lourde ({{max}} Mo maximum).",
+      "formats": "PNG, JPG, WebP ou SVG · fond transparent recommandé · {{max}} Mo max."
+    },
+    "notifications": {
+      "display_title": "Affichage",
+      "display_desc": "Comment les nouvelles notifications vous sont présentées.",
+      "popup": "Popup en temps réel",
+      "popup_hint": "Affiche une alerte en haut de l'écran à chaque réception.",
+      "sound": "Son",
+      "sound_hint": "Joue un signal sonore discret.",
+      "types_title": "Types de notifications",
+      "types_desc": "Choisissez les événements pour lesquels être alerté.",
+      "reclamation": "Réclamations",
+      "reclamation_hint": "Nouvelle réclamation ou changement de statut.",
+      "fin_de_vie": "Fin de vie des linges",
+      "fin_de_vie_hint": "Linge arrivé au terme de son nombre de cycles.",
+      "stock_uniforme": "Stock d'uniformes",
+      "stock_uniforme_hint": "Uniforme disponible ou stock bas."
+    },
+    "profile": {
+      "user": "Utilisateur",
+      "account": "Compte utilisateur",
+      "admin": "Administrateur",
+      "info_title": "Informations du compte",
+      "info_desc": "Données issues de votre compte, en lecture seule.",
+      "login": "Identifiant",
+      "matricule": "Matricule",
+      "badge": "Code badge",
+      "email": "E-mail",
+      "service": "Service",
+      "position": "Poste",
+      "contact_admin": "Pour modifier ces informations, contactez votre administrateur.",
+      "privileges": "{{count}} droits d'accès"
+    },
+    "security": {
+      "not_connected": "Formulaire valide. L'enregistrement sera relié au serveur prochainement.",
+      "password_title": "Mot de passe",
+      "password_desc": "Choisissez un mot de passe robuste que vous n'utilisez nulle part ailleurs.",
+      "update_password": "Mettre à jour",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe",
+      "same_as_current": "Le nouveau mot de passe doit être différent de l'actuel.",
+      "confirm": "Confirmer le nouveau mot de passe",
+      "mismatch": "Les mots de passe ne correspondent pas.",
+      "rules_title": "Votre mot de passe doit contenir",
+      "session_title": "Session",
+      "session_desc": "Appareil actuellement connecté à votre compte.",
+      "this_device": "Cet appareil",
+      "logout": "Se déconnecter"
+    }
+  },
+  "modal": {
+    "fields_count": "{{count}} champs",
+    "fields_count_one": "{{count}} champ",
+    "fields_count_other": "{{count}} champs",
+    "identification": "Identification",
+    "characteristics": "Caractéristiques",
+    "general_info": "Informations générales",
+    "execution": "Exécution",
+    "movement": "Mouvement",
+    "collection": "Collecte"
+  },
+  "label_settings": {
+    "title": "Étiquettes",
+    "desc": "Choisissez ce qui apparaît sur chaque type d'étiquette. Les réglages sont mémorisés sur ce poste.",
+    "reset": "Réglages par défaut",
+    "print_test": "Imprimer un test",
+    "size": "Format",
+    "elements": "Éléments",
+    "fields_title": "Informations",
+    "preview_hint": "Aperçu avec des données d'exemple · {{size}}",
+    "element": {
+      "header": "En-tête (type d'article)",
+      "date": "Date d'impression",
+      "barcode": "Code-barres",
+      "codeText": "Code en clair",
+      "colorBand": "Bande de couleur",
+      "logo": "Logo de l'établissement",
+      "establishment": "Nom de l'établissement"
+    }
+  },
+  "stockageArsenal": {
+    "title": "Stockage Arsenal",
+    "subtitle": "Rangement des linges dans les arsenaux",
+    "tabs": {
+      "rangement": "Rangement",
+      "stock": "Stock de l'arsenal",
+      "localiser": "Localiser un linge"
+    },
+    "steps": {
+      "agent": "Agent",
+      "remises": "Remise",
+      "quantite": "Quantité",
+      "etagere": "Étagère",
+      "unParUn": "Un par un",
+      "label": "Étapes du rangement"
+    },
+    "choose_arsenal": "Choisir l'arsenal",
+    "no_arsenals": "Aucun arsenal disponible",
+    "change_arsenal": "Changer",
+    "arsenal": "Arsenal",
+    "shelf": "Étagère",
+    "no_shelves": "Aucune étagère pour cet arsenal",
+    "scan_agent_title": "Scanner le badge de l'agent",
+    "scan_agent_placeholder": "Scanner le badge agent...",
+    "change_agent": "Changer d'agent",
+    "remises_title": "Remises à ranger",
+    "no_remises": "Aucune remise à ranger pour cet agent",
+    "remise": "Remise",
+    "to_store": "à ranger",
+    "back_to_remises": "Retour aux remises",
+    "quantity_title": "Quantité comptée",
+    "quantity_placeholder": "Nombre de linges",
+    "quantity_hint": "Comptez les linges physiquement reçus et saisissez le nombre.",
+    "invalid_quantity": "Saisissez une quantité valide (nombre entier positif).",
+    "counted": "Comptés",
+    "shelf_title": "Scanner ou choisir l'étagère",
+    "scan_shelf_placeholder": "Scanner le code de l'étagère...",
+    "no_shelf_selected": "Aucune étagère sélectionnée",
+    "unknown_shelf": "Étagère inconnue dans cet arsenal : {{code}}",
+    "validate": "Valider le rangement",
+    "stored_all": "Linges rangés avec succès",
+    "one_by_one_intro": "Scannez une étagère, puis chaque linge. L'étagère reste active jusqu'à ce que vous en scanniez une autre.",
+    "active_shelf": "Étagère active",
+    "change_shelf": "Changer d'étagère",
+    "shelf_active": "Étagère active : {{shelf}}",
+    "scan_shelf_first": "Scannez d'abord une étagère",
+    "scan_linge_or_shelf": "Scanner un linge (ou une autre étagère)...",
+    "remaining": "Reste à ranger",
+    "remaining_linges": "Linges restants",
+    "nothing_left": "Tous les linges de la remise sont rangés",
+    "remise_done": "Remise entièrement rangée",
+    "finish": "Terminer",
+    "stock_title": "Stock — {{arsenal}}",
+    "linges_in_stock": "linges en stock",
+    "empty_arsenal": "Arsenal vide",
+    "empty_shelf": "Étagère vide",
+    "shelf_content": "{{count}} linge(s)",
+    "locate_title": "Localiser un linge",
+    "locate_placeholder": "Scanner le code du linge...",
+    "not_stored": "Ce linge n'est rangé dans aucun arsenal.",
+    "choose_arsenal_hint": "Sélectionnez l'arsenal dans lequel vous rangez le linge (touches 1 à 9 pour aller plus vite).",
+    "step_n": "Étape {{n}}",
+    "step_of": "Étape {{n}} sur {{total}}",
+    "mode": "Mode",
+    "scan_agent_hint": "Présentez le badge de l'agent qui a livré le linge devant le lecteur : ses remises à ranger s'affichent aussitôt.",
+    "remises_hint": "Touchez la remise que vous êtes en train de ranger.",
+    "no_remises_hint": "Toutes les remises de cet agent sont déjà rangées.",
+    "store_this": "Ranger cette remise",
+    "to_choose": "À choisir",
+    "next_shelf": "Choisir l'étagère",
+    "shelf_hint": "Scannez l'étiquette de l'étagère, ou touchez-la dans la liste ci-dessous, puis validez.",
+    "validate_into": "Ranger {{count}} linge(s) dans {{shelf}}",
+    "choose_shelf_first": "Choisissez une étagère",
+    "one_by_one_title": "Quantité non conforme — rangement un par un",
+    "remise_done_hint": "Tous les linges sont rangés. Touchez « Terminer » pour revenir aux remises.",
+    "stored": "rangés",
+    "scan_title": "Scan",
+    "journal_empty": "Les linges scannés apparaîtront ici.",
+    "shelves_count": "{{count}} étagère(s)",
+    "shelves_used": "{{count}} occupée(s)",
+    "locate_hint": "Scannez un linge pour savoir dans quel arsenal et sur quelle étagère il est rangé.",
+    "not_stored_title": "Linge non rangé",
+    "agent_title": "Identifier l'agent de collecte",
+    "pick_agent_hint": "Recherchez l'agent par nom ou matricule puis touchez-le : ses remises à ranger s'affichent.",
+    "agent_mode_scan": "Scanner le badge",
+    "agent_mode_list": "Choisir dans la liste",
+    "search_agent": "Rechercher un agent (nom, matricule…)",
+    "agents_found": "{{count}} agent(s)",
+    "refine_search": "affinez la recherche ({{max}} premiers affichés)",
+    "no_agent_found": "Aucun agent ne correspond",
+    "track_title": "Parcours",
+    "n_to_store": "{{count}} à ranger",
+    "n_counted": "{{count}} compté(s)",
+    "or_pick_shelf": "Ou choisissez dans la liste",
+    "scan_title_one_by_one": "Scannez chaque linge",
+    "progress_label": "{{done}} sur {{total}} rangé(s)",
+    "last_scans": "Derniers scans",
+    "finish_hint": "Les linges non scannés resteront à ranger.",
+    "before_start": "Pour commencer",
+    "in_progress": "En cours"
+  },
+  "dialogue_rangement": {
+    "badge": "Plié · contrôle qualité conforme",
+    "title": "Rangez ce linge",
+    "text": "Déposez-le sur l'étagère de son service, au niveau de la buanderie.",
+    "shelf_of": "Étagère du service",
+    "location": "Zone propre — buanderie",
+    "unknown_service": "Service non renseigné",
+    "service": "Service",
+    "done": "C'est rangé",
+    "auto_close": "Fermeture automatique",
+    "next_hint": "Vous pouvez aussi scanner directement le linge suivant."
+  },
+  "suiviStock": {
+    "title": "Suivi du stock",
+    "last_calc": "Dernier calcul",
+    "refresh": "Actualiser",
+    "auto_on": "Mise à jour auto · 30 s",
+    "auto_off": "Mise à jour auto en pause",
+    "pause": "Mettre en pause",
+    "resume": "Reprendre",
+    "refresh_failed": "Actualisation impossible",
+    "load_error": "Impossible de charger le suivi du stock",
+    "retry": "Réessayer",
+    "empty": "Aucun linge dans le parc",
+    "total_parc": "Total parc",
+    "total": "Total",
+    "see_linges": "Voir les linges",
+    "repartition": "Répartition du parc par zone",
+    "by_category": "Par catégorie",
+    "by_service": "Par service",
+    "category": "Catégorie",
+    "service": "Service",
+    "click_cell": "Cliquez sur un nombre pour voir les linges",
+    "search_service": "Rechercher un service…",
+    "services_count": "{{count}} service(s)",
+    "no_services": "Aucun service",
+    "no_service_match": "Aucun service ne correspond",
+    "service_view": "Vue service",
+    "back_global": "Retour vue globale",
+    "all_zones": "Toutes zones",
+    "linges_count": "{{count}} linge(s)",
+    "no_linges": "Aucun linge pour ce filtre",
+    "page_of": "Page {{page}} / {{total}}",
+    "col_code": "Code-barres",
+    "col_designation": "Désignation",
+    "col_category": "Catégorie",
+    "col_state": "État",
+    "col_location": "Localisation",
+    "loc_shelf": "Étagère {{id}}",
+    "loc_room": "Chambre {{id}}",
+    "loc_bed": "Lit {{id}}",
+    "zones": {
+      "OFFICE": "Office",
+      "STOCK_NON_RANGE": "Stock non rangé",
+      "CHAMBRES": "Chambres",
+      "PORTEURS": "Porteurs",
+      "A_RANGER": "À ranger",
+      "SALE": "Sale",
+      "CIRCUIT_BUANDERIE": "Circuit buanderie",
+      "PERTES": "Pertes"
     }
   }
 }

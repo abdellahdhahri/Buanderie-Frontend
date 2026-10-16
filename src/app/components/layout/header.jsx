@@ -15,6 +15,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { logoutAgent } from "../../services/agentService";
 import LanguageSwitcher from "../../components/utils/LanguageSwitcher";
+import { isDarkTheme, setDarkTheme, onThemeChange } from "../../utils/theme";
+import { getBreadcrumbTrail } from "./PageHeaderIcon";
 
 
 const Icons = {
@@ -149,26 +151,6 @@ const Icons = {
   ),
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 📋 BREADCRUMB CONFIG
-// ═══════════════════════════════════════════════════════════════════════════
-
-const BREADCRUMB_ITEMS = [
-  { path: "/", parent: "", label: "Accueil" },
-  { path: "/Receptions", parent: "Zone Sale", label: "Reception" },
-  { path: "/Lavages", parent: "Zone Sale", label: "Lavage" },
-  { path: "/Collages", parent: "Zone Sale", label: "Collage" },
-  { path: "/Sechages", parent: "Zone Propre", label: "Séchage" },
-  { path: "/Pliages", parent: "Zone Propre", label: "Pliage" },
-  { path: "/stockage", parent: "Zone Propre", label: "Stockage" },
-  { path: "/Linges", parent: "Operations", label: "Linges" },
-  { path: "/tracking", parent: "Operations", label: "Tracking" },
-  { path: "/Historiques", parent: "Reporting", label: "Historiques" },
-  { path: "/Statistiques", parent: "Reporting", label: "Statistiques" },
-  { path: "/Reclamations", parent: "Reporting", label: "Reclamation" },
-  { path: "/Livraisons", parent: "Zone Propre", label: "Livraison" },
-];
-
 
 const NOTIFICATION_STYLES = {
   RECLAMATION: {
@@ -237,7 +219,10 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
   const { t } = useTranslation();
   const { agent, admin } = useAuth();
 
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(isDarkTheme);
+
+  // Reste synchronisé si le thème change ailleurs (page Paramètres)
+  useEffect(() => onThemeChange(setIsDark), []);
   const [showNotifications, setShowNotifications] = useState(false);
   const [userDropOpen, setUserDropOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -333,7 +318,6 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
         setShowPopup(false);
       }, 6000);
 
-      toast.success(notification.titre || notification.message || "Nouvelle notification");
 
       // ✅ Rafraîchir le compteur depuis le serveur (au cas où)
       setTimeout(() => updateUnreadCount(), 1000);
@@ -409,8 +393,7 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
   };
 
   const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle("dark");
+    setDarkTheme(!isDark);
   };
 
   // ─── Helpers : formatage date/heure ────────────────────────────────────
@@ -445,10 +428,8 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     return notif.dateCreation || notif.createdAt || notif.time || notif.date;
   };
 
-  const currentItem = BREADCRUMB_ITEMS.find((item) => item.path === currentPath) || {
-    parent: "",
-    label: "Page",
-  };
+  // Fil d'Ariane construit à partir du menu : Accueil › Section › Page
+  const breadcrumbTrail = getBreadcrumbTrail(currentPath);
 
   const getInitials = () => {
     if (!agent) return "??";
@@ -480,24 +461,31 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
             </Link>
           )}
 
-          <div className="navbar__breadcrumb">
-            <Link to="/" className="navbar__breadcrumb-root">
-              Accueil
-            </Link>
-
-            {currentPath !== "/" && (
-              <>
-                <Icons.ChevronRight size={14} color="#cbd5e1" />
-                {currentItem.parent && (
-                  <>
-                    <span className="navbar__breadcrumb-parent">{currentItem.parent}</span>
-                    <Icons.ChevronRight size={14} color="#cbd5e1" />
-                  </>
-                )}
-                <span className="navbar__breadcrumb-current">{currentItem.label}</span>
-              </>
+          <nav className="navbar__breadcrumb" aria-label="breadcrumb">
+            {breadcrumbTrail.length === 0 ? (
+              <span className="navbar__breadcrumb-current" aria-current="page">
+                {t("navigation.home", "Accueil")}
+              </span>
+            ) : (
+              <Link to="/" className="navbar__breadcrumb-root">
+                {t("navigation.home", "Accueil")}
+              </Link>
             )}
-          </div>
+
+            {breadcrumbTrail.map((crumb, i) => {
+              const label = crumb.key ? t(crumb.key, crumb.fallback) : crumb.fallback;
+              return (
+                <span key={i} className="navbar__breadcrumb-item">
+                  <Icons.ChevronRight size={14} color="#cbd5e1" />
+                  {crumb.path ? (
+                    <Link to={crumb.path} className="navbar__breadcrumb-root">{label}</Link>
+                  ) : (
+                    <span className="navbar__breadcrumb-current" aria-current="page">{label}</span>
+                  )}
+                </span>
+              );
+            })}
+          </nav>
         </div>
 
         {/* ═══ RIGHT ═══ */}
@@ -1253,8 +1241,10 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
         .notif-popup {
           position: fixed;
           top: 24px;
-          left: 50%;
-          transform: translateX(-50%);
+          /* Centrage sans transform : framer-motion anime transform (y, scale) */
+          left: 0;
+          right: 0;
+          margin: 0 auto;
           z-index: 99999;
           width: 440px;
           max-width: calc(100vw - 40px);

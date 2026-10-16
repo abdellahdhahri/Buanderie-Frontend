@@ -18,9 +18,10 @@ const ETAPES_DROITE = [
   { id: 4, key: "lavage", icon: "🔴", color: "pink", path: "/lavages" },
 ];
 
+// Lue de bas en haut : Séchoir → Pliage → Livraison (remise) → Stockage arsenal
 const ETAPES_GAUCHE = [
-  { id: 5, key: "livraison", icon: "🟢", color: "green", path: "/remise" },
-  { id: 6, key: "stockage", icon: "🟢", color: "green", path: "/stockages" },
+  { id: 5, key: "stockage", icon: "🟢", color: "green", path: "/stockage-arsenal" },
+  { id: 6, key: "livraison", icon: "🟢", color: "green", path: "/remise" },
   { id: 7, key: "pliage", icon: "🟢", color: "green", path: "/pliages" },
   { id: 8, key: "sechoir", icon: "🟢", color: "green", path: "/sechages" },
 ];

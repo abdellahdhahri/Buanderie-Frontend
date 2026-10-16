@@ -15,11 +15,16 @@ import { Button } from "../../components/ui/button";
 
 import ScanInput              from "../../components/utils/ScanInput";
 import CarteLot               from "../../components/utils/CarteLot";
+import { LotBasketCard } from "../../components/utils/shared/LotBasket";
+import MuteButton from "../../components/utils/MuteButton";
+import { useVoiceGuide } from "../../hooks/useVoiceGuide";
+import { getSetting } from "../../utils/appSettings";
 import LotInfoDialog          from "../../components/utils/LotInfoDialog";
 import ScanLingesPropresModal from "../../components/utils/ScanLingesPropresModal";
 import RecapChargement        from "../../components/utils/RecapChargement";
 
 import "../Linge/WorkflowList.css";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -137,168 +142,6 @@ function MachineCard({ machine, mode }) {
           {t('lavage.ready_for_wash')}
         </span>
       </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🎨 CarteLotCreative — carte de lot redessinée (mode NORMAL)
-// ═══════════════════════════════════════════════════════════════════════════
-function CarteLotCreative({ lot, selectionne, onClick }) {
-  const { t } = useTranslation();
-
-  const getCategorieColor = (cat) => {
-    const c = (cat || "").toUpperCase();
-    if (c.includes("BLANC"))     return { main: "#0891b2", bg: "#ecfeff", bd: "#a5f3fc", emoji: "⚪" };
-    if (c.includes("COULEUR"))   return { main: "#7c3aed", bg: "#f5f3ff", bd: "#ddd6fe", emoji: "🎨" };
-    if (c.includes("INFECTE"))   return { main: "#dc2626", bg: "#fef2f2", bd: "#fecaca", emoji: "🦠" };
-    if (c.includes("DRAP"))      return { main: "#0ea5e9", bg: "#f0f9ff", bd: "#bae6fd", emoji: "🛏️" };
-    if (c.includes("SERVIETTE")) return { main: "#f59e0b", bg: "#fffbeb", bd: "#fde68a", emoji: "🧻" };
-    if (c.includes("TAIE"))      return { main: "#10b981", bg: "#ecfdf5", bd: "#a7f3d0", emoji: "🛏️" };
-    return { main: "#64748b", bg: "#f8fafc", bd: "#e2e8f0", emoji: "🧺" };
-  };
-
-  const color = getCategorieColor(lot.categorie);
-
-  return (
-    <div
-      onClick={() => onClick?.(lot)}
-      style={{
-        position: "relative",
-        padding: "14px",
-        borderRadius: "14px",
-        border: `2px solid ${selectionne ? color.main : "#e2e8f0"}`,
-        background: selectionne
-          ? `linear-gradient(135deg, ${color.bg} 0%, #ffffff 100%)`
-          : "white",
-        cursor: "pointer",
-        transition: "all 0.18s ease",
-        boxShadow: selectionne
-          ? `0 6px 18px ${color.main}25`
-          : "0 1px 3px rgba(0,0,0,0.04)",
-        overflow: "hidden"
-      }}
-      onMouseEnter={e => {
-        if (!selectionne) {
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)";
-          e.currentTarget.style.borderColor = color.main;
-        }
-      }}
-      onMouseLeave={e => {
-        if (!selectionne) {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)";
-          e.currentTarget.style.borderColor = "#e2e8f0";
-        }
-      }}
-    >
-      {/* Bande colorée en haut */}
-      <div style={{
-        position: "absolute",
-        top: 0, left: 0, right: 0,
-        height: "4px",
-        background: `linear-gradient(90deg, ${color.main}, ${color.main}80)`
-      }} />
-
-      {/* Badge sélectionné */}
-      {selectionne && (
-        <div style={{
-          position: "absolute",
-          top: "10px",
-          right: "10px",
-          width: "22px",
-          height: "22px",
-          borderRadius: "50%",
-          background: color.main,
-          color: "white",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "12px",
-          fontWeight: 700,
-          boxShadow: `0 2px 8px ${color.main}50`
-        }}>
-          ✓
-        </div>
-      )}
-
-      {/* En-tête : emoji + code */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", marginTop: "2px" }}>
-        <span style={{ fontSize: "20px", lineHeight: 1 }}>{color.emoji}</span>
-        <span style={{
-          fontWeight: 800,
-          fontSize: "13px",
-          color: "#0f172a",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap"
-        }}>
-          {lot.codeLot}
-        </span>
-      </div>
-
-      {/* Catégorie */}
-      <div style={{
-        display: "inline-block",
-        padding: "2px 8px",
-        borderRadius: "6px",
-        background: color.bg,
-        color: color.main,
-        fontSize: "10px",
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "0.3px",
-        marginBottom: "10px"
-      }}>
-        {lot.categorie || "—"}
-      </div>
-
-      {/* Statistiques */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "8px",
-        padding: "8px 10px",
-        borderRadius: "10px",
-        background: "#f8fafc",
-        border: "1px solid #f1f5f9"
-      }}>
-        <div>
-          <div style={{ fontSize: "9px", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase" }}>
-            {t('lavage.items')}
-          </div>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
-            {lot.nbPieces ?? lot.quantite ?? "—"}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: "9px", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase" }}>
-            {t('lavage.weight')}
-          </div>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
-            {(lot.poidsActuel ?? 0).toFixed(1)} kg
-          </div>
-        </div>
-      </div>
-
-      {/* État */}
-      {lot.etat && (
-        <div style={{
-          marginTop: "8px",
-          fontSize: "10px",
-          color: "#64748b",
-          display: "flex",
-          alignItems: "center",
-          gap: "4px"
-        }}>
-          <span style={{
-            width: "6px", height: "6px", borderRadius: "50%",
-            background: lot.etat === "EN_TRI" ? "#f59e0b" : "#22c55e"
-          }} />
-          {lot.etat}
-        </div>
-      )}
     </div>
   );
 }
@@ -665,6 +508,47 @@ function LavageInner() {
 
   const scanInputRef = useRef(null);
 
+  // ─── Assistant vocal ──────────────────────────────────────────────────────
+  const [voiceLang, setVoiceLang] = useState(() => getSetting("voice.lang"));
+  const voice = useVoiceGuide(voiceLang);
+  const voiceRef = useRef(voice);
+  useEffect(() => { voiceRef.current = voice; }, [voice]);
+  useEffect(() => () => voiceRef.current.cancel(), []);
+
+  // Bienvenue une seule fois, dès que l'agent est connu
+  const bienvenueFaite = useRef(false);
+  useEffect(() => {
+    if (!agent || bienvenueFaite.current) return;
+    bienvenueFaite.current = true;
+    setTimeout(() => voiceRef.current.sayMsg("bienvenue_lavage", "succes", agent.nomPrenom || agent.nom || ""), 600);
+  }, [agent]);
+
+  // Linge blanc : démarrage / fin du cycle (déclenchés dans le contexte)
+  const etapeBlancPrec = useRef(etapeBlanc);
+  useEffect(() => {
+    const prec = etapeBlancPrec.current;
+    etapeBlancPrec.current = etapeBlanc;
+    if (prec === etapeBlanc) return;
+    if (etapeBlanc === "EN_COURS") voiceRef.current.sayMsg("lavage_demarre", "succes", lotsSelectionnes.length);
+    if (etapeBlanc === "TERMINE") voiceRef.current.sayMsg("lavage_termine", "succes");
+  }, [etapeBlanc, lotsSelectionnes.length]);
+
+  // Linge blanc : lot ajouté / retiré du chargement
+  const lotsPrec = useRef(lotsSelectionnes);
+  useEffect(() => {
+    const prec = lotsPrec.current;
+    lotsPrec.current = lotsSelectionnes;
+    if (etapeBlanc !== "LOTS") return;
+    if (lotsSelectionnes.length === prec.length + 1) {
+      const ajoute = lotsSelectionnes[lotsSelectionnes.length - 1].lot;
+      const charge = lotsSelectionnes.reduce((s, ls) => s + (ls.lot.poidsActuel || 0), 0);
+      voiceRef.current.sayMsg("lot_ajoute", "succes", ajoute.codeLot, Number(charge.toFixed(1)), machine?.capaciteKg);
+    } else if (lotsSelectionnes.length === prec.length - 1) {
+      const retire = prec.find((ls) => !lotsSelectionnes.some((x) => x.lot.id === ls.lot.id));
+      if (retire) voiceRef.current.sayMsg("lot_retire", null, retire.lot.codeLot);
+    }
+  }, [lotsSelectionnes, etapeBlanc, machine]);
+
   // ═══════════════════════════════════════════════════════════════════════
   // ✅ Récupérer l'agent depuis localStorage → pousser dans le contexte
   // ═══════════════════════════════════════════════════════════════════════
@@ -734,6 +618,7 @@ function LavageInner() {
     try {
       const res = await fetch(`${API_URL}/api/machines/code/${encodeURIComponent(code)}`);
       if (!res.ok) {
+        voice.sayMsg("machine_introuvable", "erreur");
         await Swal.fire({
           icon: 'error', title: t('lavage.machine_not_found'),
           text: code, timer: 1500, showConfirmButton: false
@@ -750,7 +635,9 @@ function LavageInner() {
         setCycleTermineInfecte(false);
         setCycleEnCours(false);
         setTempsEcoule(0);
-        await chargerSacsInfectes();
+        const sacs = await chargerSacsInfectes();
+        const nbEnAttente = (Array.isArray(sacs) ? sacs : []).filter(s => s.etat === "RECEPTIONNE" || s.etat === "RECEPTION").length;
+        voice.sayMsg("machine_infectee", "infecte", mach.code, nbEnAttente);
 
         await Swal.fire({
           icon: 'success', title: t('lavage.infected_machine'),
@@ -758,7 +645,8 @@ function LavageInner() {
         });
       } else {
         setModeLavage("NORMAL");
-        await scannerMachine(code);
+        const machineOk = await scannerMachine(code);
+        if (machineOk) voice.sayMsg("machine_normale", "succes", mach.code);
         setEtapeInfecte(null);
         setMachineInfecte(null);
         setSacsSelectionnes([]);
@@ -772,17 +660,19 @@ function LavageInner() {
         });
       }
     } catch (err) {
+      voice.sayErreurGenerique(err.message);
       await Swal.fire({
         icon: 'error', title: t('common.error'), text: err.message
       });
     } finally {
       setIsLoading(false);
     }
-  }, [scannerMachine, chargerSacsInfectes, t]);
+  }, [scannerMachine, chargerSacsInfectes, t, voice]);
 
   // ─── Scanner Sac Infecté ──────────────────────────────────────────────────
   const scannerSacInfecte = useCallback(async (code) => {
     if (!machineInfecte) {
+      voice.sayMsg("scanner_machine_d_abord", "alerte");
       await Swal.fire({
         icon: 'warning', title: t('lavage.scan_machine_first'),
         text: t('lavage.scan_machine_first_text'), timer: 2000, showConfirmButton: false
@@ -791,6 +681,7 @@ function LavageInner() {
     }
 
     if (cycleTermineInfecte || cycleEnCours) {
+      voice.sayMsg("cycle_deja_en_cours", "alerte");
       await Swal.fire({
         icon: 'warning', title: t('lavage.cycle_in_progress'),
         text: t('lavage.cycle_in_progress_text'), timer: 1500, showConfirmButton: false
@@ -800,6 +691,7 @@ function LavageInner() {
 
     const sac = sacsInfectes?.find(s => s.numeroSac === code || s.code === code);
     if (!sac) {
+      voice.sayMsg("sac_introuvable", "erreur");
       await Swal.fire({
         icon: 'error', title: t('lavage.bag_not_found'),
         text: code, timer: 1500, showConfirmButton: false
@@ -808,6 +700,7 @@ function LavageInner() {
     }
 
     if (sacsSelectionnes.find(s => s.numeroSac === sac.numeroSac)) {
+      voice.sayMsg("sac_deja_ajoute", "alerte", sac.numeroSac);
       await Swal.fire({
         icon: 'warning', title: t('lavage.bag_already_added'),
         text: sac.numeroSac, timer: 1500, showConfirmButton: false
@@ -816,6 +709,7 @@ function LavageInner() {
     }
 
     if (sac.etat === "EN_LAVAGE") {
+      voice.sayMsg("sac_deja_en_lavage", "alerte", sac.numeroSac);
       await Swal.fire({
         icon: 'warning', title: t('lavage.bag_already_in_wash'),
         text: sac.numeroSac, timer: 1500, showConfirmButton: false
@@ -824,13 +718,14 @@ function LavageInner() {
     }
 
     setSacsSelectionnes(prev => [...prev, sac]);
+    voice.sayMsg("sac_ajoute", "infecte", sac.numeroSac, sac.quantiteDeclaree || 0);
 
     await Swal.fire({
       icon: 'success', title: t('lavage.bag_added'),
       text: `${sac.numeroSac} - ${sac.quantiteDeclaree || 0} ${t('lavage.items')}`,
       timer: 1000, showConfirmButton: false
     });
-  }, [machineInfecte, sacsInfectes, sacsSelectionnes, cycleTermineInfecte, cycleEnCours, t]);
+  }, [machineInfecte, sacsInfectes, sacsSelectionnes, cycleTermineInfecte, cycleEnCours, t, voice]);
 
   const retirerSac = useCallback((sac) => {
     setSacsSelectionnes(prev => prev.filter(s => s.numeroSac !== sac.numeroSac));
@@ -839,6 +734,7 @@ function LavageInner() {
   // ─── Lancer le cycle infecté ──────────────────────────────────────────────
   const lancerCycleInfecte = useCallback(async () => {
     if (sacsSelectionnes.length === 0) {
+      voice.sayMsg("aucun_sac", "alerte");
       await Swal.fire({
         icon: 'warning', title: t('lavage.no_bags_selected'),
         text: t('lavage.no_bags_selected_text'), timer: 1500, showConfirmButton: false
@@ -877,6 +773,7 @@ function LavageInner() {
       setCycleEnCours(true);
       setTempsEcoule(0);
       await chargerSacsInfectes();
+      voice.sayMsg("cycle_infecte_demarre", "infecte", sacsSelectionnes.length);
 
       await Swal.fire({
         icon: 'success', title: t('lavage.infected_cycle_started'),
@@ -890,7 +787,7 @@ function LavageInner() {
     } finally {
       setIsLoading(false);
     }
-  }, [sacsSelectionnes, machineInfecte, getAgentMatricule, chargerSacsInfectes, t]);
+  }, [sacsSelectionnes, machineInfecte, getAgentMatricule, chargerSacsInfectes, t, voice]);
 
   // ─── Terminer le cycle infecté ──────────────────────────────────────────
   const terminerCycleInfecte = useCallback(async () => {
@@ -933,6 +830,7 @@ function LavageInner() {
       }
 
       setEtapeInfecte("TERMINE");
+      voice.sayMsg("cycle_infecte_termine", "succes", sacsSelectionnes.length);
       setCycleTermineInfecte(true);
       setCycleEnCours(false);
       if (timerInterval) {
@@ -953,7 +851,7 @@ function LavageInner() {
     } finally {
       setIsLoading(false);
     }
-  }, [sacsSelectionnes, getAgentMatricule, chargerSacsInfectes, timerInterval, t]);
+  }, [sacsSelectionnes, getAgentMatricule, chargerSacsInfectes, timerInterval, t, voice]);
 
   const arreterCycleInfecte = useCallback(async () => {
     const matricule = getAgentMatricule();
@@ -987,6 +885,7 @@ function LavageInner() {
       }
 
       setEtapeInfecte("SACS");
+      voice.sayMsg("cycle_infecte_arrete", "alerte");
       setCycleEnCours(false);
       setCycleTermineInfecte(false);
       if (timerInterval) {
@@ -1008,7 +907,7 @@ function LavageInner() {
     } finally {
       setIsLoading(false);
     }
-  }, [sacsSelectionnes, getAgentMatricule, chargerSacsInfectes, timerInterval, t]);
+  }, [sacsSelectionnes, getAgentMatricule, chargerSacsInfectes, timerInterval, t, voice]);
 
   const nouveauCycleInfecte = useCallback(() => {
     setMachineInfecte(null);
@@ -1059,6 +958,11 @@ function LavageInner() {
         return;
       }
       if (etapeBlanc === "LOTS") {
+        const c = code.trim();
+        const lotTrouve = lotsDisponibles.find(l => l.codeLot === c);
+        if (lotsSelectionnes.some(ls => ls.lot.codeLot === c)) voice.sayMsg("lot_deja_ajoute", "alerte", c);
+        else if (!lotTrouve) voice.sayMsg("lot_introuvable", "erreur");
+        else if (machine && poidsTotal + (lotTrouve.poidsActuel || 0) > machine.capaciteKg) voice.sayMsg("capacite_depassee", "alerte", machine.capaciteKg);
         await scannerLot(code, poidsTotal);
         return;
       }
@@ -1074,7 +978,7 @@ function LavageInner() {
         return;
       }
     }
-  }, [agent, modeLavage, etapeBlanc, etapeInfecte, scannerMachineUnifie, scannerLot, scannerSacInfecte, poidsTotal]);
+  }, [agent, modeLavage, etapeBlanc, etapeInfecte, scannerMachineUnifie, scannerLot, scannerSacInfecte, poidsTotal, lotsDisponibles, lotsSelectionnes, machine, voice]);
 
   const lotsFiltres = useMemo(() => {
     const ids = new Set(lotsSelectionnes.map(ls => ls.lot.id));
@@ -1133,21 +1037,12 @@ function LavageInner() {
       <ScanLingesPropresModal />
 
       {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: "32px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
-          <div style={{
-            width: "52px", height: "52px", borderRadius: "16px",
-            background: "linear-gradient(135deg, #06b6d4, #0891b2)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "white", boxShadow: "0 4px 16px rgba(6, 182, 212, 0.25)"
-          }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 8v8" /><path d="M8 12h8" />
-              <path d="M8 8l8 8" /><path d="M8 16l8-8" />
-            </svg>
-          </div>
+      <div style={{
+        marginBottom: "32px", display: "flex", alignItems: "center",
+        justifyContent: "space-between", flexWrap: "wrap", gap: "12px"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <PageHeaderIcon size={52} />
           <div>
             <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
               {t('lavage.title')}
@@ -1157,6 +1052,14 @@ function LavageInner() {
             </p>
           </div>
         </div>
+
+        <MuteButton
+          muted={voice.muted}
+          onToggle={voice.toggleMute}
+          speaking={voice.speaking}
+          lang={voiceLang}
+          onLangChange={setVoiceLang}
+        />
       </div>
 
       <div className="collecte-panel-grand" style={{
@@ -1310,13 +1213,13 @@ function LavageInner() {
                           </div>
                         ) : (
                           <div style={{
-                            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px,1fr))",
-                            gap: "12px", maxHeight: "420px", overflowY: "auto", padding: "4px"
+                            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))",
+                            gap: "14px", maxHeight: "560px", overflowY: "auto", padding: "4px"
                           }}>
                             {lotsFiltres.map(lot => (
-                              <CarteLotCreative key={lot.id} lot={lot}
-                                selectionne={!!lotsSelectionnes.find(ls => ls.lot.id === lot.id)}
-                                onClick={(l) => {
+                              <LotBasketCard key={lot.id} lot={lot} t={t}
+                                selected={!!lotsSelectionnes.find(ls => ls.lot.id === lot.id)}
+                                onSelect={(l) => {
                                   const dejaSelectionne = !!lotsSelectionnes.find(ls => ls.lot.id === l.id);
                                   if (dejaSelectionne) retirerLot(l.codeLot);
                                   else scannerLot(l.codeLot, poidsTotal);

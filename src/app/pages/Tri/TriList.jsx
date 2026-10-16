@@ -5,15 +5,15 @@ import { useNavigate } from "react-router-dom";
 import { useModal } from "../../contextes/ModalContext";
 import {
   FaBarcode, FaFilter, FaCheck, FaTimes, FaUser,
-  FaTags, FaHistory, FaCheckCircle, FaBox, FaRss,
-  FaExclamationTriangle, FaPlus, FaMinus, FaArrowRight,
-  FaWarehouse
+  FaTags, FaHistory, FaCheckCircle, FaBox,
+  FaExclamationTriangle, FaPlus, FaMinus, FaArrowRight
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import "../Linge/WorkflowList.css";
-import { STATS_INITIALES, STYLES_ETAPE as STYLES, MODE_RFID, MODE_CODEBARRE, COULEURS_LOTS } from "../../constants/tri";
+import { STATS_INITIALES, STYLES_ETAPE as STYLES, MODE_RFID, MODE_CODEBARRE } from "../../constants/tri";
 import StatCard from "../../components/utils/tri/StatCard";
 import LotField from "../../components/utils/tri/LotField";
+import { LotBasketCard } from "../../components/utils/shared/LotBasket";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -21,13 +21,14 @@ import { TriProvider, useTri } from "../../contextes/TriContext";
 import EtapesStepper from "../../components/utils/shared/EtapesStepper";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import { getAgent, isAgentConnected } from "../../services/agentService";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 function TriInner() {
   const { t } = useTranslation();
 
-  const { getLingeByCode } = useContext(LingeContext);
+  const { getLingeByCode, isRfidMode } = useContext(LingeContext);
   const navigate           = useNavigate();
   const { showAlert, showConfirm } = useModal();
 
@@ -39,7 +40,8 @@ function TriInner() {
   const [lotSuggere,    setLotSuggere]    = useState(null);
   const [historiqueTri, setHistoriqueTri] = useState([]);
   const [statistiques,  setStatistiques]  = useState(STATS_INITIALES);
-  const [modeScan,      setModeScan]      = useState(MODE_CODEBARRE);
+  // Mode de lecture réglé dans Paramètres › Lecture / Scan
+  const modeScan = isRfidMode ? MODE_RFID : MODE_CODEBARRE;
   const [lotsSuggere,   setLotsSuggere]   = useState([]);
   const [showDialog,    setShowDialog]    = useState(false);
   const [lingeEnCours,  setLingeEnCours]  = useState(null);
@@ -370,7 +372,7 @@ function TriInner() {
           background: "white",
           borderRadius: "24px",
           padding: "28px",
-          maxWidth: "580px",
+          maxWidth: lotsSuggere.length > 2 ? "760px" : "580px",
           width: "95%",
           boxShadow: "0 24px 80px rgba(0,0,0,0.3)",
           maxHeight: "90vh",
@@ -386,7 +388,7 @@ function TriInner() {
                   {t('tri.choose_lot')}
                 </div>
                 <div style={{ fontSize: "12px", color: "#64748b" }}>
-                  {lingeEnCours?.codeSuivi || lingeEnCours?.codeBarre} • {lingeEnCours?.categorie} • {lingeEnCours?.typeCollecte}
+                  {lingeEnCours?.codeSuivi || lingeEnCours?.codeBarre} • {t(`categories.${lingeEnCours?.categorie}`, lingeEnCours?.categorie || "")} • {lingeEnCours?.typeCollecte}
                 </div>
               </div>
             </div>
@@ -415,103 +417,10 @@ function TriInner() {
             </button>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
-            {lotsSuggere.map((lot, index) => {
-              const couleur = COULEURS_LOTS[index % COULEURS_LOTS.length];
-              const pourcentage = lot.capaciteMax > 0 ? (lot.poidsActuel / lot.capaciteMax) * 100 : 0;
-              const estPlein = pourcentage >= 80;
-
-              return (
-                <button
-                  key={lot.id || index}
-                  onClick={() => affecterAuLot(lot.id)}
-                  style={{
-                    padding: "16px 12px",
-                    borderRadius: "14px",
-                    border: `2px solid ${couleur.border}`,
-                    background: couleur.bg,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "8px",
-                    transition: "all 0.15s",
-                    textAlign: "center",
-                    position: "relative"
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = "scale(1.06)";
-                    e.currentTarget.style.borderColor = couleur.color;
-                    e.currentTarget.style.boxShadow = `0 4px 16px ${couleur.color}33`;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.borderColor = couleur.border;
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                >
-                  <div style={{ fontSize: "28px", lineHeight: 1 }}>{couleur.emoji}</div>
-                  <div style={{ fontWeight: 700, fontSize: "14px", color: couleur.color }}>
-                    {lot.codeLot}
-                  </div>
-                  
-                  <div style={{ fontSize: "11px", color: "#64748b", display: "flex", flexDirection: "column", gap: "2px", width: "100%" }}>
-                    <span>📂 {t('tri.category')}: {lot.categorie}</span>
-                    <span>🏷️ {t('tri.type')}: {lot.typeCollecte}</span>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 600, color: couleur.color }}>
-                    <FaWarehouse size={12} />
-                    <span>{lot.poidsActuel?.toFixed(1) || "0"} / {lot.capaciteMax || "0"} kg</span>
-                  </div>
-
-                  <div style={{
-                    width: "100%",
-                    height: "6px",
-                    background: "#e2e8f0",
-                    borderRadius: "3px",
-                    overflow: "hidden",
-                    marginTop: "4px"
-                  }}>
-                    <div style={{
-                      width: `${Math.min(pourcentage, 100)}%`,
-                      height: "100%",
-                      background: estPlein ? "#ef4444" : couleur.color,
-                      borderRadius: "3px",
-                      transition: "width 0.3s ease"
-                    }} />
-                  </div>
-
-                  {estPlein && (
-                    <span style={{
-                      fontSize: "9px",
-                      color: "#ef4444",
-                      fontWeight: 700,
-                      background: "#fee2e2",
-                      padding: "2px 8px",
-                      borderRadius: "10px"
-                    }}>
-                      ⚠️ {t('tri.full')}
-                    </span>
-                  )}
-
-                  <div style={{
-                    position: "absolute",
-                    top: "8px",
-                    right: "8px",
-                    fontSize: "10px",
-                    fontWeight: 600,
-                    color: couleur.color,
-                    background: "white",
-                    padding: "2px 8px",
-                    borderRadius: "10px",
-                    border: `1px solid ${couleur.border}`
-                  }}>
-                    {Math.round(pourcentage)}%
-                  </div>
-                </button>
-              );
-            })}
+          <div className="lot-basket-grid">
+            {lotsSuggere.map((lot, index) => (
+              <LotBasketCard key={lot.id || index} lot={lot} t={t} onSelect={() => affecterAuLot(lot.id)} />
+            ))}
           </div>
 
           {lotsSuggere.length === 0 && (
@@ -548,34 +457,7 @@ function TriInner() {
           gap: "16px",
           marginBottom: "8px"
         }}>
-          <div style={{
-            width: "52px",
-            height: "52px",
-            borderRadius: "16px",
-            background: "linear-gradient(135deg, #f59e0b, #d97706)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            boxShadow: "0 4px 16px rgba(245, 158, 11, 0.25)"
-          }}>
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="24" 
-              height="24" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            >
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-              <path d="M12 22V12" />
-            </svg>
-          </div>
+          <PageHeaderIcon size={52} />
           <div>
             <h1 style={{
               fontSize: "28px",
@@ -654,25 +536,6 @@ function TriInner() {
             )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-            <button
-              onClick={() => setModeScan(modeScan === MODE_RFID ? MODE_CODEBARRE : MODE_RFID)}
-              style={{
-                padding: "6px 14px",
-                border: "1px solid #e2e8f0",
-                borderRadius: "10px",
-                background: "#f8fafc",
-                color: "#64748b",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontWeight: 500,
-                display: "flex",
-                alignItems: "center",
-                gap: "6px"
-              }}
-            >
-              {modeScan === MODE_RFID ? <FaRss size={12} /> : <FaBarcode size={12} />}
-              {modeScan === MODE_RFID ? t('tri.mode_rfid') : t('tri.mode_barcode')}
-            </button>
             <Button
               variant="outline"
               size="sm"

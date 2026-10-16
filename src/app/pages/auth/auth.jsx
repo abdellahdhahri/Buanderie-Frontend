@@ -4,13 +4,12 @@ import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModal } from "../../contextes/ModalContext";
 import { useAuth } from "../../contextes/Authentication/AuthContext";
+import { useEstablishment } from "../../hooks/useEstablishment";
+import { DEFAULT_LOGO, DEFAULT_LOGO_FALLBACK } from "../../services/establishmentService";
 
 
 
-const LOGO_URL =
-  "https://cdn.polyclinique-ibnkhaldoun.com.tn/wp-content/uploads/bfi_thumb/logo-ibnkhaldoun-sfax-moyen-34qusv5ms48ltafwigpog0.png";
-const LOGO_FALLBACK =
-  "https://cdn.polyclinique-ibnkhaldoun.com.tn/wp-content/uploads/2019/01/LOGO-ibnkhaldoun.jpg";
+// Nom et logo : Paramètres › Établissement (valeurs par défaut : Ibn Khaldoun)
 
 
 
@@ -345,9 +344,11 @@ function PremiumInput({
 
 function BrandLogo({ height = 44, variant = "glass" }) {
   const isGlass = variant === "glass";
+  const establishment = useEstablishment();
 
   return (
     <motion.div
+      data-keep-light
       initial={{ opacity: 0, scale: 0.92, y: -6 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
@@ -381,11 +382,12 @@ function BrandLogo({ height = 44, variant = "glass" }) {
         />
       )}
       <img
-        src={LOGO_URL}
-        alt="Polyclinique Ibn Khaldoun Sfax"
+        src={establishment.logo}
+        alt={[establishment.name, establishment.city].filter(Boolean).join(" ")}
         onError={(e) => {
-          if (e.currentTarget.src !== LOGO_FALLBACK) {
-            e.currentTarget.src = LOGO_FALLBACK;
+          // Logo par défaut indisponible → image de secours
+          if (establishment.logo === DEFAULT_LOGO && e.currentTarget.src !== DEFAULT_LOGO_FALLBACK) {
+            e.currentTarget.src = DEFAULT_LOGO_FALLBACK;
           }
         }}
         style={{
@@ -407,6 +409,7 @@ function BrandLogo({ height = 44, variant = "glass" }) {
 
 function AuthentificationInner() {
   const { t } = useTranslation();
+  const establishment = useEstablishment();
   const navigate = useNavigate();
   const { showAlert } = useModal();
   const { login, loginWithBadge, auth, isAuthenticated } = useAuth();
@@ -1177,9 +1180,13 @@ function AuthentificationInner() {
               fontWeight: 500,
             }}
           >
-            <span>{t("auth.footer_clinic")}</span>
-            <span style={{ color: "#cbd5e1" }}>•</span>
-            <span>{t("auth.footer_city")}</span>
+            <span>{establishment.name}</span>
+            {establishment.city && (
+              <>
+                <span style={{ color: "#cbd5e1" }}>•</span>
+                <span>{establishment.city}</span>
+              </>
+            )}
           </motion.div>
 
           {/* ─── Redirection message ────────────────────────────────────── */}

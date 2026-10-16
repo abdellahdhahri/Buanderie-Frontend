@@ -31,6 +31,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useMachineContext } from "../../contextes/MachineContext";
 import { MachineImportModal } from "./MachineImportModal";
 import BarcodeLabel from "../../components/BarcodeLabel";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { DetailModal, FormModal, FormSection } from "../../components/ui/modal-kit";
 
 const TYPES_MACHINE = [
   { value: "LAVEUR", label: "🧺 Laveur", icon: "🧺", color: "#2563eb", bg: "#eff6ff" },
@@ -118,7 +122,12 @@ export default function MachineList() {
   const totalPages = Math.ceil(filteredMachines.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentMachines = filteredMachines.slice(startIndex, endIndex);
+
+  // Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun)
+  const { sortedItems: sortedMachines, requestSort, directionFor } = useSortableData(filteredMachines, {
+    code: (m) => m.code || m.reference,
+  });
+  const currentMachines = sortedMachines.slice(startIndex, endIndex);
 
   const getStats = (type) => {
     const typeMachines = machines.filter(m => m.type === type);
@@ -333,19 +342,7 @@ export default function MachineList() {
         <div className="space-y-4">
           <div style={{ marginBottom: "24px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
-              <div style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "16px",
-                background: "linear-gradient(135deg, #6366f1, #4f46e5)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                boxShadow: "0 4px 16px rgba(99, 102, 241, 0.25)"
-              }}>
-                <Package className="w-6 h-6" />
-              </div>
+              <PageHeaderIcon size={52} />
               <div>
                 <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
                   {t('machines.title')}
@@ -488,17 +485,29 @@ export default function MachineList() {
 
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-border bg-muted/50">
+              <div className="premium-table-wrap">
+                <table className="premium-table">
+                  <thead>
                     <tr>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('machines.code')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('machines.designation')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('machines.brand')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('machines.model')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('machines.technical_state')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('machines.availability')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('common.actions')}</th>
+                      <SortableHeader direction={directionFor("code")} onSort={() => requestSort("code")} align="center">
+{t('machines.code')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("designation")} onSort={() => requestSort("designation")} align="center">
+{t('machines.designation')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("marque")} onSort={() => requestSort("marque")} align="center">
+{t('machines.brand')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("modele")} onSort={() => requestSort("modele")} align="center">
+{t('machines.model')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("etatTechnique")} onSort={() => requestSort("etatTechnique")} align="center">
+{t('machines.technical_state')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("etatImmobilisation")} onSort={() => requestSort("etatImmobilisation")} align="center">
+{t('machines.availability')}
+</SortableHeader>
+                      <th style={{ textAlign: "center" }}>{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -635,79 +644,50 @@ export default function MachineList() {
 
       <MachineImportModal />
 
-      <Modal
+      <DetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        title={`${t('machines.details')} - ${selectedMachineDetail?.designation || selectedMachineDetail?.reference || 'N/A'}`}
-        size="lg"
-      >
-        {selectedMachineDetail && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ID</label>
-              <Input value={selectedMachineDetail.id} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('machines.code')}</label>
-              <Input value={selectedMachineDetail.code || "-"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('machines.designation')}</label>
-              <Input value={selectedMachineDetail.designation || selectedMachineDetail.reference || "-"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('machines.type')}</label>
-              <div className="mt-1">{getTypeBadge(selectedMachineDetail.type)}</div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('machines.brand')}</label>
-              <Input value={selectedMachineDetail.marque || "-"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('machines.model')}</label>
-              <Input value={selectedMachineDetail.modele || "-"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('machines.category')}</label>
-              <Input value={selectedMachineDetail.categorie || "-"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('machines.capacity')}</label>
-              <Input value={`${selectedMachineDetail.capaciteKg || 0} kg`} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('machines.technical_state')}</label>
-              <div className="mt-1">{getEtatTechniqueBadge(selectedMachineDetail.etatTechnique)}</div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('machines.availability')}</label>
-              <div className="mt-1">{getEtatImmobilisationBadge(selectedMachineDetail.etatImmobilisation)}</div>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('machines.location')}</label>
-              <div className="flex items-center gap-2 p-2 rounded-lg border border-input bg-slate-50">
-                <MapPin className="w-4 h-4 text-slate-400" />
-                <span>{selectedMachineDetail.localisation || t('machines.location')}</span>
-              </div>
-            </div>
-          </div>
+        title={t('machines.details')}
+        subtitle={selectedMachineDetail?.code || undefined}
+        heading={selectedMachineDetail?.designation || selectedMachineDetail?.reference}
+        badges={selectedMachineDetail && (
+          <>
+            {getTypeBadge(selectedMachineDetail.type)}
+            {getEtatTechniqueBadge(selectedMachineDetail.etatTechnique)}
+            {getEtatImmobilisationBadge(selectedMachineDetail.etatImmobilisation)}
+          </>
         )}
-        <div className="flex justify-end gap-3 mt-6">
-          {selectedMachineDetail && (
-            <BarcodeLabel item={selectedMachineDetail} type="machine" />
-          )}
-          <Button onClick={() => setShowDetailModal(false)}>{t('common.close')}</Button>
-        </div>
-      </Modal>
+        metrics={selectedMachineDetail ? [{ label: t('machines.capacity'), value: `${selectedMachineDetail.capaciteKg || 0} kg` }] : []}
+        sections={selectedMachineDetail ? [
+          { title: t('modal.identification', 'Identification'), icon: "id", items: [
+            { label: "ID", value: selectedMachineDetail.id, mono: true },
+            { label: t('machines.code'), value: selectedMachineDetail.code, mono: true },
+            { label: t('machines.designation'), value: selectedMachineDetail.designation || selectedMachineDetail.reference },
+          ] },
+          { title: t('modal.characteristics', 'Caractéristiques'), icon: "specs", items: [
+            { label: t('machines.brand'), value: selectedMachineDetail.marque },
+            { label: t('machines.model'), value: selectedMachineDetail.modele },
+            { label: t('machines.category'), value: selectedMachineDetail.categorie },
+          ] },
+          { title: t('machines.location'), icon: "location", items: [
+            { label: t('machines.location'), value: selectedMachineDetail.localisation, span: 2 },
+          ] },
+        ] : []}
+        actions={selectedMachineDetail && <BarcodeLabel item={selectedMachineDetail} type="machine" />}
+        onEdit={selectedMachineDetail ? () => { setShowDetailModal(false); handleOpenEditModal(selectedMachineDetail); } : undefined}
+      />
 
-      <Modal
+      <FormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedMachine ? `${t('machines.edit')} #${selectedMachine.id}` : `${t('machines.new')} ${activeTab === 'LAVEUR' ? t('machines.laveur') : t('machines.secheur')}`}
-        size="lg"
+        mode={selectedMachine ? "edit" : "create"}
+        size={"lg"}
+        onSubmit={handleSave}
+        saving={isSaving}
       >
-        <form onSubmit={handleSave}>
-          <div className="grid grid-cols-2 gap-4">
+        
+          <FormSection title={t('modal.general_info', 'Informations générales')} icon="specs" columns={2}>
             <div>
               <Input
                 label={`${t('machines.designation')} *`}
@@ -820,17 +800,9 @@ export default function MachineList() {
                 placeholder={t('machines.location_placeholder')}
               />
             </div>
-          </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)} type="button" disabled={isSaving}>
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? t('common.loading') : (selectedMachine ? t('common.save') : t('common.create'))}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+          </FormSection>
+
+      </FormModal>
     </div>
   );
 }

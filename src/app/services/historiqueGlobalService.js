@@ -1,3 +1,4 @@
+import { formatDateTime } from "../utils/appSettings";
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 // ─── Récupérer l'historique global paginé ──────────────────────────────
@@ -98,16 +99,8 @@ export const fetchPersonnelsByIds = async (ids) => {
 };
 
 // ─── Formater une date ─────────────────────────────────────────────────
-export const formatDate = (dateString) => {
-  if (!dateString) return "—";
-  return new Date(dateString).toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
+// Format choisi dans Paramètres › Affichage
+export const formatDate = (dateString) => formatDateTime(dateString);
 
 // ─── Extraire le nom depuis un objet personnel ─────────────────────────
 export const getPersonnelNom = (personnel) => {

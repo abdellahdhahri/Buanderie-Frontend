@@ -17,7 +17,6 @@ import {
   Building2,
   X,
   Eye,
-  Barcode,
   History,
   RefreshCw,
   Printer,
@@ -41,7 +40,13 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
-import printJS from "print-js";
+import { printLabel } from "../../utils/labels";
+import { getSetting } from "../../utils/appSettings";
+import { LabelIcon } from "../../components/ui/LabelIcon";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { DetailModal, FormModal, FormSection } from "../../components/ui/modal-kit";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -58,7 +63,7 @@ export default function ImmobilisationList() {
   
   const [pagination, setPagination] = useState({
     page: 0,
-    size: 10,
+    size: Number(getSetting("display.pageSize")) || 10,
     totalPages: 0,
     totalElements: 0,
     first: true,
@@ -242,49 +247,10 @@ export default function ImmobilisationList() {
     setShowDetailModal(true);
   };
 
+  // Étiquette (réglages : Paramètres › Étiquettes)
   const handlePrintCode = (item) => {
     if (!item) return;
-    
-    const codeBarre = item.codeBarre || item.code || `IMM-${item.id}`;
-    
-    printJS({
-      printable: `
-        <div style="width:60mm; padding:2mm; font-family:'Courier New',monospace; background:white; text-align:center;">
-          <div style="border-bottom:1px solid #ddd; padding-bottom:2mm; margin-bottom:2mm;margin-top:0">
-            <div style="font-size:7pt; color:#666;">${item.designation || 'N/A'}</div>
-          </div>
-          
-          <div style="display:flex; justify-content:center; margin:2mm 0 2 0;">
-            <img
-              src="https://barcodeapi.org/api/code128/${encodeURIComponent(codeBarre)}"
-              style="height:60px; width:100%; max-width:200px;"
-              alt="Code-barres"
-            />
-          </div>
-          
-          <div style="font-size:8pt; color:#666; margin-top:2mm; border-top:1px solid #ddd; padding-top:2mm;">
-            <div style="font-size:5pt; margin-top:1mm;">
-              ${new Date().toLocaleDateString('fr-FR', { 
-                day: '2-digit', 
-                month: '2-digit', 
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </div>
-          </div>
-        </div>
-      `,
-      type: "raw-html",
-      style: "* { margin: 0; padding: 0; box-sizing: border-box; } body { background: white; display: flex; justify-content: center; }",
-      documentTitle: `Code_Immobilisation_${item.id}`,
-      css: `
-        @page { 
-          size: 60mm 40mm;
-          margin: 0;
-        }
-      `
-    });
+    printLabel("immobilisation", item, { t });
   };
 
   const handleRowClick = (id) => {
@@ -301,6 +267,9 @@ export default function ImmobilisationList() {
       r.marque?.toLowerCase().includes(term)
     );
   });
+
+  // Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun)
+  const { sortedItems: sortedItems, requestSort, directionFor } = useSortableData(filteredItems);
 
   const getPageNumbers = () => {
     const pages = [];
@@ -346,32 +315,7 @@ export default function ImmobilisationList() {
     gap: "16px",
     marginBottom: "8px"
   }}>
-    <div style={{
-      width: "52px",
-      height: "52px",
-      borderRadius: "16px",
-      background: "linear-gradient(135deg, #6366f1, #4f46e5)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      boxShadow: "0 4px 16px rgba(99, 102, 241, 0.25)"
-    }}>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        width="24" 
-        height="24" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-      </svg>
-    </div>
+    <PageHeaderIcon size={52} />
     <div>
       <h1 style={{
         fontSize: "28px",
@@ -443,9 +387,9 @@ export default function ImmobilisationList() {
                   if (item) handlePrintCode(item);
                 }
               }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0d9488]/30 rounded-[14px] text-sm font-bold text-[#0d9488] hover:bg-[#0d9488]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Barcode className="w-4 h-4 stroke-[2.5]" /> Code-barres
+              <LabelIcon className="w-4 h-4" strokeWidth={2.2} /> {t('barcode_label.print')}
             </button>
 
             <button
@@ -497,17 +441,27 @@ export default function ImmobilisationList() {
 
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-border bg-muted/50">
+              <div className="premium-table-wrap">
+                <table className="premium-table">
+                  <thead>
                     <tr>
-                      <th className="text-center py-3 px-4 text-sm font-medium w-10">#</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Désignation</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Code</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Marque</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Type</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Code-barres</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
+                      <th style={{ textAlign: "center" }}>#</th>
+                      <SortableHeader direction={directionFor("designation")} onSort={() => requestSort("designation")} align="center">
+Désignation
+</SortableHeader>
+                      <SortableHeader direction={directionFor("code")} onSort={() => requestSort("code")} align="center">
+Code
+</SortableHeader>
+                      <SortableHeader direction={directionFor("marque")} onSort={() => requestSort("marque")} align="center">
+Marque
+</SortableHeader>
+                      <SortableHeader direction={directionFor("type")} onSort={() => requestSort("type")} align="center">
+Type
+</SortableHeader>
+                      <SortableHeader direction={directionFor("codeBarre")} onSort={() => requestSort("codeBarre")} align="center">
+Code-barres
+</SortableHeader>
+                      <th style={{ textAlign: "center" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -520,14 +474,14 @@ export default function ImmobilisationList() {
                           </div>
                         </td>
                       </tr>
-                    ) : filteredItems.length === 0 ? (
+                    ) : sortedItems.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="text-center py-8 text-muted-foreground">
                           {searchTerm ? "Aucune immobilisation correspondante" : "Aucune immobilisation trouvée"}
                         </td>
                       </tr>
                     ) : (
-                      filteredItems.map((item, index) => (
+                      sortedItems.map((item, index) => (
                         <tr
                           key={item.id}
                           className={`border-b border-border hover:bg-accent/50 transition-colors ${selectedId === item.id ? 'bg-blue-50' : ''}`}
@@ -565,9 +519,9 @@ export default function ImmobilisationList() {
                                   handlePrintCode(item);
                                 }}
                                 className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title="Imprimer le code-barres"
+                                title={t('barcode_label.print')}
                               >
-                                <Barcode className="w-4 h-4 text-[#e67700]" />
+                                <LabelIcon className="w-4 h-4 text-[#0d9488]" strokeWidth={2.2} />
                               </button>
                               <button
                                 onClick={(e) => {
@@ -692,102 +646,50 @@ export default function ImmobilisationList() {
       </motion.div>
 
       {/* Modal Détails */}
-      <Modal
+      <DetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        title={`Détails - ${selectedDetail?.designation || 'N/A'}`}
-        size="lg"
-      >
-        {selectedDetail && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ID</label>
-              <Input value={selectedDetail.id} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Désignation</label>
-              <Input value={selectedDetail.designation} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Code</label>
-              <Input value={selectedDetail.code || "N/A"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Code-barres</label>
-              <Input value={selectedDetail.codeBarre || "N/A"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Marque</label>
-              <Input value={selectedDetail.marque || "N/A"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-              <div>{getStatusBadge(selectedDetail.type)}</div>
-            </div>
-            {selectedDetail.numeroSerie && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Numéro de série</label>
-                <Input value={selectedDetail.numeroSerie} disabled />
-              </div>
-            )}
-            {selectedDetail.fournisseur && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Fournisseur</label>
-                <Input value={selectedDetail.fournisseur} disabled />
-              </div>
-            )}
-            {selectedDetail.localisation && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Localisation</label>
-                <Input value={selectedDetail.localisation} disabled />
-              </div>
-            )}
-            {selectedDetail.dateAchat && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date d'achat</label>
-                <Input value={new Date(selectedDetail.dateAchat).toLocaleDateString('fr-FR')} disabled />
-              </div>
-            )}
-            {selectedDetail.prixAchat && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Prix d'achat</label>
-                <Input value={`${selectedDetail.prixAchat} €`} disabled />
-              </div>
-            )}
-            {selectedDetail.observations && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Observations</label>
-                <Input value={selectedDetail.observations} disabled />
-              </div>
-            )}
-          </div>
-        )}
-        <div className="flex justify-end gap-3 mt-6">
-          <Button onClick={() => setShowDetailModal(false)}>
-            Fermer
+        title="Détails du matériel"
+        subtitle={selectedDetail?.code || undefined}
+        heading={selectedDetail?.designation}
+        badges={selectedDetail && getStatusBadge(selectedDetail.type)}
+        metrics={selectedDetail?.prixAchat ? [{ label: "Prix d'achat", value: `${selectedDetail.prixAchat} €` }] : []}
+        sections={selectedDetail ? [
+          { title: "Identification", icon: "id", items: [
+            { label: "ID", value: selectedDetail.id, mono: true },
+            { label: "Code", value: selectedDetail.code, mono: true },
+            { label: "Code-barres", value: selectedDetail.codeBarre, mono: true },
+            { label: "Numéro de série", value: selectedDetail.numeroSerie, mono: true, hidden: !selectedDetail.numeroSerie },
+          ] },
+          { title: "Caractéristiques", icon: "specs", items: [
+            { label: "Marque", value: selectedDetail.marque },
+            { label: "Fournisseur", value: selectedDetail.fournisseur },
+            { label: "Localisation", value: selectedDetail.localisation },
+            { label: "Date d'achat", value: selectedDetail.dateAchat ? new Date(selectedDetail.dateAchat).toLocaleDateString("fr-FR") : null },
+          ] },
+          ...(selectedDetail.observations ? [{ title: "Observations", icon: "notes", items: [
+            { label: "Observations", value: selectedDetail.observations, span: 2 },
+          ] }] : []),
+        ] : []}
+        actions={selectedDetail && (
+          <Button variant="outline" onClick={() => handlePrintCode(selectedDetail)}>
+            <LabelIcon className="w-4 h-4 text-[#0d9488]" strokeWidth={2.2} />
+            {t('barcode_label.print')}
           </Button>
-          {selectedDetail && (
-            <Button 
-              variant="outline"
-              onClick={() => {
-                handlePrintCode(selectedDetail);
-              }}
-            >
-              <Barcode className="w-4 h-4 mr-2" />
-              Imprimer code
-            </Button>
-          )}
-        </div>
-      </Modal>
+        )}
+      />
 
-      <Modal
+      <FormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedImmobilisation ? `Modifier l'immobilisation #${selectedImmobilisation.id}` : "Nouvelle Immobilisation"}
-        size="lg"
+        mode={selectedImmobilisation ? "edit" : "create"}
+        size={"lg"}
+        onSubmit={handleSave}
+        saving={isSaving}
       >
-        <form onSubmit={handleSave}>
-          <div className="grid grid-cols-2 gap-4">
+        
+          <FormSection title="Informations générales" icon="specs" columns={2}>
             <div className="col-span-2">
               <Input
                 label="Désignation *"
@@ -957,23 +859,10 @@ export default function ImmobilisationList() {
                 className="w-full min-h-[60px] px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
-          </div>
+          </FormSection>
 
-          <div className="flex justify-end gap-3 mt-6">
-            <Button
-              variant="outline"
-              onClick={() => setIsModalOpen(false)}
-              type="button"
-              disabled={isSaving}
-            >
-              Annuler
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Enregistrement..." : (selectedImmobilisation ? "Enregistrer" : "Créer")}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+
+      </FormModal>
     </div>
   );
 }

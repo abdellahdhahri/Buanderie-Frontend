@@ -14,23 +14,33 @@ export function Button({
   ...props
 }: ButtonProps) {
   const variants = {
-    primary: "bg-teal-600 text-white hover:bg-teal-700 hover:shadow-[0_4px_12px_rgba(7,148,164,0.15)] shadow-[0_2px_4px_rgba(7,148,164,0.08)]",
-    secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200/80 border border-slate-200/40",
-    danger: "bg-red-500 text-white hover:bg-red-650 hover:shadow-[0_4px_12px_rgba(224,49,49,0.15)] shadow-[0_2px_4px_rgba(224,49,49,0.08)]",
-    outline: "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_2px_4px_rgba(0,0,0,0.01)]",
-    ghost: "text-slate-600 hover:bg-slate-100/70 hover:text-slate-900",
+    // Teal profond, léger reflet interne, ombre fine
+    primary:
+      "bg-teal-700 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(15,118,110,0.35),0_4px_12px_-4px_rgba(15,118,110,0.45)] hover:bg-teal-800",
+    secondary:
+      "bg-slate-100 text-slate-700 hover:bg-slate-200/70",
+    danger:
+      "bg-red-600 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_1px_2px_rgba(185,28,28,0.3),0_4px_12px_-4px_rgba(185,28,28,0.4)] hover:bg-red-700",
+    outline:
+      "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:bg-slate-50 hover:ring-slate-300 dark:bg-transparent dark:text-foreground dark:ring-white/15",
+    ghost:
+      "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
   };
 
   const sizes = {
-    sm: "h-9 px-4 text-xs font-bold",
-    md: "h-11 px-5 text-sm font-bold",
-    lg: "h-12 px-6 text-base font-bold",
+    sm: "h-8 px-3 text-[12.5px] gap-1.5",
+    md: "h-10 px-4 text-[13.5px] gap-2",
+    lg: "h-11 px-5 text-sm gap-2",
   };
 
   return (
     <button
+      data-variant={variant}
       className={cn(
-        "inline-flex items-center justify-center rounded-[14px] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer",
+        "inline-flex items-center justify-center rounded-[10px] font-medium tracking-[-0.005em]",
+        "transition-[background-color,box-shadow,color,transform] duration-150 active:scale-[0.985]",
+        "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-teal-500/25",
+        "disabled:opacity-45 disabled:pointer-events-none cursor-pointer",
         variants[variant],
         sizes[size],
         className

@@ -38,6 +38,10 @@ import {
   fetchStatistiquesPersonnel,
   getTypeOperationInfo,
 } from "../../services/statistiqueService";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { FormModal } from "../../components/ui/modal-kit";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -164,61 +168,53 @@ function PersonnelStatCard({ stat, rang }) {
 }
 
 // ─── Ligne Etape ──────────────────────────────────────────────────────────
+// Couleur de la zone = couleur de la section du menu (Zone sale / Zone propre)
+const zoneTone = (zone = "") => {
+  const z = zone.toLowerCase();
+  if (z.includes("sale")) return "premium-table__chip--sale";
+  if (z.includes("propre")) return "premium-table__chip--propre";
+  return "premium-table__chip--neutral";
+};
+
 function LigneEtape({ etape, index, isSelected, onOpenPanel, onEdit, onDelete }) {
   const { t } = useTranslation();
 
   return (
-    <tr className={`border-b border-slate-100 hover:bg-slate-50/80 transition-colors ${isSelected ? 'bg-purple-50' : ''}`}>
-      <td className="text-center py-3 px-4">
+    <tr onClick={() => onOpenPanel(etape)} className={isSelected ? "is-selected" : ""}>
+      <td style={{ textAlign: "center" }}>
         <button
-          onClick={() => onOpenPanel(etape)}
-          className={`p-1.5 rounded-lg transition-all duration-200 ${
-            isSelected ? 'bg-purple-100 text-purple-600' : 'hover:bg-purple-100 text-slate-400 hover:text-purple-500'
-          }`}
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOpenPanel(etape); }}
+          className={`premium-table__icon-btn ${isSelected ? "is-open" : ""}`}
           title={isSelected ? t('common.close') : t('etapes.view_personnel')}
         >
-          {isSelected ? (
-            <ChevronLeft className="w-5 h-5" />
-          ) : (
-            <ChevronRight className="w-5 h-5" />
-          )}
+          {isSelected ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
       </td>
-      <td className="text-center py-3 px-4 text-sm text-slate-500 font-medium">
-        {index + 1}
+      <td style={{ textAlign: "center" }}>
+        <span className="premium-table__index">{index + 1}</span>
       </td>
-      <td className="text-center py-3 px-4">
-        <div className="font-medium text-slate-800">{etape.nom}</div>
+      <td>
+        <div className="premium-table__primary">{etape.nom}</div>
+        {etape.categorie && <div className="premium-table__muted">{etape.categorie}</div>}
       </td>
-      <td className="text-center py-3 px-4">
-        <code className="text-xs font-mono text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
-          {etape.codeBarre}
-        </code>
+      <td>
+        <span className="premium-table__code">{etape.codeBarre || "—"}</span>
       </td>
-      <td className="text-center py-3 px-4">
-        <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+      <td>
+        <span className={`premium-table__chip ${zoneTone(etape.zone)}`}>
           {etape.zone || t('etapes.zone_undefined')}
-        </Badge>
+        </span>
       </td>
-      <td className="text-center py-3 px-4">
-        <Badge className="bg-slate-50 text-slate-600 border-slate-200">
-          {t('etapes.order')} {etape.ordre || "—"}
-        </Badge>
+      <td style={{ textAlign: "center" }}>
+        <span className="premium-table__order">{etape.ordre ?? "—"}</span>
       </td>
-      <td className="text-center py-3 px-4">
-        <div className="flex items-center justify-center gap-1.5">
-          <button
-            onClick={() => onEdit(etape)}
-            className="p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
-            title={t('common.edit')}
-          >
+      <td style={{ textAlign: "right", paddingRight: 20 }} onClick={(e) => e.stopPropagation()}>
+        <div className="premium-table__actions">
+          <button type="button" onClick={() => onEdit(etape)} className="premium-table__icon-btn" title={t('common.edit')}>
             <Edit className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onDelete(etape.id)}
-            className="p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-red-600"
-            title={t('common.delete')}
-          >
+          <button type="button" onClick={() => onDelete(etape.id)} className="premium-table__icon-btn is-danger" title={t('common.delete')}>
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -435,6 +431,13 @@ const handleAddPersonnel = async () => {
     p.matricule?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Tri du personnel (avant le "return null" : les hooks doivent toujours être appelés)
+  const {
+    sortedItems: sortedPersonnels,
+    requestSort: requestSortPersonnel,
+    directionFor: directionForPersonnel,
+  } = useSortableData(filteredPersonnels);
+
   if (!isOpen || !etape) return null;
 
   return (
@@ -564,33 +567,46 @@ const handleAddPersonnel = async () => {
                 <p className="text-xs">{t('etapes.no_personnel_text')}</p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200">
+              <div className="premium-table-wrap premium-table-wrap--bordered">
+                <table className="premium-table premium-table--compact">
+                  <thead>
                     <tr>
-                      <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.code')}</th>
-                      <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.last_name')}</th>
-                      <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('etapes.first_name')}</th>
-                      <th className="text-center py-2.5 px-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">{t('common.actions')}</th>
+                      <SortableHeader direction={directionForPersonnel("codeBarre")} onSort={() => requestSortPersonnel("codeBarre")}>
+                        {t('etapes.code')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionForPersonnel("nom")} onSort={() => requestSortPersonnel("nom")}>
+                        {t('etapes.last_name')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionForPersonnel("prenom")} onSort={() => requestSortPersonnel("prenom")}>
+                        {t('etapes.first_name')}
+                      </SortableHeader>
+                      <th style={{ textAlign: "right", paddingRight: 16 }}>{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPersonnels.map((p, index) => (
+                    {sortedPersonnels.map((p, index) => (
                       <motion.tr
                         key={p.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ 
-                          opacity: 1, 
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{
+                          opacity: 1,
                           y: 0,
-                          transition: { delay: index * 0.05, duration: 0.2 }
+                          transition: { delay: Math.min(index, 10) * 0.03, duration: 0.2 }
                         }}
-                        className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                        style={{ cursor: "default" }}
                       >
-                        <td className="text-center py-2.5 px-3 font-mono text-xs text-slate-600">{p.codeBarre}</td>
-                        <td className="text-center py-2.5 px-3 font-medium text-slate-800">{p.nom}</td>
-                        <td className="text-center py-2.5 px-3 text-slate-600">{p.prenom || "—"}</td>
-                        <td className="text-center py-2.5 px-3">
-                          <div className="flex items-center justify-center gap-1.5">
+                        <td><span className="premium-table__code">{p.codeBarre || "—"}</span></td>
+                        <td>
+                          <div className="flex items-center gap-2.5">
+                            <span className="premium-table__avatar">
+                              {`${(p.prenom || "")[0] || ""}${(p.nom || "")[0] || ""}`.toUpperCase() || "?"}
+                            </span>
+                            <span className="premium-table__primary">{p.nom}</span>
+                          </div>
+                        </td>
+                        <td>{p.prenom || <span className="premium-table__muted">—</span>}</td>
+                        <td style={{ textAlign: "right", paddingRight: 16 }}>
+                          <div className="premium-table__actions">
                             <button
                               onClick={() => {
                                 setBadgeEmployee({
@@ -603,17 +619,17 @@ const handleAddPersonnel = async () => {
                                 });
                                 setBadgeModalOpen(true);
                               }}
-                              className="p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
+                              className="premium-table__icon-btn"
                               title={t('etapes.print_label')}
                             >
-                              <Printer className="w-3.5 h-3.5" />
+                              <Printer className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleRemove(p)}
-                              className="p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-red-600"
+                              className="premium-table__icon-btn is-danger"
                               title={t('etapes.remove')}
                             >
-                              <UserMinus className="w-3.5 h-3.5" />
+                              <UserMinus className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -669,7 +685,7 @@ const handleAddPersonnel = async () => {
       </div>
 
       {/* Modal Ajout Personnel avec autocomplete */}
-      <Modal
+      <FormModal
         isOpen={showAddModal}
         onClose={() => {
           setShowAddModal(false);
@@ -678,7 +694,12 @@ const handleAddPersonnel = async () => {
           setPersonnelSuggestions([]);
         }}
         title={t('etapes.add_personnel')}
-        size="md"
+        mode={"create"}
+        size={"md"}
+        onSubmit={(e) => { e.preventDefault(); handleAddPersonnel(); }}
+        saving={isAdding}
+        canSubmit={!!selectedPersonnel}
+        submitLabel={t('etapes.add')}
       >
         <div className="space-y-4">
           <div>
@@ -743,34 +764,9 @@ const handleAddPersonnel = async () => {
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowAddModal(false);
-                setSelectedPersonnel(null);
-                setSearchPersonnel("");
-                setPersonnelSuggestions([]);
-              }}
-              disabled={isAdding}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={handleAddPersonnel}
-              disabled={!selectedPersonnel || isAdding}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
-            >
-              {isAdding ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <UserPlus className="w-4 h-4 mr-2" />
-              )}
-              {t('etapes.add')}
-            </Button>
-          </div>
+
         </div>
-      </Modal>
+      </FormModal>
 
       <BadgeModal
         isOpen={badgeModalOpen}
@@ -817,11 +813,14 @@ function ModalEtape({ isOpen, onClose, onSave, etape, loading }) {
   };
 
   return (
-    <Modal
+    <FormModal
       isOpen={isOpen}
       onClose={onClose}
       title={etape ? t('etapes.edit_step') : t('etapes.new_step')}
-      size="md"
+      mode={etape ? "edit" : "create"}
+      size={"md"}
+      onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
+      saving={loading}
     >
       <div className="space-y-4">
         <div>
@@ -864,22 +863,8 @@ function ModalEtape({ isOpen, onClose, onSave, etape, loading }) {
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
-        <Button variant="outline" onClick={onClose} disabled={loading}>
-          {t('common.cancel')}
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="bg-purple-600 hover:bg-purple-700 text-white font-semibold"
-        >
-          {loading ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : null}
-          {etape ? t('common.update') : t('common.create')}
-        </Button>
-      </div>
-    </Modal>
+
+    </FormModal>
   );
 }
 
@@ -909,6 +894,11 @@ function EtapeListInner() {
     e.codeBarre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     e.categorie?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun)
+  const { sortedItems: sortedEtapes, requestSort, directionFor } = useSortableData(filteredEtapes, {
+    ordre: (e) => (e.ordre === null || e.ordre === undefined || e.ordre === "" ? null : Number(e.ordre)),
+  });
 
   const handleOpenPanel = async (etape) => {
     if (selectedEtapeId === etape.id && panelOpen) {
@@ -1001,19 +991,7 @@ function EtapeListInner() {
               gap: "16px",
               marginBottom: "8px"
             }}>
-              <div style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "16px",
-                background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                boxShadow: "0 4px 16px rgba(124, 58, 237, 0.25)"
-              }}>
-                <Layers className="w-6 h-6" />
-              </div>
+              <PageHeaderIcon size={52} />
               <div>
                 <h1 style={{
                   fontSize: "28px",
@@ -1145,17 +1123,25 @@ function EtapeListInner() {
           {/* Tableau des étapes */}
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-slate-200 bg-slate-50/80">
+              <div className="premium-table-wrap">
+                <table className="premium-table">
+                  <thead>
                     <tr>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500 w-10"></th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500 w-12">#</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('etapes.step')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('etapes.barcode')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('etapes.zone')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('etapes.order')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('common.actions')}</th>
+                      <th style={{ width: 56 }} aria-label={t('etapes.view_personnel')} />
+                      <th style={{ width: 56, textAlign: "center" }}>#</th>
+                      <SortableHeader direction={directionFor("nom")} onSort={() => requestSort("nom")}>
+                        {t('etapes.step')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionFor("codeBarre")} onSort={() => requestSort("codeBarre")}>
+                        {t('etapes.barcode')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionFor("zone")} onSort={() => requestSort("zone")}>
+                        {t('etapes.zone')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionFor("ordre")} onSort={() => requestSort("ordre")} align="center">
+                        {t('etapes.order')}
+                      </SortableHeader>
+                      <th style={{ textAlign: "right", paddingRight: 20 }}>{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1165,7 +1151,7 @@ function EtapeListInner() {
                           <LoadingSpinner />
                         </td>
                       </tr>
-                    ) : filteredEtapes.length === 0 ? (
+                    ) : sortedEtapes.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="text-center py-12 text-slate-400">
                           <Package className="w-12 h-12 mx-auto opacity-30 mb-3" />
@@ -1173,7 +1159,7 @@ function EtapeListInner() {
                         </td>
                       </tr>
                     ) : (
-                      filteredEtapes.map((etape, index) => (
+                      sortedEtapes.map((etape, index) => (
                         <LigneEtape
                           key={etape.id}
                           etape={etape}

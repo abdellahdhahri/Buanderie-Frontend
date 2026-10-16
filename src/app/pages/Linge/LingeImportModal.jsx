@@ -42,16 +42,19 @@ const ETATS = {
   MANQUANT: { label: 'Manquant', color: '#b91c1c', bg: '#fecaca' },
 };
 
-const FAMILLE_TO_CATEGORIE = {
-  18: 'DRAP',
-  19: 'TAIE_OREILLER',
-  20: 'SERVIETTE_BAIN',
-  21: 'SERVIETTE_VISAGE',
-  22: 'PEIGNOIR',
-  23: 'NAPPE',
-  24: 'SERVIETTE_TABLE',
-  25: 'UNIFORME',
-};
+const CATEGORIES = [
+  { value: 'DRAP', label: 'Drap' },
+  { value: 'TAIE_OREILLER', label: "Taie d'oreiller" },
+  { value: 'COUETTE', label: 'Couette' },
+  { value: 'CHAMP_OPERATOIRE', label: 'Champ opératoire' },
+  { value: 'SERVIETTE_BAIN', label: 'Serviette de bain' },
+  { value: 'SERVIETTE_VISAGE', label: 'Serviette visage' },
+  { value: 'PEIGNOIR', label: 'Peignoir' },
+  { value: 'NAPPE', label: 'Nappe' },
+  { value: 'SERVIETTE_TABLE', label: 'Serviette de table' },
+  { value: 'UNIFORME', label: 'Uniforme' },
+  { value: 'AUTRE', label: 'Autre' },
+];
 
 
 const normalizeLinge = (raw) => {
@@ -61,12 +64,13 @@ const normalizeLinge = (raw) => {
     designation: raw.Designation ?? raw.designation ?? 'N/A',
     codeBarre: raw.CodeBarre ?? raw.codeBarre ?? '',
     etatActif: raw.EtatActif ?? raw.etatActif ?? 0,
-    etat: (raw.EtatActif === 0) ? 'PROPRE' : 'HORS_SERVICE',
+    etat: (raw.EtatActif ?? raw.etatActif) === 0 ? 'PROPRE' : 'HORS_SERVICE',
     prestataireArticleId: raw.PrestataireArticleId ?? raw.prestataireArticleId ?? null,
     articleFamilleId: raw.ArticleFamilleId ?? raw.articleFamilleId ?? null,
     categorie:
-      FAMILLE_TO_CATEGORIE[raw.ArticleFamilleId] ||
-      raw.categorie ||
+      raw.CategorieSuggeree ??
+      raw.categorieSuggeree ??
+      raw.categorie ??
       'AUTRE',
     numeroSerie: raw.NumeroSerie ?? raw.numeroSerie ?? null,
     serviceId: raw.ServiceId ?? raw.serviceId ?? null,
@@ -126,13 +130,11 @@ export const LingeImportModal = () => {
     }
   }, [isImportModalOpen]);
 
-  // ✅ Normalisation des linges dès qu'ils arrivent du contexte
   const normalizedLinges = useMemo(
     () => (lingesToImport || []).map(normalizeLinge).filter(Boolean),
     [lingesToImport]
   );
 
-  // ✅ Filtrage sur les champs normalisés
   const filteredLinges = useMemo(() => {
     return normalizedLinges.filter((l) => {
       const matchSearch =
@@ -147,7 +149,6 @@ export const LingeImportModal = () => {
     });
   }, [normalizedLinges, searchTerm, filterCategorie]);
 
-  // ─── Badge état ─────────────────────────────────────────────────────────
   const getEtatBadge = (etat) => {
     const config = ETATS[etat] || {
       label: etat || 'Inconnu',
@@ -164,9 +165,14 @@ export const LingeImportModal = () => {
     );
   };
 
+  const getCategorieLabel = (categorie) => {
+    const config = CATEGORIES.find((c) => c.value === categorie);
+    return t(`categories.${categorie}`, config ? config.label : categorie || 'AUTRE');
+  };
+
   const getServiceName = (serviceId) => {
     if (!serviceId) return t('linge.unassigned');
-    const service = services.find((s) => s.id === serviceId);
+    const service = services.find((s) => String(s.id) === String(serviceId));
     return service ? service.code || service.nom : t('linge.unassigned');
   };
 
@@ -176,23 +182,22 @@ export const LingeImportModal = () => {
     return porteur ? `${porteur.prenom} ${porteur.nom}` : t('linge.unassigned');
   };
 
-  // ─── Sélection ──────────────────────────────────────────────────────────
   const isAllSelected =
     filteredLinges.length > 0 &&
     filteredLinges.every((l) =>
-      selectedImportLinges.some((s) => s.id === l.id)
+      selectedImportLinges.some((s) => (s.Id ?? s.id) === l.id)
     );
 
   const handleSelectAll = () => {
     if (isAllSelected) {
       filteredLinges.forEach((l) => {
-        if (selectedImportLinges.some((s) => s.id === l.id)) {
+        if (selectedImportLinges.some((s) => (s.Id ?? s.id) === l.id)) {
           toggleImportSelection(l.id);
         }
       });
     } else {
       filteredLinges.forEach((l) => {
-        if (!selectedImportLinges.some((s) => s.id === l.id)) {
+        if (!selectedImportLinges.some((s) => (s.Id ?? s.id) === l.id)) {
           toggleImportSelection(l.id);
         }
       });
@@ -203,7 +208,6 @@ export const LingeImportModal = () => {
     setSelectedServiceId(serviceId);
   };
 
-  // ─── Import ─────────────────────────────────────────────────────────────
   const handleImport = async () => {
     if (selectedImportLinges.length === 0) {
       Swal.fire({
@@ -229,11 +233,16 @@ export const LingeImportModal = () => {
       return;
     }
 
-    const payload = selectedImportLinges.map((item) => ({
-      id: item.id,
-      categorie: item.categorie || 'AUTRE',
-      serviceId: parseInt(selectedServiceId),
-    }));
+    const payload = selectedImportLinges.map((item) => {
+      const normalized = normalizeLinge(item);
+      const affiche = normalizedLinges.find((l) => l.id === normalized.id);
+      const categorie = affiche?.categorie ?? normalized.categorie;
+      return {
+        id: normalized.id,
+        categorie: categorie && categorie !== 'AUTRE' ? categorie : null,
+        serviceId: parseInt(selectedServiceId),
+      };
+    });
 
     try {
       await importLinges(payload);
@@ -259,17 +268,16 @@ export const LingeImportModal = () => {
       isOpen={isImportModalOpen}
       onClose={() => setIsImportModalOpen(false)}
       title={t('linge.import_linens')}
+      variant="import"
       size="xl"
     >
       <div className="space-y-4">
-        {/* Info */}
         <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
           <p className="text-sm font-medium text-slate-700">
             ⚡ {t('linge.import_info')}
           </p>
         </div>
 
-        {/* Sélection du service */}
         <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
           <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
             <Building className="w-4 h-4" />
@@ -303,7 +311,6 @@ export const LingeImportModal = () => {
           )}
         </div>
 
-        {/* Barre de recherche et filtres */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -322,15 +329,11 @@ export const LingeImportModal = () => {
             className="px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="all">{t('common.all_categories')}</option>
-            <option value="DRAP">{t('categories.DRAP')}</option>
-            <option value="TAIE_OREILLER">{t('categories.TAIE_OREILLER')}</option>
-            <option value="SERVIETTE_BAIN">{t('categories.SERVIETTE_BAIN')}</option>
-            <option value="SERVIETTE_VISAGE">{t('categories.SERVIETTE_VISAGE')}</option>
-            <option value="PEIGNOIR">{t('categories.PEIGNOIR')}</option>
-            <option value="NAPPE">{t('categories.NAPPE')}</option>
-            <option value="SERVIETTE_TABLE">{t('categories.SERVIETTE_TABLE')}</option>
-            <option value="UNIFORME">{t('categories.UNIFORME')}</option>
-            <option value="AUTRE">{t('categories.AUTRE')}</option>
+            {CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {getCategorieLabel(c.value)}
+              </option>
+            ))}
           </select>
 
           <Button
@@ -362,7 +365,6 @@ export const LingeImportModal = () => {
           </Button>
         </div>
 
-        {/* Compteurs */}
         <div className="flex justify-between items-center text-sm text-slate-500">
           <span>
             {filteredLinges.length} {t('common.items_found')}
@@ -374,7 +376,6 @@ export const LingeImportModal = () => {
           </span>
         </div>
 
-        {/* Tableau */}
         <div className="border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -431,7 +432,7 @@ export const LingeImportModal = () => {
                 ) : (
                   filteredLinges.map((linge) => {
                     const isSelected = selectedImportLinges.some(
-                      (s) => s.id === linge.id
+                      (s) => (s.Id ?? s.id) === linge.id
                     );
                     return (
                       <tr
@@ -465,10 +466,7 @@ export const LingeImportModal = () => {
                         </td>
                         <td className="px-3 py-2">
                           <Badge variant="outline" className="text-xs">
-                            {t(
-                              `categories.${linge.categorie}`,
-                              linge.categorie || 'AUTRE'
-                            )}
+                            {getCategorieLabel(linge.categorie)}
                           </Badge>
                         </td>
                         <td className="px-3 py-2">{getEtatBadge(linge.etat)}</td>
@@ -497,7 +495,6 @@ export const LingeImportModal = () => {
           </div>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between pt-4 border-t border-slate-200">
             <div className="text-sm text-slate-500">
@@ -525,7 +522,6 @@ export const LingeImportModal = () => {
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex justify-between items-center pt-4 border-t border-slate-200">
           <div className="text-sm text-slate-500">
             {selectedImportLinges.length} {t('common.selected')}

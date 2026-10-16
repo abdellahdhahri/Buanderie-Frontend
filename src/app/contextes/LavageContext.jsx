@@ -274,8 +274,13 @@ export function LavageProvider({ children }) {
     setLoadingSacs(true);
     try {
       const r = await fetch(`${API}/sacs-infectes/non-laves`);
-      if (r.ok) setSacsInfectes(await r.json());
+      if (r.ok) {
+        const data = await r.json();
+        setSacsInfectes(data);
+        return data;
+      }
     } catch {} finally { setLoadingSacs(false); }
+    return [];
   }, []);
 
   const scannerSacInfecte = useCallback(async (code) => {

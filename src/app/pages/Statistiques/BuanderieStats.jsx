@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { fetchLingesIncomplets } from "../../services/analyseService";
+import { useSetting } from "../../utils/appSettings";
 import { useTranslation } from "react-i18next";
 import {
   FaSync, FaBell, FaArrowUp, FaArrowDown,
@@ -10,6 +13,7 @@ import {
   FaLayerGroup,
 } from "react-icons/fa";
 import { Card, CardContent } from "../../components/ui/card";
+import { useChartTheme } from "../../hooks/useIsDark";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
@@ -25,6 +29,14 @@ import {
   LineElement
 } from 'chart.js';
 import { Pie, Bar, Doughnut } from 'react-chartjs-2';
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import {
+  Shirt, PackageCheck, RefreshCcw, Truck, Droplets, ClipboardX, Hourglass, Activity, ArrowUpRight,
+  GripVertical, LayoutGrid,
+} from "lucide-react";
+import { DraggableGrid } from "./components/DraggableGrid";
+import { usePersistentOrder } from "./components/usePersistentOrder";
+import "./stats-dashboard.css";
 
 ChartJS.register(
   ArcElement,
@@ -48,6 +60,10 @@ const COLORS = {
   danger: "#ef4444",
   purple: "#8b5cf6",
 };
+
+// Ordre par défaut des cartes (identifiants stables, utilisés pour la disposition mémorisée)
+const KPI_IDS = ["actifs", "disponibles", "circuit", "collectes", "lavages", "incomplets", "finDeVie", "infection"];
+const WIDGET_IDS = ["activite", "repartitionLinges", "stock", "etatMachines", "repartMachines", "alertes", "collectes", "agents"];
 
 const CHART_COLORS = [
   '#0d9488', '#0ea5e9', '#8b5cf6', '#ec4899', '#f59e0b',
@@ -77,18 +93,20 @@ function useDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [kpisRes, stockRes, alertesRes, machinesRes, collectesRes] = await Promise.all([
+      const [kpisRes, stockRes, alertesRes, machinesRes, collectesRes, incompletsRes] = await Promise.all([
         fetch(`${API_URL}/api/dashboard/kpis`).then(r => r.ok ? r.json() : {}),
         fetch(`${API_URL}/api/dashboard/stock`).then(r => r.ok ? r.json() : []),
         fetch(`${API_URL}/api/dashboard/alertes`).then(r => r.ok ? r.json() : {}),
         fetch(`${API_URL}/api/dashboard/analytique`).then(r => r.ok ? r.json() : {}),
         fetch(`${API_URL}/api/historique/collectes`).then(r => r.ok ? r.json() : []),
+        fetchLingesIncomplets({ page: 0, size: 1 }).catch(() => null),
       ]);
 
       const dist = machinesRes?.distributionEtats || {};
 
       setData({
         kpis: kpisRes,
+        incomplets: incompletsRes,
         stock: Array.isArray(stockRes) ? stockRes : [],
         alertes: alertesRes,
         machines: machinesRes?.machines || [],
@@ -105,55 +123,62 @@ function useDashboard() {
     }
   }, []);
 
+  // Fréquence : Paramètres › Rafraîchissement
+  const refreshSeconds = Number(useSetting("refresh.statsSeconds")) || 30;
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, refreshSeconds * 1000);
     return () => clearInterval(interval);
-  }, [fetchData]);
+  }, [fetchData, refreshSeconds]);
 
   return { data, loading, error, lastUpdate, refresh: fetchData };
 }
 
-function KpiCard({ label, value, icon, color, trend, trendValue }) {
+function KpiCard({ label, value, icon: Icon, color, trend, trendValue, onClick, hint }) {
   const isUp = trend === 'up';
+  // Carte cliquable : ouvre l'écran de détail correspondant
+  const clickable = typeof onClick === "function";
   return (
-    <Card className="hover:shadow-lg transition-all duration-300 border-slate-100 hover:border-teal-200">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{label}</p>
-            <p className="text-xl font-bold text-slate-800 mt-0.5">{value}</p>
-            {trend && (
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className={`text-[10px] font-medium ${isUp ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {isUp ? <FaArrowUp size={8} /> : <FaArrowDown size={8} />}
-                  {trendValue}
-                </span>
-                <span className="text-[8px] text-slate-400">vs hier</span>
-              </div>
-            )}
-          </div>
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: `${color}12`, color }}
-          >
-            <span className="text-base">{icon}</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div
+      className={`kpi-tile${clickable ? " is-clickable" : ""}`}
+      style={{ "--kpi-color": color }}
+      {...(clickable ? {
+        role: "button",
+        tabIndex: 0,
+        title: hint,
+        onClick,
+        onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } },
+      } : {})}
+    >
+      {clickable && <span className="kpi-tile__go" aria-hidden="true"><ArrowUpRight className="h-4 w-4" /></span>}
+      <div className="kpi-tile__top">
+        <span className="kpi-tile__icon"><Icon className="h-[19px] w-[19px]" strokeWidth={2} /></span>
+        <span className="kpi-tile__label">{label}</span>
+      </div>
+      <div className="kpi-tile__bottom">
+        <span className="kpi-tile__value">{value}</span>
+        {trend && (
+          <span className={`kpi-tile__trend ${isUp ? 'is-up' : 'is-down'}`}>
+            {isUp ? <FaArrowUp size={8} /> : <FaArrowDown size={8} />}
+            {trendValue}
+            <small>vs hier</small>
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
 // ─── PIE CHART ─────────────────────────────────────────────────────────────
 function PieChartComponent({ data, title, labels }) {
+  const ct = useChartTheme(); // couleurs des graphiques selon le thème
   const chartData = {
     labels: labels || ['Collecte', 'Lavage', 'Séchage', 'Stock', 'Autre'],
     datasets: [
       {
         data: data || [30, 25, 20, 15, 10],
         backgroundColor: CHART_COLORS.slice(0, 5),
-        borderColor: '#ffffff',
+        borderColor: ct.segmentBorder,
         borderWidth: 2,
       },
     ],
@@ -170,7 +195,7 @@ function PieChartComponent({ data, title, labels }) {
           usePointStyle: true,
           pointStyle: 'circle',
           font: { size: 9, weight: '500' },
-          color: '#64748b'
+          color: ct.legend
         }
       }
     },
@@ -196,6 +221,7 @@ function PieChartComponent({ data, title, labels }) {
 
 // ─── BAR CHART ─────────────────────────────────────────────────────────────
 function BarChartComponent({ data, title, labels }) {
+  const ct = useChartTheme(); // couleurs des graphiques selon le thème
   const chartData = {
     labels: labels || ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
     datasets: [
@@ -221,12 +247,12 @@ function BarChartComponent({ data, title, labels }) {
       y: {
         beginAtZero: true,
         grid: {
-          color: '#f1f5f9',
+          color: ct.grid,
           drawBorder: false,
         },
         ticks: {
           font: { size: 8 },
-          color: '#94a3b8',
+          color: ct.ticks,
         }
       },
       x: {
@@ -235,7 +261,7 @@ function BarChartComponent({ data, title, labels }) {
         },
         ticks: {
           font: { size: 8 },
-          color: '#94a3b8',
+          color: ct.ticks,
         }
       }
     },
@@ -437,6 +463,7 @@ function EtatMachines({ machines }) {
 
 // ─── RÉPARTITION DES MACHINES ─────────────────────────────────────────────
 function RepartitionMachines({ machines }) {
+  const ct = useChartTheme(); // couleurs des graphiques selon le thème
   const { t } = useTranslation();
 
   if (!machines || machines.length === 0) {
@@ -465,7 +492,7 @@ function RepartitionMachines({ machines }) {
       {
         data: [stats.DISPONIBLE, stats.EN_COURS, stats.EN_MAINTENANCE, stats.HORS_SERVICE],
         backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
-        borderColor: '#ffffff',
+        borderColor: ct.segmentBorder,
         borderWidth: 2,
       },
     ],
@@ -482,7 +509,7 @@ function RepartitionMachines({ machines }) {
           usePointStyle: true,
           pointStyle: 'circle',
           font: { size: 9, weight: '500' },
-          color: '#64748b'
+          color: ct.legend
         }
       }
     },
@@ -703,8 +730,14 @@ const num = (n) => (n ?? 0).toLocaleString("fr-FR");
 // ─── PAGE PRINCIPALE ───────────────────────────────────────────────────────
 export default function BuanderieStats() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { data, loading, error, lastUpdate, refresh } = useDashboard();
+  // Cartes masquées : Paramètres › Tableau de bord
+  const hiddenKpis = useSetting("dashboard.hiddenKpis") || [];
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const kpiLayout = usePersistentOrder("stats.layout.kpis", KPI_IDS);
+  const widgetLayout = usePersistentOrder("stats.layout.widgets", WIDGET_IDS);
+  const resetLayout = () => { kpiLayout.reset(); widgetLayout.reset(); };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -727,14 +760,51 @@ export default function BuanderieStats() {
   const barData = [12, 19, 15, 22, 18, 14, 8];
   const barLabels = [t('dashboard.mon'), t('dashboard.tue'), t('dashboard.wed'), t('dashboard.thu'), t('dashboard.fri'), t('dashboard.sat'), t('dashboard.sun')];
 
+  // Cartes KPI : l'ordre d'affichage est géré par kpiLayout
+  const kpiItems = [
+    { id: "actifs",      node: <KpiCard label={t('dashboard.active_linens')} value={num(kpis.lingesActifs)} icon={Shirt} color={COLORS.primary} trend="up" trendValue="+12%" /> },
+    { id: "disponibles", node: <KpiCard label={t('dashboard.available_linens')} value={num(kpis.lingesDisponibles)} icon={PackageCheck} color={COLORS.success} trend="up" trendValue="+5%" /> },
+    { id: "circuit",     node: <KpiCard label={t('dashboard.in_circuit')} value={num(kpis.lingesEnCircuit)} icon={RefreshCcw} color={COLORS.info} trend="down" trendValue="-3%" /> },
+    { id: "collectes",   node: <KpiCard label={t('dashboard.collections_today')} value={num(kpis.collectesAujourdhui)} icon={Truck} color={COLORS.purple} /> },
+    { id: "lavages",     node: <KpiCard label={t('dashboard.washes_today')} value={num(kpis.lavagesAujourdhui)} icon={Droplets} color="#3b82f6" /> },
+    { id: "incomplets",  node: (
+      <KpiCard
+        label={t('dashboard.incomplete_linens', 'Linges incomplets')}
+        value={data?.incomplets ? num(data.incomplets.total) : '—'}
+        icon={ClipboardX}
+        color={COLORS.warning}
+        hint={t('dashboard.incomplete_linens_hint', 'Voir les linges incomplets')}
+        onClick={() => navigate('/linges?incomplets')}
+      />
+    ) },
+    { id: "finDeVie",    node: <KpiCard label={t('dashboard.end_of_life')} value={num(kpis.lingesProcheFin)} icon={Hourglass} color={COLORS.danger} /> },
+    { id: "infection",   node: <KpiCard label={t('dashboard.infection_rate')} value={kpis.tauxInfectionMois != null ? `${kpis.tauxInfectionMois}%` : '—'} icon={Activity} color={COLORS.warning} /> },
+  ];
+
+  // Widgets : span = nombre de colonnes occupées sur grand écran
+  const widgetItems = [
+    { id: "activite", span: 2, node: <BarChartComponent data={barData} labels={barLabels} title={t('dashboard.daily_activity')} /> },
+    { id: "repartitionLinges", node: (
+      <PieChartComponent
+        data={pieValues.length > 0 ? pieValues : [30, 25, 20, 15, 10]}
+        labels={pieLabels.length > 0 ? pieLabels : [t('dashboard.collection'), t('dashboard.washing'), t('dashboard.drying'), t('dashboard.stock'), t('dashboard.other')]}
+        title={t('dashboard.linen_distribution')}
+      />
+    ) },
+    { id: "stock",          node: <StockServices services={data?.stock || []} /> },
+    { id: "etatMachines",   node: <EtatMachines machines={machines} /> },
+    { id: "repartMachines", node: <RepartitionMachines machines={machines} /> },
+    { id: "alertes",        node: <AlertesWidget alertes={data?.alertes || {}} /> },
+    { id: "collectes",      node: <CollectesRecentes collectes={data?.collectes || []} /> },
+    { id: "agents",         node: <AgentsActifs agents={data?.agents || []} /> },
+  ];
+
   return (
     <div className="p-6">
       {/* ─── HEADER ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-lg shadow-teal-500/20">
-            <FaTshirt size={18} />
-          </div>
+          <PageHeaderIcon size={40} />
           <div>
             <h1 className="text-xl font-bold text-slate-800">{t('dashboard.title')}</h1>
             <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
@@ -745,6 +815,17 @@ export default function BuanderieStats() {
             </p>
           </div>
         </div>
+        <div className="flex items-center gap-3">
+        <span className="stats-layout-hint hidden md:inline-flex">
+          <GripVertical className="h-3.5 w-3.5" />
+          {t('dashboard.drag_hint', 'Glissez les cartes pour les réorganiser')}
+        </span>
+        {(kpiLayout.isCustom || widgetLayout.isCustom) && (
+          <Button variant="ghost" size="sm" onClick={resetLayout} className="h-8 gap-1.5 text-[12px]">
+            <LayoutGrid className="h-3.5 w-3.5" />
+            {t('dashboard.reset_layout', 'Réinitialiser la disposition')}
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -755,6 +836,7 @@ export default function BuanderieStats() {
           <FaSync className={isRefreshing ? 'animate-spin' : ''} size={10} />
           {t('dashboard.refresh')}
         </Button>
+        </div>
       </div>
 
       {/* ─── ERREUR ─────────────────────────────────────────────────────── */}
@@ -765,56 +847,25 @@ export default function BuanderieStats() {
         </div>
       )}
 
-      {/* ─── KPI ────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
-        <KpiCard label={t('dashboard.active_linens')} value={num(kpis.lingesActifs)} icon="🧺" color={COLORS.primary} trend="up" trendValue="+12%" />
-        <KpiCard label={t('dashboard.available_linens')} value={num(kpis.lingesDisponibles)} icon="📦" color={COLORS.success} trend="up" trendValue="+5%" />
-        <KpiCard label={t('dashboard.in_circuit')} value={num(kpis.lingesEnCircuit)} icon="🔄" color={COLORS.info} trend="down" trendValue="-3%" />
-        <KpiCard label={t('dashboard.collections_today')} value={num(kpis.collectesAujourdhui)} icon="🚚" color={COLORS.purple} />
-        <KpiCard label={t('dashboard.washes_today')} value={num(kpis.lavagesAujourdhui)} icon="🫧" color="#3b82f6" />
-        <KpiCard label={t('dashboard.infected_bags')} value={num(kpis.sacsInfectesEnAttente)} icon="⚠️" color={COLORS.warning} />
-        <KpiCard label={t('dashboard.end_of_life')} value={num(kpis.lingesProcheFin)} icon="🔴" color={COLORS.danger} />
-        <KpiCard label={t('dashboard.infection_rate')} value={kpis.tauxInfectionMois != null ? `${kpis.tauxInfectionMois}%` : '—'} icon="🦠" color={COLORS.warning} />
-      </div>
+      {/* ─── KPI (déplaçables) ──────────────────────────────────────────── */}
+      <DraggableGrid
+        className="stats-grid--kpi mb-5"
+        items={kpiItems.filter((k) => !hiddenKpis.includes(k.id))}
+        order={kpiLayout.order}
+        setOrder={kpiLayout.setOrder}
+        onCommit={kpiLayout.save}
+        handleLabel={t('dashboard.drag_card', 'Glisser pour déplacer')}
+      />
 
-      {/* ─── GRAPHIQUES ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        <div className="lg:col-span-2">
-          <BarChartComponent
-            data={barData}
-            labels={barLabels}
-            title={t('dashboard.daily_activity')}
-          />
-        </div>
-        <div>
-          <PieChartComponent
-            data={pieValues.length > 0 ? pieValues : [30, 25, 20, 15, 10]}
-            labels={pieLabels.length > 0 ? pieLabels : [t('dashboard.collection'), t('dashboard.washing'), t('dashboard.drying'), t('dashboard.stock'), t('dashboard.other')]}
-            title={t('dashboard.linen_distribution')}
-          />
-        </div>
-      </div>
-
-      {/* ─── GRILLE SECONDAIRE ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Stock par service */}
-        <div>
-          <StockServices services={data?.stock || []} />
-        </div>
-
-        {/* Machines + État */}
-        <div className="space-y-4">
-          <EtatMachines machines={machines} />
-          <RepartitionMachines machines={machines} />
-        </div>
-
-        {/* Alertes, Collectes, Agents */}
-        <div className="space-y-4">
-          <AlertesWidget alertes={data?.alertes || {}} />
-          <CollectesRecentes collectes={data?.collectes || []} />
-          <AgentsActifs agents={data?.agents || []} />
-        </div>
-      </div>
+      {/* ─── WIDGETS (déplaçables) ──────────────────────────────────────── */}
+      <DraggableGrid
+        className="stats-grid--widgets"
+        items={widgetItems}
+        order={widgetLayout.order}
+        setOrder={widgetLayout.setOrder}
+        onCommit={widgetLayout.save}
+        handleLabel={t('dashboard.drag_card', 'Glisser pour déplacer')}
+      />
 
       <div className="mt-4 pt-3 border-t border-slate-200 flex justify-between text-[8px] text-slate-400">
         <span>🔄 {t('dashboard.auto_update')} · 30s</span>

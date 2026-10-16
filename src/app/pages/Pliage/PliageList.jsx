@@ -6,31 +6,37 @@ import { FaRss, FaBarcode, FaUser, FaCheckCircle, FaTimes, FaExclamationTriangle
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import DialoguePliage from "../../components/dialogues/DialoguePliage";
+import DialogueControleQualite from "../../components/dialogues/DialogueControleQualite";
+import DialogueRangementService from "../../components/dialogues/DialogueRangementService";
 import { PliageProvider, usePliage } from "../../contextes/PliageContext";
-import ModeToggle from "../../components/utils/shared/ModeToggle";
 import EtapesStepper from "../../components/utils/shared/EtapesStepper";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import { getAgent, isAgentConnected } from "../../services/agentService";
 import "../Linge/WorkflowList.css";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 
 function PliageInner() {
   const { t } = useTranslation();
 
-  const { getLingeByCode, isRfidMode, setIsRfidMode } = useContext(LingeContext);
+  const { getLingeByCode, isRfidMode } = useContext(LingeContext);
   const navigate = useNavigate();
   const {
     agent: agentFromContext,
     dialogueItem,
+    rangementItem,
     loading,
+    isConfirming,
     scanAgent,
     deconnecterAgent,
     scanPliage,
-    fermerDialogue
+    confirmerControle,
+    fermerDialogue,
+    fermerRangement
   } = usePliage();
 
   const [scanValue, setScanValue] = useState("");
-  const [mode, setMode] = useState(isRfidMode ? "RFID" : "BARCODE");
+  // Mode de lecture réglé dans Paramètres › Lecture / Scan
+  const mode = isRfidMode ? "RFID" : "BARCODE";
   const [agent, setAgent] = useState(null);
 
   // ✅ Récupérer l'agent depuis localStorage
@@ -59,11 +65,6 @@ function PliageInner() {
     }
   }, [agentFromContext]);
 
-  const handleModeChange = (m) => {
-    setMode(m);
-    setIsRfidMode(m === "RFID");
-  };
-
   const getAgentFullName = () => {
     if (!agent) return '';
     return agent.nomPrenom || agent.nom || agent.matricule;
@@ -71,6 +72,8 @@ function PliageInner() {
 
   const handleScan = async (code) => {
     setScanValue("");
+    if (dialogueItem) return; // contrôle qualité en cours
+    if (rangementItem) fermerRangement(); // scan du linge suivant
     if (!agent) {
       if (scanAgent) {
         await scanAgent(code);
@@ -89,12 +92,22 @@ function PliageInner() {
 
   return (
     <div className="collecte-container">
+      {/* Après pliage : contrôle qualité, puis consigne de rangement sur l'étagère du service */}
       {dialogueItem && (
-        <DialoguePliage
+        <DialogueControleQualite
+          key={dialogueItem.id ?? dialogueItem.codeBarre}
           item={dialogueItem}
           agent={agent}
-          onFermer={fermerDialogue}
-          onSuccess={() => { fermerDialogue(); }}
+          onConfirmer={confirmerControle}
+          onClose={fermerDialogue}
+          isLoading={isConfirming || loading}
+        />
+      )}
+      {rangementItem && !dialogueItem && (
+        <DialogueRangementService
+          key={rangementItem.id ?? rangementItem.codeBarre}
+          item={rangementItem}
+          onClose={fermerRangement}
         />
       )}
 
@@ -106,33 +119,7 @@ function PliageInner() {
           gap: "16px",
           marginBottom: "8px"
         }}>
-          <div style={{
-            width: "52px",
-            height: "52px",
-            borderRadius: "16px",
-            background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            boxShadow: "0 4px 16px rgba(139, 92, 246, 0.25)"
-          }}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-          </div>
+          <PageHeaderIcon size={52} />
           <div>
             <h1 style={{
               fontSize: "28px",
@@ -210,7 +197,6 @@ function PliageInner() {
             )}
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <ModeToggle mode={mode} onChange={handleModeChange} />
             <Button
               variant="outline"
               size="sm"
@@ -259,7 +245,7 @@ function PliageInner() {
               borderColor={getBorderColor()}
               keepFocus={true}
               autoDebounce={true}
-              disabled={!agent}
+              disabled={!agent || !!dialogueItem}
             />
           </CardContent>
         </Card>

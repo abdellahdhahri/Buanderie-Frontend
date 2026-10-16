@@ -652,3 +652,237 @@
     color: #94a3b8;
     font-style: italic;
 }
+/* ==========================================================================
+   TABLEAU PREMIUM (.premium-table) — en-têtes triables, lignes aérées,
+   accent teal du module. Utilisé avec SortableHeader + useSortableData.
+   Les sélecteurs .main-content … priment sur le style global des tableaux.
+   ========================================================================== */
+.premium-table-wrap {
+  overflow-x: auto;
+  border-radius: 20px;
+}
+
+.main-content .premium-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13.5px;
+}
+
+/* En-tête */
+.main-content .premium-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0 16px;
+  height: 48px;
+  background: linear-gradient(180deg, #f6fbfa 0%, #eef8f6 100%);
+  border-bottom: 1px solid rgba(13, 148, 136, 0.16);
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.main-content .premium-table thead th:first-child { border-top-left-radius: 20px; }
+.main-content .premium-table thead th:last-child  { border-top-right-radius: 20px; }
+
+/* Bouton de tri */
+.premium-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  margin: 0 -8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.premium-table__sort:hover { background: rgba(13, 148, 136, 0.08); color: #0f766e; }
+.premium-table__sort:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.25); }
+.premium-table__sort.is-sorted { color: #0f766e; }
+
+.premium-table__arrows {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.premium-table__arrows svg {
+  width: 9px;
+  height: 5px;
+  fill: none;
+  stroke: #cbd5e1;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.15s ease, transform 0.15s ease;
+}
+.premium-table__sort:hover .premium-table__arrows svg { stroke: #94a3b8; }
+.premium-table__arrows svg.is-active { stroke: #0d9488 !important; transform: scale(1.15); }
+
+/* Corps */
+.main-content .premium-table tbody td {
+  padding: 14px 16px;
+  color: #334155;
+  font-size: 13.5px;
+  border-bottom: 1px solid #f1f5f9;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+.main-content .premium-table tbody tr:last-child td { border-bottom: none; }
+
+.main-content .premium-table tbody tr {
+  cursor: pointer;
+}
+.main-content .premium-table tbody tr:hover td {
+  background: rgba(20, 184, 166, 0.045);
+}
+/* Accent teal à gauche au survol / sélection */
+.main-content .premium-table tbody tr td:first-child {
+  box-shadow: inset 3px 0 0 transparent;
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+.main-content .premium-table tbody tr:hover td:first-child {
+  box-shadow: inset 3px 0 0 rgba(20, 184, 166, 0.45);
+}
+.main-content .premium-table tbody tr.is-selected td {
+  background: rgba(20, 184, 166, 0.09) !important;
+}
+.main-content .premium-table tbody tr.is-selected td:first-child {
+  box-shadow: inset 3px 0 0 #0d9488;
+}
+
+/* Éléments de cellule */
+.premium-table__primary { font-weight: 600; color: #0f172a; }
+.premium-table__code {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.premium-table__muted { color: #94a3b8; font-size: 12px; }
+
+/* Jauge de remplissage (poids / capacité) */
+.premium-table__gauge {
+  width: 100%;
+  max-width: 140px;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 99px;
+  background: #eef2f6;
+  overflow: hidden;
+}
+.premium-table__gauge > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2dd4bf, #0d9488);
+  transition: width 0.4s ease;
+}
+.premium-table__gauge.is-high > span { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+.premium-table__gauge.is-full > span { background: linear-gradient(90deg, #f87171, #ef4444); }
+
+/* Boutons d'action discrets, plus visibles au survol de la ligne */
+.premium-table__actions { display: inline-flex; align-items: center; gap: 4px; }
+.premium-table__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.premium-table tbody tr:hover .premium-table__icon-btn { color: #64748b; }
+.premium-table__icon-btn:hover { background: #f1f5f9; color: #0f766e !important; }
+.premium-table__icon-btn.is-danger:hover { background: #fef2f2; color: #dc2626 !important; }
+.premium-table__icon-btn.is-open { background: rgba(20, 184, 166, 0.12); color: #0d9488; }
+
+/* ── Variante compacte (tableaux dans un panneau) ─────────────────────────── */
+.premium-table-wrap--bordered {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+}
+.main-content .premium-table--compact thead th { height: 40px; padding: 0 12px; font-size: 10.5px; }
+.main-content .premium-table--compact thead th:first-child { border-top-left-radius: 16px; }
+.main-content .premium-table--compact thead th:last-child  { border-top-right-radius: 16px; }
+.main-content .premium-table--compact tbody td { padding: 10px 12px; font-size: 13px; }
+
+/* ── Pastilles de cellule ─────────────────────────────────────────────────── */
+.premium-table__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #f1f5f9;
+  color: #475569;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+.premium-table__chip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+}
+.premium-table__chip--sale    { background: #fff7ed; color: #c2410c; box-shadow: inset 0 0 0 1px rgba(234, 88, 12, 0.18); }
+.premium-table__chip--propre  { background: #ecfdf5; color: #047857; box-shadow: inset 0 0 0 1px rgba(5, 150, 105, 0.18); }
+.premium-table__chip--neutral { background: #eff6ff; color: #1d4ed8; box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.15); }
+
+/* Numéro d'ordre dans un cercle */
+.premium-table__order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 99px;
+  background: linear-gradient(135deg, #f0fdfa, #ccfbf1);
+  color: #0f766e;
+  font-weight: 700;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 0 0 1px rgba(13, 148, 136, 0.2);
+}
+
+/* Avatar d'initiales */
+.premium-table__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #2dd4bf, #0d9488);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.premium-table__index { color: #94a3b8; font-weight: 600; font-variant-numeric: tabular-nums; }

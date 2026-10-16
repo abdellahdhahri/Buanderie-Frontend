@@ -49,11 +49,16 @@ a {
   color: inherit
 }
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-  background: none;
-  border: none;
+/* Dans @layer base : les classes utilitaires (bg-*, border-*) doivent pouvoir
+   l'emporter. Hors couche, cette règle écrasait le fond et la bordure de tous
+   les boutons stylés avec Tailwind. */
+@layer base {
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    background: none;
+    border: none;
+  }
 }
 
 ::-webkit-scrollbar {
@@ -280,8 +285,8 @@ button {
 
 .nav-item--icon-only {
   justify-content: center;
-  width: 50px;
-  height: 50px;
+  width: 54px;
+  height: 54px;
   padding: 0;
   color: rgba(255, 255, 255, .45);
   border-radius: 12px;
@@ -301,9 +306,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
   color: #6b7280;
   flex-shrink: 0;
   transition: background var(--transition), color var(--transition);
@@ -316,9 +321,27 @@ button {
   border-radius: 0;
 }
 
-.nav-icon-svg {
-  width: 35px;
-  height: 25px;
+/* Icônes du menu (sidebarIcons.jsx) — :where() pour rester surchargeable */
+:where(.sidebar-icon) {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.nav-item--icon-only .sidebar-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.nav-item:hover .sidebar-icon,
+.submenu__link:hover .sidebar-icon {
+  transform: scale(1.07);
+}
+
+.nav-popup__card-icon .sidebar-icon {
+  width: 30px;
+  height: 30px;
 }
 
 /* Couleur de l'icône */
@@ -334,10 +357,6 @@ button {
 }
 
 /* Version icône uniquement (sidebar fermée) */
-.sidebar--closed .nav-item--suivi {
-  background: white !important;
-  color: var(--color-suivi) !important;
-}
 
 /* Chemin de la flèche */
 .nav-item__chevron--suivi {
@@ -348,34 +367,9 @@ button {
   transition: transform var(--transition);
 }
 
-/* Sous-menu */
-.submenu__link--suivi {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: black;
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
-  background-color: var(--color-suivi-bg);
-}
 
-.submenu__link--suivi:hover {
-  background: var(--color-suivi-hover);
-  color: var(--color-text);
-  border-color: #94a3b8;
-}
 
-.submenu__link--suivi.submenu__link--active {
-  background: var(--color-suivi);
-  color: white;
-}
 
-.submenu__link--suivi .submenu__link-icon--suivi {
-  background: var(--color-suivi-bg);
-  color: var(--color-suivi);
-}
 
 /* Popup (sidebar fermée) */
 .nav-popup__card-icon--suivi {
@@ -392,29 +386,10 @@ button {
 .nav-popup__card:hover .nav-popup__card-icon--suivi {
   background: var(--color-suivi-hover);
 }
-.sidebar--closed .nav-item--rh {
-  background: white !important;
-}
 
-.sidebar--closed .nav-item--presences {
-  background: white !important;
-  color: var(--color-presences) !important;
-}
 
-.sidebar--closed .nav-item--paie {
-  background: white !important;
-  color: var(--color-paie) !important;
-}
 
-.sidebar--closed .nav-item--conges {
-  background: white !important;
-  color: var(--color-conges) !important;
-}
 
-.sidebar--closed .nav-item--params {
-  background: white !important;
-  color: var(--color-params) !important;
-}
 
 .nav-item--rh .nav-item__icon {
   color: var(--color-rh);
@@ -573,92 +548,17 @@ button {
   border-right-color: #1e293b;
 }
 
-.submenu {
-  overflow: hidden;
-  transition: max-height .25s ease-in-out;
-  max-height: 0;
-  border-radius: 0 0 14px 14px;
-}
+/* .submenu : voir « SOUS-MENUS » en fin de fichier */
 
-.submenu__link--rh {
-  display: block;
-  padding: 7px 10px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: black;
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
-  background-color: #eff6ff;
-}
 
-.submenu__link--rh:hover {
-  background: var(--color-bg);
-  color: var(--color-text);
-  border-color: #94a3b8;
-}
 
-.submenu__link--presences {
-  display: block;
-  padding: 7px 10px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: Black;
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
-  background-color: #fefce8;
-}
 
-.submenu__link--presences:hover {
-  background: var(--color-bg);
-  color: var(--color-text);
-  border-color: #94a3b8;
-}
 
-.submenu__link--paie {
-  display: block;
-  padding: 7px 10px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: black;
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
-  background-color: #f0fdf4;
-}
 
-.submenu__link--paie:hover {
-  background: var(--color-bg);
-  color: var(--color-text);
-  border-color: #94a3b8;
-}
 
-.submenu__link--conges {
-  display: block;
-  padding: 7px 10px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: black;
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
-  background-color: #fff7ed;
-}
 
-.submenu__link--conges:hover {
-  background: var(--color-bg);
-  color: var(--color-text);
-  border-color: #94a3b8;
-}
 
-.submenu__link--params {
-  display: block;
-  padding: 7px 10px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: black;
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
-  background-color: #faf5ff;
-}
 
-.submenu__link--params:hover {
-  background: var(--color-bg);
-  color: var(--color-text);
-  border-color: #94a3b8;
-}
 
 .navbar {
   position: fixed;
@@ -1103,35 +1003,33 @@ button {
   color: var(--color-text);
 }
 
+.navbar__breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 .navbar__breadcrumb-parent {
   font-size: 12px;
   color: var(--color-muted);
   font-weight: 500;
 }
 
-.submenu__link--rh,
-.submenu__link--presences,
-.submenu__link--paie,
-.submenu__link--conges,
-.submenu__link--params {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
 .submenu__link-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   flex-shrink: 0;
 }
 
 .submenu__link-icon svg {
-  width: 13px;
-  height: 13px;
+  width: 23px;
+  height: 23px;
 }
 
 .submenu__link-icon--rh {
@@ -1182,3 +1080,209 @@ button {
     display: flex;
   }
 }
+
+/* ==========================================================================
+   SOUS-MENUS — arborescence reliée à la section, couleur de la section,
+   ouverture fluide (hauteur automatique) et apparition en cascade
+   ========================================================================== */
+
+/* Couleur d'accent de chaque section */
+.submenu--rh       { --accent: var(--color-rh);        --accent-bg: var(--color-rh-bg);        --accent-strong: #193cc8; }
+.submenu--presences{ --accent: var(--color-presences); --accent-bg: var(--color-presences-bg); --accent-strong: #894b00; }
+.submenu--paie     { --accent: var(--color-paie);      --accent-bg: var(--color-paie-bg);      --accent-strong: #016630; }
+.submenu--conges   { --accent: var(--color-conges);    --accent-bg: var(--color-conges-bg);    --accent-strong: #9f2d00; }
+.submenu--params   { --accent: var(--color-params);    --accent-bg: var(--color-params-bg);    --accent-strong: #6e11c2; }
+.submenu--suivi    { --accent: var(--color-suivi);     --accent-bg: var(--color-suivi-bg);     --accent-strong: #0369a1; }
+
+/* Hauteur automatique : grille 0fr → 1fr (plus de liens coupés) */
+.submenu {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows .28s cubic-bezier(.4, 0, .2, 1), opacity .2s ease;
+}
+
+.submenu--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.submenu__inner {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 33px;          /* aligné sous le centre de l'icône de section (10px + 46px / 2) */
+  padding: 6px 4px 4px 14px;
+}
+
+/* Ligne verticale de l'arborescence */
+.submenu__inner::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 22px;
+  width: 1.5px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, var(--accent), color-mix(in srgb, var(--accent) 15%, transparent));
+  opacity: .45;
+}
+
+/* Lien */
+.submenu__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px 5px 5px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  text-decoration: none;
+  transition: background var(--transition), color var(--transition), transform var(--transition);
+}
+
+/* Petit trait horizontal reliant le lien à la ligne verticale */
+.submenu__link::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  width: 10px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: .35;
+}
+
+.submenu__link-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.submenu__link-icon {
+  background: var(--accent-bg);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
+  transition: background var(--transition), box-shadow var(--transition);
+}
+
+.submenu__link:hover {
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+  transform: translateX(2px);
+}
+
+.submenu__link:hover .submenu__link-icon {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 25%, transparent),
+              inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Page active */
+.submenu__link--active {
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.submenu__link--active::before {
+  opacity: 1;
+  width: 12px;
+}
+
+.submenu__link--active .submenu__link-icon {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.submenu__link--active::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* Apparition en cascade à l'ouverture */
+.submenu--open .submenu__link {
+  animation: submenuItemIn .32s cubic-bezier(.2, .8, .2, 1) both;
+  animation-delay: calc(var(--i, 0) * 35ms + 40ms);
+}
+
+@keyframes submenuItemIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Section dépliée : coins arrondis complets + chevron à droite du compteur */
+.nav-item--expanded {
+  border-radius: 10px;
+}
+
+.nav-item__count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, .75);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .08);
+  color: inherit;
+  opacity: .8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .submenu,
+  .submenu--open .submenu__link {
+    transition: none;
+    animation: none;
+  }
+}
+
+
+/* ==========================================================================
+   BARRE REPLIÉE — tuiles translucides (remplacent les tuiles blanches)
+   L'icône garde la couleur de sa section, éclaircie pour rester lisible
+   sur le dégradé bleu.
+   ========================================================================== */
+.sidebar--closed .nav-item--icon-only {
+  background: rgba(255, 255, 255, .09) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+  transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+
+.sidebar--closed .nav-item--icon-only:hover {
+  background: rgba(255, 255, 255, .17) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22), 0 6px 16px rgba(0, 0, 0, .15);
+  transform: translateY(-1px);
+}
+
+.sidebar--closed .nav-item--icon-only.nav-item--active {
+  background: rgba(255, 255, 255, .22) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35), 0 6px 18px rgba(0, 0, 0, .18);
+}
+
+/* L'icône suit la couleur de la tuile (et non plus la couleur saturée) */
+.sidebar--closed .nav-item .nav-item__icon { color: inherit; }
+
+.sidebar--closed .nav-item--rh        { color: color-mix(in srgb, var(--color-rh) 35%, #fff) !important; }
+.sidebar--closed .nav-item--presences { color: color-mix(in srgb, var(--color-presences) 45%, #fff) !important; }
+.sidebar--closed .nav-item--paie      { color: color-mix(in srgb, var(--color-paie) 45%, #fff) !important; }
+.sidebar--closed .nav-item--conges    { color: color-mix(in srgb, var(--color-conges) 45%, #fff) !important; }
+.sidebar--closed .nav-item--params    { color: color-mix(in srgb, var(--color-params) 40%, #fff) !important; }
+.sidebar--closed .nav-item--suivi     { color: color-mix(in srgb, var(--color-suivi) 40%, #fff) !important; }
+.sidebar--closed .nav-item--logout    { color: rgba(255, 255, 255, .85) !important; }

@@ -56,7 +56,7 @@ const CHILD_KEYS = {
 function DashboardBuanderieInner() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { linges, isRfidMode, setIsRfidMode } = useContext(LingeContext);
+  const { linges, isRfidMode } = useContext(LingeContext);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 

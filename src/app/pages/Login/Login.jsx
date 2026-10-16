@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useModal } from "../../contextes/ModalContext";
 import "../Linge/WorkflowList.css";
 
-const API = "http://localhost:8082";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 const POSTE_TO_ROUTE = {
   AGENT_COLLECTE: "/collecte",
@@ -17,7 +17,7 @@ const POSTE_TO_ROUTE = {
   AGENT_LAVAGE: "/lavages",
   AGENT_SECHAGE: "/sechages",
   AGENT_PLIAGE: "/pliage",
-  AGENT_STOCKAGE: "/stockage",
+  AGENT_STOCKAGE: "/stockage-arsenal",
   AGENT_LIVRAISON: "/livraisons",
   CHEF_EQUIPE: "/collecte",
   ADMIN: "/"

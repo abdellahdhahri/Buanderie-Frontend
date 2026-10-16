@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import { useTranslation } from "react-i18next";
+import { ServiceContext } from "../../contextes/ServiceContext";
+import { getSetting } from "../../utils/appSettings";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter, Eye, RefreshCw, Calendar, Clock, Trash2, User, History } from "lucide-react";
+import { Search, Filter, Eye, RefreshCw, Calendar, Clock, Trash2, User, History, Columns3, RotateCcw } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -16,8 +18,15 @@ import {
   formatDate,
   getPersonnelNom,
 } from "../../services/historiqueGlobalService";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { DetailModal } from "../../components/ui/modal-kit";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+
+const COLUMNS_STORAGE_KEY = "historique.visibleColumns";
+const DEFAULT_COLUMNS = ["date", "linge", "service", "operation", "agent", "observations"];
 
 /* ═══════════════════════════════════════════════════════════════
    HELPER — Extraction robuste du nom du personnel
@@ -50,6 +59,7 @@ function extractPersonnelName(personnel) {
 export default function HistoriqueGlobal() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { services } = useContext(ServiceContext);
 
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +68,8 @@ export default function HistoriqueGlobal() {
 
   // Pagination serveur
   const [page, setPage] = useState(0);
-  const [size] = useState(10);
+  // Lignes par page : Paramètres › Affichage
+  const [size] = useState(() => Number(getSetting("display.pageSize")) || 10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [sortBy] = useState("dateOperation");
@@ -67,6 +78,20 @@ export default function HistoriqueGlobal() {
   // Cache personnels : { personnelId: "Nom Prénom" }
   const [personnelsCache, setPersonnelsCache] = useState({});
   const [loadingPersonnels, setLoadingPersonnels] = useState(false);
+
+  // Colonnes visibles, mémorisées pour cet utilisateur dans ce navigateur
+  const [visibleColumnIds, setVisibleColumnIds] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(COLUMNS_STORAGE_KEY));
+      if (Array.isArray(saved) && saved.length > 0) return saved;
+    } catch {}
+    return DEFAULT_COLUMNS;
+  });
+  const [isColumnsModalOpen, setIsColumnsModalOpen] = useState(false);
+
+  useEffect(() => {
+    try { localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(visibleColumnIds)); } catch {}
+  }, [visibleColumnIds]);
 
   const [filters, setFilters] = useState({
     search: "",
@@ -282,6 +307,16 @@ export default function HistoriqueGlobal() {
     setPage(newPage);
   };
 
+  // Service du linge concerné (code du service via ServiceContext)
+  const getServiceName = (entry) => {
+    const direct = entry.serviceNom || entry.serviceCode || entry.linge?.serviceNom || entry.linge?.serviceCode;
+    if (direct) return direct;
+    const serviceId = entry.linge?.serviceId ?? entry.serviceId;
+    if (serviceId == null) return "";
+    const s = (services || []).find((x) => String(x.id) === String(serviceId));
+    return s ? (s.code || s.nom || s.libelle || "") : "";
+  };
+
   // Filtrage client sur la page courante
   const filteredHistory = history.filter((entry) => {
     const codeLinge = entry.linge?.codeBarre || entry.lingeId || "";
@@ -293,6 +328,7 @@ export default function HistoriqueGlobal() {
       !searchLower ||
       codeLinge.toLowerCase().includes(searchLower) ||
       remarques.toLowerCase().includes(searchLower) ||
+      getServiceName(entry).toLowerCase().includes(searchLower) ||
       agentNom.toLowerCase().includes(searchLower);
 
     const matchEtat = filters.etat ? entry.etatApres === filters.etat : true;
@@ -305,7 +341,76 @@ export default function HistoriqueGlobal() {
     return matchSearch && matchEtat && matchType && matchDateFrom && matchDateTo;
   });
 
+  // Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun)
+  const { sortedItems: sortedHistory, requestSort, directionFor } = useSortableData(filteredHistory, {
+    linge: (e) => e.linge?.codeBarre || e.codeLinge,
+    service: (e) => getServiceName(e),
+    etat: (e) => e.etatApres || e.etat,
+    agent: (e) => getPersonnelName(e.personnelId, e.typeOperation),
+  });
+
   const isLoading = loading || loadingPersonnels;
+
+  // ─── Colonnes du tableau (affichage paramétrable) ─────────────────────
+  const columns = [
+    {
+      id: "date", label: t('historique.date_time'), sortKey: "dateOperation",
+      render: (e) => (
+        <div className="flex items-center justify-center gap-2">
+          <Clock className="w-4 h-4 text-slate-400" />
+          <span className="font-mono text-sm">{formatDate(e.dateOperation)}</span>
+        </div>
+      ),
+    },
+    {
+      id: "linge", label: t('historique.linen_code'), sortKey: "linge",
+      render: (e) => <span className="font-mono text-sm">{e.linge?.codeBarre || e.codeLinge || e.lingeId || "N/A"}</span>,
+    },
+    {
+      id: "service", label: t('common.service'), sortKey: "service",
+      render: (e) => {
+        const nom = getServiceName(e);
+        return <span className={`text-sm ${nom ? "" : "text-slate-400"}`}>{nom || "—"}</span>;
+      },
+    },
+    {
+      id: "etat", label: t('historique.state'), sortKey: "etat",
+      render: (e) => getEtatBadge(e.etatApres || e.etat || "—"),
+    },
+    {
+      id: "operation", label: t('historique.operation'), sortKey: "typeOperation",
+      render: (e) => getTypeOperationBadge(e.typeOperation),
+    },
+    {
+      id: "agent", label: t('historique.agent'), sortKey: "agent",
+      render: (e) => (
+        <div className="flex items-center justify-center gap-2">
+          <User className="w-4 h-4 text-slate-400" />
+          <span className={`text-sm ${!e.personnelId ? "italic text-slate-400" : ""}`}>
+            {getPersonnelName(e.personnelId, e.typeOperation)}
+          </span>
+        </div>
+      ),
+    },
+    {
+      id: "observations", label: t('historique.observations'), cellStyle: { maxWidth: "260px" },
+      render: (e) => {
+        const obs = e.observations || e.remarques;
+        return obs
+          ? <span className="text-sm text-slate-600 block truncate" title={obs}>{obs}</span>
+          : <span className="text-sm text-slate-400">—</span>;
+      },
+    },
+  ];
+  const visibleColumns = columns.filter((c) => visibleColumnIds.includes(c.id));
+
+  const toggleColumn = (id) => {
+    setVisibleColumnIds((prev) => {
+      // Au moins une colonne reste affichée
+      if (prev.includes(id)) return prev.length > 1 ? prev.filter((c) => c !== id) : prev;
+      return columns.map((c) => c.id).filter((c) => c === id || prev.includes(c));
+    });
+  };
 
   /* ═══════════════════════════════════════════════════════════════
      RENDER
@@ -325,21 +430,7 @@ export default function HistoriqueGlobal() {
             marginBottom: "8px",
           }}
         >
-          <div
-            style={{
-              width: "52px",
-              height: "52px",
-              borderRadius: "16px",
-              background: "linear-gradient(135deg, #f472b6, #ec4899)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              boxShadow: "0 4px 16px rgba(244, 114, 182, 0.25)",
-            }}
-          >
-            <History className="w-6 h-6 stroke-[2.5]" />
-          </div>
+          <PageHeaderIcon size={52} />
           <div>
             <h1
               style={{
@@ -393,6 +484,15 @@ export default function HistoriqueGlobal() {
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
         >
           <Filter className="w-4 h-4 stroke-[2.5]" /> {t('common.reset')}
+        </button>
+        <button
+          onClick={() => setIsColumnsModalOpen(true)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#475569]/30 rounded-[14px] text-sm font-bold text-[#475569] hover:bg-[#475569]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] ml-auto"
+        >
+          <Columns3 className="w-4 h-4 stroke-[2.5]" /> {t('historique.columns_button')}
+          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-semibold">
+            {visibleColumns.length}/{columns.length}
+          </span>
         </button>
       </div>
 
@@ -478,31 +578,32 @@ export default function HistoriqueGlobal() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="param-table w-full">
-                <thead className="border-b border-slate-200 bg-slate-50/80">
+            <div className="premium-table-wrap">
+              <table className="premium-table">
+                <thead>
                   <tr>
-                    <th className="text-center py-3 px-4">{t('historique.date_time')}</th>
-                    <th className="text-center py-3 px-4">{t('historique.linen_code')}</th>
-                    <th className="text-center py-3 px-4">{t('historique.state')}</th>
-                    <th className="text-center py-3 px-4">{t('historique.operation')}</th>
-                    <th className="text-center py-3 px-4">{t('historique.agent')}</th>
-                    <th className="text-center py-3 px-4">{t('common.actions')}</th>
+                    {visibleColumns.map((col) =>
+                      col.sortKey ? (
+                        <SortableHeader key={col.id} direction={directionFor(col.sortKey)} onSort={() => requestSort(col.sortKey)} align="center">
+                          {col.label}
+                        </SortableHeader>
+                      ) : (
+                        <th key={col.id} style={{ textAlign: "center" }}>{col.label}</th>
+                      )
+                    )}
+                    <th style={{ textAlign: "center" }}>{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredHistory.length === 0 ? (
+                  {sortedHistory.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <td colSpan={visibleColumns.length + 1} className="text-center py-8 text-muted-foreground">
                         {t('historique.no_history')}
                       </td>
                     </tr>
                   ) : (
-                    filteredHistory.map((entry) => {
+                    sortedHistory.map((entry) => {
                       const isSelected = selectedEntry?.id === entry.id;
-                      const codeLinge = entry.linge?.codeBarre || entry.codeLinge || entry.lingeId || "N/A";
-                      const etat = entry.etatApres || entry.etat || "—";
-                      const agentNom = getPersonnelName(entry.personnelId, entry.typeOperation);
 
                       return (
                         <tr
@@ -511,25 +612,11 @@ export default function HistoriqueGlobal() {
                           className={isSelected ? "expanded bg-[#0794a4]/5" : ""}
                           style={{ cursor: "pointer" }}
                         >
-                          <td className="text-center py-3 px-4">
-                            <div className="flex items-center justify-center gap-2">
-                              <Clock className="w-4 h-4 text-slate-400" />
-                              <span className="font-mono text-sm">{formatDate(entry.dateOperation)}</span>
-                            </div>
-                          </td>
-                          <td className="text-center py-3 px-4">
-                            <span className="font-mono text-sm">{codeLinge}</span>
-                          </td>
-                          <td className="text-center py-3 px-4">{getEtatBadge(etat)}</td>
-                          <td className="text-center py-3 px-4">{getTypeOperationBadge(entry.typeOperation)}</td>
-                          <td className="text-center py-3 px-4">
-                            <div className="flex items-center justify-center gap-2">
-                              <User className="w-4 h-4 text-slate-400" />
-                              <span className={`text-sm ${!entry.personnelId ? "italic text-slate-400" : ""}`}>
-                                {agentNom}
-                              </span>
-                            </div>
-                          </td>
+                          {visibleColumns.map((col) => (
+                            <td key={col.id} className="text-center py-3 px-4" style={col.cellStyle}>
+                              {col.render(entry)}
+                            </td>
+                          ))}
                           <td className="text-center py-3 px-4">
                             <button
                               onClick={(e) => {
@@ -572,78 +659,100 @@ export default function HistoriqueGlobal() {
         </div>
       )}
 
-      {/* ═══════ MODAL DÉTAILS ═══════ */}
+      {/* ═══════ MODAL COLONNES ═══════ */}
       <Modal
+        isOpen={isColumnsModalOpen}
+        onClose={() => setIsColumnsModalOpen(false)}
+        title={t('historique.columns_title')}
+        subtitle={t('historique.columns_hint')}
+        icon={<Columns3 className="w-5 h-5" />}
+        size="sm"
+        footer={
+          <div className="flex w-full items-center justify-between gap-2">
+            <Button variant="outline" size="sm" onClick={() => setVisibleColumnIds(DEFAULT_COLUMNS)}>
+              <RotateCcw className="w-4 h-4" /> {t('historique.columns_reset')}
+            </Button>
+            <Button size="sm" onClick={() => setIsColumnsModalOpen(false)}>
+              {t('common.close')}
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-semibold text-slate-500">
+            {t('historique.columns_count', { count: visibleColumns.length, total: columns.length })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setVisibleColumnIds(columns.map((c) => c.id))}
+            disabled={visibleColumns.length === columns.length}
+            className="text-xs font-semibold text-[#0d9488] hover:underline disabled:text-slate-300 disabled:no-underline"
+          >
+            {t('historique.columns_show_all')}
+          </button>
+        </div>
+        <div className="flex flex-col gap-2">
+          {columns.map((col) => {
+            const checked = visibleColumnIds.includes(col.id);
+            const locked = checked && visibleColumns.length === 1;
+            return (
+              <label
+                key={col.id}
+                className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-colors ${
+                  checked ? "border-[#0d9488]/40 bg-[#0d9488]/5" : "border-slate-200 bg-white hover:bg-slate-50"
+                } ${locked ? "cursor-not-allowed" : "cursor-pointer"}`}
+              >
+                <span className={`text-sm font-semibold ${checked ? "text-slate-800" : "text-slate-500"}`}>
+                  {col.label}
+                </span>
+                <span className="relative inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={checked}
+                    disabled={locked}
+                    onChange={() => toggleColumn(col.id)}
+                  />
+                  <span className="w-9 h-5 rounded-full bg-slate-200 transition-colors peer-checked:bg-[#0d9488] peer-focus-visible:ring-2 peer-focus-visible:ring-[#0d9488]/40" />
+                  <span className="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </Modal>
+
+      {/* ═══════ MODAL DÉTAILS ═══════ */}
+      <DetailModal
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
-        title={`${t('historique.movement_details')} - ${selectedEntry?.linge?.codeBarre || 'N/A'}`}
-        size="lg"
-      >
-        {selectedEntry && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">{t('common.id')}</label>
-              <Input value={`#${selectedEntry.id}`} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">{t('historique.linen_code')}</label>
-              <Input value={selectedEntry.linge?.codeBarre || "N/A"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">{t('historique.state_before')}</label>
-              <div className="mt-1">{getEtatBadge(selectedEntry.etatAvant)}</div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">{t('historique.state_after')}</label>
-              <div className="mt-1">{getEtatBadge(selectedEntry.etatApres)}</div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">{t('historique.operation')}</label>
-              <div className="mt-1">{getTypeOperationBadge(selectedEntry.typeOperation)}</div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">{t('historique.date_time')}</label>
-              <Input value={formatDate(selectedEntry.dateOperation)} disabled />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium mb-2">{t('historique.agent')}</label>
-              <div className="flex items-center gap-2 p-2 rounded-lg border border-input bg-slate-50">
-                <User className="w-4 h-4 text-slate-400" />
-                <span className={!selectedEntry.personnelId ? "italic text-slate-400" : ""}>
-                  {getPersonnelName(selectedEntry.personnelId, selectedEntry.typeOperation)}
-                </span>
-                {selectedEntry.personnelId && (
-                  <Badge variant="outline" className="text-xs ml-auto font-mono">
-                    #{selectedEntry.personnelId}
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium mb-2">{t('historique.observations')}</label>
-              <textarea
-                className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-gray-300 bg-gray-50"
-                value={selectedEntry.observations || "—"}
-                disabled
-              />
-            </div>
-            <div className="col-span-2 flex justify-end gap-3 pt-4 border-t">
-              <Button variant="outline" onClick={() => setIsDetailsModalOpen(false)}>
-                {t('common.close')}
-              </Button>
-              <Button
-                onClick={() => {
-                  handleDelete(selectedEntry.id);
-                  setIsDetailsModalOpen(false);
-                }}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                <Trash2 className="w-4 h-4 mr-2" /> {t('common.delete')}
-              </Button>
-            </div>
-          </div>
+        title={t('historique.movement_details')}
+        subtitle={selectedEntry ? `#${selectedEntry.id}` : undefined}
+        heading={selectedEntry?.linge?.codeBarre}
+        badges={selectedEntry && getTypeOperationBadge(selectedEntry.typeOperation)}
+        sections={selectedEntry ? [
+          { title: t('modal.movement', 'Mouvement'), icon: "stats", items: [
+            { label: t('historique.state_before'), render: getEtatBadge(selectedEntry.etatAvant) },
+            { label: t('historique.state_after'), render: getEtatBadge(selectedEntry.etatApres) },
+            { label: t('historique.date_time'), value: formatDate(selectedEntry.dateOperation) },
+          ] },
+          { title: t('modal.identification', 'Identification'), icon: "id", items: [
+            { label: t('common.id'), value: selectedEntry.id, mono: true },
+            { label: t('historique.linen_code'), value: selectedEntry.linge?.codeBarre, mono: true },
+            { label: t('common.service'), value: getServiceName(selectedEntry) || "—" },
+            { label: t('historique.agent'), value: getPersonnelName(selectedEntry.personnelId, selectedEntry.typeOperation) },
+          ] },
+          { title: t('historique.observations'), icon: "notes", items: [
+            { label: t('historique.observations'), value: selectedEntry.observations, span: 2 },
+          ] },
+        ] : []}
+        actions={selectedEntry && (
+          <Button variant="danger" onClick={() => { handleDelete(selectedEntry.id); setIsDetailsModalOpen(false); }}>
+            <Trash2 className="w-4 h-4" />
+            {t('common.delete')}
+          </Button>
         )}
-      </Modal>
+      />
     </div>
   );
 }

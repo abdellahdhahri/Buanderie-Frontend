@@ -29,6 +29,10 @@ import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import BarcodeLabel from "../../components/BarcodeLabel";
 import { useBac } from "../../contextes/BacContext";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { DetailModal, FormModal, FormSection } from "../../components/ui/modal-kit";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -395,6 +399,12 @@ export default function BacList() {
     );
   });
 
+  // ─── Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun) ─
+  const { sortedItems: sortedBacs, requestSort, directionFor } = useSortableData(filteredBacs, {
+    poids: (b) => Number(b.poids) || 0,
+    linges: (b) => bacLingesCount[b.id],
+  });
+
   return (
     <div className="relative flex h-full gap-4">
       <motion.div
@@ -412,35 +422,7 @@ export default function BacList() {
               gap: "16px",
               marginBottom: "8px"
             }}>
-              <div style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "16px",
-                background: "linear-gradient(135deg, #f59e0b, #d97706)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                boxShadow: "0 4px 16px rgba(245, 158, 11, 0.25)"
-              }}>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 6h18" />
-                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                  <line x1="10" y1="11" x2="10" y2="17" />
-                  <line x1="14" y1="11" x2="14" y2="17" />
-                </svg>
-              </div>
+              <PageHeaderIcon size={52} />
               <div>
                 <h1 style={{
                   fontSize: "28px",
@@ -574,107 +556,120 @@ export default function BacList() {
 
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-border bg-muted/50">
+              <div className="premium-table-wrap">
+                <table className="premium-table">
+                  <thead>
                     <tr>
-                      <th className="text-center py-3 px-4 text-sm font-medium w-10"></th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('bacs.reference')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('bacs.date_creation')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('bacs.weight')} / {t('bacs.capacity')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('bacs.type')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('common.actions')}</th>
+                      <th style={{ width: 56 }} aria-label={t('bacs.view_linges', 'Linges')} />
+                      <SortableHeader direction={directionFor("reference")} onSort={() => requestSort("reference")}>
+                        {t('bacs.reference')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionFor("dateCreation")} onSort={() => requestSort("dateCreation")}>
+                        {t('bacs.date_creation')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionFor("poids")} onSort={() => requestSort("poids")}>
+                        {t('bacs.weight')} / {t('bacs.capacity')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionFor("typeCollecte")} onSort={() => requestSort("typeCollecte")} align="center">
+                        {t('bacs.type')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionFor("linges")} onSort={() => requestSort("linges")} align="center">
+                        {t('bacs.linges_count')}
+                      </SortableHeader>
+                      <th style={{ textAlign: "right", paddingRight: 20 }}>{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isBacsLoading ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <td colSpan={7} className="text-center py-10 text-muted-foreground">
                           <div className="flex items-center justify-center gap-2">
-                            <svg className="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
                             {t('common.loading')}
                           </div>
                         </td>
                       </tr>
-                    ) : filteredBacs.length === 0 ? (
+                    ) : sortedBacs.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <td colSpan={7} className="text-center py-10 text-muted-foreground">
                           {searchTerm ? t('bacs.no_match') : t('bacs.no_data')}
                         </td>
                       </tr>
                     ) : (
-                      filteredBacs.map((bac) => (
-                        <tr
-                          key={bac.id}
-                          className={`border-b border-border hover:bg-accent/50 transition-colors ${selectedBacId === bac.id ? 'bg-blue-50' : ''}`}
-                        >
-                          <td className="text-center py-3 px-4">
-                            <button
-                              onClick={() => handleOpenPanel(bac)}
-                              className="p-1 hover:bg-blue-100 rounded-lg transition-colors"
-                              title={panelOpen && selectedBacId === bac.id ? "Fermer" : "Voir les linges"}
-                            >
-                              {panelOpen && selectedBacId === bac.id ? (
-                                <ChevronLeft className="w-5 h-5 text-blue-500" />
-                              ) : (
-                                <ChevronRight className="w-5 h-5 text-slate-400 hover:text-blue-500" />
-                              )}
-                            </button>
-                          </td>
-                          <td className="text-center py-3 px-4">
-                            <div className="font-medium">{bac.reference || "N/A"}</div>
-                            <div className="text-xs text-muted-foreground font-mono">
-                              {bac.code || "N/A"}
-                            </div>
-                          </td>
-                          <td className="text-center py-3 px-4 text-sm">
-                            {bac.dateCreation ? new Date(bac.dateCreation).toLocaleDateString() : "N/A"}
-                          </td>
-                          <td className="text-center py-3 px-4">
-                            <div className="flex items-center justify-center gap-2">
-                              <Weight className="w-4 h-4 text-slate-400" />
-                              <span className="font-medium">{bac.poids || 0} kg</span>
-                              <span className="text-xs text-slate-400">/</span>
-                              <span className="text-xs text-slate-400">{bac.capacite_max || 0} kg</span>
-                            </div>
-                          </td>
-                          <td className="text-center py-3 px-4">
-                            <div className="flex flex-col items-center gap-1">
-                              {getStatusBadge(bac.typeCollecte)}
-                              <div className="text-xs text-muted-foreground">
-                                {bacLingesCount[bac.id] !== undefined ? bacLingesCount[bac.id] : '...'} {t('bacs.linges_count')}
+                      sortedBacs.map((bac) => {
+                        const isOpen = panelOpen && selectedBacId === bac.id;
+                        const poids = Number(bac.poids) || 0;
+                        const capacite = Number(bac.capacite_max) || 0;
+                        const ratio = capacite > 0 ? Math.min(poids / capacite, 1) : 0;
+                        const gaugeLevel = ratio >= 1 ? "is-full" : ratio >= 0.8 ? "is-high" : "";
+                        const nbLinges = bacLingesCount[bac.id];
+
+                        return (
+                          <tr
+                            key={bac.id}
+                            onClick={() => handleOpenPanel(bac)}
+                            className={selectedBacId === bac.id ? "is-selected" : ""}
+                          >
+                            <td style={{ textAlign: "center" }}>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleOpenPanel(bac); }}
+                                className={`premium-table__icon-btn ${isOpen ? "is-open" : ""}`}
+                                title={isOpen ? t('common.close', 'Fermer') : t('bacs.view_linges', 'Voir les linges')}
+                              >
+                                {isOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                              </button>
+                            </td>
+                            <td>
+                              <div className="premium-table__primary">{bac.reference || "N/A"}</div>
+                              <span className="premium-table__code">{bac.code || "N/A"}</span>
+                            </td>
+                            <td>
+                              {bac.dateCreation
+                                ? new Date(bac.dateCreation).toLocaleDateString()
+                                : <span className="premium-table__muted">—</span>}
+                            </td>
+                            <td>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="premium-table__primary">{poids} kg</span>
+                                <span className="premium-table__muted">/ {capacite} kg</span>
                               </div>
-                            </div>
-                          </td>
-                          <td className="text-center py-3 px-4">
-                            <div className="flex items-center justify-center gap-2">
-                              <BarcodeLabel item={bac} type="bac" />
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenEditModal(bac);
-                                }}
-                                className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title={t('common.edit')}
-                              >
-                                <Edit className="w-4 h-4 text-[#006f94]" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteRec(bac.id);
-                                }}
-                                className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
-                                title={t('common.delete')}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                              <div className={`premium-table__gauge ${gaugeLevel}`} title={`${Math.round(ratio * 100)} %`}>
+                                <span style={{ width: `${ratio * 100}%` }} />
+                              </div>
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              {getStatusBadge(bac.typeCollecte)}
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              {nbLinges !== undefined
+                                ? <span className="premium-table__primary">{nbLinges}</span>
+                                : <span className="premium-table__muted">…</span>}
+                            </td>
+                            <td style={{ textAlign: "right", paddingRight: 20 }} onClick={(e) => e.stopPropagation()}>
+                              <div className="premium-table__actions">
+                                <BarcodeLabel item={bac} type="bac" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditModal(bac)}
+                                  className="premium-table__icon-btn"
+                                  title={t('common.edit')}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteRec(bac.id)}
+                                  className="premium-table__icon-btn is-danger"
+                                  title={t('common.delete')}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -818,66 +813,40 @@ export default function BacList() {
       </AnimatePresence>
 
       {/* Modal Détails Linge */}
-      <Modal
+      <DetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        title={`${t('bacs.details_linge')} - ${selectedLingeDetail?.codeBarre || 'N/A'}`}
-        size="lg"
-      >
-        {selectedLingeDetail && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ID</label>
-              <Input value={selectedLingeDetail.id} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.code')}</label>
-              <Input value={selectedLingeDetail.codeBarre} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">RFID</label>
-              <Input value={selectedLingeDetail.rfidTag || "Non associé"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.type')}</label>
-              <Input value={selectedLingeDetail.categorie} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.weight')}</label>
-              <Input value={`${selectedLingeDetail.poids || 0} kg`} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.status')}</label>
-              <div className="text-center">{getEtatLingeBadge(selectedLingeDetail.etat)}</div>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.reference')}</label>
-              <Input value={selectedBac?.reference || "Non assigné"} disabled />
-            </div>
-            {selectedLingeDetail.dateCreation && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('bacs.date_creation')}</label>
-                <Input value={new Date(selectedLingeDetail.dateCreation).toLocaleString()} disabled />
-              </div>
-            )}
-          </div>
-        )}
-        <div className="flex justify-end gap-3 mt-6">
-          <Button onClick={() => setShowDetailModal(false)}>
-            {t('common.close')}
-          </Button>
-        </div>
-      </Modal>
+        title={t('bacs.details_linge')}
+        subtitle={selectedBac?.reference ? `${t('bacs.reference')} · ${selectedBac.reference}` : undefined}
+        heading={selectedLingeDetail?.codeBarre}
+        badges={selectedLingeDetail && getEtatLingeBadge(selectedLingeDetail.etat)}
+        metrics={selectedLingeDetail ? [{ label: t('bacs.weight'), value: `${selectedLingeDetail.poids || 0} kg` }] : []}
+        sections={selectedLingeDetail ? [
+          { title: t('modal.identification', 'Identification'), icon: "id", items: [
+            { label: "ID", value: selectedLingeDetail.id, mono: true },
+            { label: t('bacs.code'), value: selectedLingeDetail.codeBarre, mono: true },
+            { label: "RFID", value: selectedLingeDetail.rfidTag, mono: true },
+          ] },
+          { title: t('modal.characteristics', 'Caractéristiques'), icon: "specs", items: [
+            { label: t('bacs.type'), value: selectedLingeDetail.categorie },
+            { label: t('bacs.reference'), value: selectedBac?.reference },
+            { label: t('bacs.date_creation'), value: selectedLingeDetail.dateCreation ? new Date(selectedLingeDetail.dateCreation).toLocaleString("fr-FR") : null },
+          ] },
+        ] : []}
+      />
 
       {/* Modal Création/Modification */}
-      <Modal
+      <FormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedBac ? `${t('bacs.edit')} #${selectedBac.id}` : t('bacs.new')}
-        size="lg"
+        mode={selectedBac ? "edit" : "create"}
+        size={"lg"}
+        onSubmit={handleSave}
+        saving={isSaving}
       >
-        <form onSubmit={handleSave}>
-          <div className="grid grid-cols-2 gap-4">
+        
+          <FormSection title={t('modal.general_info', 'Informations générales')} icon="specs" columns={2}>
             {selectedBac && (
               <div>
                 <Input
@@ -985,23 +954,10 @@ export default function BacList() {
                 className="w-full min-h-[60px] px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
-          </div>
+          </FormSection>
 
-          <div className="flex justify-end gap-3 mt-6">
-            <Button
-              variant="outline"
-              onClick={() => setIsModalOpen(false)}
-              type="button"
-              disabled={isSaving}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? t('common.loading') : (selectedBac ? t('common.save') : t('bacs.new'))}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+
+      </FormModal>
     </div>
   );
 }

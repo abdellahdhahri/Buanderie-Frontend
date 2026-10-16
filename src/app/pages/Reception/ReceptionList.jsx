@@ -1,5 +1,5 @@
 // pages/Reception/ReceptionList.js
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useContext } from "react";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { User, CheckCircle, XCircle, RotateCcw, Package, ShieldAlert, Wifi, Eye } from "lucide-react";
@@ -7,10 +7,12 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { ReceptionProvider, useReception } from "../../contextes/ReceptionContext";
-import ModeToggle from "../../components/utils/shared/ModeToggle";
+import { LingeContext } from "../../contextes/LingeContext";
+import { getSetting, bipScan } from "../../utils/appSettings";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import { getAgent, isAgentConnected } from "../../services/agentService";
 import Swal from "sweetalert2";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -46,7 +48,9 @@ function ReceptionInner() {
   } = useReception();
 
   const [scanValue, setScanValue] = useState("");
-  const [mode, setMode] = useState("BARCODE");
+  // Mode de lecture réglé dans Paramètres › Lecture / Scan
+  const { isRfidMode } = useContext(LingeContext);
+  const mode = isRfidMode ? "RFID" : "BARCODE";
   const [rfidCodeBac, setRfidCodeBac] = useState("");
   const [rfidTags, setRfidTags] = useState("");
   const [rfidLoading, setRfidLoading] = useState(false);
@@ -111,8 +115,9 @@ function ReceptionInner() {
 
   // ─── Scan auto ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (mode !== "BARCODE" || scanValue.trim().length < 3) return;
+    if (mode !== "BARCODE" || scanValue.trim().length < (Number(getSetting("scan.minLength")) || 3)) return;
     const timer = setTimeout(() => {
+      bipScan();
       const code = scanValue.trim();
       setScanValue("");
 
@@ -136,7 +141,7 @@ function ReceptionInner() {
       } else {
         scanReception(code, agent);
       }
-    }, 400);
+    }, Math.max(100, (Number(getSetting("scan.delayMs")) || 400) - 100)); // un peu avant le champ de scan : évite un double envoi
     return () => clearTimeout(timer);
   }, [scanValue, mode, agent, scanAgent, scanReception]);
 
@@ -237,15 +242,21 @@ function ReceptionInner() {
     setPanneauType("BAC");
     setPanneauCode(codeBac);
 
+    // Linges présents dans le bac au moment du scan (avant réception)
+    const lingesAuScan = bacEnCours.lingesAuScan || bacEnCours.linges || [];
+
     try {
       const linges = await fetchLingesDuBac(bacId);
+      const actuels = Array.isArray(linges) ? linges : [];
       if (isMounted.current) {
-        setLingesAffiches(Array.isArray(linges) ? linges : []);
+        // La réception peut détacher les linges du bac : l'API renvoie alors
+        // une liste vide → on affiche ceux relevés au scan
+        setLingesAffiches(actuels.length > 0 ? actuels : lingesAuScan);
       }
     } catch (err) {
       console.error("❌ Erreur fetchLingesBac:", err);
       if (isMounted.current) {
-        setLingesAffiches([]);
+        setLingesAffiches(lingesAuScan);
       }
     } finally {
       if (isMounted.current) {
@@ -479,35 +490,7 @@ function ReceptionInner() {
             marginBottom: "8px",
           }}
         >
-          <div
-            style={{
-              width: "52px",
-              height: "52px",
-              borderRadius: "16px",
-              background: "linear-gradient(135deg, #10b981, #059669)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              boxShadow: "0 4px 16px rgba(16, 185, 129, 0.25)",
-            }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-          </div>
+          <PageHeaderIcon size={52} />
           <div>
             <h1
               style={{
@@ -610,7 +593,6 @@ function ReceptionInner() {
               flexWrap: "wrap",
             }}
           >
-            <ModeToggle mode={mode} onChange={setMode} />
             <Button variant="outline" size="sm" onClick={handleReset}>
               <RotateCcw size={12} style={{ marginRight: "4px" }} />
               {t('reception.reset')}

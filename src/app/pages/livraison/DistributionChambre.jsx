@@ -15,12 +15,14 @@ import {
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import "../Linge/WorkflowList.css";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import MuteButton from "../../components/utils/MuteButton";
+import { useVoiceGuide } from "../../hooks/useVoiceGuide";
+import { getSetting } from "../../utils/appSettings";
+import { BedTile, BedGraphic, LegendeLits } from "../collage/components/ChambreLits";
 
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   BIBLIOTHÈQUE SVG PERSONNALISÉE — Toutes les icônes dessinées main
-   Stroke uniforme 2 / 2.2 / 2.5 · Linecap & Linejoin round · ViewBox 24
-   ═══════════════════════════════════════════════════════════════════════════ */
+
 
 const Icons = {
   /* ─── Utilisateur / Agent ─── */
@@ -382,8 +384,14 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CarteLit — Carte de lit premium avec SVG
+   CarteLit — lit en SVG, même rendu que la collecte chambre
    ═══════════════════════════════════════════════════════════════════════════ */
+const TONS_DISTRIBUTION = {
+  EQUIPE:  { main: "#15803D", soft: "#DCFCE7" },
+  INFECTE: { main: "#DC2626", soft: "#FEE2E2" },
+  A_EQUIPER: { main: "#0D9488", soft: "#F0FDFA" },
+};
+
 function CarteLit({ lit, actif, onClick }) {
   const { t } = useTranslation();
 
@@ -391,143 +399,32 @@ function CarteLit({ lit, actif, onClick }) {
   const infecte = lit.estInfecte;
   const nb = lit.lingesPoses?.length || 0;
 
-  const statusConfig = complet
-    ? { label: t('distribution_chambre.completed'), color: "#10b981", bg: "#dcfce7", Icon: Icons.CheckCheck }
+  const tone = complet
+    ? { ...TONS_DISTRIBUTION.EQUIPE, label: t('distribution_chambre.completed') }
     : infecte
-      ? { label: t('distribution_chambre.infected'), color: "#dc2626", bg: "#fee2e2", Icon: Icons.AlertTriangle }
-      : nb > 0
-        ? { label: t('distribution_chambre.in_progress'), color: "#7c3aed", bg: "#ede9fe", Icon: Icons.CircleDot }
-        : { label: t('distribution_chambre.empty'), color: "#94a3b8", bg: "#f1f5f9", Icon: Icons.Circle };
-
-  const StatusIcon = statusConfig.Icon;
-
-  const borderColor = actif ? "#7c3aed" : complet ? "#10b981" : infecte ? "#dc2626" : "#e2e8f0";
-  const barColor = actif ? "#7c3aed" : complet ? "#10b981" : infecte ? "#dc2626" : "#e2e8f0";
-  const iconBgColor = actif ? "#ede9fe" : complet ? "#dcfce7" : infecte ? "#fee2e2" : "#f8fafc";
-  const iconColor = actif ? "#7c3aed" : complet ? "#10b981" : infecte ? "#dc2626" : "#94a3b8";
+      ? { ...TONS_DISTRIBUTION.INFECTE, label: t('distribution_chambre.infected') }
+      : { ...TONS_DISTRIBUTION.A_EQUIPER, label: t('distribution_chambre.empty') };
 
   return (
-    <motion.div
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+    <BedTile
+      tone={tone}
+      code={lit.codeLit}
+      meta={nb > 0
+        ? `${nb} ${t('distribution_chambre.linen')}${nb > 1 ? 's' : ''} ${t('distribution_chambre.distributed').toLowerCase()}`
+        : t('distribution_chambre.no_linen_placed')}
+      pill={actif ? t('distribution_chambre.in_progress') : tone.label}
+      active={actif}
+      flag={infecte && !complet}
       onClick={onClick}
-      style={{
-        borderRadius: 16, cursor: "pointer", background: "white",
-        border: `2px solid ${borderColor}`,
-        boxShadow: actif
-          ? "0 0 0 4px rgba(124, 58, 237, 0.15), 0 8px 24px rgba(124, 58, 237, 0.12)"
-          : complet
-            ? "0 2px 8px rgba(16, 185, 129, 0.1)"
-            : "0 2px 8px rgba(0,0,0,0.04)",
-        transition: "all 0.3s ease",
-        position: "relative", overflow: "hidden",
-      }}
     >
-      <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, height: 3,
-        background: barColor, opacity: actif ? 1 : 0.5,
-      }} />
-
-      <div style={{
-        padding: "16px 18px", display: "flex",
-        justifyContent: "space-between", alignItems: "center",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 42, height: 42, borderRadius: 12,
-            background: iconBgColor, display: "flex",
-            alignItems: "center", justifyContent: "center",
-            transition: "all 0.3s",
-            border: `1px solid ${iconColor}20`,
-          }}>
-            <Icons.Bed size={18} color={iconColor} strokeWidth={2.2} />
-          </div>
-          <div>
-            <div style={{
-              fontWeight: 800, fontSize: 15, color: "#0f172a",
-              display: "flex", alignItems: "center", gap: 8,
-              letterSpacing: "-0.01em",
-            }}>
-              {t('distribution_chambre.bed')} {lit.codeLit}
-              <span style={{
-                fontSize: 10, fontWeight: 800,
-                color: statusConfig.color, background: statusConfig.bg,
-                padding: "4px 11px", borderRadius: 20,
-                display: "inline-flex", alignItems: "center", gap: 5,
-                border: `1px solid ${statusConfig.color}25`,
-                letterSpacing: "0.3px", textTransform: "uppercase",
-              }}>
-                <StatusIcon size={11} color={statusConfig.color} strokeWidth={2.5} />
-                {statusConfig.label}
-              </span>
-            </div>
-            <div style={{
-              fontSize: 12, color: "#94a3b8",
-              display: "flex", alignItems: "center", gap: 6, marginTop: 3,
-              fontWeight: 500,
-            }}>
-              <span>{nb} {t('distribution_chambre.linen')}{nb > 1 ? 's' : ''}</span>
-              {nb > 0 && (
-                <>
-                  <span style={{
-                    width: 3, height: 3, borderRadius: "50%",
-                    background: "#d1d5db",
-                  }} />
-                  <span>{lit.lingesPoses?.map(l => l.categorie).join(", ")}</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {actif && (
-          <div style={{
-            padding: "5px 13px", borderRadius: 20,
-            background: "#ede9fe", color: "#7c3aed",
-            fontSize: 10, fontWeight: 800, letterSpacing: "0.3px",
-            display: "inline-flex", alignItems: "center", gap: 5,
-            border: "1px solid #c4b5fd",
-          }}>
-            <Icons.CircleDot size={10} color="#7c3aed" strokeWidth={2.5} />
-            {t('distribution_chambre.in_progress')}
-          </div>
-        )}
-      </div>
-
-      {nb > 0 && (
-        <div style={{
-          padding: "0 18px 16px",
-          display: "flex", flexWrap: "wrap", gap: 6,
-        }}>
-          {lit.lingesPoses.map((l, i) => {
-            const c = getCategorie(l.categorie);
-            return (
-              <div
-                key={i}
-                style={{
-                  display: "flex", alignItems: "center", gap: 5,
-                  padding: "5px 11px", borderRadius: 9,
-                  background: `${c.color}12`,
-                  border: `1px solid ${c.color}25`,
-                  fontSize: 11, fontWeight: 600, color: c.color,
-                }}
-              >
-                <span style={{ fontSize: 14 }}>{c.emoji}</span>
-                {l.categorie}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {nb === 0 && !complet && !infecte && (
-        <div style={{
-          padding: "0 18px 16px",
-          fontSize: 12, color: "#94a3b8", fontStyle: "italic",
-        }}>
-          {t('distribution_chambre.no_linen_placed')}
-        </div>
-      )}
-    </motion.div>
+      <BedGraphic
+        tone={tone}
+        filled={complet}
+        center={nb > 0 ? "count" : complet ? "check" : "dash"}
+        count={nb}
+        active={actif}
+      />
+    </BedTile>
   );
 }
 
@@ -679,6 +576,13 @@ export default function DistributionChambre() {
   const [poses, setPoses] = useState([]);
   const [scanStatus, setScanStatus] = useState(null);
 
+  // Assistant vocal (même fonctionnement que la collecte chambre)
+  const [voiceLang, setVoiceLang] = useState(() => getSetting("voice.lang"));
+  const voice = useVoiceGuide(voiceLang);
+  const voiceRef = useRef(voice);
+  useEffect(() => { voiceRef.current = voice; }, [voice]);
+  useEffect(() => () => voiceRef.current.cancel(), []);
+
   const agentRef = useRef(null);
   const chambreRef = useRef(null);
   const litRef = useRef(null);
@@ -702,6 +606,7 @@ export default function DistributionChambre() {
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
+      setTimeout(() => voiceRef.current.sayBienvenueDistribution(agentData.nomPrenom || agentData.nom || ""), 600);
     } else {
       setEtape("CHAMBRE");
       setScanStatus({
@@ -725,6 +630,7 @@ export default function DistributionChambre() {
 
   const cloturerDistribution = useCallback(async () => {
     if (poses.length === 0) {
+      voice.sayAucunLingeDistribue();
       await Swal.fire({
         icon: 'warning',
         title: t('distribution_chambre.no_linen_distributed_title'),
@@ -760,8 +666,9 @@ export default function DistributionChambre() {
     });
     setEtape("RESUME");
     setLitActif(null);
+    voice.sayDistributionTerminee(chambre.codeChambre, nbTotal, poses.length);
     return true;
-  }, [poses, chambre, t]);
+  }, [poses, chambre, t, voice]);
 
   const handleChambre = useCallback(async code => {
     if (!agent) {
@@ -797,6 +704,9 @@ export default function DistributionChambre() {
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
+      const nbDisponibles = res.disponibles?.length || 0;
+      if (nbDisponibles === 0) voice.sayChambreDistributionVide(res.codeChambre);
+      else voice.sayChambreDistribution(res.codeChambre, res.lits?.length || 0, nbDisponibles);
       await Swal.fire({
         icon: 'success',
         title: `${t('distribution_chambre.room')} ${res.codeChambre}`,
@@ -806,6 +716,8 @@ export default function DistributionChambre() {
       });
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
+      if (/réseau|network|fetch/i.test(e.message || "")) voice.sayErreurReseau();
+      else voice.sayChambreErreur();
       await Swal.fire({
         icon: 'error',
         title: t('common.error'),
@@ -814,11 +726,12 @@ export default function DistributionChambre() {
     } finally {
       setLoading(false);
     }
-  }, [agent, t]);
+  }, [agent, t, voice]);
 
   const handleScanLinge = useCallback(async code => {
     const lit = litRef.current;
     if (!lit) {
+      voice.sayChoisirLit();
       await Swal.fire({
         icon: 'warning',
         title: t('distribution_chambre.select_bed_first_title'),
@@ -862,8 +775,14 @@ export default function DistributionChambre() {
         error: null
       });
       setTimeout(() => setScanStatus(null), 1500);
+
+      const restants = c.disponibles.filter(l => l.lingeId !== linge.lingeId).length;
+      const nbSurLit = (c.lits.find(l => l.litId === lit.litId)?.lingesPoses?.length || 0) + 1;
+      if (restants === 0) voice.sayTousLingesPoses();
+      else voice.sayLingePose(lit.codeLit, nbSurLit);
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
+      voice.sayErreurGenerique(e.message);
       await Swal.fire({
         icon: 'error',
         title: t('common.error'),
@@ -874,7 +793,7 @@ export default function DistributionChambre() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, voice]);
 
   const handleScan = useCallback(async code => {
     if (!code || loading) return;
@@ -886,7 +805,13 @@ export default function DistributionChambre() {
     }
 
     if (etape === "DISTRIBUER") {
-      await handleScanLinge(code.trim());
+      const ag = agentRef.current;
+      const c = code.trim();
+      if (ag && (c === ag.codeBarre || c === ag.matricule)) {
+        await cloturerDistribution();
+        return;
+      }
+      await handleScanLinge(c);
     }
   }, [etape, loading, handleChambre, handleScanLinge, cloturerDistribution]);
 
@@ -939,20 +864,15 @@ export default function DistributionChambre() {
   return (
     <div className="collecte-container">
       {/* ═══ Header premium ═══ */}
-      <div style={{ marginBottom: 32 }}>
+      <div style={{
+        marginBottom: 32, display: "flex", alignItems: "center",
+        justifyContent: "space-between", flexWrap: "wrap", gap: 12,
+      }}>
         <div style={{
           display: "flex", alignItems: "center",
-          gap: 16, marginBottom: 8,
+          gap: 16,
         }}>
-          <div style={{
-            width: 60, height: 60, borderRadius: 20,
-            background: "linear-gradient(135deg, #0d9488, #0f766e)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "white",
-            boxShadow: "0 10px 28px rgba(13, 148, 136, 0.35)",
-          }}>
-            <Icons.Bed size={28} color="white" strokeWidth={2.2} />
-          </div>
+          <PageHeaderIcon size={60} />
           <div>
             <h1 style={{
               fontSize: 28, fontWeight: 800, color: "#0f172a",
@@ -976,6 +896,14 @@ export default function DistributionChambre() {
             </p>
           </div>
         </div>
+
+        <MuteButton
+          muted={voice.muted}
+          onToggle={voice.toggleMute}
+          speaking={voice.speaking}
+          lang={voiceLang}
+          onLangChange={setVoiceLang}
+        />
       </div>
 
       <div style={{
@@ -1192,22 +1120,27 @@ export default function DistributionChambre() {
         )}
 
         {etape === "DISTRIBUER" && chambre && !isCloturee && (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: 14,
-          }}>
+          <>
+          <LegendeLits items={[
+            { ...TONS_DISTRIBUTION.A_EQUIPER, label: t('distribution_chambre.empty') },
+            { ...TONS_DISTRIBUTION.INFECTE, label: t('distribution_chambre.infected') },
+            { ...TONS_DISTRIBUTION.EQUIPE, label: t('distribution_chambre.completed') },
+          ]} />
+          <div className="lits-grid">
             {chambre.lits.map(lit => (
               <CarteLit
                 key={lit.litId}
                 lit={lit}
                 actif={litActif?.litId === lit.litId}
                 onClick={() => {
-                  setLitActif(l => l?.litId === lit.litId ? null : lit);
+                  const dejaActif = litActif?.litId === lit.litId;
+                  setLitActif(dejaActif ? null : lit);
+                  if (!dejaActif) voice.sayLitDistribution(lit.codeLit, lit.estInfecte);
                 }}
               />
             ))}
           </div>
+          </>
         )}
 
         {etape === "RESUME" && resume && (

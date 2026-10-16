@@ -31,6 +31,10 @@ import {
 } from "../../services/distributionService";
 import Swal from "sweetalert2";
 import "../Linge/WorkflowList.css";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import MuteButton from "../../components/utils/MuteButton";
+import { useVoiceGuide } from "../../hooks/useVoiceGuide";
+import { getSetting, bipScan } from "../../utils/appSettings";
 
 function ScanStatus({ loading, success, error, code }) {
   const { t } = useTranslation();
@@ -257,6 +261,13 @@ export default function LivraisonList() {
   const distributionRef = useRefMirror(distribution);
   const scanInputRef = useRef(null);
 
+  // Assistant vocal
+  const [voiceLang, setVoiceLang] = useState(() => getSetting("voice.lang"));
+  const voice = useVoiceGuide(voiceLang);
+  const voiceRef = useRef(voice);
+  useEffect(() => { voiceRef.current = voice; }, [voice]);
+  useEffect(() => () => voiceRef.current.cancel(), []);
+
   useEffect(() => {
     const agentData = getAgentFromStorage();
     if (agentData) {
@@ -271,6 +282,7 @@ export default function LivraisonList() {
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
+      setTimeout(() => voiceRef.current.sayBienvenueDistributionService(agentData.nomPrenom || agentData.nom || ""), 600);
     } else {
       console.warn("⚠️ Aucun agent trouvé dans le stockage");
       setEtape("SERVICE");
@@ -284,12 +296,13 @@ export default function LivraisonList() {
 
   // ─── Scan automatique ──────────────────────────────────────────────────
   useEffect(() => {
-    if (scanValue.trim().length < 2) return;
+    if (scanValue.trim().length < (Number(getSetting("scan.minLength")) || 3)) return;
     const timeout = setTimeout(() => {
       const code = scanValue.trim();
       setScanValue("");
+      bipScan();
       handleScan(code);
-    }, 300);
+    }, Math.max(100, (Number(getSetting("scan.delayMs")) || 400) - 100)); // un peu avant le champ de scan : évite un double envoi
     return () => clearTimeout(timeout);
   }, [scanValue]);
 
@@ -316,6 +329,7 @@ export default function LivraisonList() {
       setComparatif(data);
 
       if (isDistributionComplete(data)) {
+        voiceRef.current.sayDistributionServiceComplete();
         await Swal.fire({
           icon: 'success',
           title: t('livraison.distribution_completed'),
@@ -329,15 +343,18 @@ export default function LivraisonList() {
         setHistorique([]);
         setService(null);
       }
+      return data;
     } catch (error) {
       console.error("Erreur rafraîchissement:", error);
+      return null;
     }
   }, [t]);
 
   // ─── Auto-refresh ──────────────────────────────────────────────────────
   useEffect(() => {
     if (etape !== "SCAN" || !distribution?.id) return;
-    const id = setInterval(() => rafraichirComparatif(distribution.id), 3000);
+    // Fréquence : Paramètres › Rafraîchissement
+    const id = setInterval(() => rafraichirComparatif(distribution.id), (Number(getSetting("refresh.distributionSeconds")) || 3) * 1000);
     return () => clearInterval(id);
   }, [etape, distribution, rafraichirComparatif]);
 
@@ -360,6 +377,7 @@ export default function LivraisonList() {
     try {
       const reste = stats.reste || 0;
       if (reste > 0) {
+        voice.sayArticlesRestantsCloture(reste);
         const result = await Swal.fire({
           icon: 'warning',
           title: t('livraison.remaining_articles'),
@@ -378,6 +396,7 @@ export default function LivraisonList() {
       }
 
       await cloturerDistribution(distribution.id);
+      voice.sayDistributionServiceCloturee(service?.nom || service?.code || "");
 
       await Swal.fire({
         icon: 'success',
@@ -407,7 +426,7 @@ export default function LivraisonList() {
     } finally {
       setLoading(false);
     }
-  }, [distribution, service, stats.reste, t]);
+  }, [distribution, service, stats.reste, t, voice]);
 
   // ─── Scan Service ──────────────────────────────────────────────────────
   const execScanService = useCallback(async (code) => {
@@ -429,8 +448,9 @@ export default function LivraisonList() {
       
       setService(svc);
       setDistribution(dist);
-      await rafraichirComparatif(dist.id);
+      const comp = await rafraichirComparatif(dist.id);
       setEtape("SCAN");
+      voice.sayServiceDistribution(svc.nom || svc.code, calculerStats(comp || []).reste);
       setScanStatus({
         loading: false,
         success: { message: `✅ ${svc.code}`, detail: `${dist.id}` },
@@ -446,6 +466,8 @@ export default function LivraisonList() {
       });
     } catch (error) {
       setScanStatus({ loading: false, success: null, error: error.message });
+      if (/réseau|network|fetch/i.test(error.message || "")) voice.sayErreurReseau();
+      else voice.sayErreurGenerique(error.message);
       await Swal.fire({
         icon: 'error',
         title: t('common.error'),
@@ -454,7 +476,7 @@ export default function LivraisonList() {
     } finally {
       setLoading(false);
     }
-  }, [agent, rafraichirComparatif, t]);
+  }, [agent, rafraichirComparatif, t, voice]);
 
   // ─── Scan Linge ──────────────────────────────────────────────────────
   const execScanLinge = useCallback(async (code) => {
@@ -484,7 +506,8 @@ export default function LivraisonList() {
         error: null
       });
       setTimeout(() => setScanStatus(null), 1500);
-      await rafraichirComparatif(dist.id);
+      const comp = await rafraichirComparatif(dist.id);
+      if (comp && !isDistributionComplete(comp)) voice.sayArticleLivre(calculerStats(comp).reste);
     } catch (error) {
       const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       setHistorique(prev => [{ 
@@ -498,6 +521,7 @@ export default function LivraisonList() {
         success: null, 
         error: error.message 
       });
+      voice.sayArticleRefuse(error.message);
       await Swal.fire({
         icon: 'error',
         title: t('livraison.scan_rejected'),
@@ -509,7 +533,7 @@ export default function LivraisonList() {
     } finally {
       setLoading(false);
     }
-  }, [distributionRef, rafraichirComparatif, t]);
+  }, [distributionRef, rafraichirComparatif, t, voice]);
 
   // ─── Gestion du scan ──────────────────────────────────────────────────
   const handleScan = useCallback(async (code) => {
@@ -588,26 +612,16 @@ export default function LivraisonList() {
   return (
     <div className="collecte-container">
 
-      <div style={{ marginBottom: "32px" }}>
+      <div style={{
+        marginBottom: "32px", display: "flex", alignItems: "center",
+        justifyContent: "space-between", flexWrap: "wrap", gap: "12px"
+      }}>
         <div style={{
           display: "flex",
           alignItems: "center",
-          gap: "16px",
-          marginBottom: "8px"
+          gap: "16px"
         }}>
-          <div style={{
-            width: "56px",
-            height: "56px",
-            borderRadius: "18px",
-            background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            boxShadow: "0 6px 20px rgba(14, 165, 233, 0.3)"
-          }}>
-            <FaTruck size={26} />
-          </div>
+          <PageHeaderIcon size={56} />
           <div>
             <h1 style={{
               fontSize: "28px",
@@ -626,6 +640,14 @@ export default function LivraisonList() {
             </p>
           </div>
         </div>
+
+        <MuteButton
+          muted={voice.muted}
+          onToggle={voice.toggleMute}
+          speaking={voice.speaking}
+          lang={voiceLang}
+          onLangChange={setVoiceLang}
+        />
       </div>
 
       <div style={{

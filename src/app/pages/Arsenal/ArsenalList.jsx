@@ -10,7 +10,6 @@ import {
   Package,
   X,
   Eye,
-  Barcode,
   History,
   RefreshCw,
   Building2,
@@ -23,7 +22,12 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
-import printJS from "print-js";
+import { printLabel } from "../../utils/labels";
+import { LabelIcon } from "../../components/ui/LabelIcon";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { DetailModal, FormModal, FormSection } from "../../components/ui/modal-kit";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -261,39 +265,12 @@ function ArsenalListInner() {
   }, []);
 
   // ─── Impression ───────────────────────────────────────────────────────────
-  const detectFormat = useCallback((value) => {
-    if (!value) return "code128";
-    const clean = value.replace(/\s+/g, "");
-    if (/^\d{13}$/.test(clean)) return "ean13";
-    if (/^\d{8}$/.test(clean)) return "ean8";
-    if (/^\d{12}$/.test(clean)) return "upc";
-    return "code128";
-  }, []);
 
+  // Étiquette (réglages : Paramètres › Étiquettes)
   const handlePrintArsenalCode = useCallback((arsenal) => {
     if (!arsenal) return;
-    const code = arsenal.code || arsenal.nom || `ARS-${arsenal.id}`;
-    const format = detectFormat(code);
-    const serviceName = getServiceName(arsenal.serviceId);
-
-    printJS({
-      printable: `
-        <div style="width:60mm;padding:3mm;font-family:'Courier New',monospace;background:white;text-align:center;">
-          <div style="border-bottom:1px solid #ddd;padding-bottom:2mm;margin-bottom:2mm;">
-            <div style="font-size:10pt;font-weight:bold;">${t('arsenal.print_title')}</div>
-            <div style="font-size:7pt;color:#666;">${serviceName || t('arsenal.unassigned')}</div>
-          </div>
-          <div style="display:flex;justify-content:center;margin:2mm 0;">
-            <img src="https://barcodeapi.org/api/${format}/${encodeURIComponent(code)}" style="height:70px;width:100%;max-width:180px;" />
-          </div>
-        </div>
-      `,
-      type: "raw-html",
-      style: "*{margin:0;padding:0;box-sizing:border-box;}body{background:white;display:flex;justify-content:center;}",
-      documentTitle: `Code_Arsenal_${arsenal.code || arsenal.id}`,
-      css: `@page{size:60mm 45mm;margin:0;}`
-    });
-  }, [detectFormat, getServiceName, t]);
+    printLabel("arsenal", { ...arsenal, serviceNom: getServiceName(arsenal.serviceId) }, { t });
+  }, [getServiceName, t]);
 
   // ─── Filtrage ─────────────────────────────────────────────────────────────
   const filteredArsenals = useMemo(() => {
@@ -304,6 +281,11 @@ function ArsenalListInner() {
     );
   }, [arsenals, searchTerm]);
 
+  // Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun)
+  const { sortedItems: sortedArsenals, requestSort, directionFor } = useSortableData(filteredArsenals, {
+    service: (a) => getServiceName(a.serviceId),
+  });
+
   return (
     <div className="space-y-4">
       <div style={{ marginBottom: "32px" }}>
@@ -313,40 +295,7 @@ function ArsenalListInner() {
           gap: "16px",
           marginBottom: "8px"
         }}>
-          <div style={{
-            width: "52px",
-            height: "52px",
-            borderRadius: "16px",
-            background: "linear-gradient(135deg, #ef4444, #dc2626)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            boxShadow: "0 4px 16px rgba(239, 68, 68, 0.25)"
-          }}>
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="24" 
-              height="24" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            >
-              <rect x="2" y="2" width="20" height="20" rx="2.18" />
-              <line x1="8" y1="2" x2="8" y2="22" />
-              <line x1="16" y1="2" x2="16" y2="22" />
-              <line x1="2" y1="8" x2="22" y2="8" />
-              <line x1="2" y1="16" x2="22" y2="16" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="6" cy="6" r="0.5" fill="currentColor" />
-              <circle cx="18" cy="6" r="0.5" fill="currentColor" />
-              <circle cx="6" cy="18" r="0.5" fill="currentColor" />
-              <circle cx="18" cy="18" r="0.5" fill="currentColor" />
-            </svg>
-          </div>
+          <PageHeaderIcon size={52} />
           <div>
             <h1 style={{
               fontSize: "28px",
@@ -381,9 +330,9 @@ function ArsenalListInner() {
         <button
           disabled={!expandedId}
           onClick={() => selectedArsenal && handlePrintArsenalCode(selectedArsenal)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0d9488]/30 rounded-[14px] text-sm font-bold text-[#0d9488] hover:bg-[#0d9488]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Barcode className="w-4 h-4 stroke-[2.5]" /> {t('arsenal.print_code')}
+          <LabelIcon className="w-4 h-4" strokeWidth={2.2} /> {t('arsenal.print_code')}
         </button>
 
         <button
@@ -451,15 +400,21 @@ function ArsenalListInner() {
       {/* ─── Tableau avec accordéon ─────────────────────────────────────────── */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-border bg-muted/50">
+          <div className="premium-table-wrap">
+            <table className="premium-table">
+              <thead>
                 <tr>
-                  <th className="text-center py-3 px-4 text-sm font-medium w-12"></th>
-                  <th className="text-center py-3 px-4 text-sm font-medium">{t('arsenal.code')}</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium">{t('arsenal.name')}</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium">{t('arsenal.service')}</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium">{t('common.actions')}</th>
+                  <th style={{ width: 56 }} />
+                  <SortableHeader direction={directionFor("code")} onSort={() => requestSort("code")} align="center">
+{t('arsenal.code')}
+</SortableHeader>
+                  <SortableHeader direction={directionFor("nom")} onSort={() => requestSort("nom")} align="center">
+{t('arsenal.name')}
+</SortableHeader>
+                  <SortableHeader direction={directionFor("service")} onSort={() => requestSort("service")} align="center">
+{t('arsenal.service')}
+</SortableHeader>
+                  <th style={{ textAlign: "center" }}>{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -472,14 +427,14 @@ function ArsenalListInner() {
                       </div>
                     </td>
                   </tr>
-                ) : filteredArsenals.length === 0 ? (
+                ) : sortedArsenals.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-10 text-muted-foreground">
                       {searchTerm ? t('arsenal.no_match') : t('arsenal.no_data')}
                     </td>
                   </tr>
                 ) : (
-                  filteredArsenals.map((arsenal) => {
+                  sortedArsenals.map((arsenal) => {
                     const isExpanded = expandedId === arsenal.id;
 
                     return (
@@ -527,7 +482,7 @@ function ArsenalListInner() {
                                 className="p-2 hover:bg-accent rounded-lg transition-colors"
                                 title={t('arsenal.print_code')}
                               >
-                                <Barcode className="w-4 h-4 text-[#e67700]" />
+                                <LabelIcon className="w-4 h-4 text-[#0d9488]" strokeWidth={2.2} />
                               </button>
                               <button
                                 onClick={(e) => {
@@ -656,64 +611,40 @@ function ArsenalListInner() {
       </Card>
 
       {/* ─── Modal Détails Linge ────────────────────────────────────────────── */}
-      <Modal
+      <DetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        title={`${t('arsenal.linen_details')} - ${selectedLingeDetail?.codeBarre || "N/A"}`}
-        size="lg"
-      >
-        {selectedLingeDetail && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('common.id')}</label>
-              <Input value={selectedLingeDetail.id} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('arsenal.tracking_code')}</label>
-              <Input value={selectedLingeDetail.codeBarre} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('arsenal.rfid_tag')}</label>
-              <Input value={selectedLingeDetail.rfidTag || t('arsenal.not_associated')} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('common.category')}</label>
-              <Input value={selectedLingeDetail.categorie} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('common.weight')}</label>
-              <Input value={`${selectedLingeDetail.poids || 0} kg`} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('common.status')}</label>
-              <div>{getEtatLingeBadge(selectedLingeDetail.etat)}</div>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('arsenal.arsenal')}</label>
-              <Input value={selectedArsenal?.nom || t('arsenal.unassigned')} disabled />
-            </div>
-            {selectedLingeDetail.dateCreation && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('common.creation_date')}</label>
-                <Input value={new Date(selectedLingeDetail.dateCreation).toLocaleString("fr-FR")} disabled />
-              </div>
-            )}
-          </div>
-        )}
-        <div className="flex justify-end gap-3 mt-6">
-          <Button onClick={() => setShowDetailModal(false)}>{t('common.close')}</Button>
-        </div>
-      </Modal>
+        title={t('arsenal.linen_details')}
+        subtitle={selectedArsenal?.nom ? `${t('arsenal.arsenal')} · ${selectedArsenal.nom}` : undefined}
+        heading={selectedLingeDetail?.codeBarre}
+        badges={selectedLingeDetail && getEtatLingeBadge(selectedLingeDetail.etat)}
+        metrics={selectedLingeDetail ? [{ label: t('common.weight'), value: `${selectedLingeDetail.poids || 0} kg` }] : []}
+        sections={selectedLingeDetail ? [
+          { title: t('modal.identification', 'Identification'), icon: "id", items: [
+            { label: t('common.id'), value: selectedLingeDetail.id, mono: true },
+            { label: t('arsenal.tracking_code'), value: selectedLingeDetail.codeBarre, mono: true },
+            { label: t('arsenal.rfid_tag'), value: selectedLingeDetail.rfidTag, mono: true },
+          ] },
+          { title: t('modal.characteristics', 'Caractéristiques'), icon: "specs", items: [
+            { label: t('common.category'), value: selectedLingeDetail.categorie },
+            { label: t('arsenal.arsenal'), value: selectedArsenal?.nom },
+            { label: t('common.creation_date'), value: selectedLingeDetail.dateCreation ? new Date(selectedLingeDetail.dateCreation).toLocaleString("fr-FR") : null },
+          ] },
+        ] : []}
+      />
 
       {/* ─── Modal Création / Modification ─────────────────────────────────── */}
-      <Modal
+      <FormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedArsenal ? `${t('arsenal.edit')} #${selectedArsenal.id}` : t('arsenal.new')}
-        size="lg"
+        mode={selectedArsenal ? "edit" : "create"}
+        size={"lg"}
+        onSubmit={handleSave}
+        saving={isSaving}
       >
-        <form onSubmit={handleSave}>
-          <div className="grid grid-cols-2 gap-4">
+        
+          <FormSection title={t('modal.general_info', 'Informations générales')} icon="specs" columns={2}>
             <div>
               <Input
                 label={t('common.code')}
@@ -749,17 +680,9 @@ function ArsenalListInner() {
                 ))}
               </select>
             </div>
-          </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)} type="button" disabled={isSaving}>
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? t('common.saving') : selectedArsenal ? t('common.save') : t('common.create')}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+          </FormSection>
+
+      </FormModal>
     </div>
   );
 }

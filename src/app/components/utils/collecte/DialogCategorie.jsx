@@ -1,6 +1,7 @@
 import React from "react";
 import { FaTimes, FaBiohazard } from "react-icons/fa";
 import { CATEGORIES_INFECTE } from "../../../constants/collecte";
+import { getActiveCategories } from "../../../utils/appSettings";
 
 import drapImage from "../../../../assets/linges/drap.png";
 import taieImage from "../../../../assets/linges/taie.png";
@@ -135,7 +136,7 @@ export default function DialogCategorie({ onChoisir, onFermer }) {
           gridTemplateColumns: "repeat(3, 1fr)", 
           gap: "12px" 
         }}>
-          {CATEGORIES_INFECTE.map((cat) => {
+          {CATEGORIES_INFECTE.filter((cat) => getActiveCategories().includes(cat.id)).map((cat) => {
             const imageSrc = CATEGORY_IMAGES[cat.id];
             const isImageAvailable = imageSrc !== undefined;
 

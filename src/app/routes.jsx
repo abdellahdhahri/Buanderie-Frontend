@@ -16,7 +16,8 @@ import HistoriqueGlobal from "./pages/Historique/HistoriqueGlobal";
 import BuanderieStats from "./pages/Statistiques/BuanderieStats";
 import ReclamationList from "./pages/Reclamation/ReclamationList";
 import TrackingPage from "./pages/Tracking/TrackingPage";
-import StockageList from "./pages/stockage/StockageList";
+import StockageArsenal from "./pages/stockageArsenal/StockageArsenal";
+import SuiviStock from "./pages/suiviStock/SuiviStock";
 import TriList from "./pages/Tri/TriList";
 import HistoriqueCollecte from "./pages/HistoriqueCollecte/HistoriqueCollecte";
 import MachinesDashboard from "./pages/lavage/MachinesDashboard";
@@ -40,6 +41,7 @@ import RemiseLinge from "./pages/remise-Linges/RemiseLinge";
 import EtapeList from "./pages/etape/EtapeList";
 import BuanderieWorkflow from "./pages/workflow/BuanderieWorkflow";
 import SacInfecteList from "./pages/sacLinge/SacInfecteList";
+import ParametresPage from "./pages/Parametres/ParametresPage";
 
 
 export const router = createBrowserRouter([
@@ -151,8 +153,8 @@ export const router = createBrowserRouter([
           },
 
           {
-            path: "stockage",
-            Component: StockageList,
+            path: "stockage-arsenal",
+            Component: StockageArsenal,
             handle: {
               privileges: ["LIG1603"],
             },
@@ -216,14 +218,6 @@ export const router = createBrowserRouter([
           },
 
           {
-            path: "stock",
-            Component: StockageList,
-            handle: {
-              privileges: ["LIG1205"],
-            },
-          },
-
-          {
             path: "agents",
             Component: AgentList,
             handle: {
@@ -263,6 +257,14 @@ export const router = createBrowserRouter([
             Component: ImmobilisationList,
             handle: {
               privileges: ["LIG1304"],
+            },
+          },
+
+          {
+            path: "suivi-stock",
+            Component: SuiviStock,
+            handle: {
+              privileges: ["LIG1305"],
             },
           },
 
@@ -390,6 +392,12 @@ export const router = createBrowserRouter([
             handle: {
               privileges: ["LIG1604"],
             },
+          },
+
+          {
+            // Paramètres du compte : accessible à tout utilisateur connecté
+            path: "parametres",
+            Component: ParametresPage,
           },
 
         ],

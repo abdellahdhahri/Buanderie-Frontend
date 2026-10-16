@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { FaBarcode, FaTimes } from "react-icons/fa";
 import { useAutoScan } from "../../../hooks/useAutoScan";
 import { usePermanentFocus } from "../../../hooks/usePermanentFocus";
+import { bipScan } from "../../../utils/appSettings";
 
 /**
  * Input de scan universel.
@@ -28,7 +29,7 @@ export default function ScanInput({
   const handleSubmit = (e) => {
     e.preventDefault();
     const code = value.trim();
-    if (code) { onSubmit(code); onChange(""); }
+    if (code) { bipScan(); onSubmit(code); onChange(""); }
   };
 
   return (

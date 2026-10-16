@@ -1,0 +1,539 @@
+/* Collecte chambre : lits en SVG + panneau des linges — voir ChambreLits.jsx */
+
+/* ── Grille des lits ─────────────────────────────────────────────────── */
+.lits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.lit-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 12px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.lit-tile:not(.is-empty):hover {
+  transform: translateY(-3px);
+  border-color: var(--tone);
+  box-shadow: 0 14px 28px -14px color-mix(in srgb, var(--tone) 55%, transparent);
+}
+
+.lit-tile:focus-visible {
+  outline: 2px solid var(--tone);
+  outline-offset: 3px;
+}
+
+.lit-tile.is-active {
+  border-color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 5%, #ffffff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 16%, transparent);
+}
+
+.lit-tile.is-empty {
+  cursor: default;
+  opacity: 0.7;
+  border-style: dashed;
+}
+
+.lit-tile__flag {
+  position: absolute;
+  top: 10px;
+  inset-inline-end: 10px;
+  display: flex;
+  padding: 4px;
+  border-radius: 8px;
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.lit-tile__code {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.lit-tile__meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.lit-tile__pill {
+  margin-top: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--tone-soft);
+  color: var(--tone);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.bed-svg {
+  width: 100%;
+  max-width: 96px;
+  height: auto;
+  transition: transform 0.25s;
+}
+
+.lit-tile:not(.is-empty):hover .bed-svg {
+  transform: scale(1.04);
+}
+
+.bed-svg__count {
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.bed-svg__ring {
+  animation: bed-ring 1.8s ease-in-out infinite;
+}
+
+@keyframes bed-ring {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.25; }
+}
+
+/* ── Légende ─────────────────────────────────────────────────────────── */
+.lits-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.lits-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.lits-legend__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+/* ── Dialogue du lit (tactile) ───────────────────────────────────────── */
+.lit-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000; /* sous les dialogues Manquant / Infecté (9999) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  animation: lit-fade 0.18s ease-out;
+}
+
+@keyframes lit-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lit-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 620px;
+  max-height: 86vh;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+  overflow: hidden;
+  animation: lit-pop 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes lit-pop {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+.lit-dialog__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px 14px 18px;
+  background: linear-gradient(135deg, var(--tone-soft), #ffffff);
+  border-bottom: 1px solid color-mix(in srgb, var(--tone) 20%, #e2e8f0);
+}
+
+.lit-dialog__bed {
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.lit-dialog__bed .bed-svg {
+  max-width: 40px;
+}
+
+.lit-dialog__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.lit-dialog__title h3 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.lit-dialog__title p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.lit-dialog__flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.lit-dialog__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.lit-dialog__banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.lit-dialog__banner.is-infecte {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.lit-dialog__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+  padding: 14px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.lit-dialog__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid #e2e8f0;
+  background: #f5f3ff;
+}
+
+.lit-dialog__foot.is-infecte {
+  background: #fef2f2;
+}
+
+.lit-dialog__foot.is-readonly {
+  background: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.lit-dialog__next {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.lit-dialog__scan-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--tone);
+  color: #ffffff;
+  animation: scan-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes scan-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone) 45%, transparent); }
+  50% { box-shadow: 0 0 0 8px transparent; }
+}
+
+.lit-dialog__next strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.lit-dialog__next span {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.lit-dialog__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1.5px solid color-mix(in srgb, var(--tone) 40%, #e2e8f0);
+  border-radius: 14px;
+  background: #ffffff;
+  color: var(--tone);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.lit-dialog__all:active,
+.lit-dialog__close:active {
+  transform: scale(0.96);
+}
+
+/* ── Linge (tactile) ─────────────────────────────────────────────────── */
+.linge-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 78px;
+  padding: 12px 52px 12px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+
+[dir="rtl"] .linge-tile {
+  padding: 12px 12px 12px 52px;
+}
+
+.linge-tile.is-selectable {
+  cursor: pointer;
+}
+
+.linge-tile.is-selectable:active {
+  transform: scale(0.98);
+}
+
+.linge-tile.is-checked {
+  border-color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 7%, #ffffff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone) 15%, transparent);
+}
+
+.linge-tile.is-done {
+  padding-inline-end: 12px;
+  border-color: color-mix(in srgb, var(--st) 35%, #e2e8f0);
+  background: color-mix(in srgb, var(--st) 5%, #ffffff);
+}
+
+/* Grande coche ronde, facile à viser au doigt */
+.linge-tile__check {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-top: -15px;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  color: transparent;
+  transition: all 0.15s;
+}
+
+.linge-tile.is-checked .linge-tile__check {
+  border-color: var(--tone);
+  background: var(--tone);
+  color: #ffffff;
+  transform: scale(1.05);
+}
+
+.linge-svg {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 46px;
+}
+
+.linge-svg svg {
+  width: 100%;
+  height: 100%;
+}
+
+.linge-svg__icon {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  color: #ffffff;
+}
+
+.linge-tile__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.linge-tile__label {
+  max-width: 100%;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linge-tile__code {
+  max-width: 100%;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linge-tile__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--st-soft);
+  color: var(--st);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.linge-tile__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.linge-tile .act {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.1s, filter 0.15s;
+}
+
+.linge-tile .act:active {
+  transform: scale(0.92);
+}
+
+.act--propre { background: #e0f2fe; color: #0284c7; }
+.act--manquant { background: #fef3c7; color: #d97706; }
+.act--infecte { background: #fee2e2; color: #dc2626; }
+
+@media (max-width: 520px) {
+  .lit-dialog__overlay { align-items: flex-end; padding: 0; }
+  .lit-dialog { max-height: 92vh; border-radius: 24px 24px 0 0; }
+  .lit-dialog__foot { flex-wrap: wrap; }
+  .lit-dialog__all { flex: 1; justify-content: center; }
+}
+
+/* ── Mode sombre ─────────────────────────────────────────────────────── */
+.dark .lit-tile,
+.dark .lit-dialog,
+.dark .linge-tile,
+.dark .lit-dialog__close,
+.dark .lit-dialog__all {
+  background: var(--dk-surface, #111a2b);
+  border-color: var(--dk-border, #243149);
+}
+
+.dark .lit-tile.is-active,
+.dark .linge-tile.is-checked {
+  background: color-mix(in srgb, var(--tone) 12%, var(--dk-surface, #111a2b));
+  border-color: var(--tone);
+}
+
+.dark .lit-dialog__head {
+  background: color-mix(in srgb, var(--tone) 12%, var(--dk-surface, #111a2b));
+}
+
+.dark .lit-dialog__foot {
+  background: var(--dk-surface-2, #16213a);
+  border-color: var(--dk-border, #243149);
+}
+
+.dark .lit-tile__code,
+.dark .lit-dialog__title h3,
+.dark .lit-dialog__next strong,
+.dark .linge-tile__label {
+  color: var(--dk-text, #e6edf6);
+}

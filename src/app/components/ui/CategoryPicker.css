@@ -1,0 +1,152 @@
+/* Sélecteur de catégories de linge — voir CategoryPicker.jsx */
+.cat-picker {
+  --cp-surface: #ffffff;
+  --cp-surface-2: #f8fafc;
+  --cp-border: #e2e8f0;
+  --cp-text: #1e293b;
+  --cp-muted: #64748b;
+  --cp-danger: #e11d48;
+}
+
+.dark .cat-picker {
+  --cp-surface: var(--dk-surface, #111a2b);
+  --cp-surface-2: var(--dk-surface-2, #16213a);
+  --cp-border: var(--dk-border, #243149);
+  --cp-text: var(--dk-text, #e6edf6);
+  --cp-muted: var(--dk-muted, #8d9bb0);
+}
+
+.cat-picker__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.cat-picker__count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cp-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.cat-picker__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.cat-picker__actions button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #0d9488;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cat-picker__actions button:hover:not(:disabled) {
+  background: rgba(13, 148, 136, 0.1);
+}
+
+.cat-picker__actions button:disabled {
+  color: var(--cp-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cat-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.cat-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 9px 30px 9px 9px;
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+  background: var(--cp-surface);
+  color: var(--cp-text);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s, transform 0.18s;
+}
+
+[dir="rtl"] .cat-card {
+  padding: 9px 9px 9px 30px;
+}
+
+.cat-card:hover {
+  border-color: color-mix(in srgb, var(--cat-accent) 45%, var(--cp-border));
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+}
+
+.cat-card:focus-visible {
+  outline: 2px solid var(--cat-accent);
+  outline-offset: 2px;
+}
+
+.cat-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--cat-accent) 12%, transparent);
+  color: var(--cat-accent);
+  transition: background 0.18s, color 0.18s;
+}
+
+.cat-card__label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.cat-card__check {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  border: 1.5px solid var(--cp-border);
+  border-radius: 50%;
+  color: transparent;
+  transition: all 0.18s;
+}
+
+.cat-card.is-selected {
+  border-color: var(--cat-accent);
+  background: color-mix(in srgb, var(--cat-accent) 6%, var(--cp-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat-accent) 14%, transparent);
+}
+
+.cat-card.is-selected .cat-card__icon {
+  background: var(--cat-accent);
+  color: #ffffff;
+}
+
+.cat-card.is-selected .cat-card__check {
+  border-color: var(--cat-accent);
+  background: var(--cat-accent);
+  color: #ffffff;
+}
+
+.cat-picker--invalid .cat-card:not(.is-selected) {
+  border-color: color-mix(in srgb, var(--cp-danger) 35%, var(--cp-border));
+}

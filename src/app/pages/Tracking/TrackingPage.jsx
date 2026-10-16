@@ -1,6 +1,8 @@
 import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { LingeContext } from "../../contextes/LingeContext";
+import { ServiceContext } from "../../contextes/ServiceContext";
+import { getSetting, formatDateTime as formatDateTimeReglage } from "../../utils/appSettings";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../../components/ui/button";
@@ -166,19 +168,16 @@ function getEtatStyle(etat) {
   return ETAT_STYLES[etat] || { color: palette.textMuted, bg: palette.surfaceRaised, Icon: Icons.Info };
 }
 
+// Format choisi dans Paramètres › Affichage
 function formatDateTime(value) {
   if (!value) return null;
-  try {
-    return new Date(value).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return null;
-  }
+  const s = formatDateTimeReglage(value);
+  return s === "—" ? null : s;
 }
 
 const DETAIL_FIELDS = [
   { key: "typeLinge", label: "Type de linge", Icon: Icons.Tag },
   { key: "poids", label: "Poids", Icon: Icons.Weight, suffix: " kg" },
-  { key: "service", label: "Service demandeur", Icon: Icons.Building },
   { key: "client", label: "Client", Icon: Icons.Building },
   { key: "numeroLot", label: "Lot", Icon: Icons.Hash },
   { key: "rfidTag", label: "Tag RFID", Icon: Icons.Rfid },
@@ -187,6 +186,46 @@ const DETAIL_FIELDS = [
   { key: "dateCollecte", label: "Date de collecte", Icon: Icons.Clock, isDate: true },
   { key: "dateLivraisonPrevue", label: "Livraison prévue", Icon: Icons.Clock, isDate: true },
 ];
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+
+function pickValue(obj, keys) {
+  if (!obj) return null;
+  for (const k of keys) {
+    const v = obj[k];
+    if (v !== undefined && v !== null && v !== "") return v;
+  }
+  return null;
+}
+
+// Résout la chambre du linge (objet, code direct ou id à chercher dans la liste des chambres)
+function resolveChambre(item, chambres) {
+  const raw = item?.chambre ?? item?.Chambre;
+  if (raw && typeof raw === "object") {
+    return {
+      code: pickValue(raw, ["code", "Code", "codeChambre", "numero", "nom"]),
+      serviceId: pickValue(raw, ["serviceId", "ServiceId"]),
+    };
+  }
+  const code = (typeof raw === "string" || typeof raw === "number") ? raw : pickValue(item, ["codeChambre", "chambreCode", "CodeChambre", "chambreNom", "numeroChambre"]);
+  const id = pickValue(item, ["chambreIdSqlServer", "chambreId", "ChambreId", "idChambre"]);
+  const found = id != null ? chambres.find((c) => String(c.id) === String(id)) : code != null ? chambres.find((c) => String(c.code) === String(code)) : null;
+  if (!code && !found) return null;
+  return { code: code ?? found?.code ?? `CH-${id}`, serviceId: found?.serviceId ?? null };
+}
+
+// Résout le service du linge, avec repli sur le service de la chambre
+function resolveService(item, services, chambre) {
+  const raw = item?.service ?? item?.Service;
+  if (raw && typeof raw === "object") return pickValue(raw, ["code", "Code", "nom", "libelle", "designation"]);
+  if (typeof raw === "string") return raw;
+  const name = pickValue(item, ["serviceCode", "serviceNom", "serviceName", "nomService", "codeService"]);
+  if (name) return name;
+  const id = pickValue(item, ["serviceId", "ServiceId", "ServiceID", "idService"]) ?? chambre?.serviceId;
+  if (id == null) return null;
+  const s = (services || []).find((x) => String(x.id) === String(id));
+  return s ? (s.code || s.nom || s.libelle) : null;
+}
 
 function MovingLinge({ fromStation, toStation, fromLabel, toLabel }) {
   const [phase, setPhase] = useState("idle");
@@ -556,7 +595,7 @@ function InfoRow({ Icon, label, value }) {
   );
 }
 
-function ItemDetailModal({ item, history, onClose, onOpenJournal, t }) {
+function ItemDetailModal({ item, history, chambre, serviceName, onClose, onOpenJournal, t }) {
   if (!item) return null;
   const etat = item.etat;
   const config = getEtatStyle(etat);
@@ -617,6 +656,8 @@ function ItemDetailModal({ item, history, onClose, onOpenJournal, t }) {
 
         <div style={{ padding: "8px 24px 4px" }}>
           <InfoRow Icon={Icons.Hash} label="Identifiant" value={`#${item.id}`} />
+          <InfoRow Icon={Icons.Building} label={t('tracking.service', 'Service')} value={serviceName || "—"} />
+          <InfoRow Icon={Icons.MapPin} label={t('tracking.room', 'Chambre')} value={chambre?.code || "—"} />
           {visibleFields.map((f) => (
             <InfoRow key={f.key} Icon={f.Icon} label={f.label} value={f.value} />
           ))}
@@ -674,6 +715,24 @@ export default function TrackingPage() {
   const [isFocused, setIsFocused] = useState(true);
   const location = useLocation();
 
+  const { services } = useContext(ServiceContext);
+  const [chambres, setChambres] = useState([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${API_URL}/api/sqlserver/chambres?page=0&size=300`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        const list = data?.content || data;
+        setChambres(Array.isArray(list) ? list.map((c) => ({ id: c.Id ?? c.id, code: c.Code ?? c.code, serviceId: c.ServiceId ?? c.serviceId })) : []);
+      })
+      .catch((err) => { if (err.name !== "AbortError") console.error("Erreur chargement chambres:", err); });
+    return () => controller.abort();
+  }, []);
+
+  const itemChambre = useMemo(() => (item ? resolveChambre(item, chambres) : null), [item, chambres]);
+  const itemServiceName = useMemo(() => (item ? resolveService(item, services, itemChambre) : null), [item, services, itemChambre]);
+
   const currentStation = item ? ETAT_TO_STATION[item.etat] : null;
 
   const performSearch = useCallback(async (code, silent = false) => {
@@ -698,7 +757,8 @@ export default function TrackingPage() {
 
   useEffect(() => {
     if (!autoRefresh || !item) return;
-    const interval = setInterval(() => performSearch(item.codeBarre, true), 10000);
+    // Fréquence du mode LIVE : Paramètres › Rafraîchissement
+    const interval = setInterval(() => performSearch(item.codeBarre, true), (Number(getSetting("refresh.trackingSeconds")) || 10) * 1000);
     return () => clearInterval(interval);
   }, [autoRefresh, item, performSearch]);
 
@@ -736,8 +796,8 @@ export default function TrackingPage() {
   }, [location.search, performSearch]);
 
   useEffect(() => {
-    if (searchValue.trim().length > 3) {
-      const timer = setTimeout(() => performSearch(searchValue.trim()), 500);
+    if (searchValue.trim().length >= (Number(getSetting("scan.minLength")) || 3)) {
+      const timer = setTimeout(() => performSearch(searchValue.trim()), Number(getSetting("scan.delayMs")) || 400);
       return () => clearTimeout(timer);
     }
   }, [searchValue, performSearch]);
@@ -948,7 +1008,7 @@ export default function TrackingPage() {
 
       <AnimatePresence>
         {showDetail && item && (
-          <ItemDetailModal item={item} history={history} onClose={() => setShowDetail(false)} onOpenJournal={() => setShowJournal(true)} t={t} />
+          <ItemDetailModal item={item} history={history} chambre={itemChambre} serviceName={itemServiceName} onClose={() => setShowDetail(false)} onOpenJournal={() => setShowJournal(true)} t={t} />
         )}
       </AnimatePresence>
 

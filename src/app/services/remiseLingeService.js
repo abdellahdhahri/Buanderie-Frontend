@@ -10,6 +10,7 @@ export const normalizeAgent = (agentData) => {
     agentData.idPersonnel ??
     agentData.personnelId ??
     agentData.codePersonnel ??
+    agentData.id ??
     null;
 
   if (resolvedId === null || resolvedId === undefined) {
@@ -19,14 +20,22 @@ export const normalizeAgent = (agentData) => {
     );
   }
 
+  // L'API SQL Server renvoie les clés en PascalCase (Nom, NomPrenom, CodeBarre...)
+  const nom = agentData.nom ?? agentData.Nom ?? "";
+  const prenom = agentData.prenom ?? agentData.Prenom ?? "";
+  const codeBarre = agentData.codeBarre ?? agentData.CodeBarre;
+  const matricule = agentData.matricule ?? agentData.Matricule;
+  const nomPrenom =
+    agentData.nomPrenom ?? agentData.NomPrenom ?? [prenom, nom].filter(Boolean).join(" ");
+
   return {
-    matricule: agentData.codeBarre || agentData.matricule,
-    nom: agentData.nom || "Inconnu",
-    prenom: agentData.prenom || "",
-    nomPrenom: agentData.nomPrenom || agentData.nom || "Inconnu",
-    codeBarre: agentData.codeBarre || agentData.matricule,
+    matricule: codeBarre || matricule,
+    nom: nom || nomPrenom || "Inconnu",
+    prenom,
+    nomPrenom: nomPrenom || nom || "Inconnu",
+    codeBarre: codeBarre || matricule,
     id: resolvedId,
-    poste: agentData.poste || agentData.fonction || "AGENT_REMISE"
+    poste: agentData.poste || agentData.fonction || agentData.Fonction || "AGENT_REMISE"
   };
 };
 

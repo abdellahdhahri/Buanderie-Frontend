@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef } from 
 import { useModal } from "./ModalContext";
 import { STATS_INITIALES } from "../constants/tri";
 
-const API = "http://localhost:8082";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export const TriContext = createContext();
 export const useTri = () => useContext(TriContext);

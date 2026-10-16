@@ -18,7 +18,6 @@ import {
   Tag,
   Save,
   AlertCircle,
-  CheckCircle,
   Loader2
 } from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
@@ -28,7 +27,13 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import Swal from 'sweetalert2';
 import { ProgrammeContext } from "../../contextes/ProgrammeContext";
+import { CategoryPicker } from "../../components/ui/CategoryPicker";
+import { getCategorieMeta } from "../../constants/categoriesLinge";
 import "./ProgrammeList.css";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { FormModal } from "../../components/ui/modal-kit";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -88,31 +93,6 @@ function ProgrammeModeToggle({ mode, onChange }) {
     </div>
   );
 }
-
-// ─── Icônes pour les catégories ─────────────────────────────────────────────
-const CATEGORY_ICONS = {
-  DRAP: "🛏️",
-  TAIE_OREILLER: "🛌",
-  SERVIETTE_BAIN: "🧖",
-  SERVIETTE_VISAGE: "🧻",
-  PEIGNOIR: "🧥",
-  NAPPE: "🧶",
-  SERVIETTE_TABLE: "🍽️",
-  UNIFORME: "👔",
-  AUTRE: "📦"
-};
-
-const CATEGORIES = [
-  "DRAP",
-  "TAIE_OREILLER",
-  "SERVIETTE_BAIN",
-  "SERVIETTE_VISAGE",
-  "PEIGNOIR",
-  "NAPPE",
-  "SERVIETTE_TABLE",
-  "UNIFORME",
-  "AUTRE"
-];
 
 // ─── Composant Principal ────────────────────────────────────────────────────
 
@@ -298,21 +278,13 @@ export default function ProgrammeList() {
     }
   };
 
-  const handleCategoryToggle = (category) => {
-    setFormData(prev => ({
-      ...prev,
-      categories: prev.categories.includes(category)
-        ? prev.categories.filter(c => c !== category)
-        : [...prev.categories, category]
-    }));
-  };
-
   const getCategoryDisplay = (category) => {
     return t(`categories.${category}`, category);
   };
 
   const getCategoryIcon = (category) => {
-    return CATEGORY_ICONS[category] || "📦";
+    const { Icon, accent } = getCategorieMeta(category);
+    return <Icon size={12} color={accent} />;
   };
 
   const getProgrammeBadge = (programme) => {
@@ -339,6 +311,9 @@ export default function ProgrammeList() {
   };
 
   const currentProgrammes = getCurrentProgrammes();
+
+  // Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun)
+  const { sortedItems: sortedProgrammes, requestSort, directionFor } = useSortableData(currentProgrammes);
   const selectedProgramme = currentProgrammes.find(p => p.id === selectedId);
 
   return (
@@ -352,44 +327,7 @@ export default function ProgrammeList() {
             gap: "16px",
             marginBottom: "8px"
           }}>
-            <div style={{
-              width: "52px",
-              height: "52px",
-              borderRadius: "16px",
-              background: mode === "LAVAGE" 
-                ? "linear-gradient(135deg, #06b6d4, #0891b2)" 
-                : "linear-gradient(135deg, #f59e0b, #d97706)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              boxShadow: mode === "LAVAGE"
-                ? "0 4px 16px rgba(6, 182, 212, 0.25)"
-                : "0 4px 16px rgba(245, 158, 11, 0.25)"
-            }}>
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width="24" 
-                height="24" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              >
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-                <circle cx="12" cy="14" r="1" />
-                <circle cx="16" cy="14" r="1" />
-                <circle cx="8" cy="14" r="1" />
-                <circle cx="12" cy="18" r="1" />
-                <circle cx="16" cy="18" r="1" />
-                <circle cx="8" cy="18" r="1" />
-              </svg>
-            </div>
+            <PageHeaderIcon size={52} />
             <div>
               <h1 style={{
                 fontSize: "28px",
@@ -450,21 +388,33 @@ export default function ProgrammeList() {
       {/* Tableau */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="param-table">
+          <div className="premium-table-wrap">
+            <table className="premium-table">
               <thead>
                 <tr>
-                  <th className="text-center py-3 px-4">{t('programmes.id')}</th>
-                  <th className="text-center py-3 px-4">{t('programmes.name')}</th>
-                  <th className="text-center py-3 px-4">{t('programmes.temperature_label')}</th>
-                  <th className="text-center py-3 px-4">{t('programmes.duration_label')}</th>
+                  <SortableHeader direction={directionFor("id")} onSort={() => requestSort("id")} align="center">
+{t('programmes.id')}
+</SortableHeader>
+                  <SortableHeader direction={directionFor("nom")} onSort={() => requestSort("nom")} align="center">
+{t('programmes.name')}
+</SortableHeader>
+                  <SortableHeader direction={directionFor("temperatureCelsius")} onSort={() => requestSort("temperatureCelsius")} align="center">
+{t('programmes.temperature_label')}
+</SortableHeader>
+                  <SortableHeader direction={directionFor("dureeMinutes")} onSort={() => requestSort("dureeMinutes")} align="center">
+{t('programmes.duration_label')}
+</SortableHeader>
                   {mode === "LAVAGE" ? (
-                    <th className="text-center py-3 px-4">{t('programmes.spin_label')}</th>
+                    <SortableHeader direction={directionFor("vitesseEssorageRpm")} onSort={() => requestSort("vitesseEssorageRpm")} align="center">
+{t('programmes.spin_label')}
+</SortableHeader>
                   ) : (
-                    <th className="text-center py-3 px-4">{t('programmes.humidity_label')}</th>
+                    <SortableHeader direction={directionFor("niveauHumidite")} onSort={() => requestSort("niveauHumidite")} align="center">
+{t('programmes.humidity_label')}
+</SortableHeader>
                   )}
-                  <th className="text-center py-3 px-4">{t('programmes.categories_label')}</th>
-                  <th className="text-center py-3 px-4 actions-th">{t('programmes.actions')}</th>
+                  <th style={{ textAlign: "center" }}>{t('programmes.categories_label')}</th>
+                  <th style={{ textAlign: "center" }}>{t('programmes.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -475,14 +425,14 @@ export default function ProgrammeList() {
                       {t('programmes.loading')}
                     </td>
                   </tr>
-                ) : currentProgrammes.length === 0 ? (
+                ) : sortedProgrammes.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-8 text-muted-foreground">
                       {searchTerm ? t('programmes.no_match') : t('programmes.no_data')}
                     </td>
                   </tr>
                 ) : (
-                  currentProgrammes.map((programme) => {
+                  sortedProgrammes.map((programme) => {
                     const isSelected = selectedId === programme.id;
                     return (
                       <tr
@@ -635,7 +585,7 @@ export default function ProgrammeList() {
       </div>
 
       {/* Modal Création/Édition */}
-      <Modal
+      <FormModal
         isOpen={showModal}
         onClose={() => {
           setShowModal(false);
@@ -644,9 +594,11 @@ export default function ProgrammeList() {
         title={editingProgramme 
           ? (mode === "LAVAGE" ? t('programmes.edit_lavage') : t('programmes.edit_sechage'))
           : (mode === "LAVAGE" ? t('programmes.new_lavage') : t('programmes.new_sechage'))}
-        size="lg"
+        mode={editingProgramme ? "edit" : "create"}
+        size={"lg"}
+        onSubmit={handleSubmit}
       >
-        <form onSubmit={handleSubmit} className="space-y-6">
+        
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('programmes.name')} <span className="text-red-500">*</span>
@@ -733,30 +685,15 @@ export default function ProgrammeList() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('programmes.categories')} <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {CATEGORIES.map((category) => {
-                const isSelected = formData.categories.includes(category);
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => handleCategoryToggle(category)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      isSelected
-                        ? "bg-[#0ca678] text-white shadow-sm border-2 border-[#0ca678]"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 border-2 border-transparent"
-                    }`}
-                  >
-                    <span>{getCategoryIcon(category)}</span>
-                    <span>{getCategoryDisplay(category)}</span>
-                    {isSelected && <CheckCircle className="w-4 h-4 ml-auto" />}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-gray-400 mb-3">
               {t('programmes.categories_placeholder')}
             </p>
+            <CategoryPicker
+              multiple
+              value={formData.categories}
+              onChange={(categories) => setFormData((prev) => ({ ...prev, categories }))}
+              invalid={formData.categories.length === 0}
+            />
             {formData.categories.length === 0 && (
               <p className="text-xs text-red-500 mt-1">
                 ⚠️ {t('programmes.categories_error')}
@@ -764,24 +701,8 @@ export default function ProgrammeList() {
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => {
-                setShowModal(false);
-                setEditingProgramme(null);
-              }}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit">
-              <Save className="w-4 h-4 mr-2" />
-              {editingProgramme ? t('programmes.save') : t('programmes.create')}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+
+      </FormModal>
     </div>
   );
 }

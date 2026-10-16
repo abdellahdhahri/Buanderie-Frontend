@@ -30,8 +30,12 @@ import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import BarcodeLabel from "../../components/BarcodeLabel";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { DetailModal, FormModal, FormSection } from "../../components/ui/modal-kit";
 
-const API_URL = "http://localhost:8082";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔧 Helper : prépare l'objet pour BarcodeLabel avec numeroSac comme code
@@ -444,6 +448,9 @@ export default function SacInfecteList() {
     );
   });
 
+  // Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun)
+  const { sortedItems: sortedSacs, requestSort, directionFor } = useSortableData(filteredSacs);
+
   // ─────────────────────────────────────────────────────────────────────────
   // 🎨 RENDU
   // ─────────────────────────────────────────────────────────────────────────
@@ -464,21 +471,7 @@ export default function SacInfecteList() {
           {/* Header */}
           <div style={{ marginBottom: "32px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
-              <div
-                style={{
-                  width: "52px",
-                  height: "52px",
-                  borderRadius: "16px",
-                  background: "linear-gradient(135deg, #dc2626, #991b1b)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "white",
-                  boxShadow: "0 4px 16px rgba(220, 38, 38, 0.25)",
-                }}
-              >
-                <Biohazard className="w-6 h-6" />
-              </div>
+              <PageHeaderIcon size={52} />
               <div>
                 <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
                   {t("sac_infecte.title")}
@@ -616,17 +609,27 @@ export default function SacInfecteList() {
           {/* Tableau */}
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-border bg-muted/50">
+              <div className="premium-table-wrap">
+                <table className="premium-table">
+                  <thead>
                     <tr>
-                      <th className="text-center py-3 px-4 text-sm font-medium w-10"></th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t("sac_infecte.numero_sac")}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t("sac_infecte.date_collecte")}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t("sac_infecte.agent")}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t("sac_infecte.quantite")}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t("sac_infecte.etat_label")}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t("common.actions")}</th>
+                      <th style={{ width: 56 }} />
+                      <SortableHeader direction={directionFor("numeroSac")} onSort={() => requestSort("numeroSac")} align="center">
+{t("sac_infecte.numero_sac")}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("dateCollecte")} onSort={() => requestSort("dateCollecte")} align="center">
+{t("sac_infecte.date_collecte")}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("agentCollecteNom")} onSort={() => requestSort("agentCollecteNom")} align="center">
+{t("sac_infecte.agent")}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("quantiteDeclaree")} onSort={() => requestSort("quantiteDeclaree")} align="center">
+{t("sac_infecte.quantite")}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("etat")} onSort={() => requestSort("etat")} align="center">
+{t("sac_infecte.etat_label")}
+</SortableHeader>
+                      <th style={{ textAlign: "center" }}>{t("common.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -639,7 +642,7 @@ export default function SacInfecteList() {
                           </div>
                         </td>
                       </tr>
-                    ) : filteredSacs.length === 0 ? (
+                    ) : sortedSacs.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="text-center py-8 text-muted-foreground">
                           {searchTerm || filterEtat !== "ALL"
@@ -648,7 +651,7 @@ export default function SacInfecteList() {
                         </td>
                       </tr>
                     ) : (
-                      filteredSacs.map((sac) => (
+                      sortedSacs.map((sac) => (
                         <tr
                           key={sac.id}
                           className={`border-b border-border hover:bg-accent/50 transition-colors ${selectedSacId === sac.id ? "bg-red-50" : ""}`}
@@ -1158,66 +1161,44 @@ export default function SacInfecteList() {
       {/* ═══════════════════════════════════════════════════════════════════
           MODAL DÉTAIL ITEM
       ═══════════════════════════════════════════════════════════════════ */}
-      <Modal
+      <DetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        title={`${t("sac_infecte.details_item")} - ${selectedItemDetail?.categorie || "N/A"}`}
-        size="lg"
-      >
-        {selectedItemDetail && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t("sac_infecte.numero_sac")}</label>
-              <Input value={selectedItemDetail.numeroSac || "N/A"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t("sac_infecte.categorie")}</label>
-              <Input value={selectedItemDetail.categorie || "N/A"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t("sac_infecte.quantite_declaree")}</label>
-              <Input value={selectedItemDetail.quantiteDeclaree || 0} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t("sac_infecte.quantite_comptee")}</label>
-              <Input value={selectedItemDetail.quantiteComptee ?? "—"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t("sac_infecte.ecart")}</label>
-              <Input value={selectedItemDetail.ecart ?? "—"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t("sac_infecte.etat_label")}</label>
-              <div className="text-center">{getEtatSacBadge(selectedItemDetail.etat)}</div>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t("sac_infecte.agent")}</label>
-              <Input value={selectedItemDetail.agentCollecteNom || t("sac_infecte.non_renseigne")} disabled />
-            </div>
-            {selectedItemDetail.dateCollecte && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t("sac_infecte.date_collecte")}</label>
-                <Input value={new Date(selectedItemDetail.dateCollecte).toLocaleString("fr-FR")} disabled />
-              </div>
-            )}
-          </div>
-        )}
-        <div className="flex justify-end gap-3 mt-6">
-          <Button onClick={() => setShowDetailModal(false)}>{t("common.close")}</Button>
-        </div>
-      </Modal>
+        title={t("sac_infecte.details_item")}
+        subtitle={selectedItemDetail?.numeroSac ? `${t("sac_infecte.numero_sac")} · ${selectedItemDetail.numeroSac}` : undefined}
+        heading={selectedItemDetail?.categorie}
+        badges={selectedItemDetail && getEtatSacBadge(selectedItemDetail.etat)}
+        metrics={selectedItemDetail ? [
+          { label: t("sac_infecte.quantite_declaree"), value: selectedItemDetail.quantiteDeclaree ?? 0 },
+          { label: t("sac_infecte.quantite_comptee"), value: selectedItemDetail.quantiteComptee },
+          { label: t("sac_infecte.ecart"), value: selectedItemDetail.ecart },
+        ] : []}
+        sections={selectedItemDetail ? [
+          { title: t('modal.identification', 'Identification'), icon: "id", items: [
+            { label: t("sac_infecte.numero_sac"), value: selectedItemDetail.numeroSac, mono: true },
+            { label: t("sac_infecte.categorie"), value: selectedItemDetail.categorie },
+          ] },
+          { title: t('modal.collection', 'Collecte'), icon: "people", items: [
+            { label: t("sac_infecte.agent"), value: selectedItemDetail.agentCollecteNom },
+            { label: t("sac_infecte.date_collecte"), value: selectedItemDetail.dateCollecte ? new Date(selectedItemDetail.dateCollecte).toLocaleString("fr-FR") : null },
+          ] },
+        ] : []}
+      />
 
       {/* ═══════════════════════════════════════════════════════════════════
           MODAL CRÉATION / MODIFICATION
       ═══════════════════════════════════════════════════════════════════ */}
-      <Modal
+      <FormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedSac ? `${t("sac_infecte.edit")} #${selectedSac.id}` : t("sac_infecte.new")}
-        size="lg"
+        mode={selectedSac ? "edit" : "create"}
+        size={"lg"}
+        onSubmit={handleSave}
+        saving={isSaving}
       >
-        <form onSubmit={handleSave}>
-          <div className="grid grid-cols-2 gap-4">
+        
+          <FormSection title={t('modal.general_info', 'Informations générales')} icon="specs" columns={2}>
             <div className="col-span-2">
               <Input
                 label={`${t("sac_infecte.numero_sac")} *`}
@@ -1311,18 +1292,10 @@ export default function SacInfecteList() {
                 className="w-full min-h-[60px] px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
-          </div>
+          </FormSection>
 
-          <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)} type="button" disabled={isSaving}>
-              {t("common.cancel")}
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? t("common.loading") : selectedSac ? t("common.save") : t("sac_infecte.new")}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+
+      </FormModal>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 // App.jsx
 import { RouterProvider } from "react-router";
 import { router } from "./routes";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { I18nextProvider } from "react-i18next"; 
 import i18n from "../i18n"; 
@@ -14,6 +14,7 @@ import { AuthProvider } from "./contextes/Authentication/AuthContext";
 import { MachineProvider } from "./contextes/MachineContext";
 import { LanguageProvider } from "../i18n/LanguageProvider"; 
 import { ChatbotProvider } from "../app/components/chatbot/ChatbotProvider";
+import { isDarkTheme, onThemeChange } from "./utils/theme";
 
 
 import { 
@@ -22,6 +23,9 @@ import {
 } from "./services/NotificationService";
 
 export default function App() {
+    const [dark, setDark] = useState(isDarkTheme);
+    useEffect(() => onThemeChange(setDark), []);
+
     useEffect(() => {
         // Démarrer le service de notification
         startNotificationService();
@@ -46,6 +50,7 @@ export default function App() {
                                             <RouterProvider router={router} />
                                             <Toaster 
                                                 position="top-right"
+                                                theme={dark ? "dark" : "light"}
                                                 richColors
                                                 closeButton
                                                 duration={4000}

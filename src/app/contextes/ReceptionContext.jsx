@@ -133,7 +133,9 @@ export function ReceptionProvider({ children }) {
       setBacEnCours({ 
         id: bac.id, 
         code: codeUpper,
-        ...bac 
+        ...bac,
+        // Linges du bac au moment du scan (avant la réception, qui peut vider le bac)
+        lingesAuScan: linges,
       });
 
       const codeBarre = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
@@ -300,7 +302,9 @@ const fetchItemsDuSac = useCallback(async (numeroSac) => {
       setBacEnCours({ 
         id: bac.id, 
         code: codeBac,
-        ...bac 
+        ...bac,
+        // Linges du bac au moment du scan (avant la réception, qui peut vider le bac)
+        lingesAuScan: linges,
       });
 
       const codeBarre = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";

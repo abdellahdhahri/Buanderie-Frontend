@@ -37,18 +37,13 @@ import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import BarcodeLabel from "../../components/BarcodeLabel";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { FormModal, FormSection } from "../../components/ui/modal-kit";
+import { CategoryPicker } from "../../components/ui/CategoryPicker";
 
-const CATEGORIES = [
-  { value: "DRAP", label: "Drap" },
-  { value: "TAIE_OREILLER", label: "Taie d'oreiller" },
-  { value: "SERVIETTE_BAIN", label: "Serviette de bain" },
-  { value: "SERVIETTE_VISAGE", label: "Serviette de visage" },
-  { value: "PEIGNOIR", label: "Peignoir" },
-  { value: "NAPPE", label: "Nappe" },
-  { value: "SERVIETTE_TABLE", label: "Serviette de table" },
-  { value: "UNIFORME", label: "Uniforme" },
-  { value: "AUTRE", label: "Autre" }
-];
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 const TYPE_COLLECTE = [
   { value: "BLANC", label: "Blanc", color: "info" },
@@ -92,7 +87,7 @@ export default function LotList() {
 
   const fetchServices = async () => {
     try {
-      const res = await fetch("http://localhost:8082/api/services");
+      const res = await fetch(`${API_URL}/api/services`);
       if (res.ok) {
         const data = await res.json();
         setServices(data);
@@ -105,7 +100,7 @@ export default function LotList() {
   const fetchLots = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:8082/api/lots");
+      const response = await fetch(`${API_URL}/api/lots`);
       if (response.ok) {
         const data = await response.json();
         setLots(data);
@@ -209,8 +204,8 @@ export default function LotList() {
       });
 
       const url = selectedLot 
-        ? `http://localhost:8082/api/lots/${selectedLot.id}`
-        : `http://localhost:8082/api/lots?${params.toString()}`;
+        ? `${API_URL}/api/lots/${selectedLot.id}`
+        : `${API_URL}/api/lots?${params.toString()}`;
       
       const method = selectedLot ? "PUT" : "POST";
 
@@ -291,7 +286,7 @@ export default function LotList() {
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`http://localhost:8082/api/lots/${id}`, {
+        const response = await fetch(`${API_URL}/api/lots/${id}`, {
           method: "DELETE",
         });
         if (response.ok) {
@@ -336,6 +331,11 @@ export default function LotList() {
     );
   });
 
+  // Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun)
+  const { sortedItems: sortedLots, requestSort, directionFor } = useSortableData(filteredLots, {
+    poidsActuel: (l) => Number(l.poidsActuel) || 0,
+  });
+
   return (
     <div className="relative flex h-full gap-4">
       <motion.div 
@@ -353,33 +353,7 @@ export default function LotList() {
               gap: "16px",
               marginBottom: "8px"
             }}>
-              <div style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "16px",
-                background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                boxShadow: "0 4px 16px rgba(139, 92, 246, 0.25)"
-              }}>
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  width="24" 
-                  height="24" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                  <line x1="12" y1="22.08" x2="12" y2="12" />
-                </svg>
-              </div>
+              <PageHeaderIcon size={52} />
               <div>
                 <h1 style={{
                   fontSize: "28px",
@@ -485,18 +459,30 @@ export default function LotList() {
 
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-border bg-muted/50">
+              <div className="premium-table-wrap">
+                <table className="premium-table">
+                  <thead>
                     <tr>
-                      <th className="text-center py-3 px-4 text-sm font-medium w-10"></th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.code')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.category')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.type_collecte')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.status')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.date_creation')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('lot.capacity')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">{t('common.actions')}</th>
+                      <th style={{ width: 56 }} />
+                      <SortableHeader direction={directionFor("codeLot")} onSort={() => requestSort("codeLot")} align="center">
+{t('lot.code')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("categorie")} onSort={() => requestSort("categorie")} align="center">
+{t('lot.category')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("typeCollecte")} onSort={() => requestSort("typeCollecte")} align="center">
+{t('lot.type_collecte')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("etat")} onSort={() => requestSort("etat")} align="center">
+{t('lot.status')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("dateCreation")} onSort={() => requestSort("dateCreation")} align="center">
+{t('lot.date_creation')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("poidsActuel")} onSort={() => requestSort("poidsActuel")} align="center">
+{t('lot.capacity')}
+</SortableHeader>
+                      <th style={{ textAlign: "center" }}>{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -511,14 +497,14 @@ export default function LotList() {
                           </div>
                         </td>
                       </tr>
-                    ) : filteredLots.length === 0 ? (
+                    ) : sortedLots.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="text-center py-8 text-muted-foreground">
                           {searchTerm ? t('lot.no_match') : t('lot.no_data')}
                         </td>
                       </tr>
                     ) : (
-                      filteredLots.map((lot) => (
+                      sortedLots.map((lot) => (
                         <tr
                           key={lot.id}
                           onClick={() => handleRowClick(lot.id)}
@@ -548,7 +534,7 @@ export default function LotList() {
                             </div>
                           </td>
                           <td className="text-center py-3 px-4">
-                            <Badge variant="outline">{lot.categorie || "N/A"}</Badge>
+                            <Badge variant="outline">{lot.categorie ? t(`categories.${lot.categorie}`, lot.categorie) : "N/A"}</Badge>
                           </td>
                           <td className="text-center py-3 px-4">
                             {getStatusBadge(lot.typeCollecte)}
@@ -638,7 +624,7 @@ export default function LotList() {
                       {selectedLot.codeLot || `LOT-${selectedLot.id}`}
                     </h3>
                     <p className="text-xs text-slate-500">
-                      {selectedLot.categorie || "N/A"} • {selectedLot.typeCollecte || "BLANC"}
+                      {selectedLot.categorie ? t(`categories.${selectedLot.categorie}`, selectedLot.categorie) : "N/A"} • {selectedLot.typeCollecte || "BLANC"}
                     </p>
                   </div>
                 </div>
@@ -682,7 +668,7 @@ export default function LotList() {
                   </div>
                   <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
                     <span className="text-sm text-slate-600">📂 {t('lot.category')}</span>
-                    <Badge variant="outline">{selectedLot.categorie || "N/A"}</Badge>
+                    <Badge variant="outline">{selectedLot.categorie ? t(`categories.${selectedLot.categorie}`, selectedLot.categorie) : "N/A"}</Badge>
                   </div>
                   <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
                     <span className="text-sm text-slate-600">🏷️ {t('lot.type_collecte')}</span>
@@ -711,14 +697,17 @@ export default function LotList() {
         )}
       </AnimatePresence>
 
-      <Modal
+      <FormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedLot ? `${t('lot.edit')} #${selectedLot.id}` : t('lot.new')}
-        size="lg"
+        mode={selectedLot ? "edit" : "create"}
+        size={"lg"}
+        onSubmit={handleSave}
+        saving={isSaving}
       >
-        <form onSubmit={handleSave}>
-          <div className="grid grid-cols-2 gap-4">
+        
+          <FormSection title={t('modal.general_info', 'Informations générales')} icon="specs" columns={2}>
             {selectedLot && (
               <div>
                 <Input
@@ -733,21 +722,10 @@ export default function LotList() {
               <label className="block text-sm font-medium mb-2">
                 {t('lot.category')} <span className="text-red-500">*</span>
               </label>
-              <select
+              <CategoryPicker
                 value={newRec.categorie}
-                onChange={(e) =>
-                  setNewRec({ ...newRec, categorie: e.target.value })
-                }
-                className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                required
-              >
-                <option value="">{t('lot.select_category')}</option>
-                {CATEGORIES.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(categorie) => setNewRec({ ...newRec, categorie })}
+              />
             </div>
 
             <div>
@@ -797,23 +775,10 @@ export default function LotList() {
                 </div>
               </div>
             )}
-          </div>
+          </FormSection>
 
-          <div className="flex justify-end gap-3 mt-6">
-            <Button
-              variant="outline"
-              onClick={() => setIsModalOpen(false)}
-              type="button"
-              disabled={isSaving}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? t('common.loading') : (selectedLot ? t('common.save') : t('lot.create'))}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+
+      </FormModal>
     </div>
   );
 }

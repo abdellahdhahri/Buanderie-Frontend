@@ -17,6 +17,7 @@ import { getCategorieInfo, formatDate, getRemiseStatutConfig } from "../../servi
 import "../Linge/WorkflowList.css";
 
 import lottie from "lottie-web";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 
 function SuccessAnimation({ show, onComplete }) {
   const { t } = useTranslation();
@@ -741,21 +742,7 @@ function RemiseLingeInner() {
             marginBottom: "8px",
           }}
         >
-          <div
-            style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "18px",
-              background: "linear-gradient(135deg, #14b8a6, #0d9488)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              boxShadow: "0 6px 20px rgba(20, 184, 166, 0.3)",
-            }}
-          >
-            <FaBoxes size={26} />
-          </div>
+          <PageHeaderIcon size={56} />
           <div>
             <h1
               style={{

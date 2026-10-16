@@ -35,6 +35,10 @@ import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import printJS from "print-js";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { DetailModal } from "../../components/ui/modal-kit";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -194,7 +198,13 @@ export default function CycleLavageList() {
   // ─── Pagination ──────────────────────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(filteredCycles.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentData = filteredCycles.slice(startIndex, startIndex + itemsPerPage);
+
+  // Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun)
+  const { sortedItems: sortedCycles, requestSort, directionFor } = useSortableData(filteredCycles, {
+    machine: (c) => c.machine?.code || c.machine?.reference,
+    programme: (c) => c.programmeLavage?.nom,
+  });
+  const currentData = sortedCycles.slice(startIndex, startIndex + itemsPerPage);
 
   // ─── Récupération des linges d'un cycle (CORRIGÉE) ──────────────────────
   const fetchCycleLinges = async (cycleId) => {
@@ -440,32 +450,7 @@ export default function CycleLavageList() {
               gap: "16px",
               marginBottom: "8px"
             }}>
-              <div style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "16px",
-                background: "linear-gradient(135deg, #06b6d4, #0891b2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                boxShadow: "0 4px 16px rgba(6, 182, 212, 0.25)"
-              }}>
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  width="24" 
-                  height="24" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                  <polyline points="21 3 12 12 9 9" />
-                </svg>
-              </div>
+              <PageHeaderIcon size={52} />
               <div>
                 <h1 style={{
                   fontSize: "28px",
@@ -630,17 +615,27 @@ export default function CycleLavageList() {
           {/* ─── TABLEAU ────────────────────────────────────────────────────── */}
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-slate-200 bg-slate-50/80">
+              <div className="premium-table-wrap">
+                <table className="premium-table">
+                  <thead>
                     <tr>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500 w-10"></th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('cycles.numero')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('cycles.machine')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('cycles.programme')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('cycles.date_debut')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">{t('cycles.status')}</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-slate-500" style={{ width: "100px" }}>{t('cycles.actions')}</th>
+                      <th style={{ width: 56 }} />
+                      <SortableHeader direction={directionFor("numeroCycle")} onSort={() => requestSort("numeroCycle")} align="center">
+{t('cycles.numero')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("machine")} onSort={() => requestSort("machine")} align="center">
+{t('cycles.machine')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("programme")} onSort={() => requestSort("programme")} align="center">
+{t('cycles.programme')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("dateDebut")} onSort={() => requestSort("dateDebut")} align="center">
+{t('cycles.date_debut')}
+</SortableHeader>
+                      <SortableHeader direction={directionFor("statut")} onSort={() => requestSort("statut")} align="center">
+{t('cycles.status')}
+</SortableHeader>
+                      <th style={{ textAlign: "center" }}>{t('cycles.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -895,154 +890,69 @@ export default function CycleLavageList() {
       </AnimatePresence>
 
       {/* ─── MODAL DÉTAILS ────────────────────────────────────────────────── */}
-      <Modal
+      <DetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        title={`${t('cycles.cycle_details')} - ${selectedCycle?.numeroCycle || 'N/A'}`}
-        size="lg"
-      >
-        {selectedCycle && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.id')}</label>
-              <Input value={`#${selectedCycle.id}`} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.numero')}</label>
-              <Input value={selectedCycle.numeroCycle || "N/A"} disabled />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.status')}</label>
-              <div className="mt-1">{getStatusBadge(selectedCycle.statut)}</div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.date_debut')}</label>
-              <div className="flex items-center gap-2 p-2 rounded-lg border border-input bg-slate-50">
-                <Calendar className="w-4 h-4 text-slate-400" />
-                <span>{formatDate(selectedCycle.dateDebut)}</span>
+        title={t('cycles.cycle_details')}
+        subtitle={selectedCycle ? `#${selectedCycle.id}` : undefined}
+        heading={selectedCycle?.numeroCycle}
+        badges={selectedCycle && getStatusBadge(selectedCycle.statut)}
+        metrics={selectedCycle ? [
+          { label: t('cycles.temperature'), value: `${selectedCycle.programmeLavage?.temperatureCelsius || 0}°C` },
+          { label: t('cycles.duration'), value: `${selectedCycle.programmeLavage?.dureeMinutes || 0} min` },
+          { label: t('cycles.items'), value: selectedCycle.items?.length || 0 },
+        ] : []}
+        sections={selectedCycle ? [
+          { title: t('cycles.machine'), icon: "specs", items: [
+            { label: t('cycles.code'), value: selectedCycle.machine?.code, mono: true },
+            { label: t('cycles.reference'), value: selectedCycle.machine?.reference },
+            { label: t('cycles.type'), value: selectedCycle.machine?.type },
+            { label: t('cycles.capacity'), value: `${selectedCycle.machine?.capaciteKg || 0} kg` },
+          ] },
+          { title: t('cycles.programme'), icon: "stats", items: [
+            { label: t('cycles.name'), value: selectedCycle.programmeLavage?.nom },
+            { label: t('cycles.spin_speed'), value: selectedCycle.programmeLavage?.vitesseEssorageRpm ? `${selectedCycle.programmeLavage.vitesseEssorageRpm} RPM` : null },
+            { label: t('cycles.categories'), span: 2, hidden: !selectedCycle.programmeLavage?.categories?.length, render: (
+              <div className="flex flex-wrap gap-1.5">
+                {(selectedCycle.programmeLavage?.categories || []).map((cat, idx) => (
+                  <Badge key={idx} variant="outline" className="text-xs">{cat}</Badge>
+                ))}
               </div>
-            </div>
-
-            {/* Machine */}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.machine')}</label>
-              <div className="grid grid-cols-2 gap-2 p-3 rounded-lg bg-slate-50 border border-slate-200">
-                <div>
-                  <span className="text-xs text-slate-400">{t('cycles.code')}</span>
-                  <p className="text-sm font-medium">{selectedCycle.machine?.code || "N/A"}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-400">{t('cycles.reference')}</span>
-                  <p className="text-sm font-medium">{selectedCycle.machine?.reference || "N/A"}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-400">{t('cycles.type')}</span>
-                  <p className="text-sm font-medium">{selectedCycle.machine?.type || "N/A"}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-400">{t('cycles.capacity')}</span>
-                  <p className="text-sm font-medium">{selectedCycle.machine?.capaciteKg || 0} kg</p>
-                </div>
+            ) },
+          ] },
+          { title: t('modal.execution', 'Exécution'), icon: "people", items: [
+            { label: t('cycles.date_debut'), value: formatDate(selectedCycle.dateDebut) },
+            { label: t('cycles.agent'), render: selectedCycle.agent?.nom ? (
+              <span className="flex items-center gap-2">
+                <span className="premium-table__avatar">{selectedCycle.agent.nom.charAt(0)}</span>
+                <span>
+                  {selectedCycle.agent.nom}
+                  {selectedCycle.agent.matricule && <span className="block text-xs font-normal text-slate-400">{selectedCycle.agent.matricule}</span>}
+                </span>
+              </span>
+            ) : undefined, value: selectedCycle.agent?.nom },
+          ] },
+          ...(selectedCycle.items?.length ? [{ title: t('cycles.items'), icon: "info", items: [
+            { label: `${selectedCycle.items.length} ${t('cycles.items_count')}`, span: 2, render: (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedCycle.items.map((item, idx) => (
+                  <Badge key={idx} variant="outline" className="text-xs">
+                    {item.id || `#${idx + 1}`}
+                    {item.poidsCharge && ` (${item.poidsCharge} kg)`}
+                  </Badge>
+                ))}
               </div>
-            </div>
-
-            {/* Programme */}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.programme')}</label>
-              <div className="grid grid-cols-3 gap-2 p-3 rounded-lg bg-slate-50 border border-slate-200">
-                <div>
-                  <span className="text-xs text-slate-400">{t('cycles.name')}</span>
-                  <p className="text-sm font-medium">{selectedCycle.programmeLavage?.nom || "N/A"}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-400">{t('cycles.temperature')}</span>
-                  <p className="text-sm font-medium flex items-center gap-1">
-                    <Thermometer className="w-3 h-3 text-red-500" />
-                    {selectedCycle.programmeLavage?.temperatureCelsius || 0}°C
-                  </p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-400">{t('cycles.duration')}</span>
-                  <p className="text-sm font-medium flex items-center gap-1">
-                    <Timer className="w-3 h-3 text-blue-500" />
-                    {selectedCycle.programmeLavage?.dureeMinutes || 0} min
-                  </p>
-                </div>
-                {selectedCycle.programmeLavage?.vitesseEssorageRpm && (
-                  <div>
-                    <span className="text-xs text-slate-400">{t('cycles.spin_speed')}</span>
-                    <p className="text-sm font-medium flex items-center gap-1">
-                      <Gauge className="w-3 h-3 text-purple-500" />
-                      {selectedCycle.programmeLavage.vitesseEssorageRpm} RPM
-                    </p>
-                  </div>
-                )}
-                {selectedCycle.programmeLavage?.categories && (
-                  <div className="col-span-3">
-                    <span className="text-xs text-slate-400">{t('cycles.categories')}</span>
-                    <div className="flex gap-1 mt-1 flex-wrap">
-                      {selectedCycle.programmeLavage.categories.map((cat, idx) => (
-                        <Badge key={idx} variant="outline" className="text-xs">
-                          {cat}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Items */}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.items')}</label>
-              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-                <p className="text-sm font-medium">
-                  {selectedCycle.items?.length || 0} {t('cycles.items_count')}
-                </p>
-                {selectedCycle.items && selectedCycle.items.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {selectedCycle.items.map((item, idx) => (
-                      <Badge key={idx} variant="outline" className="text-xs">
-                        {item.id || `#${idx + 1}`}
-                        {item.poidsCharge && ` (${item.poidsCharge} kg)`}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Agent */}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cycles.agent')}</label>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold">
-                  {selectedCycle.agent?.nom?.charAt(0) || "?"}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{selectedCycle.agent?.nom || "N/A"}</p>
-                  <p className="text-xs text-slate-400">{selectedCycle.agent?.matricule || ""}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="flex justify-end gap-3 mt-6">
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (selectedCycle) {
-                handlePrintCycle(selectedCycle);
-              }
-            }}
-          >
-            <Printer className="w-4 h-4 mr-2" /> {t('cycles.print')}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (selectedCycle) {
+            ) },
+          ] }] : []),
+        ] : []}
+        actions={selectedCycle && (
+          <>
+            <Button variant="outline" onClick={() => handlePrintCycle(selectedCycle)}>
+              <Printer className="w-4 h-4" /> {t('cycles.print')}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
                 setSelectedCycleId(selectedCycle.id);
                 setSelectedCycle(selectedCycle);
                 // Vérifier si le cycle contient des items
@@ -1064,16 +974,13 @@ export default function CycleLavageList() {
                   setPanelOpen(true);
                 }
                 setShowDetailModal(false);
-              }
-            }}
-          >
-            <Package className="w-4 h-4 mr-2" /> {t('cycles.view_linges')}
-          </Button>
-          <Button onClick={() => setShowDetailModal(false)}>
-            {t('cycles.close')}
-          </Button>
-        </div>
-      </Modal>
+              }}
+            >
+              <Package className="w-4 h-4" /> {t('cycles.view_linges')}
+            </Button>
+          </>
+        )}
+      />
     </div>
   );
 }
