@@ -3,17 +3,7 @@ import React, { createContext, useState, useEffect, useContext, useCallback } fr
 import { useModal } from "./ModalContext";
 import Swal from 'sweetalert2';
 
-export const CATEGORIES = [
-  "DRAP",
-  "TAIE_OREILLER",
-  "SERVIETTE_BAIN",
-  "SERVIETTE_VISAGE",
-  "PEIGNOIR",
-  "NAPPE",
-  "SERVIETTE_TABLE",
-  "UNIFORME",
-  "AUTRE"
-];
+export { CATEGORIES_LINGE as CATEGORIES } from "../constants/categoriesLinge";
 
 export const LingeContext = createContext();
 
@@ -222,11 +212,7 @@ export const LingeProvider = ({ children }) => {
     }
   };
 
-  // ════════════════════════════════════════════════════════════════════════
-  // ─── RECHERCHE ET HISTORIQUE ────────────────────────────────────────
-  // ════════════════════════════════════════════════════════════════════════
 
-  // ─── Obtenir l'historique d'un linge ──────────────────────────────────
   const getHistorique = async (id) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/linges/historique/code/${id}`);
@@ -237,17 +223,80 @@ export const LingeProvider = ({ children }) => {
     }
   };
 
-  // ─── Historique global ──────────────────────────────────────────────────
-  const fetchGlobalHistory = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/linges/historique/historique-global`);
-      return await res.json();
-    } catch (err) {
-      console.error("Erreur fetch historique global :", err);
-      return [];
-    }
-  };
+const fetchGlobalHistory = async (
+  { page = 0, size = 10, sortBy = "dateOperation", direction = "desc" } = {},
+  signal
+) => {
+  try {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      size: size.toString(),
+      sortBy,
+      direction,
+    });
 
+    const res = await fetch(
+      `${API_BASE_URL}/api/linges/historique/historique-global?${params}`,
+      { signal }
+    );
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+
+    // Compatibilité : si le backend renvoie un tableau simple (ancien format)
+    if (Array.isArray(data)) {
+      return {
+        data,
+        currentPage: 0,
+        totalItems: data.length,
+        totalPages: 1,
+        pageSize: data.length,
+        isFirst: true,
+        isLast: true,
+      };
+    }
+
+    return {
+      data: data.content ?? [],
+      currentPage: data.number ?? 0,
+      totalItems: data.totalElements ?? 0,
+      totalPages: data.totalPages ?? 0,
+      pageSize: data.size ?? size,
+      isFirst: data.first ?? true,
+      isLast: data.last ?? true,
+    };
+  } catch (err) {
+    if (err.name === "AbortError") return null;
+    console.error("Erreur fetch historique global :", err);
+    return {
+      data: [],
+      currentPage: 0,
+      totalItems: 0,
+      totalPages: 0,
+      pageSize: size,
+      isFirst: true,
+      isLast: true,
+    };
+  }
+};
+const fetchPersonnel = async (personnelId) => {
+  if (!personnelId) return null;
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/sqlserver/personnel/${personnelId}`,
+      { headers: { accept: "*/*" } }
+    );
+    if (!res.ok) {
+      console.warn(`Personnel ${personnelId} introuvable (${res.status})`);
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.error(`Erreur fetch personnel ${personnelId} :`, err);
+    return null;
+  }
+};
   // ─── Récupérer un linge par son code ──────────────────────────────────
   const getLingeByCode = async (code) => {
     try {
@@ -371,11 +420,7 @@ export const LingeProvider = ({ children }) => {
     }));
   }, []);
 
-  // ════════════════════════════════════════════════════════════════════════
-  // ─── PAGINATION ──────────────────────────────────────────────────────
-  // ════════════════════════════════════════════════════════════════════════
 
-  // ─── Récupérer les linges paginés ──────────────────────────────────────
   const fetchLingesPaged = useCallback(async (page = 0, size = 10, filters = {}) => {
     try {
       const params = new URLSearchParams({ page, size });
@@ -571,6 +616,7 @@ export const LingeProvider = ({ children }) => {
     fetchLingesPaged,
     
     // IMPORT
+    fetchPersonnel,
     lingesToImport,
     selectedImportLinges,
     isImportLoading,

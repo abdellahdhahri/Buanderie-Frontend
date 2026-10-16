@@ -1,1461 +1,723 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+// pages/lavage/MachinesDashboard.jsx — suivi en direct des machines (laveuses et sécheurs)
+import React, { useState, useEffect, useCallback, useMemo, useId } from "react";
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
+import { motion } from "framer-motion";
+import Swal from "sweetalert2";
 import {
-  FaSoap, FaPlay, FaStop, FaClock, FaWeight,
-  FaLayerGroup, FaCheckCircle, FaExclamationTriangle,
-  FaBiohazard, FaThermometerHalf, FaTachometerAlt, FaTimes,
-  FaWater, FaFan, FaSpinner, FaArrowRight, FaCircle,
-  FaWrench, FaPowerOff, FaHistory, FaCheckDouble,
- FaMicrochip , FaBolt, FaShieldAlt ,
-  FaServer, FaWaveSquare,
-} from "react-icons/fa";
-import { FaCircleDot,FaGaugeHigh  } from "react-icons/fa6";
-import { motion, AnimatePresence } from "framer-motion";
+  RefreshCw, Play, Biohazard, WashingMachine, Thermometer, Timer, Layers, Gauge,
+  History, Settings2, Square, CircleCheck, Weight, Wind,
+} from "lucide-react";
 import { useMachineContext } from "../../contextes/MachineContext";
-import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { DetailModal, Block } from "../../components/ui/modal-kit";
+import { useSetting, formatDateTime } from "../../utils/appSettings";
 import "../Linge/WorkflowList.css";
+import "./machines-dashboard.css";
 
-const REFRESH_MS = 5000;
-
+// ─── Thèmes par groupe de machine ───────────────────────────────────────────
 const THEME = {
-  LINGE_NORMAL: {
-    label: "Linge Normal",
-    emoji: "⬜",
-    primary: "#0ea5e9",
-    light: "#e0f2fe",
-    gradient: "linear-gradient(145deg, #0ea5e9, #0284c7)",
-    border: "#bae6fd",
-    textDark: "#0369a1",
-    glow: "rgba(14,165,233,0.15)",
-    iconBg: "#dbeafe",
-    ringColor: "#0ea5e9",
-    statusColor: "#0ea5e9"
-  },
-  LINGES_INFECTE: {
-    label: "Linge Infecté",
-    emoji: "🔴",
-    primary: "#dc2626",
-    light: "#fee2e2",
-    gradient: "linear-gradient(145deg, #dc2626, #b91c1c)",
-    border: "#fca5a5",
-    textDark: "#991b1b",
-    glow: "rgba(220,38,38,0.15)",
-    iconBg: "#fee2e2",
-    ringColor: "#dc2626",
-    statusColor: "#dc2626"
-  },
+  LINGE_NORMAL: { tone: "#0284c7", soft: "#e0f2fe", Icon: WashingMachine, key: "filter_normal" },
+  LINGES_INFECTE: { tone: "#e11d48", soft: "#ffe4e6", Icon: Biohazard, key: "filter_infected" },
+  SECHEUR: { tone: "#d97706", soft: "#fef3c7", Icon: Wind, key: "filter_dryers" },
 };
+const estSecheur = (m) => m.type === "SECHEUR";
+// Groupe d'affichage : les sécheurs à part, les laveuses selon le linge traité
+const categorieDe = (m) => (estSecheur(m) ? "SECHEUR" : m.categorie === "LINGES_INFECTE" ? "LINGES_INFECTE" : "LINGE_NORMAL");
+// Écran de pilotage de la machine
+const ecranDe = (m) => (estSecheur(m) ? "/Sechages" : "/Lavages");
 
+// ─── États d'une machine ────────────────────────────────────────────────────
 const ETAT_CFG = {
-  DISPONIBLE: { label: "Disponible", color: "#10b981", icon: "🟢" },
-  EN_COURS: { label: "En cours", color: "#7c3aed", icon: "🟣" },
-  EN_PAUSE: { label: "En pause", color: "#f59e0b", icon: "🟡" },
-  EN_PANNE: { label: "En panne", color: "#ef4444", icon: "🔴" },
-  MAINTENANCE: { label: "Maintenance", color: "#64748b", icon: "⚪" },
+  DISPONIBLE: { label: "Disponible", color: "#10b981" },
+  EN_COURS: { label: "En cours", color: "#7c3aed" },
+  EN_PAUSE: { label: "En pause", color: "#f59e0b" },
+  EN_PANNE: { label: "En panne", color: "#ef4444" },
+  MAINTENANCE: { label: "Maintenance", color: "#64748b" },
 };
 
-function CircularProgress({ value, max, size = 80, strokeWidth = 6, color, label, subLabel }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const percentage = Math.min((value / max) * 100, 100);
-  const offset = circumference - (percentage / 100) * circumference;
+const pad = (n) => String(n).padStart(2, "0");
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
-      <div style={{ position: "relative", width: size, height: size }}>
-        <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke="#f1f5f9"
-            strokeWidth={strokeWidth}
-          />
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke={color}
-            strokeWidth={strokeWidth}
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            strokeLinecap="round"
-            style={{ transition: "stroke-dashoffset 0.8s ease" }}
-          />
-        </svg>
-        <div style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          textAlign: "center"
-        }}>
-          <div style={{ fontSize: "16px", fontWeight: 800, color: "#0f172a" }}>
-            {Math.round(percentage)}%
-          </div>
-          <div style={{ fontSize: "9px", color: "#94a3b8", fontWeight: 500 }}>
-            {label}
-          </div>
-        </div>
-      </div>
-      {subLabel && (
-        <div style={{ fontSize: "10px", color: "#94a3b8", fontWeight: 500 }}>{subLabel}</div>
-      )}
-    </div>
-  );
-}
-
-function Minuterie({ dateDebut }) {
-  const [elapsed, setElapsed] = useState(0);
+/** Durée écoulée depuis le début du cycle, mise à jour chaque seconde. */
+function useElapsed(dateDebut) {
+  const [s, setS] = useState(0);
   useEffect(() => {
-    if (!dateDebut) return;
-    const tick = () => setElapsed(Math.floor((Date.now() - new Date(dateDebut)) / 1000));
+    if (!dateDebut) return undefined;
+    const tick = () => setS(Math.max(0, Math.floor((Date.now() - new Date(dateDebut)) / 1000)));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [dateDebut]);
-  const h = Math.floor(elapsed / 3600);
-  const m = Math.floor((elapsed % 3600) / 60);
-  const s = elapsed % 60;
-  const p = n => String(n).padStart(2, "0");
-  return (
-    <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "16px", color: "#7c3aed" }}>
-      {h > 0 && `${p(h)}:`}{p(m)}:{p(s)}
-    </span>
-  );
+  return s;
 }
 
-function CarteMachine({ machine, cycles, onClick, onTerminer }) {
-  const categorie = machine.categorie || "LINGE_NORMAL";
-  const theme = THEME[categorie] || THEME.LINGE_NORMAL;
-  const etatCfg = ETAT_CFG[machine.etatImmobilisation] || ETAT_CFG.DISPONIBLE;
-  const enCours = machine.etatImmobilisation === "EN_COURS";
-  const disponible = machine.etatImmobilisation === "DISPONIBLE";
-  
-  const cycleActif = cycles?.find(c => 
-    c.machine?.id === machine.id && c.statut === "EN_COURS"
-  );
-  
-  const cyclesRecents = cycles?.filter(c => 
-    c.machine?.id === machine.id && c.statut === "TERMINE"
-  ).slice(0, 3) || [];
+const formatDuree = (sec) => {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return `${h > 0 ? `${pad(h)}:` : ""}${pad(m)}:${pad(sec % 60)}`;
+};
 
-  const pctPoids = machine.capaciteKg
-    ? Math.min(((machine.poidsActuel || 0) / machine.capaciteKg) * 100, 100)
-    : 0;
+/* ═══════════════════════════════════════════════════════════════════════════
+   ILLUSTRATIONS SVG
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  const dureeMax = cycleActif?.programmeLavage?.dureeMinutes * 60 || 1800;
-  const dureeEcoulee = cycleActif?.dureeEcoulee || 0;
+/**
+ * Lave-linge vu de face : panneau de commande, hublot, eau au niveau de la
+ * charge, tambour qui tourne pendant un cycle.
+ */
+function WasherSvg({ tone, soft, etat, fillPct = 0 }) {
+  const uid = useId().replace(/:/g, "");
+  const running = etat === "EN_COURS";
+  const off = etat === "EN_PANNE" || etat === "MAINTENANCE";
+  const level = Math.max(0, Math.min(100, fillPct));
+  const waterTop = 84 + 30 - (60 * (running ? Math.max(level, 35) : level * 0.5)) / 100;
+  const ink = off ? "#94a3b8" : tone;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -6, scale: 1.01, transition: { duration: 0.2 } }}
-      onClick={() => onClick(machine)}
-      style={{
-        borderRadius: "24px",
-        overflow: "hidden",
-        cursor: "pointer",
-        background: `linear-gradient(145deg, #ffffff, ${enCours ? '#faf5ff' : '#fafafa'})`,
-        border: `1.5px solid ${enCours ? theme.border : "#e2e8f0"}`,
-        boxShadow: enCours
-          ? `0 12px 48px ${theme.glow}, 0 4px 12px rgba(0,0,0,0.06)`
-          : "0 2px 8px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02)",
-        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        position: "relative"
-      }}
-    >
-      {/* Effet de bordure lumineuse en cours */}
-      {enCours && (
-        <div style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          borderRadius: "24px",
-          background: `linear-gradient(135deg, ${theme.primary}22, transparent 60%)`,
-          pointerEvents: "none",
-          zIndex: 0
-        }} />
-      )}
+    <svg viewBox="0 0 120 144" className={`md-washer${running ? " is-running" : ""}`} aria-hidden="true">
+      <defs>
+        <linearGradient id={`body-${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor="#eef2f7" />
+        </linearGradient>
+        <radialGradient id={`glass-${uid}`} cx="40%" cy="35%" r="75%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor={off ? "#e2e8f0" : soft} />
+        </radialGradient>
+        <clipPath id={`door-${uid}`}>
+          <circle cx="60" cy="84" r="29" />
+        </clipPath>
+      </defs>
 
-      {/* Badge état - version épurée sans ✅ */}
-      <div style={{
-        position: "absolute",
-        top: "14px",
-        right: "14px",
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-        background: "white",
-        padding: "4px 14px 4px 10px",
-        borderRadius: "20px",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-        zIndex: 2,
-        fontSize: "11px",
-        fontWeight: 600,
-        color: etatCfg.color,
-        border: `1px solid ${etatCfg.color}22`
-      }}>
-        <div style={{
-          width: "8px",
-          height: "8px",
-          borderRadius: "50%",
-          background: etatCfg.color,
-          animation: enCours ? "pulseDot 1.5s infinite" : "none",
-          boxShadow: enCours ? `0 0 12px ${etatCfg.color}66` : "none"
-        }} />
-        {etatCfg.label}
-      </div>
+      {/* Ombre au sol + pieds */}
+      <ellipse cx="60" cy="139" rx="44" ry="3.5" fill="#0f172a" opacity="0.08" />
+      <rect x="18" y="130" width="12" height="6" rx="2" fill="#cbd5e1" />
+      <rect x="90" y="130" width="12" height="6" rx="2" fill="#cbd5e1" />
 
-      {/* En-tête */}
-      <div style={{
-        padding: "18px 20px 14px",
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        borderBottom: `1px solid ${enCours ? theme.border : "#f1f5f9"}`,
-        position: "relative",
-        zIndex: 1
-      }}>
-        <div style={{
-          width: "52px",
-          height: "52px",
-          borderRadius: "16px",
-          background: enCours ? `linear-gradient(145deg, ${theme.iconBg}, ${theme.primary}22)` : theme.iconBg,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "22px",
-          transition: "all 0.3s",
-          boxShadow: enCours ? `0 4px 16px ${theme.glow}` : "none"
-        }}>
-          {categorie === "LINGES_INFECTE" ? "🔴" : "🧺"}
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{
-            fontWeight: 700,
-            fontSize: "20px",
-            color: "#0f172a",
-            letterSpacing: "-0.4px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px"
-          }}>
-            {machine.code}
-            {enCours && (
-              <span style={{
-                fontSize: "10px",
-                fontWeight: 600,
-                color: theme.primary,
-                background: `${theme.primary}15`,
-                padding: "2px 12px",
-                borderRadius: "12px",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px"
-              }}>
-                <FaTachometerAlt  size={10} /> ACTIF
-              </span>
-            )}
-          </div>
-          <div style={{
-            fontSize: "12px",
-            color: "#94a3b8",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            flexWrap: "wrap"
-          }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              {theme.emoji} {theme.label}
-            </span>
-            <span style={{ width: "3px", height: "3px", borderRadius: "50%", background: "#d1d5db" }} />
-            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              <FaWeight size={11} /> {machine.capaciteKg} kg
-            </span>
-            {cycleActif && (
-              <>
-                <span style={{ width: "3px", height: "3px", borderRadius: "50%", background: "#d1d5db" }} />
-                <span style={{ display: "flex", alignItems: "center", gap: "4px", color: theme.primary }}>
-                  <FaClock size={11} /> Cycle #{cycleActif.id}
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Carrosserie */}
+      <rect x="8" y="6" width="104" height="126" rx="14" fill={`url(#body-${uid})`} stroke="#d8e0ea" strokeWidth="1.5" />
+      {/* Panneau de commande */}
+      <path d="M8 20 Q8 6 22 6 H98 Q112 6 112 20 V34 H8 Z" fill="#f8fafc" />
+      <line x1="8" y1="34" x2="112" y2="34" stroke="#e2e8f0" strokeWidth="1.5" />
+      <rect x="16" y="14" width="24" height="12" rx="3" fill="none" stroke="#cbd5e1" strokeWidth="1.5" />
+      <rect x="46" y="14" width="34" height="12" rx="3" fill={off ? "#cbd5e1" : "#0f172a"} />
+      <circle className="md-washer__led" cx="52" cy="20" r="2" fill={running ? "#34d399" : off ? "#94a3b8" : "#60a5fa"} />
+      <path d="M58 20 H74" stroke={running ? "#34d399" : "#475569"} strokeWidth="2" strokeLinecap="round" opacity="0.8" />
+      <circle cx="96" cy="20" r="6.5" fill="#fff" stroke="#cbd5e1" strokeWidth="1.5" />
+      <path d="M96 15.5 V20" stroke={ink} strokeWidth="2" strokeLinecap="round" />
 
-      {/* Corps */}
-      <div style={{ padding: "16px 20px 20px", position: "relative", zIndex: 1 }}>
-        {/* Jauge de poids */}
-        <div style={{ marginBottom: "14px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "6px" }}>
-            <span style={{ color: "#64748b", display: "flex", alignItems: "center", gap: "4px" }}>
-              <FaGaugeHigh size={12} /> Charge
-            </span>
-            <span style={{ fontWeight: 600, color: pctPoids >= 90 ? "#ef4444" : "#0f172a" }}>
-              {machine.poidsActuel?.toFixed(1) || 0} / {machine.capaciteKg} kg
-            </span>
-          </div>
-          <div style={{
-            height: "8px",
-            background: "#f1f5f9",
-            borderRadius: "6px",
-            overflow: "hidden",
-            boxShadow: "inset 0 1px 3px rgba(0,0,0,0.05)"
-          }}>
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(pctPoids, 100)}%` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              style={{
-                height: "100%",
-                borderRadius: "6px",
-                background: `linear-gradient(90deg, ${theme.primary}, ${pctPoids >= 90 ? "#ef4444" : theme.primary})`,
-                boxShadow: `0 0 20px ${theme.primary}33`
-              }}
+      {/* Hublot : bague chromée + verre */}
+      <circle cx="60" cy="84" r="37" fill="#e2e8f0" />
+      <circle cx="60" cy="84" r="34" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1.5" />
+      <circle cx="60" cy="84" r="29" fill={`url(#glass-${uid})`} />
+
+      <g clipPath={`url(#door-${uid})`}>
+        {/* Eau (niveau = charge) */}
+        {(running || level > 0) && !off && (
+          <g>
+            <rect x="20" y={waterTop + 3} width="80" height="70" fill={tone} opacity="0.22" />
+            <path
+              className={running ? "md-washer__wave" : undefined}
+              d={`M20 ${waterTop + 4} q10 -5 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 V130 H20 Z`}
+              fill={tone}
+              opacity="0.3"
             />
-          </div>
-        </div>
-
-        {/* Cycle actif - Progress Circle */}
-        {cycleActif && (
-          <div style={{
-            background: `linear-gradient(145deg, ${theme.light}, white)`,
-            borderRadius: "16px",
-            padding: "14px 16px",
-            border: `1px solid ${theme.border}`,
-            marginBottom: "14px"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-              <CircularProgress
-                value={dureeEcoulee}
-                max={dureeMax}
-                size={60}
-                strokeWidth={5}
-                color={theme.ringColor}
-                label="Progression"
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: "14px", color: "#0f172a", marginBottom: "4px" }}>
-                  {cycleActif.programmeLavage?.nom || "Lavage"}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#64748b" }}>
-                    <FaClock size={11} color="#7c3aed" />
-                    <Minuterie dateDebut={cycleActif.dateDebut} />
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#64748b" }}>
-                    <FaThermometerHalf size={11} color="#ef4444" />
-                    <span>{cycleActif.programmeLavage?.temperatureCelsius || 0}°C</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#64748b" }}>
-                    <FaLayerGroup size={11} color="#8b5cf6" />
-                    <span>{cycleActif.items?.length || 0} lots</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          </g>
         )}
-
-        {/* Cycles récemment terminés */}
-        {cyclesRecents.length > 0 && !enCours && (
-          <div style={{ marginBottom: "12px" }}>
-            <div style={{
-              fontSize: "10px",
-              color: "#94a3b8",
-              textTransform: "uppercase",
-              letterSpacing: "0.8px",
-              marginBottom: "6px",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px"
-            }}>
-              <FaHistory size={10} /> Derniers cycles
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              {cyclesRecents.map((cycle, i) => (
-                <div key={i} style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "3px 12px",
-                  borderRadius: "12px",
-                  background: "#f0fdf4",
-                  border: "1px solid #bbf7d0",
-                  fontSize: "10px",
-                  fontWeight: 600,
-                  color: "#15803d"
-                }}>
-                  <FaCheckDouble size={8} />
-                  {cycle.programmeLavage?.nom || "Cycle"}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* DISPONIBLE - version épurée */}
-        {disponible && !cycleActif && (
-          <div style={{
-            textAlign: "center",
-            padding: "12px 0",
-            background: "linear-gradient(145deg, #f0fdf4, #dcfce7)",
-            borderRadius: "12px",
-            border: "1px solid #bbf7d0"
-          }}>
-            <div style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "#10b981",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px"
-            }}>
-              <span style={{
-                display: "inline-block",
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                background: "#10b981",
-                boxShadow: "0 0 12px rgba(16,185,129,0.4)"
-              }} />
-              Prête à l'emploi
-            </div>
-            <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
-              Capacité disponible {machine.capaciteKg - (machine.poidsActuel || 0)} kg
-            </div>
-          </div>
-        )}
-
-        {/* AUTRES ÉTATS */}
-        {!enCours && !disponible && (
-          <div style={{
-            textAlign: "center",
-            padding: "12px 0",
-            background: `${etatCfg.color}11`,
-            borderRadius: "12px",
-            border: `1px solid ${etatCfg.color}33`
-          }}>
-            <div style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: etatCfg.color,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px"
-            }}>
-              <span style={{
-                display: "inline-block",
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                background: etatCfg.color
-              }} />
-              {etatCfg.label}
-            </div>
-          </div>
-        )}
-
-        {/* Boutons d'action */}
-        <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
-          {disponible && (
-            <Link
-              to="/Lavages"
-              state={{ machinePreconfigured: machine.code }}
-              onClick={e => e.stopPropagation()}
-              style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-                padding: "10px 16px",
-                borderRadius: "12px",
-                background: `linear-gradient(145deg, ${theme.primary}, ${theme.primary}dd)`,
-                color: "white",
-                fontWeight: 700,
-                fontSize: "13px",
-                textDecoration: "none",
-                transition: "all 0.3s",
-                boxShadow: `0 4px 16px ${theme.glow}`,
-                position: "relative",
-                overflow: "hidden"
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = `0 8px 24px ${theme.glow}`;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = `0 4px 16px ${theme.glow}`;
-              }}
-            >
-              <FaPlay size={12} /> Démarrer
-            </Link>
-          )}
-
-          {enCours && cycleActif && (
+        {/* Tambour + linge */}
+        <g className="md-washer__drum">
+          {[0, 60, 120, 180, 240, 300].map((a) => (
+            <circle
+              key={a}
+              cx={60 + 21 * Math.cos((a * Math.PI) / 180)}
+              cy={84 + 21 * Math.sin((a * Math.PI) / 180)}
+              r="1.6"
+              fill="#94a3b8"
+              opacity="0.6"
+            />
+          ))}
+          {(running || level > 0) && !off && (
             <>
-              <Link
-                to="/Lavages"
-                state={{ cycleId: cycleActif.id }}
-                onClick={e => e.stopPropagation()}
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px",
-                  padding: "10px 16px",
-                  borderRadius: "12px",
-                  background: "white",
-                  color: theme.textDark,
-                  fontWeight: 600,
-                  fontSize: "13px",
-                  textDecoration: "none",
-                  border: `1px solid ${theme.border}`,
-                  transition: "all 0.3s"
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = theme.light;
-                  e.currentTarget.style.borderColor = theme.primary;
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = "white";
-                  e.currentTarget.style.borderColor = theme.border;
-                }}
-              >
-                <FaArrowRight size={11} /> Gérer
-              </Link>
-              
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  if (cycleActif?.id) onTerminer(cycleActif.id);
-                }}
-                style={{
-                  padding: "10px 18px",
-                  borderRadius: "12px",
-                  border: "none",
-                  background: "linear-gradient(145deg, #ef4444, #dc2626)",
-                  color: "white",
-                  fontWeight: 700,
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  transition: "all 0.3s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  boxShadow: "0 4px 16px rgba(239,68,68,0.3)",
-                  minWidth: "70px",
-                  justifyContent: "center"
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = "scale(1.05)";
-                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(239,68,68,0.4)";
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = "scale(1)";
-                  e.currentTarget.style.boxShadow = "0 4px 16px rgba(239,68,68,0.3)";
-                }}
-              >
-                <FaStop size={12} /> Fin
-              </button>
+              <ellipse cx="52" cy="92" rx="10" ry="6" fill={tone} opacity="0.75" transform="rotate(-20 52 92)" />
+              <ellipse cx="68" cy="94" rx="9" ry="5.5" fill="#ffffff" stroke={tone} strokeOpacity="0.4" transform="rotate(25 68 94)" />
+              {running && <ellipse cx="62" cy="72" rx="7" ry="4.5" fill={tone} opacity="0.45" transform="rotate(10 62 72)" />}
             </>
           )}
-        </div>
-      </div>
-    </motion.div>
+        </g>
+      </g>
+
+      {/* Reflet du verre */}
+      <path d="M40 70 A24 24 0 0 1 58 58" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
+      {/* Poignée */}
+      <rect x="92" y="78" width="5" height="14" rx="2.5" fill="#cbd5e1" />
+
+      {/* Pastille d'alerte (panne / maintenance) */}
+      {off && (
+        <g transform="translate(86 104)">
+          <circle cx="10" cy="10" r="11" fill="#fff" stroke={etat === "EN_PANNE" ? "#ef4444" : "#64748b"} strokeWidth="2" />
+          {etat === "EN_PANNE" ? (
+            <path d="M10 5 V11 M10 14.5 V15" stroke="#ef4444" strokeWidth="2.4" strokeLinecap="round" />
+          ) : (
+            <path d="M6.5 13.5 L11 9 M12.5 5.5 a3 3 0 1 0 2 2" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" />
+          )}
+        </g>
+      )}
+    </svg>
   );
 }
 
-function ModalMachine({ machine, cycles, onFermer, onTerminer }) {
-  if (!machine) return null;
-  const categorie = machine.categorie || "LINGE_NORMAL";
-  const theme = THEME[categorie] || THEME.LINGE_NORMAL;
-  const enCours = machine.etatImmobilisation === "EN_COURS";
-  const cycleActif = cycles?.find(c => c.machine?.id === machine.id && c.statut === "EN_COURS");
-  const cyclesTermines = cycles?.filter(c => c.machine?.id === machine.id && c.statut === "TERMINE") || [];
-
-  const dureeMax = cycleActif?.programmeLavage?.dureeMinutes * 60 || 1800;
-  const dureeEcoulee = cycleActif?.dureeEcoulee || 0;
+/**
+ * Sèche-linge vu de face : panneau à molette, hublot, tambour qui tourne
+ * avec le linge, ondes de chaleur au-dessus pendant un séchage.
+ */
+function DryerSvg({ tone, soft, etat, fillPct = 0 }) {
+  const uid = useId().replace(/:/g, "");
+  const running = etat === "EN_COURS";
+  const off = etat === "EN_PANNE" || etat === "MAINTENANCE";
+  const loaded = running || fillPct > 0;
+  const ink = off ? "#94a3b8" : tone;
 
   return (
-    <AnimatePresence>
-      <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(15, 23, 42, 0.7)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9999,
-        backdropFilter: "blur(12px)",
-        padding: "20px"
-      }}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 30 }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          style={{
-            background: "white",
-            borderRadius: "28px",
-            overflow: "hidden",
-            maxWidth: "560px",
-            width: "100%",
-            maxHeight: "90vh",
-            overflowY: "auto",
-            boxShadow: "0 32px 80px rgba(0,0,0,0.35)"
-          }}
-        >
-          {/* Header */}
-          <div style={{
-            background: theme.gradient,
-            padding: "24px 28px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-              <div style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "16px",
-                background: "rgba(255,255,255,0.2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "24px",
-                backdropFilter: "blur(4px)"
-              }}>
-                {categorie === "LINGES_INFECTE" ? "🔴" : "🧺"}
-              </div>
-              <div>
-                <div style={{ color: "white", fontWeight: 800, fontSize: "22px", letterSpacing: "-0.3px" }}>
-                  {machine.code}
-                </div>
-                <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span>{theme.label}</span>
-                  <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.4)" }} />
-                  <span>{machine.capaciteKg} kg</span>
-                  {enCours && (
-                    <>
-                      <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.4)" }} />
-                      <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <FaTachometerAlt  size={12} /> En cours
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={onFermer}
-              style={{
-                background: "rgba(255,255,255,0.15)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "50%",
-                width: "36px",
-                height: "36px",
-                cursor: "pointer",
-                color: "white",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.2s"
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.25)" }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.15)" }}
-            >
-              <FaTimes size={16} />
-            </button>
-          </div>
+    <svg viewBox="0 0 120 144" className={`md-washer md-dryer${running ? " is-running" : ""}`} aria-hidden="true">
+      <defs>
+        <linearGradient id={`dbody-${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor="#eef2f7" />
+        </linearGradient>
+        <radialGradient id={`dglass-${uid}`} cx="40%" cy="35%" r="80%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor={off ? "#e2e8f0" : soft} />
+        </radialGradient>
+        <clipPath id={`ddoor-${uid}`}>
+          <circle cx="60" cy="84" r="29" />
+        </clipPath>
+      </defs>
 
-          {/* Contenu */}
-          <div style={{ padding: "24px 28px" }}>
-            {/* Cycle actif */}
-            {enCours && cycleActif && (
-              <div style={{ marginBottom: "24px" }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "20px",
-                  padding: "20px",
-                  background: "linear-gradient(145deg, #faf5ff, #f3e8ff)",
-                  borderRadius: "16px",
-                  border: "1px solid #e9d5ff"
-                }}>
-                  <CircularProgress
-                    value={dureeEcoulee}
-                    max={dureeMax}
-                    size={80}
-                    strokeWidth={7}
-                    color={theme.ringColor}
-                    label="Progression"
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: "17px", color: "#0f172a", marginBottom: "6px" }}>
-                      {cycleActif.programmeLavage?.nom || "Lavage en cours"}
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", color: "#7c3aed" }}>
-                        <FaClock size={14} />
-                        <Minuterie dateDebut={cycleActif.dateDebut} />
-                      </div>
-                      <div style={{ display: "flex", gap: "12px", fontSize: "13px", color: "#64748b" }}>
-                        <span>🌡️ {cycleActif.programmeLavage?.temperatureCelsius || 0}°C</span>
-                        <span>⏱️ {cycleActif.programmeLavage?.dureeMinutes || 0} min</span>
-                        <span>📦 {cycleActif.items?.length || 0} lots</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => { onTerminer(cycleActif.id); onFermer(); }}
-                      style={{
-                        marginTop: "12px",
-                        padding: "10px 24px",
-                        borderRadius: "12px",
-                        border: "none",
-                        background: "linear-gradient(145deg, #ef4444, #dc2626)",
-                        color: "white",
-                        fontWeight: 700,
-                        fontSize: "14px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        transition: "all 0.3s",
-                        boxShadow: "0 4px 16px rgba(239,68,68,0.3)",
-                        width: "100%",
-                        justifyContent: "center"
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = "scale(1.02)";
-                        e.currentTarget.style.boxShadow = "0 8px 24px rgba(239,68,68,0.4)";
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = "scale(1)";
-                        e.currentTarget.style.boxShadow = "0 4px 16px rgba(239,68,68,0.3)";
-                      }}
-                    >
-                      <FaStop size={14} /> Terminer le cycle
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+      {/* Ombre + pieds */}
+      <ellipse cx="60" cy="139" rx="44" ry="3.5" fill="#0f172a" opacity="0.08" />
+      <rect x="18" y="130" width="12" height="6" rx="2" fill="#cbd5e1" />
+      <rect x="90" y="130" width="12" height="6" rx="2" fill="#cbd5e1" />
 
-            {/* Cycles terminés */}
-            {cyclesTermines.length > 0 && (
-              <div>
-                <div style={{
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: "#64748b",
-                  marginBottom: "12px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px"
-                }}>
-                  <FaHistory size={14} /> Historique ({cyclesTermines.length})
-                </div>
-                <div style={{ maxHeight: "200px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  {cyclesTermines.slice(0, 10).map((cycle, i) => (
-                    <div key={i} style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "10px 14px",
-                      background: "#f8fafc",
-                      borderRadius: "10px",
-                      border: "1px solid #e2e8f0",
-                      fontSize: "13px",
-                      transition: "all 0.2s"
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "white"; e.currentTarget.style.borderColor = "#cbd5e1" }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.borderColor = "#e2e8f0" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <FaCheckCircle color="#22c55e" size={14} />
-                        <span style={{ fontWeight: 500 }}>{cycle.programmeLavage?.nom || "Cycle"}</span>
-                      </div>
-                      <div style={{ color: "#94a3b8", fontSize: "12px" }}>
-                        {cycle.dateFin ? new Date(cycle.dateFin).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : ""}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+      {/* Carrosserie */}
+      <rect x="8" y="6" width="104" height="126" rx="14" fill={`url(#dbody-${uid})`} stroke="#d8e0ea" strokeWidth="1.5" />
+      {/* Panneau : molette de programme, écran, voyant, pictogramme chaleur */}
+      <path d="M8 20 Q8 6 22 6 H98 Q112 6 112 20 V34 H8 Z" fill="#f8fafc" />
+      <line x1="8" y1="34" x2="112" y2="34" stroke="#e2e8f0" strokeWidth="1.5" />
+      <circle cx="24" cy="20" r="7" fill="#fff" stroke="#cbd5e1" strokeWidth="1.5" />
+      <path d="M24 15 V20 L27.5 22" stroke={ink} strokeWidth="1.8" strokeLinecap="round" fill="none" />
+      <rect x="40" y="14" width="34" height="12" rx="3" fill={off ? "#cbd5e1" : "#0f172a"} />
+      <circle className="md-washer__led" cx="46" cy="20" r="2" fill={running ? "#fbbf24" : off ? "#94a3b8" : "#60a5fa"} />
+      <path d="M52 20 H68" stroke={running ? "#fbbf24" : "#475569"} strokeWidth="2" strokeLinecap="round" opacity="0.8" />
+      <path d="M90 14 q-3 3 0 6 t0 6 M97 14 q-3 3 0 6 t0 6" stroke={ink} strokeWidth="1.7" strokeLinecap="round" fill="none" />
 
-            {/* Machine disponible */}
-            {machine.etatImmobilisation === "DISPONIBLE" && (
-              <div style={{ textAlign: "center", padding: "20px 0" }}>
-                <div style={{
-                  width: "72px",
-                  height: "72px",
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #d1fae5, #a7f3d0)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 12px",
-                  fontSize: "32px"
-                }}>
-                  <FaCircleDot size={28} color="#10b981" />
-                </div>
-                <div style={{ fontWeight: 700, fontSize: "20px", color: "#10b981", marginBottom: "4px" }}>
-                  Machine disponible
-                </div>
-                <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "16px" }}>
-                  Capacité: {machine.capaciteKg - (machine.poidsActuel || 0)} kg disponible
-                </div>
-                <Link
-                  to="/Lavages"
-                  state={{ machinePreconfigured: machine.code }}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    padding: "14px 36px",
-                    borderRadius: "14px",
-                    background: theme.gradient,
-                    color: "white",
-                    fontWeight: 700,
-                    fontSize: "15px",
-                    textDecoration: "none",
-                    boxShadow: `0 4px 20px ${theme.glow}`,
-                    transition: "all 0.3s"
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.boxShadow = `0 8px 32px ${theme.glow}`;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = `0 4px 20px ${theme.glow}`;
-                  }}
-                >
-                  <FaPlay size={14} /> Lancer un lavage
-                </Link>
-              </div>
-            )}
+      {/* Hublot */}
+      <circle cx="60" cy="84" r="37" fill="#e2e8f0" />
+      <circle cx="60" cy="84" r="34" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1.5" />
+      <circle cx="60" cy="84" r="29" fill={`url(#dglass-${uid})`} />
 
-            {/* États spéciaux */}
-            {!enCours && machine.etatImmobilisation !== "DISPONIBLE" && (
-              <div style={{ textAlign: "center", padding: "20px 0" }}>
-                <div style={{
-                  width: "72px",
-                  height: "72px",
-                  borderRadius: "50%",
-                  background: `${machine.etatImmobilisation === "EN_PANNE" ? '#fee2e2' : '#f1f5f9'}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 12px",
-                  fontSize: "32px"
-                }}>
-                  <FaWrench size={28} color={machine.etatImmobilisation === "EN_PANNE" ? "#dc2626" : "#64748b"} />
-                </div>
-                <div style={{ fontWeight: 700, fontSize: "20px", color: machine.etatImmobilisation === "EN_PANNE" ? "#dc2626" : "#64748b" }}>
-                  {ETAT_CFG[machine.etatImmobilisation]?.label || machine.etatImmobilisation}
-                </div>
-                {machine.observation && (
-                  <div style={{ fontSize: "14px", color: "#94a3b8", marginTop: "4px" }}>{machine.observation}</div>
+      <g clipPath={`url(#ddoor-${uid})`}>
+        {running && <circle cx="60" cy="84" r="29" fill={tone} opacity="0.1" />}
+        {/* Ondes de chaleur qui montent dans le tambour (séchage en cours) */}
+        {running && (
+          <g className="md-dryer__heat" stroke={tone} strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.6">
+            <path d="M50 82 q-3 -3 0 -6 t0 -6" />
+            <path d="M60 80 q-3 -3 0 -6 t0 -6" />
+            <path d="M70 82 q-3 -3 0 -6 t0 -6" />
+          </g>
+        )}
+        {/* Tambour : aubes + linge qui retombe */}
+        <g className="md-washer__drum">
+          {[0, 120, 240].map((a) => (
+            <path key={a} d="M60 57 V63" stroke="#94a3b8" strokeWidth="3" strokeLinecap="round" opacity="0.5" transform={`rotate(${a} 60 84)`} />
+          ))}
+          {loaded && !off && (
+            <>
+              <path d="M44 90 q8 -10 18 -4 q-4 9 -18 4 Z" fill={tone} opacity="0.75" />
+              <path d="M62 96 q10 -8 16 2 q-8 6 -16 -2 Z" fill="#ffffff" stroke={tone} strokeOpacity="0.45" />
+              {running && <path d="M54 70 q6 -6 12 0 q-6 5 -12 0 Z" fill={tone} opacity="0.45" />}
+            </>
+          )}
+        </g>
+      </g>
+
+      {/* Reflet, poignée, grille du filtre à peluches */}
+      <path d="M40 70 A24 24 0 0 1 58 58" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
+      <rect x="92" y="78" width="5" height="14" rx="2.5" fill="#cbd5e1" />
+      <g stroke="#cbd5e1" strokeWidth="1.4" strokeLinecap="round">
+        <path d="M44 124 H76" />
+        <path d="M48 127.5 H72" />
+      </g>
+
+      {off && (
+        <g transform="translate(86 104)">
+          <circle cx="10" cy="10" r="11" fill="#fff" stroke={etat === "EN_PANNE" ? "#ef4444" : "#64748b"} strokeWidth="2" />
+          {etat === "EN_PANNE" ? (
+            <path d="M10 5 V11 M10 14.5 V15" stroke="#ef4444" strokeWidth="2.4" strokeLinecap="round" />
+          ) : (
+            <path d="M6.5 13.5 L11 9 M12.5 5.5 a3 3 0 1 0 2 2" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" />
+          )}
+        </g>
+      )}
+    </svg>
+  );
+}
+
+/** Anneau de progression (indicateurs du haut). */
+function Ring({ pct, color, children }) {
+  const r = 22;
+  const c = 2 * Math.PI * r;
+  const p = Math.max(0, Math.min(100, pct || 0));
+  return (
+    <svg viewBox="0 0 54 54" className="md-kpi__visual" aria-hidden="true">
+      <circle cx="27" cy="27" r={r} fill="none" stroke="currentColor" strokeOpacity="0.12" strokeWidth="6" />
+      <motion.circle
+        cx="27" cy="27" r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
+        strokeDasharray={c}
+        initial={{ strokeDashoffset: c }}
+        animate={{ strokeDashoffset: c - (p / 100) * c }}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        transform="rotate(-90 27 27)"
+      />
+      <foreignObject x="13" y="13" width="28" height="28">
+        <div style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color }}>{children}</div>
+      </foreignObject>
+    </svg>
+  );
+}
+
+/** Tuile d'indicateur. */
+function Kpi({ color, visual, value, unit, label, extra }) {
+  return (
+    <div className="md-kpi" style={{ "--kpi": color }}>
+      {visual}
+      <div>
+        <div className="md-kpi__value">{value}{unit && <small>{unit}</small>}</div>
+        <div className="md-kpi__label">{label}</div>
+        {extra && <div className="md-kpi__extra">{extra}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARTE MACHINE
+   ═══════════════════════════════════════════════════════════════════════════ */
+function CarteMachine({ machine, cycles, onOpen, onTerminer }) {
+  const { t } = useTranslation();
+  const cat = categorieDe(machine);
+  const theme = THEME[cat];
+  const etat = machine.etatImmobilisation || "DISPONIBLE";
+  const etatCfg = ETAT_CFG[etat] || ETAT_CFG.DISPONIBLE;
+  const enCours = etat === "EN_COURS";
+
+  const cycleActif = cycles?.find((c) => c.machine?.id === machine.id && c.statut === "EN_COURS");
+  const dernier = cycles?.find((c) => c.machine?.id === machine.id && c.statut === "TERMINE");
+  const elapsed = useElapsed(enCours ? cycleActif?.dateDebut : null);
+  const dureeMax = (cycleActif?.programmeLavage?.dureeMinutes || 30) * 60;
+  const pctTemps = enCours ? Math.min(100, (elapsed / dureeMax) * 100) : 0;
+  const capacite = Number(machine.capaciteKg) || 0;
+  const poids = Number(machine.poidsActuel) || 0;
+  const pctCharge = capacite ? Math.min(100, (poids / capacite) * 100) : 0;
+
+  return (
+    <motion.article
+      layout
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className={`md-card${enCours ? " is-running" : ""}`}
+      style={{ "--tone": theme.tone }}
+      onClick={() => onOpen(machine)}
+      onKeyDown={(e) => { if (e.key === "Enter") onOpen(machine); }}
+      tabIndex={0}
+      role="button"
+      aria-label={machine.code}
+    >
+      <div className="md-card__top">
+        <span className="md-card__code">{machine.code}</span>
+        <span className="md-chip"><theme.Icon size={12} /> {t(`machines_dashboard.${theme.key}`)}</span>
+        <span className={`md-status${enCours ? " is-live" : ""}`} style={{ "--st": etatCfg.color }}>
+          <i /> {t(`machine_status.${etat}`, etatCfg.label)}
+        </span>
+      </div>
+
+      <div className="md-card__body">
+        <div className="md-card__visual">
+          {estSecheur(machine)
+            ? <DryerSvg tone={theme.tone} soft={theme.soft} etat={etat} fillPct={pctCharge} />
+            : <WasherSvg tone={theme.tone} soft={theme.soft} etat={etat} fillPct={pctCharge} />}
+        </div>
+
+        <div className="md-card__info">
+          {enCours && estSecheur(machine) && !cycleActif ? (
+            <>
+              <div className="md-card__program">{t("machines_dashboard.status_drying", "Séchage en cours")}</div>
+              <div className="md-card__note">{t("machines_dashboard.dryer_cycle_hint", "Suivi détaillé dans l'écran Séchage.")}</div>
+            </>
+          ) : enCours ? (
+            <>
+              <div className="md-card__program" title={cycleActif?.programmeLavage?.nom}>
+                {cycleActif?.programmeLavage?.nom || t("machines_dashboard.cycle_name")}
+              </div>
+              <div className="md-facts">
+                <span className="md-fact"><Timer /> <span className="md-timer">{formatDuree(elapsed)}</span></span>
+                {cycleActif?.programmeLavage?.temperatureCelsius != null && (
+                  <span className="md-fact"><Thermometer /> <strong>{cycleActif.programmeLavage.temperatureCelsius}°C</strong></span>
+                )}
+                {cycleActif?.items?.length > 0 && (
+                  <span className="md-fact"><Layers /> <strong>{cycleActif.items.length}</strong> {t("machines_dashboard.cycle_items")}</span>
                 )}
               </div>
-            )}
+              <div className="md-meter" style={{ "--m": theme.tone }}>
+                <div className="md-meter__row">
+                  <span>{t("machines_dashboard.status_cycle_progress")}</span>
+                  <strong>{Math.round(pctTemps)}%</strong>
+                </div>
+                <div className="md-meter__track"><div className="md-meter__fill" style={{ width: `${pctTemps}%` }} /></div>
+              </div>
+            </>
+          ) : etat === "DISPONIBLE" ? (
+            <>
+              <div className="md-card__ready">{t("machines_dashboard.status_available")}</div>
+              <div className="md-card__note">
+                {t("machines_dashboard.status_available_capacity", { capacity: Math.max(0, capacite - poids).toFixed(1) })}
+              </div>
+            </>
+          ) : (
+            <div className="md-card__note">{machine.observation || t(`machine_status.${etat}`, etatCfg.label)}</div>
+          )}
+
+          <div className="md-meter" style={{ "--m": pctCharge >= 90 ? "#e11d48" : theme.tone }}>
+            <div className="md-meter__row">
+              <span>{t("machines_dashboard.load")}</span>
+              <strong>{poids.toFixed(1)} / {capacite || "—"} kg</strong>
+            </div>
+            <div className="md-meter__track"><div className="md-meter__fill" style={{ width: `${pctCharge}%` }} /></div>
           </div>
-        </motion.div>
+        </div>
       </div>
-    </AnimatePresence>
+
+      <div className="md-card__foot" onClick={(e) => e.stopPropagation()}>
+        <span className="md-card__last">
+          {dernier
+            ? `${t("machines_dashboard.status_recent_cycles")} · ${dernier.programmeLavage?.nom || t("machines_dashboard.cycle_name")}`
+            : ""}
+        </span>
+        {enCours ? (
+          <>
+            <Link to={ecranDe(machine)} className="md-act md-act--soft"><Settings2 /> {t("machines_dashboard.btn_manage")}</Link>
+            {cycleActif?.id && (
+              <button type="button" className="md-act md-act--danger" onClick={() => onTerminer(cycleActif.id, machine.code)}>
+                <Square /> {t("machines_dashboard.btn_finish")}
+              </button>
+            )}
+          </>
+        ) : etat === "DISPONIBLE" ? (
+          <Link to={ecranDe(machine)} className="md-act md-act--tone"><Play /> {t("machines_dashboard.btn_start")}</Link>
+        ) : null}
+      </div>
+    </motion.article>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FICHE MACHINE (kit de modales)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function FicheMachine({ machine, cycles, onFermer, onTerminer }) {
+  const { t } = useTranslation();
+  const cat = categorieDe(machine);
+  const theme = THEME[cat];
+  const etat = machine.etatImmobilisation || "DISPONIBLE";
+  const etatCfg = ETAT_CFG[etat] || ETAT_CFG.DISPONIBLE;
+  const cycleActif = cycles?.find((c) => c.machine?.id === machine.id && c.statut === "EN_COURS");
+  const termines = cycles?.filter((c) => c.machine?.id === machine.id && c.statut === "TERMINE") || [];
+  const elapsed = useElapsed(cycleActif?.dateDebut);
+
+  return (
+    <DetailModal
+      isOpen
+      onClose={onFermer}
+      title={t("machines_dashboard.modal_title")}
+      subtitle={machine.marque || machine.designation}
+      icon={<theme.Icon />}
+      heading={machine.code}
+      badges={
+        <>
+          <span className="md-status" style={{ "--st": etatCfg.color }}><i /> {t(`machine_status.${etat}`, etatCfg.label)}</span>
+          <span className="md-chip" style={{ "--tone": theme.tone }}><theme.Icon size={12} /> {t(`machines_dashboard.${theme.key}`)}</span>
+        </>
+      }
+      metrics={[
+        { label: t("machines_dashboard.capacity"), value: machine.capaciteKg ? `${machine.capaciteKg} kg` : null },
+        { label: t("machines_dashboard.weight"), value: `${(Number(machine.poidsActuel) || 0).toFixed(1)} kg` },
+        { label: t("machines_dashboard.modal_history"), value: termines.length },
+      ]}
+      sections={[
+        {
+          title: t("machines_dashboard.cycle_name"),
+          icon: "stats",
+          accent: theme.tone,
+          items: cycleActif ? [
+            { label: t("machines_dashboard.status_cycle", { id: cycleActif.id }), value: cycleActif.programmeLavage?.nom || "—", icon: <WashingMachine /> },
+            { label: t("machines_dashboard.cycle_duration"), value: formatDuree(elapsed), icon: <Timer /> },
+            { label: t("machines_dashboard.cycle_temperature"), value: cycleActif.programmeLavage?.temperatureCelsius != null ? `${cycleActif.programmeLavage.temperatureCelsius}°C` : null, icon: <Thermometer /> },
+            { label: t("machines_dashboard.cycle_items"), value: cycleActif.items?.length ?? null, icon: <Layers /> },
+            { label: t("machines_dashboard.cycle_start"), value: formatDateTime(cycleActif.dateDebut), icon: <Gauge /> },
+          ] : [],
+        },
+        {
+          title: t("machines_dashboard.modal_title"),
+          icon: "specs",
+          items: [
+            { label: t("machines_dashboard.capacity"), value: machine.capaciteKg ? `${machine.capaciteKg} kg` : null, icon: <Weight /> },
+            { label: t("machines_dashboard.observation"), value: machine.observation, span: 2, hidden: !machine.observation },
+          ],
+        },
+      ]}
+      actions={
+        cycleActif?.id ? (
+          <button type="button" className="bg-danger inline-flex items-center gap-2 px-4 py-2" onClick={() => onTerminer(cycleActif.id, machine.code)}>
+            <Square className="h-4 w-4" /> {t("machines_dashboard.btn_terminate_cycle")}
+          </button>
+        ) : etat === "DISPONIBLE" ? (
+          <Link to={ecranDe(machine)} className="inline-flex items-center gap-2 rounded-[10px] bg-teal-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-teal-700">
+            <Play className="h-4 w-4" /> {estSecheur(machine) ? t("machines_dashboard.btn_start_dry", "Démarrer un séchage") : t("machines_dashboard.btn_start_wash")}
+          </Link>
+        ) : null
+      }
+    >
+      <Block title={t("machines_dashboard.modal_history")} icon={<History />} accent="#475569" meta={termines.length || null} defaultOpen={termines.length > 0}>
+        {termines.length === 0 ? (
+          <p className="m-0 text-[13px] text-slate-500">{t("machines_dashboard.modal_no_history")}</p>
+        ) : (
+          <div className="md-history">
+            {termines.slice(0, 8).map((c) => (
+              <div key={c.id} className="md-history__row">
+                <CircleCheck className="h-4 w-4 text-emerald-500" />
+                <strong>{c.programmeLavage?.nom || t("machines_dashboard.cycle_name")}</strong>
+                <span>{formatDateTime(c.dateFin || c.dateDebut)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Block>
+    </DetailModal>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+function Section({ color, Icon, title, machines, children }) {
+  const { t } = useTranslation();
+  const dispo = machines.filter((m) => m.etatImmobilisation === "DISPONIBLE").length;
+  return (
+    <section className="md-section" style={{ "--s": color }}>
+      <div className="md-section__head">
+        <span className="md-section__icon"><Icon size={17} /></span>
+        <span className="md-section__title">{title}</span>
+        <span className="md-section__count">{machines.length}</span>
+        <span className="md-section__line" />
+        <span className="md-section__avail"><i /> {dispo} {t("machines_dashboard.stats_available").toLowerCase()}</span>
+      </div>
+      <div className="md-grid">{children}</div>
+    </section>
   );
 }
 
 export default function MachinesDashboard() {
-  const {
-    machines,
-    cycles,
-    isLoading,
-    lastRefresh,
-    loadAllData,
-    terminerCycle
-  } = useMachineContext();
+  const { t } = useTranslation();
+  const { machines, cycles, isLoading, lastRefresh, loadAllData, terminerCycle } = useMachineContext();
+  const refreshSeconds = Number(useSetting("refresh.machinesSeconds")) || 15;
 
   const [machineSelectee, setMachineSelectee] = useState(null);
   const [filtre, setFiltre] = useState("TOUS");
   const [loading, setLoading] = useState(false);
-  const intervalRef = useRef(null);
 
   const rafraichir = useCallback(async () => {
     setLoading(true);
-    try {
-      await loadAllData();
-    } finally {
-      setLoading(false);
-    }
+    try { await loadAllData(); } finally { setLoading(false); }
   }, [loadAllData]);
 
+  // Rafraîchissement automatique : Paramètres › Préférences
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      loadAllData();
-    }, REFRESH_MS);
-    return () => clearInterval(intervalRef.current);
-  }, [loadAllData]);
+    const id = setInterval(() => loadAllData(), refreshSeconds * 1000);
+    return () => clearInterval(id);
+  }, [loadAllData, refreshSeconds]);
 
-  const handleTerminer = useCallback(async (cycleId) => {
-    await terminerCycle(cycleId);
-  }, [terminerCycle]);
+  const handleTerminer = useCallback(async (cycleId, code) => {
+    const res = await Swal.fire({
+      icon: "question",
+      title: t("machines_dashboard.btn_terminate_cycle"),
+      text: `${code || ""} · #${cycleId}`,
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: t("machines_dashboard.btn_finish"),
+      cancelButtonText: t("common.cancel"),
+    });
+    if (!res.isConfirmed) return;
+    try { await terminerCycle(cycleId); setMachineSelectee(null); } catch { /* alerte affichée par le contexte */ }
+  }, [terminerCycle, t]);
 
-  const machinesNormal = machines.filter(m => {
-    const cat = m.categorie || (m.type === "LAVEUR" ? "LINGE_NORMAL" : "LINGE_NORMAL");
-    return cat === "LINGE_NORMAL" || cat === "LINGES_NORMAL";
-  });
+  const machinesNormal = useMemo(() => machines.filter((m) => categorieDe(m) === "LINGE_NORMAL"), [machines]);
+  const machinesInfecte = useMemo(() => machines.filter((m) => categorieDe(m) === "LINGES_INFECTE"), [machines]);
+  const machinesSecheurs = useMemo(() => machines.filter((m) => categorieDe(m) === "SECHEUR"), [machines]);
+  const machinesFiltrees = filtre === "TOUS" ? machines : machines.filter((m) => categorieDe(m) === filtre);
 
-  const machinesInfecte = machines.filter(m => {
-    const cat = m.categorie || (m.type === "LAVEUR" ? "LINGE_NORMAL" : "LINGE_NORMAL");
-    return cat === "LINGES_INFECTE";
-  });
+  const cyclesEnCours = cycles?.filter((c) => c.statut === "EN_COURS") || [];
+  const cyclesTermines = cycles?.filter((c) => c.statut === "TERMINE") || [];
+  const disponibles = machines.filter((m) => m.etatImmobilisation === "DISPONIBLE").length;
+  const poidsTotal = machines.reduce((s, m) => s + (Number(m.poidsActuel) || 0), 0);
+  const capaciteTotale = machines.reduce((s, m) => s + (Number(m.capaciteKg) || 0), 0);
+  const pct = (a, b) => (b ? (a / b) * 100 : 0);
 
-  const machinesFiltrees = filtre === "TOUS"
-    ? machines
-    : filtre === "LINGE_NORMAL" ? machinesNormal : machinesInfecte;
-
-  const cyclesEnCours = cycles?.filter(c => c.statut === "EN_COURS") || [];
-  const cyclesTermines = cycles?.filter(c => c.statut === "TERMINE") || [];
-
-  const stats = {
-    totalNormal: machinesNormal.length,
-    totalInfecte: machinesInfecte.length,
-    enCoursNormal: machinesNormal.filter(m => m.etatImmobilisation === "EN_COURS").length,
-    enCoursInfecte: machinesInfecte.filter(m => m.etatImmobilisation === "EN_COURS").length,
-    disponibles: machines.filter(m => m.etatImmobilisation === "DISPONIBLE").length,
-    poidsTotal: machines.reduce((s, m) => s + (m.poidsActuel || 0), 0),
-    cyclesEnCours: cyclesEnCours.length,
-    cyclesTermines: cyclesTermines.length,
-  };
+  const carte = (m) => (
+    <CarteMachine key={m.id || m.code} machine={m} cycles={cycles} onOpen={setMachineSelectee} onTerminer={handleTerminer} />
+  );
 
   return (
-    <div className="collecte-container" style={{ padding: "0 4px" }}>
-
+    <div className="md-page" style={{ padding: "8px 0 40px" }}>
       {machineSelectee && (
-        <ModalMachine
-          machine={machineSelectee}
+        <FicheMachine
+          machine={machines.find((m) => m.id === machineSelectee.id) || machineSelectee}
           cycles={cycles}
           onFermer={() => setMachineSelectee(null)}
           onTerminer={handleTerminer}
         />
       )}
 
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "28px",
-        flexWrap: "wrap",
-        gap: "12px"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{
-            width: "56px",
-            height: "56px",
-            borderRadius: "18px",
-            background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 4px 20px rgba(14,165,233,0.3)",
-            color: "white"
-          }}>
-            <FaServer size={28} />
-          </div>
+      {/* ═══ En-tête ═══ */}
+      <motion.header className="md-head" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <div className="md-head__title">
+          <PageHeaderIcon size={56} />
           <div>
-            <h1 style={{
-              fontSize: "26px",
-              fontWeight: 800,
-              color: "#0f172a",
-              margin: 0,
-              letterSpacing: "-0.5px",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px"
-            }}>
-              Machines de Lavage
-              <span style={{
-                fontSize: "11px",
-                fontWeight: 600,
-                color: "#10b981",
-                background: "#dcfce7",
-                padding: "2px 12px",
-                borderRadius: "12px"
-              }}>
-                <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", marginRight: "6px" }} />
-                {REFRESH_MS / 1000}s
-              </span>
-            </h1>
-            <div style={{
-              fontSize: "13px",
-              color: "#64748b",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              marginTop: "2px"
-            }}>
-              <FaTachometerAlt  size={12} color="#0ea5e9" />
-              <span>{stats.cyclesEnCours} cycles en cours · {stats.cyclesTermines} terminés</span>
+            <h1>{t("machines_dashboard.title")}</h1>
+            <div className="md-head__sub">
+              <span className="md-live"><span className="md-live__dot" /> {refreshSeconds}s</span>
+              <span>{t("machines_dashboard.subtitle", { enCours: cyclesEnCours.length, termines: cyclesTermines.length })}</span>
               {lastRefresh && (
-                <span>· {lastRefresh.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                <span style={{ color: "var(--md-faint)" }}>
+                  · {lastRefresh.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                </span>
               )}
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button
-            onClick={rafraichir}
-            disabled={loading}
-            style={{
-              padding: "10px 20px",
-              borderRadius: "12px",
-              border: "1px solid #e2e8f0",
-              background: "white",
-              color: "#64748b",
-              cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: 500,
-              transition: "all 0.2s",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px"
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#f8fafc" }}
-            onMouseLeave={e => { e.currentTarget.style.background = "white" }}
-          >
-            <FaSpinner className={loading ? "animate-spin" : ""} size={14} />
-            Actualiser
+        <div className="md-head__actions">
+          <button type="button" className="md-btn md-btn--ghost" onClick={rafraichir} disabled={loading}>
+            <RefreshCw size={15} className={loading ? "md-spin" : undefined} /> {t("machines_dashboard.refresh")}
           </button>
-          <Link
-            to="/Lavages"
-            style={{
-              padding: "10px 24px",
-              borderRadius: "12px",
-              background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
-              color: "white",
-              fontWeight: 700,
-              fontSize: "13px",
-              textDecoration: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              boxShadow: "0 4px 16px rgba(14,165,233,0.3)",
-              transition: "all 0.3s"
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow = "0 8px 24px rgba(14,165,233,0.4)";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 16px rgba(14,165,233,0.3)";
-            }}
-          >
-            <FaPlay size={12} /> Nouveau lavage
+          {machinesSecheurs.length > 0 && (
+            <Link to="/Sechages" className="md-btn md-btn--ghost">
+              <Wind size={14} /> {t("machines_dashboard.new_dry", "Nouveau séchage")}
+            </Link>
+          )}
+          <Link to="/Lavages" className="md-btn md-btn--primary">
+            <Play size={14} /> {t("machines_dashboard.new_wash")}
           </Link>
         </div>
+      </motion.header>
+
+      {/* ═══ Indicateurs ═══ */}
+      <div className="md-kpis">
+        <Kpi
+          color="#0284c7"
+          visual={<Ring pct={100} color="#0284c7"><WashingMachine size={16} /></Ring>}
+          value={machines.length}
+          label={t("machines_dashboard.stats_machines")}
+          extra={`${machinesNormal.length} ${t("machines_dashboard.filter_normal").toLowerCase()} · ${machinesInfecte.length} ${t("machines_dashboard.filter_infected").toLowerCase()} · ${machinesSecheurs.length} ${t("machines_dashboard.filter_dryers", "Sécheurs").toLowerCase()}`}
+        />
+        <Kpi
+          color="#10b981"
+          visual={<Ring pct={pct(disponibles, machines.length)} color="#10b981"><CircleCheck size={16} /></Ring>}
+          value={disponibles}
+          unit={`/ ${machines.length}`}
+          label={t("machines_dashboard.stats_available")}
+          extra={`${Math.round(pct(disponibles, machines.length))} %`}
+        />
+        <Kpi
+          color="#7c3aed"
+          visual={<Ring pct={pct(cyclesEnCours.length, machines.length)} color="#7c3aed"><RefreshCw size={16} className={cyclesEnCours.length ? "md-spin" : undefined} style={{ animationDuration: "3s" }} /></Ring>}
+          value={cyclesEnCours.length}
+          label={t("machines_dashboard.stats_cycles")}
+          extra={t("machines_dashboard.cycles_done", { count: cyclesTermines.length })}
+        />
+        <Kpi
+          color="#d97706"
+          visual={<Ring pct={pct(poidsTotal, capaciteTotale)} color="#d97706"><Weight size={16} /></Ring>}
+          value={poidsTotal.toFixed(1)}
+          unit="kg"
+          label={t("machines_dashboard.stats_weight")}
+          extra={capaciteTotale ? `${Math.round(pct(poidsTotal, capaciteTotale))} % · ${capaciteTotale} kg` : null}
+        />
       </div>
 
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-        gap: "14px",
-        marginBottom: "28px"
-      }}>
-        <div style={{
-          background: "white",
-          borderRadius: "16px",
-          padding: "16px 20px",
-          border: "1px solid #e2e8f0",
-          display: "flex",
-          alignItems: "center",
-          gap: "14px",
-          transition: "all 0.2s",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
-        }}
-        onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.06)"; e.currentTarget.style.transform = "translateY(-2px)" }}
-        onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = "translateY(0)" }}>
-          <div style={{
-            width: "44px",
-            height: "44px",
-            borderRadius: "12px",
-            background: "linear-gradient(135deg, #e0f2fe, #bae6fd)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "20px"
-          }}>🧺</div>
-          <div>
-            <div style={{ fontSize: "22px", fontWeight: 800, color: "#0f172a" }}>{machines.length}</div>
-            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Machines</div>
-          </div>
-        </div>
-
-        <div style={{
-          background: "white",
-          borderRadius: "16px",
-          padding: "16px 20px",
-          border: "1px solid #e2e8f0",
-          display: "flex",
-          alignItems: "center",
-          gap: "14px",
-          transition: "all 0.2s"
-        }}
-        onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.06)"; e.currentTarget.style.transform = "translateY(-2px)" }}
-        onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = "translateY(0)" }}>
-          <div style={{
-            width: "44px",
-            height: "44px",
-            borderRadius: "12px",
-            background: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "20px"
-          }}>
-            <FaCircleDot size={20} color="#10b981" />
-          </div>
-          <div>
-            <div style={{ fontSize: "22px", fontWeight: 800, color: "#10b981" }}>{stats.disponibles}</div>
-            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Disponibles</div>
-          </div>
-        </div>
-
-        <div style={{
-          background: "white",
-          borderRadius: "16px",
-          padding: "16px 20px",
-          border: "1px solid #e2e8f0",
-          display: "flex",
-          alignItems: "center",
-          gap: "14px",
-          transition: "all 0.2s"
-        }}
-        onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.06)"; e.currentTarget.style.transform = "translateY(-2px)" }}
-        onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = "translateY(0)" }}>
-          <div style={{
-            width: "44px",
-            height: "44px",
-            borderRadius: "12px",
-            background: "linear-gradient(135deg, #faf5ff, #e9d5ff)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "20px"
-          }}>
-            <FaTachometerAlt  ivity size={20} color="#7c3aed" />
-          </div>
-          <div>
-            <div style={{ fontSize: "22px", fontWeight: 800, color: "#7c3aed" }}>{stats.cyclesEnCours}</div>
-            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Cycles en cours</div>
-          </div>
-        </div>
-
-        <div style={{
-          background: "white",
-          borderRadius: "16px",
-          padding: "16px 20px",
-          border: "1px solid #e2e8f0",
-          display: "flex",
-          alignItems: "center",
-          gap: "14px",
-          transition: "all 0.2s"
-        }}
-        onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.06)"; e.currentTarget.style.transform = "translateY(-2px)" }}
-        onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = "translateY(0)" }}>
-          <div style={{
-            width: "44px",
-            height: "44px",
-            borderRadius: "12px",
-            background: "linear-gradient(135deg, #fef3c7, #fde68a)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "20px"
-          }}>
-            <FaWeight size={20} color="#f59e0b" />
-          </div>
-          <div>
-            <div style={{ fontSize: "22px", fontWeight: 800, color: "#f59e0b" }}>{stats.poidsTotal.toFixed(1)} kg</div>
-            <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Poids total</div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{
-        display: "flex",
-        gap: "6px",
-        marginBottom: "20px",
-        background: "#f1f5f9",
-        padding: "4px",
-        borderRadius: "14px",
-        width: "fit-content"
-      }}>
+      {/* ═══ Filtres ═══ */}
+      <div className="md-filters" role="tablist">
         {[
-          { id: "TOUS", label: "Toutes", count: machines.length },
-          { id: "LINGE_NORMAL", label: "⬜ Normal", count: machinesNormal.length },
-          { id: "LINGES_INFECTE", label: "🔴 Infecté", count: machinesInfecte.length },
-        ].map(({ id, label, count }) => (
+          { id: "TOUS", label: t("machines_dashboard.filter_all"), count: machines.length, color: "#0f172a" },
+          { id: "LINGE_NORMAL", label: t("machines_dashboard.filter_normal"), count: machinesNormal.length, color: THEME.LINGE_NORMAL.tone },
+          { id: "LINGES_INFECTE", label: t("machines_dashboard.filter_infected"), count: machinesInfecte.length, color: THEME.LINGES_INFECTE.tone },
+          { id: "SECHEUR", label: t("machines_dashboard.filter_dryers", "Sécheurs"), count: machinesSecheurs.length, color: THEME.SECHEUR.tone },
+        ].filter((f) => f.id === "TOUS" || f.count > 0).map((f) => (
           <button
-            key={id}
-            onClick={() => setFiltre(id)}
-            style={{
-              padding: "8px 18px",
-              borderRadius: "10px",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: filtre === id ? 700 : 500,
-              transition: "all 0.2s",
-              background: filtre === id ? "white" : "transparent",
-              color: filtre === id
-                ? (id === "LINGES_INFECTE" ? "#dc2626" : id === "LINGE_NORMAL" ? "#0ea5e9" : "#0f172a")
-                : "#64748b",
-              boxShadow: filtre === id ? "0 2px 8px rgba(0,0,0,0.06)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
-            }}
+            key={f.id}
+            type="button"
+            role="tab"
+            aria-selected={filtre === f.id}
+            className={`md-filter${filtre === f.id ? " is-active" : ""}`}
+            style={{ "--f": f.color }}
+            onClick={() => setFiltre(f.id)}
           >
-            {label}
-            <span style={{
-              padding: "2px 10px",
-              borderRadius: "10px",
-              fontSize: "11px",
-              fontWeight: 700,
-              background: filtre === id ? (id === "LINGES_INFECTE" ? "#fee2e2" : id === "LINGE_NORMAL" ? "#e0f2fe" : "#e2e8f0") : "#e2e8f0",
-              color: filtre === id ? (id === "LINGES_INFECTE" ? "#dc2626" : id === "LINGE_NORMAL" ? "#0ea5e9" : "#64748b") : "#64748b"
-            }}>
-              {count}
-            </span>
+            {f.label} <span className="md-filter__count">{f.count}</span>
           </button>
         ))}
       </div>
 
+      {/* ═══ Machines ═══ */}
       {isLoading ? (
-        <div style={{
-          textAlign: "center",
-          padding: "80px 20px",
-          background: "white",
-          borderRadius: "20px",
-          border: "1px solid #e2e8f0"
-        }}>
-          <FaSpinner className="animate-spin" size={40} color="#0ea5e9" style={{ opacity: 0.5 }} />
-          <div style={{ marginTop: "16px", fontSize: "15px", color: "#94a3b8", fontWeight: 500 }}>
-            Chargement des machines...
-          </div>
+        <div className="md-empty">
+          <RefreshCw size={34} className="md-spin" color="#0284c7" />
+          <span>{t("machines_dashboard.loading")}</span>
+        </div>
+      ) : machines.length === 0 ? (
+        <div className="md-empty">
+          <WashingMachine size={44} strokeWidth={1.4} />
+          <strong>{t("machines_dashboard.no_machines")}</strong>
+          <span>{t("machines_dashboard.no_machines_text")}</span>
         </div>
       ) : filtre === "TOUS" ? (
         <>
           {machinesNormal.length > 0 && (
-            <div style={{ marginBottom: "32px" }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                marginBottom: "16px"
-              }}>
-                <div style={{
-                  width: "4px",
-                  height: "20px",
-                  borderRadius: "2px",
-                  background: "linear-gradient(180deg, #0ea5e9, #0284c7)"
-                }} />
-                <span style={{ fontWeight: 700, fontSize: "16px", color: "#0f172a" }}>
-                  Machines Linge Normal
-                </span>
-                <span style={{
-                  fontSize: "12px",
-                  color: "#94a3b8",
-                  background: "#f1f5f9",
-                  padding: "2px 12px",
-                  borderRadius: "12px"
-                }}>
-                  {machinesNormal.length}
-                </span>
-                <div style={{ flex: 1, height: "1px", background: "#e2e8f0" }} />
-                <span style={{ fontSize: "11px", color: "#64748b", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <FaCircleDot size={10} color="#10b981" />
-                  {machinesNormal.filter(m => m.etatImmobilisation === "DISPONIBLE").length} dispo
-                </span>
-              </div>
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                gap: "18px"
-              }}>
-                {machinesNormal.map(m => (
-                  <CarteMachine 
-                    key={m.id || m.code} 
-                    machine={m} 
-                    cycles={cycles} 
-                    onClick={setMachineSelectee} 
-                    onTerminer={handleTerminer} 
-                  />
-                ))}
-              </div>
-            </div>
+            <Section color={THEME.LINGE_NORMAL.tone} Icon={WashingMachine} title={t("machines_dashboard.section_normal")} machines={machinesNormal}>
+              {machinesNormal.map(carte)}
+            </Section>
           )}
-
-          {machinesNormal.length > 0 && machinesInfecte.length > 0 && (
-            <div style={{ borderTop: "2px dashed #f1f5f9", marginBottom: "32px" }} />
-          )}
-
           {machinesInfecte.length > 0 && (
-            <div>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                marginBottom: "16px"
-              }}>
-                <div style={{
-                  width: "4px",
-                  height: "20px",
-                  borderRadius: "2px",
-                  background: "linear-gradient(180deg, #dc2626, #b91c1c)"
-                }} />
-                <span style={{ fontWeight: 700, fontSize: "16px", color: "#0f172a" }}>
-                  Machines Linge Infecté
-                </span>
-                <span style={{
-                  fontSize: "12px",
-                  color: "#94a3b8",
-                  background: "#f1f5f9",
-                  padding: "2px 12px",
-                  borderRadius: "12px"
-                }}>
-                  {machinesInfecte.length}
-                </span>
-                <div style={{ flex: 1, height: "1px", background: "#e2e8f0" }} />
-                <span style={{ fontSize: "11px", color: "#64748b", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <FaCircleDot size={10} color="#10b981" />
-                  {machinesInfecte.filter(m => m.etatImmobilisation === "DISPONIBLE").length} dispo
-                </span>
-              </div>
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                gap: "18px"
-              }}>
-                {machinesInfecte.map(m => (
-                  <CarteMachine 
-                    key={m.id || m.code} 
-                    machine={m} 
-                    cycles={cycles} 
-                    onClick={setMachineSelectee} 
-                    onTerminer={handleTerminer} 
-                  />
-                ))}
-              </div>
-            </div>
+            <Section color={THEME.LINGES_INFECTE.tone} Icon={Biohazard} title={t("machines_dashboard.section_infected")} machines={machinesInfecte}>
+              {machinesInfecte.map(carte)}
+            </Section>
           )}
-
-          {machines.length === 0 && (
-            <div style={{
-              textAlign: "center",
-              padding: "80px 20px",
-              background: "white",
-              borderRadius: "20px",
-              border: "2px dashed #e2e8f0"
-            }}>
-              <FaServer size={48} style={{ opacity: 0.2, marginBottom: "16px" }} />
-              <div style={{ fontSize: "18px", fontWeight: 600, color: "#64748b" }}>
-                Aucune machine configurée
-              </div>
-              <div style={{ fontSize: "14px", color: "#94a3b8", marginTop: "4px" }}>
-                Commencez par ajouter une machine dans les paramètres
-              </div>
-            </div>
+          {machinesSecheurs.length > 0 && (
+            <Section color={THEME.SECHEUR.tone} Icon={Wind} title={t("machines_dashboard.section_dryers", "Sécheurs")} machines={machinesSecheurs}>
+              {machinesSecheurs.map(carte)}
+            </Section>
           )}
         </>
       ) : (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-          gap: "18px"
-        }}>
-          {machinesFiltrees.map(m => (
-            <CarteMachine 
-              key={m.id || m.code} 
-              machine={m} 
-              cycles={cycles} 
-              onClick={setMachineSelectee} 
-              onTerminer={handleTerminer} 
-            />
-          ))}
-        </div>
+        <div className="md-grid" style={{ marginBottom: 30 }}>{machinesFiltrees.map(carte)}</div>
       )}
 
-      <div style={{
-        display: "flex",
-        gap: "18px",
-        marginTop: "28px",
-        padding: "14px 22px",
-        background: "white",
-        borderRadius: "14px",
-        border: "1px solid #e2e8f0",
-        flexWrap: "wrap",
-        alignItems: "center"
-      }}>
-        <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase" }}>
-          Légende
-        </span>
-        {Object.entries(ETAT_CFG).map(([key, val]) => (
-          <div key={key} style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            fontSize: "12px",
-            color: "#64748b"
-          }}>
-            <div style={{
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              background: val.color,
-              boxShadow: key === "EN_COURS" ? `0 0 12px ${val.color}66` : "none"
-            }} />
-            {val.label}
-          </div>
+      {/* ═══ Légende ═══ */}
+      <div className="md-legend">
+        <span>{t("machines_dashboard.legend")}</span>
+        {Object.entries(ETAT_CFG).map(([key, v]) => (
+          <span key={key} className="md-legend__item" style={{ "--st": v.color }}>
+            <i /> {t(`machine_status.${key}`, v.label)}
+          </span>
         ))}
       </div>
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes pulseDot {
-          0% { box-shadow: 0 0 0 0 rgba(124,58,237,0.6); }
-          70% { box-shadow: 0 0 0 8px rgba(124,58,237,0); }
-          100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); }
-        }
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-      `}</style>
     </div>
   );
 }

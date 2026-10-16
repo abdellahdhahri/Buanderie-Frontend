@@ -1,6 +1,6 @@
 
 
-export const API = "http://localhost:8082";
+export const API = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export const CAT = {
   DRAP:             { label:"Drap",         emoji:"🛏️", color:"#dc2626", bg:"#fee2e2" },

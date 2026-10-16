@@ -1,11 +1,9 @@
 
 import React from "react";
 import { createBrowserRouter } from "react-router-dom";
-
 import { Layout } from "./components/layout/layout";
 import { ProtectedLayout } from "./services/ProtectedLayout";
-
-import ProcessList from "./pages/process/ProcessList";
+import ProcessList from "./pages/auth/auth";
 import DashboardBuanderie from "./pages/Dashboard/BuanderieDashboard";
 import LingeList from "./pages/Linge/LingeList";
 import LavageList from "./pages/lavage/LavageList";
@@ -18,7 +16,8 @@ import HistoriqueGlobal from "./pages/Historique/HistoriqueGlobal";
 import BuanderieStats from "./pages/Statistiques/BuanderieStats";
 import ReclamationList from "./pages/Reclamation/ReclamationList";
 import TrackingPage from "./pages/Tracking/TrackingPage";
-import StockageList from "./pages/stockage/StockageList";
+import StockageArsenal from "./pages/stockageArsenal/StockageArsenal";
+import SuiviStock from "./pages/suiviStock/SuiviStock";
 import TriList from "./pages/Tri/TriList";
 import HistoriqueCollecte from "./pages/HistoriqueCollecte/HistoriqueCollecte";
 import MachinesDashboard from "./pages/lavage/MachinesDashboard";
@@ -40,6 +39,9 @@ import ChambreList from "./pages/chambre/ChambreList";
 import InventaireArsenal from "./pages/inventaire/InventaireArsenal";
 import RemiseLinge from "./pages/remise-Linges/RemiseLinge";
 import EtapeList from "./pages/etape/EtapeList";
+import BuanderieWorkflow from "./pages/workflow/BuanderieWorkflow";
+import SacInfecteList from "./pages/sacLinge/SacInfecteList";
+import ParametresPage from "./pages/Parametres/ParametresPage";
 
 
 export const router = createBrowserRouter([
@@ -66,17 +68,29 @@ export const router = createBrowserRouter([
               privileges: ["LIG0"],
             },
           },
+          
 
 
-          /*
-           * ==================================================
-           * ZONE SALE - LIG15
-           * ==================================================
-           */
+          
 
           {
             path: "collecteList",
             Component: CollecteList,
+            handle: {
+              privileges: ["LIG1501"],
+            },
+          },
+          
+          {
+            path: "proc",
+            Component: BuanderieWorkflow,
+            handle: {
+              privileges: ["LIG1501"],
+            },
+          },
+           {
+            path: "arsenal",
+            Component: ArsenalList,
             handle: {
               privileges: ["LIG1501"],
             },
@@ -139,8 +153,8 @@ export const router = createBrowserRouter([
           },
 
           {
-            path: "stockage",
-            Component: StockageList,
+            path: "stockage-arsenal",
+            Component: StockageArsenal,
             handle: {
               privileges: ["LIG1603"],
             },
@@ -187,6 +201,13 @@ export const router = createBrowserRouter([
               privileges: ["LIG1203"],
             },
           },
+           {
+            path: "sacs",
+            Component: SacInfecteList,
+            handle: {
+              privileges: ["LIG1203"],
+            },
+          },
 
           {
             path: "programme",
@@ -197,18 +218,10 @@ export const router = createBrowserRouter([
           },
 
           {
-            path: "stock",
-            Component: StockageList,
-            handle: {
-              privileges: ["LIG1205"],
-            },
-          },
-
-          {
             path: "agents",
             Component: AgentList,
             handle: {
-              privileges: ["LIG1206"],
+              privileges: ["LIG1204"],
             },
           },
 
@@ -244,6 +257,14 @@ export const router = createBrowserRouter([
             Component: ImmobilisationList,
             handle: {
               privileges: ["LIG1304"],
+            },
+          },
+
+          {
+            path: "suivi-stock",
+            Component: SuiviStock,
+            handle: {
+              privileges: ["LIG1305"],
             },
           },
 
@@ -371,6 +392,12 @@ export const router = createBrowserRouter([
             handle: {
               privileges: ["LIG1604"],
             },
+          },
+
+          {
+            // Paramètres du compte : accessible à tout utilisateur connecté
+            path: "parametres",
+            Component: ParametresPage,
           },
 
         ],

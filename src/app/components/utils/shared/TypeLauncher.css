@@ -1,0 +1,195 @@
+/* Écran de départ collecte / distribution — voir TypeLauncher.jsx */
+.tl-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 24px 0 40px;
+}
+
+.tl-intro {
+  text-align: center;
+}
+
+.tl-intro h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.tl-intro p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.tl-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 280px));
+  justify-content: center;
+  gap: 22px;
+  width: 100%;
+}
+
+@media (max-width: 960px) {
+  .tl-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 300px)); }
+}
+
+.tl-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 28px 22px 22px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 24px;
+  background: #ffffff;
+  text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1), border-color 0.2s, box-shadow 0.25s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Liseré coloré en haut de la carte */
+.tl-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--c);
+  opacity: 0.85;
+}
+
+/* Halo doux au survol */
+.tl-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--c) 10%, transparent), transparent 65%);
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+
+.tl-card:hover,
+.tl-card:focus-visible {
+  transform: translateY(-6px);
+  border-color: color-mix(in srgb, var(--c) 55%, #e2e8f0);
+  box-shadow: 0 24px 48px -20px color-mix(in srgb, var(--c) 55%, transparent);
+  outline: none;
+}
+
+.tl-card:hover::after,
+.tl-card:focus-visible::after {
+  opacity: 1;
+}
+
+.tl-card:active {
+  transform: translateY(-2px) scale(0.99);
+}
+
+.tl-card__key {
+  position: absolute;
+  top: 14px;
+  inset-inline-start: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.tl-card__art {
+  width: 100%;
+  max-width: 190px;
+}
+
+.tl-art {
+  width: 100%;
+  height: auto;
+  transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.tl-card:hover .tl-art {
+  transform: scale(1.05) translateY(-2px);
+}
+
+.tl-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tl-card__label {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tl-card__desc {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.tl-card__go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-top: 4px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--c) 10%, transparent);
+  color: var(--c);
+  transition: background 0.2s, color 0.2s, transform 0.25s;
+}
+
+.tl-card:hover .tl-card__go {
+  background: var(--c);
+  color: #ffffff;
+  transform: translateX(3px);
+}
+
+[dir="rtl"] .tl-card__go svg {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .tl-card:hover .tl-card__go {
+  transform: translateX(-3px);
+}
+
+/* ── Mode sombre ─────────────────────────────────────────────────────── */
+.dark .tl-card {
+  background: var(--dk-surface, #111a2b);
+  border-color: var(--dk-border, #243149);
+}
+
+.dark .tl-card__key {
+  background: var(--dk-surface-2, #16213a);
+  border-color: var(--dk-border, #243149);
+}
+
+.dark .tl-intro h2,
+.dark .tl-card__label {
+  color: var(--dk-text, #e6edf6);
+}
+
+.dark .tl-intro p,
+.dark .tl-card__desc {
+  color: var(--dk-muted, #8d9bb0);
+}

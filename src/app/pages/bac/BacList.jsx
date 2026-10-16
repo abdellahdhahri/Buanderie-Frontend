@@ -1,4 +1,6 @@
+// src/components/bacs/BacList.jsx
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Plus,
   Search,
@@ -26,9 +28,28 @@ import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import BarcodeLabel from "../../components/BarcodeLabel";
+import { useBac } from "../../contextes/BacContext";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import { SortableHeader } from "../../components/ui/SortableHeader";
+import { useSortableData } from "../../hooks/useSortableData";
+import { DetailModal, FormModal, FormSection } from "../../components/ui/modal-kit";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export default function BacList() {
-  const [bacs, setBacs] = useState([]);
+  const { t } = useTranslation();
+
+  
+  const {
+    bacs,
+    loading: isBacsLoading,
+    fetchBacs,
+    addBac,
+    updateBac,
+    deleteBac,
+    getBacById,
+  } = useBac();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBac, setSelectedBac] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,30 +76,17 @@ export default function BacList() {
   });
 
   useEffect(() => {
-    fetchBacs();
-  }, []);
-
-  const fetchBacs = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("http://localhost:8082/api/bacs");
-      if (response.ok) {
-        const data = await response.json();
-        setBacs(data);
-        await fetchAllBacLingesCount(data);
-      }
-    } catch (err) {
-      console.error("Erreur réseau:", err);
-    } finally {
-      setIsLoading(false);
+  
+    if (bacs && bacs.length > 0) {
+      fetchAllBacLingesCount(bacs);
     }
-  };
+  }, [bacs]);
 
   const fetchAllBacLingesCount = async (bacsData) => {
     const counts = {};
     for (const bac of bacsData) {
       try {
-        const response = await fetch(`http://localhost:8082/api/bacs/bacs/${bac.id}/linges`);
+        const response = await fetch(`${API_URL}/api/bacs/bacs/${bac.id}/linges`);
         if (response.ok) {
           const data = await response.json();
           const linges = Array.isArray(data) ? data : data.content || [];
@@ -94,25 +102,64 @@ export default function BacList() {
     setBacLingesCount(counts);
   };
 
-  const fetchBacLinges = async (bacId) => {
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    await fetchBacs();
+    setIsLoading(false);
+  };
+
+  const fetchBacLinges = async (bac) => {
     setIsLingesLoading(true);
     try {
-      const response = await fetch(`http://localhost:8082/api/bacs/bacs/${bacId}/linges`);
-      if (response.ok) {
-        const data = await response.json();
-        const linges = Array.isArray(data) ? data : data.content || [];
-        setBacLinges(linges);
-        setBacLingesCount(prev => ({ ...prev, [bacId]: linges.length }));
-        return linges;
+      const isSacInfecte = bac.numeroSac?.toUpperCase().startsWith("SAC")
+        || bac.code?.toUpperCase().startsWith("SAC")
+        || bac.typebac === "INFECTE";
+
+      if (isSacInfecte) {
+        const numeroSac = bac.numeroSac || bac.code;
+        const response = await fetch(
+          `${API_URL}/api/sacs-infectes/detail?numeroSac=${encodeURIComponent(numeroSac)}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const items = (data.items || []).map((item, index) => ({
+            id: `sac-item-${data.id}-${index}`,
+            codeBarre: `${data.numeroSac}-${item.categorie}`,
+            categorie: item.categorie,
+            quantiteDeclaree: item.quantiteDeclaree,
+            quantiteComptee: item.quantiteComptee,
+            ecart: item.ecart,
+            isSacItem: true,
+            etat: data.etat || "DECLARE",
+            poids: null,
+            rfidTag: null,
+            sacNumero: data.numeroSac,
+            agentCollecteNom: data.agentCollecteNom,
+          }));
+
+          setBacLinges(items);
+          setBacLingesCount(prev => ({ ...prev, [bac.id]: items.length }));
+          return items;
+        }
       } else {
-        setBacLinges([]);
-        setBacLingesCount(prev => ({ ...prev, [bacId]: 0 }));
-        return [];
+        const response = await fetch(`${API_URL}/api/bacs/bacs/${bac.id}/linges`);
+        if (response.ok) {
+          const data = await response.json();
+          const linges = Array.isArray(data) ? data : data.content || [];
+          setBacLinges(linges);
+          setBacLingesCount(prev => ({ ...prev, [bac.id]: linges.length }));
+          return linges;
+        }
       }
-    } catch (err) {
-      console.error("Erreur chargement linges:", err);
+
       setBacLinges([]);
-      setBacLingesCount(prev => ({ ...prev, [bacId]: 0 }));
+      setBacLingesCount(prev => ({ ...prev, [bac.id]: 0 }));
+      return [];
+    } catch (err) {
+      console.error("Erreur chargement linges/items:", err);
+      setBacLinges([]);
+      setBacLingesCount(prev => ({ ...prev, [bac.id]: 0 }));
       return [];
     } finally {
       setIsLingesLoading(false);
@@ -132,7 +179,7 @@ export default function BacList() {
     setSelectedBacId(bac.id);
     setSelectedBac(bac);
     setSelectedId(null);
-    await fetchBacLinges(bac.id);
+    await fetchBacLinges(bac);
     setPanelOpen(true);
   };
 
@@ -150,40 +197,41 @@ export default function BacList() {
   };
 
   const getStatusBadge = (status) => {
-    if (!status) return <Badge variant="secondary">Non défini</Badge>;
+    if (!status) return <Badge variant="secondary">{t('bac_status.Non défini')}</Badge>;
     const variants = {
-      BLANC: { variant: "info", label: "BLANC" },
-      INFECTE: { variant: "danger", label: "INFECTE" },
-      MIXTE: { variant: "warning", label: "MIXTE" },
-      EN_RECEPTION: { variant: "warning", label: "EN RÉCEPTION" },
-      EN_ATTENTE_COLLECTE: { variant: "secondary", label: "EN ATTENTE" },
-      COLLECTE_EN_COURS: { variant: "info", label: "COLLECTE EN COURS" },
-      COLLECTE_TERMINEE: { variant: "success", label: "COLLECTE TERMINÉE" },
+      BLANC: { variant: "info", label: t('bac_status.BLANC') },
+      INFECTE: { variant: "danger", label: t('bac_status.INFECTE') },
+      MIXTE: { variant: "warning", label: t('bac_status.MIXTE') },
+      EN_RECEPTION: { variant: "warning", label: t('bac_status.EN_RECEPTION') },
+      EN_ATTENTE_COLLECTE: { variant: "secondary", label: t('bac_status.EN_ATTENTE_COLLECTE') },
+      COLLECTE_EN_COURS: { variant: "info", label: t('bac_status.COLLECTE_EN_COURS') },
+      COLLECTE_TERMINEE: { variant: "success", label: t('bac_status.COLLECTE_TERMINEE') },
     };
     const config = variants[status] || { variant: "secondary", label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const getEtatLingeBadge = (etat) => {
-    if (!etat) return <Badge variant="secondary">Non défini</Badge>;
+    if (!etat) return <Badge variant="secondary">{t('linge_status.Non défini')}</Badge>;
     const variants = {
-      COLLECTE: { variant: "warning", label: "Collecte" },
-      EN_LAVAGE: { variant: "info", label: "En lavage" },
-      PROPRE_PRET: { variant: "success", label: "Propre" },
-      RECEPTIONNE: { variant: "success", label: "Réceptionné" },
-      DISTRIBUE: { variant: "success", label: "Distribué" },
-      EN_SECHAGE_REPASSAGE: { variant: "info", label: "Séchage" },
-      STOCKE: { variant: "secondary", label: "Stocké" },
-      PRET_LIVRAISON: { variant: "success", label: "Prêt livraison" },
-      EN_TRI: { variant: "info", label: "En tri" },
-      LAVE: { variant: "success", label: "Lavé" },
-      SECHE: { variant: "success", label: "Séché" },
-      SALE: { variant: "danger", label: "Sale" },
+      COLLECTE: { variant: "warning", label: t('linge_status.COLLECTE') },
+      EN_LAVAGE: { variant: "info", label: t('linge_status.EN_LAVAGE') },
+      PROPRE_PRET: { variant: "success", label: t('linge_status.PROPRE_PRET') },
+      RECEPTIONNE: { variant: "success", label: t('linge_status.RECEPTIONNE') },
+      DISTRIBUE: { variant: "success", label: t('linge_status.DISTRIBUE') },
+      EN_SECHAGE_REPASSAGE: { variant: "info", label: t('linge_status.EN_SECHAGE_REPASSAGE') },
+      STOCKE: { variant: "secondary", label: t('linge_status.STOCKE') },
+      PRET_LIVRAISON: { variant: "success", label: t('linge_status.PRET_LIVRAISON') },
+      EN_TRI: { variant: "info", label: t('linge_status.EN_TRI') },
+      LAVE: { variant: "success", label: t('linge_status.LAVE') },
+      SECHE: { variant: "success", label: t('linge_status.SECHE') },
+      SALE: { variant: "danger", label: t('linge_status.SALE') },
     };
     const config = variants[etat] || { variant: "secondary", label: etat };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
+  // ─── CRUD via contexte ──────────────────────────────────────────────────
   const handleOpenCreateModal = () => {
     setSelectedBac(null);
     setNewRec({
@@ -215,13 +263,14 @@ export default function BacList() {
     setIsModalOpen(true);
   };
 
+  // ✅ Sauvegarde via le contexte (addBac / updateBac)
   const handleSave = async (e) => {
     e.preventDefault();
 
     if (!newRec.reference || newRec.reference.trim() === "") {
       Swal.fire({
-        title: "⚠️ Référence requise",
-        text: "Veuillez saisir une référence.",
+        title: t('bacs.reference_required'),
+        text: t('bacs.reference_required_text'),
         icon: "warning",
       });
       return;
@@ -241,58 +290,46 @@ export default function BacList() {
         observations: newRec.observation || "initialisation dans le systeme",
       };
 
-      const url = selectedBac 
-        ? `http://localhost:8082/api/bacs/${selectedBac.id}`
-        : "http://localhost:8082/api/bacs";
-      
-      const method = selectedBac ? "PUT" : "POST";
+      let result;
 
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMsg = errorText;
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMsg = errorJson.message || errorText;
-        } catch {}
-        throw new Error(errorMsg);
-      }
-
-      const data = await response.json();
-      
       if (selectedBac) {
-        setBacs((prev) => prev.map((r) => (r.id === data.id ? data : r)));
-        Swal.fire({
-          title: "✅ Modifié!",
-          text: "Bac mis à jour avec succès.",
-          icon: "success",
-          timer: 1500,
-          showConfirmButton: false,
-        });
+        // ✅ Mise à jour via contexte
+        result = await updateBac(selectedBac.id, payload);
+        if (result.success) {
+          Swal.fire({
+            title: "✅",
+            text: t('bacs.update_success'),
+            icon: "success",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+        } else {
+          throw new Error(result.error);
+        }
       } else {
-        setBacs((prev) => [data, ...prev]);
-        Swal.fire({
-          title: "✅ Créé!",
-          text: "Nouveau bac créé avec succès.",
-          icon: "success",
-          timer: 1500,
-          showConfirmButton: false,
-        });
+        // ✅ Création via contexte
+        result = await addBac(payload);
+        if (result.success) {
+          Swal.fire({
+            title: "✅",
+            text: t('bacs.create_success'),
+            icon: "success",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+        } else {
+          throw new Error(result.error);
+        }
       }
 
       setIsModalOpen(false);
-      fetchBacs();
-
+      // ✅ Le contexte a déjà mis à jour la liste, mais on rafraîchit les compteurs
+      await fetchBacs();
     } catch (err) {
       console.error("❌ Erreur:", err);
       Swal.fire({
-        title: "❌ Erreur",
-        text: err.message || "Une erreur est survenue.",
+        title: "❌",
+        text: err.message || t('bacs.error_text'),
         icon: "error",
       });
     } finally {
@@ -300,25 +337,24 @@ export default function BacList() {
     }
   };
 
+  // ✅ Suppression via le contexte (deleteBac)
   const deleteRec = async (id) => {
     const result = await Swal.fire({
-      title: "Es-tu sûr?",
-      text: "Vous ne pourrez pas annuler cette action!",
+      title: t('bacs.delete_confirm'),
+      text: t('bacs.delete_confirm_text'),
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
-      confirmButtonText: "Oui, supprimer!",
-      cancelButtonText: "Annuler",
+      confirmButtonText: t('bacs.delete_confirm_yes'),
+      cancelButtonText: t('bacs.delete_confirm_no'),
     });
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`http://localhost:8082/api/bacs/${id}`, {
-          method: "DELETE",
-        });
-        if (response.ok) {
-          setBacs((prev) => prev.filter((r) => r.id !== id));
+        const res = await deleteBac(id);
+        if (res.success) {
+          // ✅ Nettoyer les compteurs locaux
           setBacLingesCount(prev => {
             const newCount = { ...prev };
             delete newCount[id];
@@ -328,21 +364,20 @@ export default function BacList() {
             handleClosePanel();
           }
           Swal.fire({
-            title: "✅ Supprimé!",
-            text: "Bac supprimé avec succès.",
+            title: "✅",
+            text: t('bacs.delete_success'),
             icon: "success",
             timer: 1500,
             showConfirmButton: false,
           });
         } else {
-          const error = await response.text();
-          throw new Error(error);
+          throw new Error(res.error);
         }
       } catch (err) {
         console.error("Erreur suppression:", err);
         Swal.fire({
-          title: "❌ Erreur",
-          text: err.message || "Erreur lors de la suppression.",
+          title: "❌",
+          text: t('bacs.error_text'),
           icon: "error",
         });
       }
@@ -354,6 +389,7 @@ export default function BacList() {
     setShowDetailModal(true);
   };
 
+  // ─── Filtrage local (via contexte) ──────────────────────────────────────
   const filteredBacs = bacs.filter((r) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -363,11 +399,17 @@ export default function BacList() {
     );
   });
 
+  // ─── Tri par colonne (clic sur l'en-tête : croissant → décroissant → aucun) ─
+  const { sortedItems: sortedBacs, requestSort, directionFor } = useSortableData(filteredBacs, {
+    poids: (b) => Number(b.poids) || 0,
+    linges: (b) => bacLingesCount[b.id],
+  });
+
   return (
     <div className="relative flex h-full gap-4">
-      <motion.div 
+      <motion.div
         className="transition-all duration-500 ease-in-out"
-        animate={{ 
+        animate={{
           width: panelOpen ? '60%' : '100%',
           transition: { duration: 0.4, ease: "easeInOut" }
         }}
@@ -380,35 +422,7 @@ export default function BacList() {
               gap: "16px",
               marginBottom: "8px"
             }}>
-              <div style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "16px",
-                background: "linear-gradient(135deg, #f59e0b, #d97706)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                boxShadow: "0 4px 16px rgba(245, 158, 11, 0.25)"
-              }}>
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  width="24" 
-                  height="24" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 6h18" />
-                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                  <line x1="10" y1="11" x2="10" y2="17" />
-                  <line x1="14" y1="11" x2="14" y2="17" />
-                </svg>
-              </div>
+              <PageHeaderIcon size={52} />
               <div>
                 <h1 style={{
                   fontSize: "28px",
@@ -416,14 +430,14 @@ export default function BacList() {
                   color: "#0f172a",
                   margin: 0
                 }}>
-                  Gestion des Bacs
+                  {t('bacs.title')}
                 </h1>
                 <p style={{
                   fontSize: "14px",
                   color: "#64748b",
                   margin: "2px 0 0 0"
                 }}>
-                  Gérez les bacs de stockage et de transport
+                  {t('bacs.subtitle')}
                 </p>
               </div>
             </div>
@@ -434,12 +448,11 @@ export default function BacList() {
               onClick={handleOpenCreateModal}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
             >
-              <Plus className="w-4 h-4 stroke-[2.5]" /> Nouveau Bac
+              <Plus className="w-4 h-4 stroke-[2.5]" /> {t('bacs.new')}
             </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
 
-            {/* ✅ Bouton Étiquette Bac avec BarcodeLabel */}
             {selectedBac && (
               <BarcodeLabel item={selectedBac} type="bac" />
             )}
@@ -448,12 +461,12 @@ export default function BacList() {
               disabled={!selectedBacId}
               onClick={() => {
                 if (selectedBac) {
-                  // Imprimer ticket bac (fonction à garder si besoin)
+                  // Imprimer ticket bac
                 }
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Printer className="w-4 h-4 stroke-[2.5]" /> Ticket Bac
+              <Printer className="w-4 h-4 stroke-[2.5]" /> {t('bacs.ticket')}
             </button>
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
@@ -468,7 +481,7 @@ export default function BacList() {
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#006f94]/30 rounded-[14px] text-sm font-bold text-[#006f94] hover:bg-[#006f94]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Eye className="w-4 h-4 stroke-[2.5]" /> Détails Linge
+              <Eye className="w-4 h-4 stroke-[2.5]" /> {t('bacs.details_linge')}
             </button>
 
             <button
@@ -483,7 +496,7 @@ export default function BacList() {
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <History className="w-4 h-4 stroke-[2.5]" /> Historique
+              <History className="w-4 h-4 stroke-[2.5]" /> {t('bacs.history')}
             </button>
 
             <button
@@ -491,7 +504,7 @@ export default function BacList() {
               onClick={() => handleOpenEditModal(selectedBac)}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#006f94]/30 rounded-[14px] text-sm font-bold text-[#006f94] hover:bg-[#006f94]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Edit className="w-4 h-4 stroke-[2.5]" /> Modifier
+              <Edit className="w-4 h-4 stroke-[2.5]" /> {t('common.edit')}
             </button>
 
             <button
@@ -499,14 +512,14 @@ export default function BacList() {
               onClick={async () => {
                 if (selectedBacId) {
                   const confirmed = await Swal.fire({
-                    title: "Es-tu sûr?",
-                    text: "Vous ne pourrez pas annuler cette action!",
+                    title: t('bacs.delete_confirm'),
+                    text: t('bacs.delete_confirm_text'),
                     icon: "warning",
                     showCancelButton: true,
                     confirmButtonColor: "#d33",
                     cancelButtonColor: "#3085d6",
-                    confirmButtonText: "Oui, supprimer!",
-                    cancelButtonText: "Annuler",
+                    confirmButtonText: t('bacs.delete_confirm_yes'),
+                    cancelButtonText: t('bacs.delete_confirm_no'),
                   });
                   if (confirmed.isConfirmed) {
                     deleteRec(selectedBacId);
@@ -515,14 +528,14 @@ export default function BacList() {
               }}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e03131]/30 rounded-[14px] text-sm font-bold text-[#e03131] hover:bg-[#e03131]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <Trash2 className="w-4 h-4 stroke-[2.5]" /> Supprimer
+              <Trash2 className="w-4 h-4 stroke-[2.5]" /> {t('common.delete')}
             </button>
 
             <button
-              onClick={fetchBacs}
+              onClick={handleRefresh}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Actualiser
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> {t('bacs.refresh')}
             </button>
           </div>
 
@@ -532,7 +545,7 @@ export default function BacList() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Rechercher par référence ou code..."
+                  placeholder={t('common.search')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -543,106 +556,120 @@ export default function BacList() {
 
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-border bg-muted/50">
+              <div className="premium-table-wrap">
+                <table className="premium-table">
+                  <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-sm font-medium w-10"></th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Référence</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Date création</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Poids / Capacité</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Type</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Actions</th>
+                      <th style={{ width: 56 }} aria-label={t('bacs.view_linges', 'Linges')} />
+                      <SortableHeader direction={directionFor("reference")} onSort={() => requestSort("reference")}>
+                        {t('bacs.reference')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionFor("dateCreation")} onSort={() => requestSort("dateCreation")}>
+                        {t('bacs.date_creation')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionFor("poids")} onSort={() => requestSort("poids")}>
+                        {t('bacs.weight')} / {t('bacs.capacity')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionFor("typeCollecte")} onSort={() => requestSort("typeCollecte")} align="center">
+                        {t('bacs.type')}
+                      </SortableHeader>
+                      <SortableHeader direction={directionFor("linges")} onSort={() => requestSort("linges")} align="center">
+                        {t('bacs.linges_count')}
+                      </SortableHeader>
+                      <th style={{ textAlign: "right", paddingRight: 20 }}>{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {isLoading ? (
+                    {isBacsLoading ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <td colSpan={7} className="text-center py-10 text-muted-foreground">
                           <div className="flex items-center justify-center gap-2">
-                            <svg className="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Chargement...
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            {t('common.loading')}
                           </div>
                         </td>
                       </tr>
-                    ) : filteredBacs.length === 0 ? (
+                    ) : sortedBacs.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-muted-foreground">
-                          {searchTerm ? "Aucun bac correspondant" : "Aucun bac trouvé"}
+                        <td colSpan={7} className="text-center py-10 text-muted-foreground">
+                          {searchTerm ? t('bacs.no_match') : t('bacs.no_data')}
                         </td>
                       </tr>
                     ) : (
-                      filteredBacs.map((bac) => (
-                        <tr
-                          key={bac.id}
-                          className={`border-b border-border hover:bg-accent/50 transition-colors ${selectedBacId === bac.id ? 'bg-blue-50' : ''}`}
-                        >
-                          <td className="py-3 px-4">
-                            <button
-                              onClick={() => handleOpenPanel(bac)}
-                              className="p-1 hover:bg-blue-100 rounded-lg transition-colors"
-                              title={panelOpen && selectedBacId === bac.id ? "Fermer" : "Voir les linges"}
-                            >
-                              {panelOpen && selectedBacId === bac.id ? (
-                                <ChevronLeft className="w-5 h-5 text-blue-500" />
-                              ) : (
-                                <ChevronRight className="w-5 h-5 text-slate-400 hover:text-blue-500" />
-                              )}
-                            </button>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="font-medium">{bac.reference || "N/A"}</div>
-                            <div className="text-xs text-muted-foreground font-mono">
-                              {bac.code || "N/A"}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-sm">
-                            {bac.dateCreation ? new Date(bac.dateCreation).toLocaleDateString("fr-FR") : "N/A"}
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <Weight className="w-4 h-4 text-slate-400" />
-                              <span className="font-medium">{bac.poids || 0} kg</span>
-                              <span className="text-xs text-slate-400">/</span>
-                              <span className="text-xs text-slate-400">{bac.capacite_max || 0} kg</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            {getStatusBadge(bac.typeCollecte)}
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {bacLingesCount[bac.id] !== undefined ? bacLingesCount[bac.id] : '...'} linges
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              {/* ✅ Bouton Étiquette avec BarcodeLabel */}
-                              <BarcodeLabel item={bac} type="bac" />
+                      sortedBacs.map((bac) => {
+                        const isOpen = panelOpen && selectedBacId === bac.id;
+                        const poids = Number(bac.poids) || 0;
+                        const capacite = Number(bac.capacite_max) || 0;
+                        const ratio = capacite > 0 ? Math.min(poids / capacite, 1) : 0;
+                        const gaugeLevel = ratio >= 1 ? "is-full" : ratio >= 0.8 ? "is-high" : "";
+                        const nbLinges = bacLingesCount[bac.id];
+
+                        return (
+                          <tr
+                            key={bac.id}
+                            onClick={() => handleOpenPanel(bac)}
+                            className={selectedBacId === bac.id ? "is-selected" : ""}
+                          >
+                            <td style={{ textAlign: "center" }}>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenEditModal(bac);
-                                }}
-                                className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                title="Modifier"
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleOpenPanel(bac); }}
+                                className={`premium-table__icon-btn ${isOpen ? "is-open" : ""}`}
+                                title={isOpen ? t('common.close', 'Fermer') : t('bacs.view_linges', 'Voir les linges')}
                               >
-                                <Edit className="w-4 h-4 text-[#006f94]" />
+                                {isOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                               </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteRec(bac.id);
-                                }}
-                                className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
-                                title="Supprimer"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+                            <td>
+                              <div className="premium-table__primary">{bac.reference || "N/A"}</div>
+                              <span className="premium-table__code">{bac.code || "N/A"}</span>
+                            </td>
+                            <td>
+                              {bac.dateCreation
+                                ? new Date(bac.dateCreation).toLocaleDateString()
+                                : <span className="premium-table__muted">—</span>}
+                            </td>
+                            <td>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="premium-table__primary">{poids} kg</span>
+                                <span className="premium-table__muted">/ {capacite} kg</span>
+                              </div>
+                              <div className={`premium-table__gauge ${gaugeLevel}`} title={`${Math.round(ratio * 100)} %`}>
+                                <span style={{ width: `${ratio * 100}%` }} />
+                              </div>
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              {getStatusBadge(bac.typeCollecte)}
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              {nbLinges !== undefined
+                                ? <span className="premium-table__primary">{nbLinges}</span>
+                                : <span className="premium-table__muted">…</span>}
+                            </td>
+                            <td style={{ textAlign: "right", paddingRight: 20 }} onClick={(e) => e.stopPropagation()}>
+                              <div className="premium-table__actions">
+                                <BarcodeLabel item={bac} type="bac" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditModal(bac)}
+                                  className="premium-table__icon-btn"
+                                  title={t('common.edit')}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteRec(bac.id)}
+                                  className="premium-table__icon-btn is-danger"
+                                  title={t('common.delete')}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -657,22 +684,22 @@ export default function BacList() {
         {panelOpen && (
           <motion.div
             initial={{ opacity: 0, x: 100, scale: 0.95 }}
-            animate={{ 
-              opacity: 1, 
-              x: 0, 
+            animate={{
+              opacity: 1,
+              x: 0,
               scale: 1,
-              transition: { 
+              transition: {
                 type: "spring",
                 stiffness: 300,
                 damping: 30,
                 duration: 0.4
               }
             }}
-            exit={{ 
-              opacity: 0, 
-              x: 100, 
+            exit={{
+              opacity: 0,
+              x: 100,
               scale: 0.95,
-              transition: { 
+              transition: {
                 duration: 0.3,
                 ease: "easeInOut"
               }
@@ -688,15 +715,14 @@ export default function BacList() {
                       {selectedBac?.reference || "Bac"}
                     </h3>
                     <p className="text-xs text-slate-500">
-                      {selectedBac?.typeCollecte || "Type inconnu"}
+                      {selectedBac?.typeCollecte || t('bacs.type')}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="bg-white">
-                    {bacLinges.length} linge{bacLinges.length > 1 ? 's' : ''}
+                    {bacLinges.length} {t('bacs.linges_count')}
                   </Badge>
-                  {/* ✅ Bouton Étiquette avec BarcodeLabel */}
                   <BarcodeLabel item={selectedBac} type="bac" />
                   <button
                     onClick={handleClosePanel}
@@ -719,7 +745,7 @@ export default function BacList() {
               ) : bacLinges.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">
                   <Package className="w-12 h-12 mx-auto opacity-30 mb-3" />
-                  <p className="text-sm">Aucun linge dans ce bac</p>
+                  <p className="text-sm">{t('bacs.no_linge')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -727,18 +753,18 @@ export default function BacList() {
                     <motion.div
                       key={linge.id || index}
                       initial={{ opacity: 0, y: 20 }}
-                      animate={{ 
-                        opacity: 1, 
+                      animate={{
+                        opacity: 1,
                         y: 0,
-                        transition: { 
+                        transition: {
                           delay: index * 0.05,
                           duration: 0.3
                         }
                       }}
                       onClick={() => handleRowClick(linge.id)}
                       className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                        selectedId === linge.id 
-                          ? 'bg-blue-50 border-blue-300 shadow-md' 
+                        selectedId === linge.id
+                          ? 'bg-blue-50 border-blue-300 shadow-md'
                           : 'bg-slate-50 border-slate-100 hover:border-blue-200 hover:shadow-md'
                       }`}
                     >
@@ -786,71 +812,45 @@ export default function BacList() {
         )}
       </AnimatePresence>
 
-      {/* Modal Détails Linge - inchangée */}
-      <Modal
+      {/* Modal Détails Linge */}
+      <DetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        title={`Détails du linge - ${selectedLingeDetail?.codeBarre || 'N/A'}`}
-        size="lg"
-      >
-        {selectedLingeDetail && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ID</label>
-              <Input value={selectedLingeDetail.id} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Code Suivi</label>
-              <Input value={selectedLingeDetail.codeBarre} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tag RFID</label>
-              <Input value={selectedLingeDetail.rfidTag || "Non associé"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
-              <Input value={selectedLingeDetail.categorie} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Poids</label>
-              <Input value={`${selectedLingeDetail.poids || 0} kg`} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">État</label>
-              <div>{getEtatLingeBadge(selectedLingeDetail.etat)}</div>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Bac</label>
-              <Input value={selectedBac?.reference || "Non assigné"} disabled />
-            </div>
-            {selectedLingeDetail.dateCreation && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date de création</label>
-                <Input value={new Date(selectedLingeDetail.dateCreation).toLocaleString('fr-FR')} disabled />
-              </div>
-            )}
-          </div>
-        )}
-        <div className="flex justify-end gap-3 mt-6">
-          <Button onClick={() => setShowDetailModal(false)}>
-            Fermer
-          </Button>
-        </div>
-      </Modal>
+        title={t('bacs.details_linge')}
+        subtitle={selectedBac?.reference ? `${t('bacs.reference')} · ${selectedBac.reference}` : undefined}
+        heading={selectedLingeDetail?.codeBarre}
+        badges={selectedLingeDetail && getEtatLingeBadge(selectedLingeDetail.etat)}
+        metrics={selectedLingeDetail ? [{ label: t('bacs.weight'), value: `${selectedLingeDetail.poids || 0} kg` }] : []}
+        sections={selectedLingeDetail ? [
+          { title: t('modal.identification', 'Identification'), icon: "id", items: [
+            { label: "ID", value: selectedLingeDetail.id, mono: true },
+            { label: t('bacs.code'), value: selectedLingeDetail.codeBarre, mono: true },
+            { label: "RFID", value: selectedLingeDetail.rfidTag, mono: true },
+          ] },
+          { title: t('modal.characteristics', 'Caractéristiques'), icon: "specs", items: [
+            { label: t('bacs.type'), value: selectedLingeDetail.categorie },
+            { label: t('bacs.reference'), value: selectedBac?.reference },
+            { label: t('bacs.date_creation'), value: selectedLingeDetail.dateCreation ? new Date(selectedLingeDetail.dateCreation).toLocaleString("fr-FR") : null },
+          ] },
+        ] : []}
+      />
 
-      {/* Modal Création/Modification - inchangée */}
-      <Modal
+      {/* Modal Création/Modification */}
+      <FormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={selectedBac ? `Modifier le Bac #${selectedBac.id}` : "Nouveau Bac"}
-        size="lg"
+        title={selectedBac ? `${t('bacs.edit')} #${selectedBac.id}` : t('bacs.new')}
+        mode={selectedBac ? "edit" : "create"}
+        size={"lg"}
+        onSubmit={handleSave}
+        saving={isSaving}
       >
-        <form onSubmit={handleSave}>
-          <div className="grid grid-cols-2 gap-4">
+        
+          <FormSection title={t('modal.general_info', 'Informations générales')} icon="specs" columns={2}>
             {selectedBac && (
               <div>
                 <Input
-                  label="Code du bac"
+                  label={t('bacs.code')}
                   value={newRec.code || ""}
                   onChange={(e) =>
                     setNewRec({ ...newRec, code: e.target.value.toUpperCase() })
@@ -862,7 +862,7 @@ export default function BacList() {
 
             <div>
               <Input
-                label="Référence *"
+                label={`${t('bacs.reference')} *`}
                 value={newRec.reference}
                 onChange={(e) =>
                   setNewRec({ ...newRec, reference: e.target.value })
@@ -875,7 +875,7 @@ export default function BacList() {
             <div>
               <Input
                 type="number"
-                label="Poids (kg)"
+                label={t('bacs.current_weight')}
                 value={newRec.poids}
                 onChange={(e) =>
                   setNewRec({ ...newRec, poids: e.target.value })
@@ -888,7 +888,7 @@ export default function BacList() {
             <div>
               <Input
                 type="number"
-                label="Capacité maximale (kg)"
+                label={t('bacs.max_capacity')}
                 value={newRec.capacite_max}
                 onChange={(e) =>
                   setNewRec({ ...newRec, capacite_max: e.target.value })
@@ -899,7 +899,7 @@ export default function BacList() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">État</label>
+              <label className="block text-sm font-medium mb-2">{t('bacs.status')}</label>
               <select
                 value={newRec.etat}
                 onChange={(e) =>
@@ -907,15 +907,15 @@ export default function BacList() {
                 }
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="EN_RECEPTION">En réception</option>
-                <option value="EN_ATTENTE_COLLECTE">En attente de collecte</option>
-                <option value="COLLECTE_EN_COURS">Collecte en cours</option>
-                <option value="COLLECTE_TERMINEE">Collecte terminée</option>
+                <option value="EN_RECEPTION">{t('bac_status.EN_RECEPTION')}</option>
+                <option value="EN_ATTENTE_COLLECTE">{t('bac_status.EN_ATTENTE_COLLECTE')}</option>
+                <option value="COLLECTE_EN_COURS">{t('bac_status.COLLECTE_EN_COURS')}</option>
+                <option value="COLLECTE_TERMINEE">{t('bac_status.COLLECTE_TERMINEE')}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Type de bac</label>
+              <label className="block text-sm font-medium mb-2">{t('bacs.type_bac')}</label>
               <select
                 value={newRec.typebac}
                 onChange={(e) =>
@@ -923,13 +923,13 @@ export default function BacList() {
                 }
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="BLANC">Blanc</option>
-                <option value="INFECTE">Infecté</option>
+                <option value="BLANC">{t('bac_status.BLANC')}</option>
+                <option value="INFECTE">{t('bac_status.INFECTE')}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Type de collecte</label>
+              <label className="block text-sm font-medium mb-2">{t('bacs.type_collecte')}</label>
               <select
                 value={newRec.typeCollecte}
                 onChange={(e) =>
@@ -937,40 +937,27 @@ export default function BacList() {
                 }
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="BLANC">Blanc</option>
-                <option value="INFECTE">Infecté</option>
-                <option value="MIXTE">Mixte</option>
+                <option value="BLANC">{t('bac_status.BLANC')}</option>
+                <option value="INFECTE">{t('bac_status.INFECTE')}</option>
+                <option value="MIXTE">{t('bac_status.MIXTE')}</option>
               </select>
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium mb-2">Observations</label>
+              <label className="block text-sm font-medium mb-2">{t('bacs.observations')}</label>
               <textarea
                 value={newRec.observation}
                 onChange={(e) =>
                   setNewRec({ ...newRec, observation: e.target.value })
                 }
-                placeholder="Observations..."
+                placeholder={t('bacs.observations')}
                 className="w-full min-h-[60px] px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
-          </div>
+          </FormSection>
 
-          <div className="flex justify-end gap-3 mt-6">
-            <Button
-              variant="outline"
-              onClick={() => setIsModalOpen(false)}
-              type="button"
-              disabled={isSaving}
-            >
-              Annuler
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Enregistrement..." : (selectedBac ? "Enregistrer" : "Créer")}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+
+      </FormModal>
     </div>
   );
 }

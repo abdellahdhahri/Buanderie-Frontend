@@ -1,18 +1,20 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal } from '../../components/ui/modal';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { 
-  Search, 
-  Check, 
-  CheckSquare, 
-  Square, 
+import {
+  Search,
+  Check,
+  CheckSquare,
+  Square,
   Package,
   Barcode,
   Loader2,
 } from 'lucide-react';
 import { useMachineContext } from '../../contextes/MachineContext';
+
+
 
 const ETATS_TECHNIQUES = {
   FONCTIONNEL: { label: 'Fonctionnel', color: '#10b981', bg: '#d1fae5' },
@@ -28,7 +30,91 @@ const ETATS_IMMOBILISATION = {
   IMMOBILISE: { label: 'Immobilisé', color: '#ef4444', bg: '#fee2e2' },
 };
 
+
+
+const MARQUES_CONNUES = [
+  'MIELE', 'SAMSUNG', 'CANDY', 'TELEFUNKEN', 'LG', 'BOSCH', 'SIEMENS',
+  'WHIRLPOOL', 'ELECTROLUX', 'AEG', 'BEKO', 'INDESIT', 'HOTPOINT',
+  'PRIMUS', 'GIRBAU', 'SPEED QUEEN', 'MAYTAG', 'HUEBSCH',
+];
+
+const detectMachineType = (designation = '') => {
+  const upper = designation.toUpperCase();
+
+  if (
+    upper.includes('SUPPORT') ||
+    upper.includes('PIECE') ||
+    upper.includes('ACCESSOIRE')
+  ) {
+    return null;
+  }
+
+  if (
+    upper.includes('SECHE') ||
+    upper.includes('SÉCHOIR') ||
+    upper.includes('DRYER')
+  ) {
+    return 'SECHEUR';
+  }
+
+  if (
+    upper.includes('LAVE') ||
+    upper.includes('LAVAGE') ||
+    upper.includes('WASHER') ||
+    upper.includes('MACHINE A LAVER')
+  ) {
+    return 'LAVEUR';
+  }
+
+  return null;
+};
+
+const detectMarque = (designation = '') => {
+  const upper = designation.toUpperCase();
+  const marque = MARQUES_CONNUES.find((m) => upper.includes(m));
+  return marque || null;
+};
+
+const detectModele = (designation = '') => {
+  if (!designation) return null;
+  const match = designation.match(/([A-Z]+\s*\d{3,4}|\d+\s*KG)/i);
+  return match ? match[0].trim() : null;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔧 NORMALISATION API
+// ═══════════════════════════════════════════════════════════════════════════
+
+const normalizeMachine = (raw) => {
+  if (!raw) return null;
+
+  const designation = raw.Designation ?? raw.designation ?? '';
+  const detectedType = detectMachineType(designation);
+
+  return {
+    id: raw.Id ?? raw.id,
+    designation,
+    codeBarre: raw.CodeBarre ?? raw.codeBarre ?? '',
+    numeroSerie: raw.NumeroSerie ?? raw.numeroSerie ?? null,
+    etatActif: raw.EtatActif ?? raw.etatActif ?? 0,
+    prestataireArticleId:
+      raw.PrestataireArticleId ?? raw.prestataireArticleId ?? null,
+    articleFamilleId: raw.ArticleFamilleId ?? raw.articleFamilleId ?? null,
+
+    // Champs déduits
+    type: detectedType,
+    marque: detectMarque(designation),
+    modele: detectModele(designation),
+
+    // États déduits
+    etatTechnique: raw.EtatActif === 0 ? 'FONCTIONNEL' : 'HORS_SERVICE',
+    etatImmobilisation: raw.EtatActif === 0 ? 'DISPONIBLE' : 'IMMOBILISE',
+  };
+};
+
 export const MachineImportModal = () => {
+  const { t } = useTranslation();
+
   const {
     isImportModalOpen,
     setIsImportModalOpen,
@@ -51,66 +137,98 @@ export const MachineImportModal = () => {
     }
   }, [isImportModalOpen, loadMachinesToImport]);
 
-  // Filtrer les machines
-  const filteredMachines = machinesToImport.filter(m => {
-    const matchSearch = 
-      (m.designation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (m.marque || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (m.codeBarre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (m.numeroSerie || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (m.modele || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchType = filterType === 'all' || m.type === filterType;
-    
-    return matchSearch && matchType;
-  });
+  // ✅ Normalisation
+  const normalizedMachines = useMemo(
+    () => (machinesToImport || []).map(normalizeMachine).filter(Boolean),
+    [machinesToImport]
+  );
+
+  // ✅ Filtrage
+  const filteredMachines = useMemo(() => {
+    return normalizedMachines.filter((m) => {
+      const matchSearch =
+        !searchTerm ||
+        (m.designation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.marque || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.codeBarre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.numeroSerie || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.modele || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchType =
+        filterType === 'all' ||
+        m.type === filterType ||
+        (filterType === 'AUTRE' && !m.type);
+
+      return matchSearch && matchType;
+    });
+  }, [normalizedMachines, searchTerm, filterType]);
 
   const getTypeLabel = (type) => {
-    if (type === 'LAVEUR' || type === 0) return '🧺 Laveur';
-    if (type === 'SECHEUR' || type === 1) return '🌬️ Sécheur';
-    return type || 'N/A';
+    if (type === 'LAVEUR') return t('machine_type.LAVEUR');
+    if (type === 'SECHEUR') return t('machine_type.SECHEUR');
+    return t('machine_type.AUTRE', 'Autre');
   };
 
   const getEtatBadge = (etat, type) => {
     const configs = type === 'technique' ? ETATS_TECHNIQUES : ETATS_IMMOBILISATION;
-    const config = configs[etat] || { label: etat || 'Inconnu', color: '#64748b', bg: '#f1f5f9' };
+    const config = configs[etat] || {
+      label: etat || 'Inconnu',
+      color: '#64748b',
+      bg: '#f1f5f9',
+    };
     return (
-      <span 
+      <span
         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
         style={{ background: config.bg, color: config.color }}
       >
-        {config.label}
+        {t(`machine_status.${etat}`, config.label)}
       </span>
     );
   };
 
-  const isAllSelected = filteredMachines.length > 0 && 
-    filteredMachines.every(m => selectedImportMachines.includes(m.id));
+  const isAllSelected =
+    filteredMachines.length > 0 &&
+    filteredMachines.every((m) => selectedImportMachines.includes(m.id));
 
-  const typeLabel = importType === 'LAVEUR' ? 'Laveurs' : 'Sécheurs';
+  // ✅ Labels pour les types (singulier/pluriel via i18n)
+  const typeLabelSingular =
+    importType === 'LAVEUR' ? t('machines.laveur') : t('machines.secheur');
 
   return (
     <Modal
       isOpen={isImportModalOpen}
       onClose={() => setIsImportModalOpen(false)}
-      title={`📥 Importer des ${typeLabel}`}
+      title={t('machines.import', { type: typeLabelSingular })}
+      variant="import"
       size="xl"
     >
       <div className="space-y-4">
-        {/* Bandeau d'information sur le type */}
-        <div className={`p-3 rounded-lg ${importType === 'LAVEUR' ? 'bg-blue-50 border border-blue-200' : 'bg-amber-50 border border-amber-200'}`}>
+        {/* Info */}
+        <div
+          className={`p-3 rounded-lg ${
+            importType === 'LAVEUR'
+              ? 'bg-blue-50 border border-blue-200'
+              : 'bg-amber-50 border border-amber-200'
+          }`}
+        >
           <p className="text-sm font-medium text-slate-700">
-            ⚡ Les machines sélectionnées seront importées en tant que <strong>{importType === 'LAVEUR' ? '🧺 Laveurs' : '🌬️ Sécheurs'}</strong>
+            ⚡{' '}
+            {t('machines.import_type_info', {
+              type:
+                importType === 'LAVEUR'
+                  ? t('machine_type.LAVEUR')
+                  : t('machine_type.SECHEUR'),
+            })}
           </p>
         </div>
 
-        {/* Barre d'outils */}
+        {/* Recherche + filtre + select all */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Rechercher par désignation, marque, code..."
+              placeholder={t('machines.search_placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -122,9 +240,10 @@ export const MachineImportModal = () => {
             onChange={(e) => setFilterType(e.target.value)}
             className="px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="all">Tous les types</option>
-            <option value="LAVEUR">Laveur</option>
-            <option value="SECHEUR">Sécheur</option>
+            <option value="all">{t('machines.all_types')}</option>
+            <option value="LAVEUR">{t('machine_type.LAVEUR')}</option>
+            <option value="SECHEUR">{t('machine_type.SECHEUR')}</option>
+            <option value="AUTRE">{t('machine_type.AUTRE', 'Autre')}</option>
           </select>
 
           <Button
@@ -138,17 +257,19 @@ export const MachineImportModal = () => {
             ) : (
               <Square className="w-4 h-4" />
             )}
-            {isAllSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+            {isAllSelected
+              ? t('machines.deselect_all')
+              : t('machines.select_all')}
           </Button>
         </div>
 
-        {/* Compteur */}
+        {/* Compteurs */}
         <div className="flex justify-between items-center text-sm text-slate-500">
           <span>
-            {filteredMachines.length} machine(s) trouvée(s)
+            {filteredMachines.length} {t('machines.machines_found')}
           </span>
           <span className="font-medium text-indigo-600">
-            {selectedImportMachines.length} sélectionnée(s)
+            {selectedImportMachines.length} {t('machines.selected')}
           </span>
         </div>
 
@@ -170,13 +291,27 @@ export const MachineImportModal = () => {
                       )}
                     </button>
                   </th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">Désignation</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">Marque</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">Modèle</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">Code Barre</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">Type</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">État Technique</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">Disponibilité</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('machines.designation')}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('machines.brand')}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('machines.model')}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('machines.barcode')}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('machines.type')}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('machines.technical_state')}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 uppercase">
+                    {t('machines.availability')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -185,14 +320,16 @@ export const MachineImportModal = () => {
                     <td colSpan={8} className="text-center py-8">
                       <div className="flex items-center justify-center gap-2 text-slate-400">
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Chargement...
+                        {t('common.loading')}
                       </div>
                     </td>
                   </tr>
                 ) : filteredMachines.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-8 text-slate-400">
-                      {searchTerm ? 'Aucune machine correspondante' : 'Aucune machine à importer'}
+                      {searchTerm
+                        ? t('machines.no_match')
+                        : t('machines.no_data')}
                     </td>
                   </tr>
                 ) : (
@@ -201,7 +338,9 @@ export const MachineImportModal = () => {
                       key={machine.id}
                       onClick={() => toggleImportSelection(machine.id)}
                       className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${
-                        selectedImportMachines.includes(machine.id) ? 'bg-indigo-50' : ''
+                        selectedImportMachines.includes(machine.id)
+                          ? 'bg-indigo-50'
+                          : ''
                       }`}
                     >
                       <td className="px-3 py-2 text-center">
@@ -216,26 +355,49 @@ export const MachineImportModal = () => {
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4 text-slate-400" />
-                          <span className="font-medium text-sm">{machine.designation || 'N/A'}</span>
+                          <span className="font-medium text-sm">
+                            {machine.designation || 'N/A'}
+                          </span>
                         </div>
+                        {machine.numeroSerie && (
+                          <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                            SN: {machine.numeroSerie}
+                          </div>
+                        )}
                       </td>
-                      <td className="px-3 py-2 text-sm">{machine.marque || '-'}</td>
-                      <td className="px-3 py-2 text-sm">{machine.modele || '-'}</td>
+                      <td className="px-3 py-2 text-sm">
+                        {machine.marque || '-'}
+                      </td>
+                      <td className="px-3 py-2 text-sm">
+                        {machine.modele || '-'}
+                      </td>
                       <td className="px-3 py-2">
                         <code className="text-xs font-mono text-indigo-600">
                           {machine.codeBarre || '-'}
                         </code>
                       </td>
                       <td className="px-3 py-2">
-                        <Badge className="text-xs">
-                          {getTypeLabel(machine.type)}
-                        </Badge>
+                        {machine.type ? (
+                          <Badge className="text-xs">
+                            {getTypeLabel(machine.type)}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-slate-400">
+                            {t('machine_type.AUTRE', 'Autre')}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2">
-                        {getEtatBadge(machine.etatTechnique || 'FONCTIONNEL', 'technique')}
+                        {getEtatBadge(
+                          machine.etatTechnique || 'FONCTIONNEL',
+                          'technique'
+                        )}
                       </td>
                       <td className="px-3 py-2">
-                        {getEtatBadge(machine.etatImmobilisation || 'DISPONIBLE', 'immobilisation')}
+                        {getEtatBadge(
+                          machine.etatImmobilisation || 'DISPONIBLE',
+                          'immobilisation'
+                        )}
                       </td>
                     </tr>
                   ))
@@ -245,10 +407,12 @@ export const MachineImportModal = () => {
           </div>
         </div>
 
-        {/* Pied de page */}
+        {/* ═══════════════════════════════════════════════════════════════
+            ✅ ACTIONS AVEC BOUTON D'IMPORT CORRIGÉ
+        ═══════════════════════════════════════════════════════════════ */}
         <div className="flex justify-between items-center pt-4 border-t border-slate-200">
           <div className="text-sm text-slate-500">
-            {selectedImportMachines.length} machine(s) sélectionnée(s)
+            {selectedImportMachines.length} {t('machines.selected')}
           </div>
           <div className="flex gap-3">
             <Button
@@ -256,22 +420,28 @@ export const MachineImportModal = () => {
               onClick={() => setIsImportModalOpen(false)}
               disabled={isImportLoading}
             >
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={importMachines}
-              disabled={selectedImportMachines.length === 0 || isImportLoading}
+              disabled={
+                selectedImportMachines.length === 0 || isImportLoading
+              }
               className="bg-indigo-600 hover:bg-indigo-700"
             >
               {isImportLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Import en cours...
+                  {t('machines.importing')}
                 </>
               ) : (
                 <>
                   <Check className="w-4 h-4 mr-2" />
-                  Importer {selectedImportMachines.length} {importType === 'LAVEUR' ? 'laveur(s)' : 'sécheur(s)'}
+                  {/* ✅ Utilise la pluralisation i18next avec `count` */}
+                  {t('machines.import_btn_action', {
+                    count: selectedImportMachines.length,
+                    type: typeLabelSingular,
+                  })}
                 </>
               )}
             </Button>

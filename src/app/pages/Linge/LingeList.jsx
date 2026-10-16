@@ -1,98 +1,67 @@
-// src/components/linges/LingeList.jsx
-
-import React, { useContext, useState, useEffect, useRef } from "react";
-import { LingeContext, CATEGORIES } from "../../contextes/LingeContext";
+import React, { useContext, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { LingeContext } from "../../contextes/LingeContext";
 import { ServiceContext } from "../../contextes/ServiceContext";
-import { 
-  FaTrash, FaEye, FaPlus, FaHistory, FaPrint, FaEdit, 
-  FaBarcode, FaRss, FaWifi, FaMicrophone 
-} from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useModal } from "../../contextes/ModalContext";
-import { useReactToPrint } from "react-to-print";
-import BarcodeLabel from "../../components/BarcodeLabel";
 import "./WorkflowList.css";
 import "./LingeList.css";
-import { Modal } from "../../components/ui/modal";
-import { Input } from "../../components/ui/input";
-import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
-import { Card, CardContent } from "../../components/ui/card";
-import printJS from "print-js";
+import { printLabel } from "../../utils/labels";
 import Swal from 'sweetalert2';
-import { 
-  Plus, Eye, Trash2, Edit, History, Barcode, RefreshCw, 
-  Search, Filter, X, Tag, User as UserIcon, Calendar, 
-  Loader2, Upload, Check, CheckSquare, Square, Package 
-} from "lucide-react";
 import { LingeImportModal } from "./LingeImportModal";
+import { EMPTY_LINGE_FORM, EMPTY_FILTERS } from "./lingeConstants";
+import { LingeHeader } from "./components/LingeHeader";
+import { LingeToolbar } from "./components/LingeToolbar";
+import { LingeFilters } from "./components/LingeFilters";
+import { LingeTable } from "./components/LingeTable";
+import { LingePagination } from "./components/LingePagination";
+import { LingeFormModal } from "./components/LingeFormModal";
+import { RfidAssociationModal } from "./components/RfidAssociationModal";
+import { LingeDetailModal } from "./components/LingeDetailModal";
+import { PrintConfirmModal } from "./components/PrintConfirmModal";
+import { LingeIncompletsBanner } from "./components/LingeIncompletsBanner";
+import { LingeStatsModal } from "./components/LingeStatsModal";
+import { fetchAllLinges, computeLingeStats, exportLingesXlsx } from "./lingeStats";
+import { fetchLingesIncomplets } from "../../services/analyseService";
+import { getSetting } from "../../utils/appSettings";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
-// ─── MODE TOGGLE ──────────────────────────────────────────────────────────
-function ModeToggle({ mode, onChange }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px", background: "#f1f5f9", borderRadius: "12px" }}>
-      <button
-        onClick={() => onChange("BARCODE")}
-        style={{
-          display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "8px",
-          border: "none", cursor: "pointer", fontWeight: 700, fontSize: "13px", transition: "all 0.2s",
-          background: mode === "BARCODE" ? "white" : "transparent",
-          color: mode === "BARCODE" ? "#0ea5e9" : "#94a3b8",
-          boxShadow: mode === "BARCODE" ? "0 2px 8px rgba(0,0,0,0.1)" : "none"
-        }}
-      >
-        <FaBarcode size={16} /> Code-barres
-      </button>
-      <button
-        onClick={() => onChange("RFID")}
-        style={{
-          display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "8px",
-          border: "none", cursor: "pointer", fontWeight: 700, fontSize: "13px", transition: "all 0.2s",
-          background: mode === "RFID" ? "#7c3aed" : "transparent",
-          color: mode === "RFID" ? "white" : "#94a3b8",
-          boxShadow: mode === "RFID" ? "0 2px 8px rgba(124,58,237,0.3)" : "none"
-        }}
-      >
-        <FaRss size={16} /> RFID
-      </button>
-    </div>
-  );
-}
 
 export default function LingeList() {
+  const { t } = useTranslation();
+
   // ─── CONTEXTES ──────────────────────────────────────────────────────────
-  const { 
-    linges, 
-    addLinge, 
-    deleteLinge, 
-    updateLinge, 
-    formatEPC, 
-    isRfidMode, 
-    setIsRfidMode,
-    fetchLingesPaged, 
-    checkCodeExists, 
+  const {
+    linges,
+    addLinge,
+    deleteLinge,
+    formatEPC,
+    isRfidMode,
+    fetchLingesPaged,
+    getLingeByCode,
+    checkCodeExists,
     associerTagRfid,
     pagedData,
     setPagedData,
-    // Import
     setIsImportModalOpen,
     setImportType,
   } = useContext(LingeContext);
-  
+
   const { services } = useContext(ServiceContext);
   const navigate = useNavigate();
+  // Lignes par page : Paramètres › Affichage
+  const pageSize = Number(getSetting("display.pageSize")) || 10;
+
+  // ─── MODE « LINGES INCOMPLETS » (?incomplets ou ?incomplets=POIDS) ─────
+  const [searchParams, setSearchParams] = useSearchParams();
+  const modeIncomplets = searchParams.has("incomplets");
+  const attributIncomplet = searchParams.get("incomplets") || "";
+  const [resumeIncomplets, setResumeIncomplets] = useState(null);
   const { showAlert, showConfirm } = useModal();
 
   // ─── ÉTATS ──────────────────────────────────────────────────────────────
-  const [filters, setFilters] = useState({
-    categorie: "",
-    etat: "",
-    serviceId: "",
-    search: "",
-  });
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
 
   const [showPopup, setShowPopup] = useState(false);
   const [selectedLingeForPrint, setSelectedLingeForPrint] = useState(null);
@@ -103,7 +72,8 @@ export default function LingeList() {
   const [showRfidPopup, setShowRfidPopup] = useState(false);
   const [rfidCode, setRfidCode] = useState("");
   const [selectedLingeForRfid, setSelectedLingeForRfid] = useState(null);
-  const [displayMode, setDisplayMode] = useState(isRfidMode ? "RFID" : "BARCODE");
+  // Mode de lecture réglé dans Paramètres › Lecture / Scan
+  const displayMode = isRfidMode ? "RFID" : "BARCODE";
   const [personnel, setPersonnel] = useState([]);
   const [isPersonnelLoading, setIsPersonnelLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -111,20 +81,15 @@ export default function LingeList() {
   const [isLoading, setIsLoading] = useState(false);
   const [creationMode, setCreationMode] = useState("auto");
 
-  const printRef = React.useRef(null);
+  // ─── STATISTIQUES / EXPORT (toute la sélection filtrée) ───────────────
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState("");
+  const [selection, setSelection] = useState(null); // { key, linges }
+  const [exporting, setExporting] = useState(false);
 
   // ─── ÉTAT DU FORMULAIRE ────────────────────────────────────────────────
-  const [newLinge, setNewLinge] = useState({
-    categorie: "",
-    poids: 0,
-    serviceId: "",
-    codebarre: "",
-    rfidTag: "",
-    dureVie: "",
-    porteurId: "",
-    etat: "SALE",
-    observations: ""
-  });
+  const [newLinge, setNewLinge] = useState(EMPTY_LINGE_FORM);
 
   // ─── CHARGEMENT PERSONNEL ──────────────────────────────────────────────
   const fetchPersonnel = async () => {
@@ -133,7 +98,17 @@ export default function LingeList() {
       const response = await fetch(`${API_URL}/api/sqlserver/personnel`);
       if (response.ok) {
         const data = await response.json();
-        setPersonnel(Array.isArray(data) ? data : []);
+        const normalized = (Array.isArray(data) ? data : []).map((p) => ({
+          id:         p.Id         ?? p.id,
+          nom:        p.Nom        ?? p.nom        ?? "",
+          prenom:     p.Prenom     ?? p.prenom     ?? "",
+          nomPrenom:  p.NomPrenom  ?? p.nomPrenom  ?? "",
+          matricule:  p.Matricule  ?? p.matricule  ?? "",
+          codeBarre:  p.CodeBarre  ?? p.codeBarre  ?? "",
+          fonction:   p.Fonction   ?? p.fonction   ?? null,
+          serviceId:  p.ServiceID  ?? p.serviceId  ?? null,
+        }));
+        setPersonnel(normalized);
       }
     } catch (err) {
       console.error("Erreur chargement personnel:", err);
@@ -147,11 +122,31 @@ export default function LingeList() {
   }, []);
 
   // ─── CHARGEMENT PAGINÉ ─────────────────────────────────────────────────
+  const loadIncomplets = async (page) => {
+    const res = await fetchLingesIncomplets({ attribut: attributIncomplet || undefined, page, size: pageSize });
+    // Compteurs par attribut : toujours ceux de l'analyse complète (sans filtre)
+    const tous = !attributIncomplet ? res : await fetchLingesIncomplets({ page: 0, size: 1 }).catch(() => null);
+    if (tous) setResumeIncomplets({ total: tous.total, parAttribut: tous.parAttribut });
+    return {
+      content: (res.linges || []).map((l) => ({ ...l, codebarre: l.codebarre ?? l.codeBarre })),
+      totalPages: res.totalPages || 0,
+      totalElements: res.total || 0,
+      number: res.page || 0,
+      size: res.size,
+    };
+  };
+
   const loadPage = async (page) => {
     if (!fetchLingesPaged) return;
+    setSelection(null); // les données ont pu changer : statistiques à recalculer
     setIsLoading(true);
     try {
-      const data = await fetchLingesPaged(page, 10, filters);
+      const data = modeIncomplets
+        ? await loadIncomplets(page).catch((err) => {
+            showAlert(t('messages.error'), err.message, "error");
+            return { content: [], totalPages: 0, totalElements: 0, number: 0 };
+          })
+        : await fetchLingesPaged(page, pageSize, filters);
       if (data) {
         setPagedData(data);
         setCurrentPage(data.number || 0);
@@ -163,23 +158,10 @@ export default function LingeList() {
     }
   };
 
-  // Chargement initial
   useEffect(() => {
+    setSelectedId(null);
     loadPage(0);
-  }, []);
-
-  // Recharger quand les filtres changent
-  useEffect(() => {
-    loadPage(0);
-  }, [filters]);
-
-  // ─── MODE CHANGE ──────────────────────────────────────────────────────
-  const handleModeChange = (mode) => {
-    const newMode = mode === "RFID";
-    setIsRfidMode(newMode);
-    setDisplayMode(mode);
-    loadPage(0);
-  };
+  }, [filters, modeIncomplets, attributIncomplet]);
 
   // ─── PAGINATION ─────────────────────────────────────────────────────────
   const handlePageChange = (newPage) => {
@@ -188,38 +170,13 @@ export default function LingeList() {
     }
   };
 
-  // ─── DÉTECTION FORMAT CODE-BARRES ─────────────────────────────────────
-  const detectFormat = (value) => {
-    if (!value) return "code128";
-    const cleanValue = value.replace(/\s+/g, "");
-    if (/^\d{13}$/.test(cleanValue)) return "ean13";
-    if (/^\d{8}$/.test(cleanValue)) return "ean8";
-    if (/^\d{12}$/.test(cleanValue)) return "upc";
-    return "code128";
-  };
-
-  // ─── IMPRESSION ÉTIQUETTE ─────────────────────────────────────────────
+  // ─── IMPRESSION ÉTIQUETTE (réglages : Paramètres › Étiquettes) ───────
   const handlePrint = () => {
     if (!selectedLingeForPrint) return;
-    const { id, codebarre, categorie, serviceNom } = selectedLingeForPrint || {};
-    const format = detectFormat(codebarre);
-    printJS({
-      printable: `
-        <div style="width:50mm; padding:2mm; font-family:'Courier New',monospace; background:white;">
-          <div style="display:flex; justify-content:space-between; font-size:7pt; border-bottom:0.5pt solid black; margin-bottom:1mm; padding-bottom:0.5mm;">
-            <span>${new Date().toLocaleDateString()}</span>
-          </div>
-          <div style="display:flex; justify-content:center; margin:1mm 0;">
-            <img
-              src="https://barcodeapi.org/api/${format}/${encodeURIComponent(codebarre)}"
-              style="height:60px;"
-            />
-          </div>
-        </div>
-      `,
-      type: "raw-html",
-      style: "* { margin: 0; padding: 0; box-sizing: border-box; }",
-      documentTitle: "Etiquette_Linge",
+    printLabel("linge", selectedLingeForPrint, {
+      t,
+      services,
+      porteurName: selectedLingeForPrint.porteurId ? getPorteurName(selectedLingeForPrint.porteurId) : "",
     });
     setSelectedLingeForPrint(null);
   };
@@ -254,19 +211,19 @@ export default function LingeList() {
         }
 
         const updated = await response.json();
-        
-        const updatedLinges = (pagedData.content || []).map(l => 
+
+        const updatedLinges = (pagedData.content || []).map(l =>
           l.id === updated.id ? updated : l
         );
         setPagedData({ ...pagedData, content: updatedLinges });
-        
+
         setLingeToEdit(null);
         setShowPopup(false);
         loadPage(currentPage);
-        
+
         Swal.fire({
-          title: "✅ Modifié!",
-          text: "Linge modifié avec succès.",
+          title: "✅ " + t('messages.success'),
+          text: t('linge.update_success'),
           icon: "success",
           timer: 1500,
           showConfirmButton: false
@@ -274,18 +231,17 @@ export default function LingeList() {
         return;
       }
 
-      // Création
       if (creationMode === "manual") {
         const codeToCheck = newLinge.codebarre.trim();
         if (!codeToCheck) {
-          showAlert("Attention", "Veuillez scanner ou saisir un code de suivi en mode manuel.", "warning");
+          showAlert(t('messages.warning'), t('linge.scan_required_manual'), "warning");
           setIsSaving(false);
           return;
         }
         if (checkCodeExists) {
           const exists = await checkCodeExists(codeToCheck);
           if (exists) {
-            showAlert("Code Existant", `L'article avec le code "${codeToCheck}" existe déjà.`, "error");
+            showAlert(t('messages.error'), t('linge.code_exists', { code: codeToCheck }), "error");
             setIsSaving(false);
             return;
           }
@@ -315,51 +271,69 @@ export default function LingeList() {
       if (created) {
         setLingeToPrint(created);
         setShowPopup(false);
-        setNewLinge({ 
-          categorie: "", 
-          poids: 0, 
-          serviceId: "", 
-          codebarre: "", 
-          rfidTag: "",
-          dureVie: "",
-          porteurId: "",
-          etat: "SALE",
-          observations: ""
-        });
+        setNewLinge(EMPTY_LINGE_FORM);
         loadPage(0);
-        showAlert("Succès", "Article créé avec succès", "success");
+        showAlert(t('messages.success'), t('linge.create_success'), "success");
       }
     } catch (error) {
       console.error('❌ Erreur:', error);
-      showAlert("Erreur", error.message || "Erreur lors de l'opération", "error");
+      showAlert(t('messages.error'), error.message || t('linge.error_operation'), "error");
     } finally {
       setIsSaving(false);
     }
   };
 
   // ─── ASSOCIATION RFID ──────────────────────────────────────────────────
+  const openRfidPopup = (linge) => {
+    setSelectedLingeForRfid(linge);
+    setRfidCode("");
+    setShowRfidPopup(true);
+  };
+
+  const closeRfidPopup = () => {
+    setShowRfidPopup(false);
+    setRfidCode("");
+    setSelectedLingeForRfid(null);
+  };
+
   const handleAssocierRfid = async () => {
     if (!selectedLingeForRfid) {
-      showAlert("Erreur", "Aucun linge sélectionné.", "error");
+      showAlert(t('messages.error'), t('linge.no_linge_selected'), "error");
       return;
     }
     if (!rfidCode.trim()) {
-      showAlert("Attention", "Veuillez saisir un tag RFID.", "warning");
+      showAlert(t('messages.warning'), t('linge.rfid_required'), "warning");
       return;
     }
 
     try {
       const result = await associerTagRfid(selectedLingeForRfid.codebarre, rfidCode.trim());
       if (result) {
-        showAlert("Succès", `✅ Tag RFID associé au linge ${selectedLingeForRfid.codebarre}`, "success");
-        setShowRfidPopup(false);
-        setRfidCode("");
-        setSelectedLingeForRfid(null);
+        showAlert(t('messages.success'), t('linge.rfid_success', { code: selectedLingeForRfid.codebarre }), "success");
+        closeRfidPopup();
         loadPage(currentPage);
       }
     } catch (error) {
-      showAlert("Erreur", `❌ ${error.message || "Erreur lors de l'association RFID"}`, "error");
+      showAlert(t('messages.error'), `❌ ${error.message || t('linge.rfid_error')}`, "error");
     }
+  };
+
+  // Bouton « Associer RFID » de la barre d'outils (sur la ligne sélectionnée)
+  const handleToolbarRfid = () => {
+    if (!selectedId) {
+      showAlert(t('messages.info'), t('linge.select_article'), "info");
+      return;
+    }
+    const linge = displayedLinges.find(l => l.id === selectedId) || linges.find(l => l.id === selectedId);
+    if (!linge) {
+      showAlert(t('messages.error'), t('linge.not_found'), "error");
+      return;
+    }
+    if (linge.rfidTag && linge.rfidTag !== "") {
+      showAlert(t('messages.warning'), t('linge.rfid_already'), "warning");
+      return;
+    }
+    openRfidPopup(linge);
   };
 
   // ─── DÉTAILS ────────────────────────────────────────────────────────────
@@ -374,7 +348,7 @@ export default function LingeList() {
     if (l) {
       setSelectedLingeDetail(l);
     } else {
-      showAlert("Erreur", "Article non trouvé dans la liste.", "error");
+      showAlert(t('messages.error'), t('linge.not_found'), "error");
     }
   };
 
@@ -388,7 +362,7 @@ export default function LingeList() {
       }
     }
     if (!linge) {
-      showAlert("Erreur", "Aucun article sélectionné.", "error");
+      showAlert(t('messages.error'), t('linge.no_selection'), "error");
       return;
     }
     setNewLinge({
@@ -406,22 +380,92 @@ export default function LingeList() {
     setShowPopup(true);
   };
 
+  // ─── SUPPRESSION ───────────────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (selectedId) {
+      const confirmed = await showConfirm(t('messages.warning'), t('linge.delete_confirm_text'), "warning");
+      if (confirmed) {
+        await deleteLinge(selectedId);
+        setSelectedId(null);
+        loadPage(currentPage);
+      }
+    }
+  };
+
   // ─── OUVERTURE IMPORT ──────────────────────────────────────────────────
   const handleOpenImport = () => {
     setImportType('LINGE');
     setIsImportModalOpen(true);
   };
 
-  // ─── RÉINITIALISATION FILTRES ──────────────────────────────────────────
+  // ─── RÉINITIALISATION FILTRES (le rechargement suit le changement) ────
   const resetFilters = () => {
-    setFilters({
-      categorie: "",
-      etat: "",
-      serviceId: "",
-      search: "",
-    });
-    loadPage(0);
+    setFilters(EMPTY_FILTERS);
   };
+
+  // ─── SÉLECTION COMPLÈTE : chargée une fois par jeu de filtres ─────────
+  const filtersKey = JSON.stringify(filters);
+  const loadSelection = async () => {
+    if (selection?.key === filtersKey) return selection.linges;
+    const all = await fetchAllLinges(filters);
+    setSelection({ key: filtersKey, linges: all });
+    return all;
+  };
+
+  const openStats = async () => {
+    setStatsOpen(true);
+    setStatsError("");
+    if (selection?.key === filtersKey) return;
+    setStatsLoading(true);
+    try {
+      await loadSelection();
+    } catch (err) {
+      setStatsError(`${t('linge.stats.load_error', 'Impossible de charger les statistiques')} (${err.message})`);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const all = await loadSelection();
+      if (!all.length) {
+        showAlert(t('messages.info'), t('linge.export.empty', 'Aucun linge à exporter avec ces filtres.'), "info");
+        return;
+      }
+      exportLingesXlsx(all, {
+        t,
+        getServiceName,
+        getPorteurName: (id) => getPorteurName(id),
+        filtersLabel: filterChips.length ? filterChips.join(" · ") : t('linge.stats.no_filter', 'Aucun filtre : tous les linges'),
+      });
+    } catch (err) {
+      showAlert(t('messages.error'), `${t('linge.export.error', "L'export a échoué")} (${err.message})`, "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // ─── LINGES INCOMPLETS : fiche complète avant détail / modification ──
+  const chargerLingeComplet = async (l) => {
+    if (!modeIncomplets || !l || !getLingeByCode) return l;
+    const complet = await getLingeByCode(l.codebarre);
+    return complet ? { ...l, ...complet, codebarre: complet.codebarre ?? complet.codeBarre ?? l.codebarre } : l;
+  };
+
+  const ouvrirDetail = async (id) => {
+    if (!modeIncomplets) return handleDetail(id);
+    const l = displayedLinges.find((item) => item.id === id);
+    if (l) setSelectedLingeDetail(await chargerLingeComplet(l));
+  };
+
+  const ouvrirEdition = async (linge) => {
+    const l = linge || displayedLinges.find((item) => item.id === selectedId);
+    handleEdit(modeIncomplets ? await chargerLingeComplet(l) : l);
+  };
+
+  const changerAttribut = (a) => setSearchParams(a ? { incomplets: a } : { incomplets: "" }, { replace: true });
 
   // ─── ROW CLICK ─────────────────────────────────────────────────────────
   const handleRowClick = (id) => {
@@ -434,843 +478,156 @@ export default function LingeList() {
 
   // ─── GET SERVICE NAME ──────────────────────────────────────────────────
   const getServiceName = (serviceId) => {
-    if (!serviceId) return "Non assigné";
+    if (!serviceId) return t('linge.unassigned');
     const service = services.find(s => s.id === serviceId);
-    return service ? service.code : "Non assigné";
+    return service ? service.code : t('linge.unassigned');
   };
 
   // ─── GET PORTEUR NAME ──────────────────────────────────────────────────
   const getPorteurName = (porteurId) => {
-    if (!porteurId) return "Non assigné";
+    if (!porteurId) return t('linge.unassigned');
     const porteur = personnel.find(p => p.id === porteurId);
     if (porteur) {
       return `${porteur.prenom} ${porteur.nom}`;
     }
-    return "Non assigné";
+    return t('linge.unassigned');
   };
 
-  // ─── BADGE ÉTAT ────────────────────────────────────────────────────────
-  const getEtatBadge = (etat) => {
-    const etatColors = {
-      SALE: "destructive",
-      EN_LAVAGE: "info",
-      LAVE: "success",
-      EN_SECHAGE: "info",
-      SECHE: "success",
-      PLIE: "secondary",
-      COLLE: "secondary",
-      STOCKE: "secondary",
-      COLLECTE: "warning",
-      LIVRE: "success",
-      HORS_SERVICE: "destructive",
-      EN_TRI: "info",
-      RECEPTION: "info",
-      INFECTE_COLLECTE: "destructive",
-      INFECTE_EN_LAVAGE: "destructive",
-      INFECTE_LAVE: "destructive",
-      INFECTE_ECART: "destructive",
-      PROPRE: "success",
-      MANQUANT: "destructive"
-    };
-    const variant = etatColors[etat] || "secondary";
-    return <Badge variant={variant}>{etat}</Badge>;
-  };
-
-  // ─── VÉRIFICATION UNIFORME ─────────────────────────────────────────────
-  const isUniforme = newLinge.categorie === "UNIFORME";
+  // Libellés des filtres actifs (fenêtre de statistiques et export)
+  const filterChips = [
+    filters.etat && `${t('linge.status')} : ${t(`linge_etat.${filters.etat}`, filters.etat)}`,
+    filters.categorie && `${t('linge.category')} : ${t(`categories.${filters.categorie}`, filters.categorie)}`,
+    filters.serviceId && `${t('linge.service')} : ${getServiceName(Number(filters.serviceId))}`,
+    filters.search && `${t('common.search')} : « ${filters.search} »`,
+  ].filter(Boolean);
+  const stats = selection?.key === filtersKey ? computeLingeStats(selection.linges) : null;
 
   return (
     <div className="space-y-8">
-      {/* ─── EN-TÊTE ────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: "32px" }}>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-          marginBottom: "8px"
-        }}>
-          <div style={{
-            width: "52px",
-            height: "52px",
-            borderRadius: "16px",
-            background: displayMode === "RFID" 
-              ? "linear-gradient(135deg, #8b5cf6, #7c3aed)" 
-              : "linear-gradient(135deg, #14b8a6, #0d9488)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            boxShadow: displayMode === "RFID"
-              ? "0 4px 16px rgba(139, 92, 246, 0.25)"
-              : "0 4px 16px rgba(20, 184, 166, 0.25)"
-          }}>
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="24" 
-              height="24" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            >
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-              {displayMode === "RFID" && (
-                <>
-                  <circle cx="12" cy="14" r="2" />
-                  <path d="M10 18a4 4 0 0 1 4 0" />
-                </>
-              )}
-            </svg>
-          </div>
-          <div>
-            <h1 style={{
-              fontSize: "28px",
-              fontWeight: 800,
-              color: "#0f172a",
-              margin: 0
-            }}>
-              {displayMode === "RFID" ? "Gestion des Linges RFID" : "Gestion des Linges"}
-            </h1>
-            <p style={{
-              fontSize: "14px",
-              color: "#64748b",
-              margin: "2px 0 0 0"
-            }}>
-              {displayMode === "RFID" 
-                ? "Suivi et traçabilité des linges par puce RFID" 
-                : "Gestion et suivi des linges"}
-            </p>
-          </div>
-        </div>
-      </div>
+      <LingeHeader displayMode={displayMode} />
 
-      {/* ─── BARRE D'OUTILS ────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
-        <ModeToggle mode={displayMode} onChange={handleModeChange} />
-        
-        <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
+      <LingeToolbar
+        hasSelection={!!selectedId}
+        isLoading={isLoading}
+        onNew={() => {
+          setShowPopup(true);
+          setLingeToEdit(null);
+        }}
+        onImport={handleOpenImport}
+        onAssociateRfid={handleToolbarRfid}
+        onDetail={() => selectedId && ouvrirDetail(selectedId)}
+        onEdit={() => selectedId && ouvrirEdition(selectedLinge)}
+        onDelete={handleDelete}
+        onPrintLabel={() => {
+          if (selectedId) {
+            setSelectedLingeForPrint(selectedLinge);
+            setTimeout(() => handlePrint(), 300);
+          }
+        }}
+        onHistory={() => selectedId && navigate(`/tracking?code=${selectedLinge?.codebarre}`)}
+        onRefresh={() => loadPage(currentPage)}
+      />
 
-        <button
-          onClick={() => {
-            setShowPopup(true);
-            setLingeToEdit(null);
-          }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" /> Nouvel Article
-        </button>
+      {modeIncomplets ? (
+        <LingeIncompletsBanner
+          resume={resumeIncomplets}
+          attribut={attributIncomplet}
+          onAttributChange={changerAttribut}
+          onQuit={() => navigate("/linges")}
+        />
+      ) : (
+        <LingeFilters
+          filters={filters}
+          onChange={setFilters}
+          services={services}
+          onReset={resetFilters}
+          onStats={openStats}
+          onExport={handleExport}
+          exporting={exporting}
+        />
+      )}
 
-        {/* ─── BOUTON IMPORTER ──────────────────────────────────────────── */}
-        <button
-          onClick={handleOpenImport}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-[14px] text-sm font-bold text-indigo-700 hover:from-indigo-100 hover:to-purple-100 transition-all shadow-[0_2px_8px_rgba(99,102,241,0.15)] hover:shadow-[0_4px_16px_rgba(99,102,241,0.25)] hover:scale-[1.02]"
-        >
-          <Upload className="w-4 h-4 stroke-[2.5]" /> Importer des linges
-        </button>
+      <LingeTable
+        linges={displayedLinges}
+        isLoading={isLoading}
+        displayMode={displayMode}
+        selectedId={selectedId}
+        formatEPC={formatEPC}
+        getServiceName={getServiceName}
+        onRowClick={handleRowClick}
+        onDetail={ouvrirDetail}
+        showMissing={modeIncomplets}
+        onAssociateRfid={openRfidPopup}
+      />
 
-        <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
+      <LingePagination
+        currentPage={currentPage}
+        pageSize={pageSize}
+        itemCount={displayedLinges.length}
+        totalElements={pagedData.totalElements}
+        totalPages={pagedData.totalPages}
+        isLoading={isLoading}
+        onPageChange={handlePageChange}
+      />
 
-        <button
-          onClick={() => {
-            if (!selectedId) {
-              showAlert("Sélection", "Veuillez sélectionner un article.", "info");
-              return;
-            }
-            const linge = displayedLinges.find(l => l.id === selectedId) || linges.find(l => l.id === selectedId);
-            if (!linge) {
-              showAlert("Erreur", "Article non trouvé.", "error");
-              return;
-            }
-            if (linge.rfidTag && linge.rfidTag !== "") {
-              showAlert("Attention", "Cet article possède déjà un tag RFID.", "warning");
-              return;
-            }
-            setSelectedLingeForRfid(linge);
-            setRfidCode("");
-            setShowRfidPopup(true);
-          }}
-          disabled={!selectedId}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
-        >
-          <Tag className="w-4 h-4 stroke-[2.5]" /> Associer RFID
-        </button>
-
-        <button
-          disabled={!selectedId}
-          onClick={() => selectedId && handleDetail(selectedId)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#006f94]/30 rounded-[14px] text-sm font-bold text-[#006f94] hover:bg-[#006f94]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
-        >
-          <Eye className="w-4 h-4 stroke-[2.5]" /> Détails
-        </button>
-
-        <button
-          disabled={!selectedId}
-          onClick={() => selectedId && handleEdit(selectedLinge)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
-        >
-          <Edit className="w-4 h-4 stroke-[2.5]" /> Modifier
-        </button>
-
-        <button
-          disabled={!selectedId}
-          onClick={async () => {
-            if (selectedId) {
-              const confirmed = await showConfirm("Suppression", "Voulez-vous vraiment supprimer cet article ?", "warning");
-              if (confirmed) {
-                await deleteLinge(selectedId);
-                setSelectedId(null);
-                loadPage(currentPage);
-              }
-            }
-          }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e03131]/30 rounded-[14px] text-sm font-bold text-[#e03131] hover:bg-[#e03131]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
-        >
-          <Trash2 className="w-4 h-4 stroke-[2.5]" /> Supprimer
-        </button>
-
-        <button
-          disabled={!selectedId}
-          onClick={() => {
-            if (selectedId) {
-              setSelectedLingeForPrint(selectedLinge);
-              setTimeout(() => handlePrint(), 300);
-            }
-          }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#8b5cf6]/30 rounded-[14px] text-sm font-bold text-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
-        >
-          <Barcode className="w-4 h-4 stroke-[2.5]" /> Étiquette
-        </button>
-
-        <button
-          disabled={!selectedId}
-          onClick={() => selectedId && navigate(`/tracking?code=${selectedLinge?.codebarre}`)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
-        >
-          <History className="w-4 h-4 stroke-[2.5]" /> Historique
-        </button>
-
-        <button
-          onClick={() => loadPage(currentPage)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 rounded-[14px] text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Actualiser
-        </button>
-      </div>
-
-      {/* ─── FILTRES ────────────────────────────────────────────────────── */}
-      <Card className="mb-6">
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">État</label>
-              <select
-                value={filters.etat}
-                onChange={(e) => setFilters({ ...filters, etat: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">Tous</option>
-                <option value="SALE">Sale</option>
-                <option value="EN_LAVAGE">En lavage</option>
-                <option value="LAVE">Lavé</option>
-                <option value="EN_SECHAGE">En séchage</option>
-                <option value="SECHE">Séché</option>
-                <option value="PLIE">Plié</option>
-                <option value="COLLE">Collé</option>
-                <option value="STOCKE">Stocké</option>
-                <option value="COLLECTE">Collecte</option>
-                <option value="LIVRE">Livre</option>
-                <option value="HORS_SERVICE">Hors service</option>
-                <option value="EN_TRI">En tri</option>
-                <option value="RECEPTION">Réception</option>
-                <option value="PROPRE">Propre</option>
-                <option value="MANQUANT">Manquant</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Catégorie</label>
-              <select
-                value={filters.categorie}
-                onChange={(e) => setFilters({ ...filters, categorie: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">Toutes</option>
-                {CATEGORIES.map((cat, i) => (
-                  <option key={i} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Service</label>
-              <select
-                value={filters.serviceId}
-                onChange={(e) => setFilters({ ...filters, serviceId: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">Tous les services</option>
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>{s.code}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Recherche</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Code, chambre, service..."
-                  value={filters.search}
-                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-input-background focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end mt-4">
-            <button
-              onClick={resetFilters}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e67700]/30 rounded-[14px] text-sm font-bold text-[#e67700] hover:bg-[#e67700]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
-            >
-              <Filter className="w-4 h-4 stroke-[2.5]" /> Réinitialiser
-            </button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ─── TABLEAU ────────────────────────────────────────────────────── */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="param-table">
-              <thead>
-                <tr>
-                  <th className="text-center py-3 px-4">ID</th>
-                  <th className="text-center py-3 px-4">{displayMode === "RFID" ? "RFID TAG (EPC)" : "Code"}</th>
-                  <th className="text-center py-3 px-4">Catégorie</th>
-                  <th className="text-center py-3 px-4">Poids</th>
-                  <th className="text-center py-3 px-4">État</th>
-                  <th className="text-center py-3 px-4">Service</th>
-                  <th className="text-center py-3 px-4">Porteur</th>
-                  <th className="text-center py-3 px-4">RFID</th>
-                  <th className="text-center py-3 px-4 actions-th">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={9} className="text-center py-8 text-muted-foreground">
-                      <Loader2 className="w-6 h-6 animate-spin mx-auto" />
-                      Chargement en cours...
-                    </td>
-                  </tr>
-                ) : displayedLinges.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="text-center py-8 text-muted-foreground">
-                      Aucun article trouvé
-                    </td>
-                  </tr>
-                ) : (
-                  displayedLinges.map((l) => {
-                    const serviceName = getServiceName(l.serviceId);
-                    const isSelected = selectedId === l.id;
-                    const hasRfid = l.rfidTag && l.rfidTag !== "";
-                    const isUniformeRow = l.categorie === "UNIFORME";
-                    
-                    return (
-                      <tr
-                        key={l.id}
-                        onClick={() => handleRowClick(l.id)}
-                        className={isSelected ? "expanded" : ""}
-                        style={{ cursor: "pointer" }}
-                      >
-                        <td className="text-center py-3 px-4">
-                          <span className="code-badge">{l.id}</span>
-                        </td>
-                        <td className="text-center py-3 px-4">
-                          {displayMode === "RFID" ? (
-                            l.rfidTag ? (
-                              <code className="rfid-tag">{formatEPC(l.rfidTag)}</code>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">Non associé</span>
-                            )
-                          ) : (
-                            <code className="tracking-code">{l.codebarre}</code>
-                          )}
-                        </td>
-                        <td className="text-center font-semibold text-slate-800">{l.categorie}</td>
-                        <td className="text-center font-bold">{l.poids} kg</td>
-                        <td className="text-center">{getEtatBadge(l.etat)}</td>
-                        <td className="text-center">{serviceName}</td>
-                        <td className="text-center">
-                          {isUniformeRow ? (
-                            l.porteurNom ? (
-                              <span className="text-xs font-medium text-blue-600 flex items-center justify-center gap-1">
-                                <UserIcon className="w-3 h-3" /> {l.porteurNom}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-slate-400">Non assigné</span>
-                            )
-                          ) : (
-                            <span className="text-xs text-slate-400">—</span>
-                          )}
-                        </td>
-                        <td className="text-center">
-                          {hasRfid ? (
-                            <Badge variant="success" className="text-xs">
-                              <FaRss className="mr-1" size={10} /> {l.rfidTag.substring(0, 8)}...
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">Non associé</Badge>
-                          )}
-                        </td>
-                        <td className="text-center py-3 px-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDetail(l.id);
-                              }}
-                              className="text-[#0794a4] hover:text-[#068391] font-semibold text-sm flex items-center gap-1.5 hover:underline"
-                            >
-                              <Eye className="w-4 h-4" /> Détails
-                            </button>
-                            {!hasRfid && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedLingeForRfid(l);
-                                  setRfidCode("");
-                                  setShowRfidPopup(true);
-                                }}
-                                className="text-[#8b5cf6] hover:text-[#7c3aed] font-semibold text-sm flex items-center gap-1.5 hover:underline"
-                              >
-                                <Tag className="w-4 h-4" /> RFID
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ─── PAGINATION ──────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mt-6">
-        <div className="text-sm text-muted-foreground">
-          Affichage de {displayedLinges.length > 0 ? currentPage * 10 + 1 : 0} à {Math.min((currentPage + 1) * 10, pagedData.totalElements)} sur {pagedData.totalElements} articles
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={currentPage === 0 || isLoading}
-            onClick={() => handlePageChange(currentPage - 1)}
-          >
-            Précédent
-          </Button>
-          <span className="text-sm">
-            Page {currentPage + 1} / {pagedData.totalPages || 1}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={currentPage >= (pagedData.totalPages - 1) || isLoading}
-            onClick={() => handlePageChange(currentPage + 1)}
-          >
-            Suivant
-          </Button>
-        </div>
-      </div>
-
-      {/* ─── MODAL CRÉATION/MODIFICATION ────────────────────────────────── */}
-      <Modal
+      <LingeFormModal
         isOpen={showPopup}
         onClose={() => setShowPopup(false)}
-        title={lingeToEdit ? "Modifier le linge" : "Nouvel Article"}
-        size="lg"
-      >
-        <form onSubmit={handleSave}>
-          {!lingeToEdit && (
-            <div className="flex p-1 mb-4 bg-gray-100 rounded-xl">
-              <button
-                type="button"
-                onClick={() => {
-                  setCreationMode("auto");
-                  setNewLinge({ ...newLinge, codebarre: "", rfidTag: "" });
-                }}
-                className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
-                  creationMode === "auto"
-                    ? "bg-white text-[#0ca678] shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Nouveau linge
-              </button>
-              <button
-                type="button"
-                onClick={() => setCreationMode("manual")}
-                className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
-                  creationMode === "manual"
-                    ? "bg-white text-[#0ca678] shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Linge existant
-              </button>
-            </div>
-          )}
+        onSubmit={handleSave}
+        lingeToEdit={lingeToEdit}
+        newLinge={newLinge}
+        setNewLinge={setNewLinge}
+        creationMode={creationMode}
+        setCreationMode={setCreationMode}
+        services={services}
+        personnel={personnel}
+        isSaving={isSaving}
+      />
 
-          <div className="space-y-4">
-            {creationMode === "manual" && !lingeToEdit && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Code de Suivi (Scan)
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Scanner le code ici..."
-                  value={newLinge.codebarre}
-                  onChange={(e) => setNewLinge({ ...newLinge, codebarre: e.target.value })}
-                  required
-                />
-              </div>
-            )}
-
-            {!lingeToEdit && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tag RFID <span className="text-xs text-gray-400">(optionnel)</span>
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Scanner un tag RFID ou laisser vide..."
-                  value={newLinge.rfidTag}
-                  onChange={(e) => setNewLinge({ ...newLinge, rfidTag: e.target.value })}
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  💡 Laissez vide si vous ne souhaitez pas associer de tag RFID
-                </p>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Catégorie <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={newLinge.categorie}
-                onChange={(e) => {
-                  setNewLinge({ 
-                    ...newLinge, 
-                    categorie: e.target.value,
-                    porteurId: e.target.value !== "UNIFORME" ? "" : newLinge.porteurId
-                  });
-                }}
-                className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                <option value="">Sélectionner une catégorie...</option>
-                {CATEGORIES.map((cat, i) => (
-                  <option key={i} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Poids (kg) <span className="text-red-500">*</span>
-              </label>
-              <Input
-                type="number"
-                step="0.1"
-                value={newLinge.poids}
-                onChange={(e) => setNewLinge({ ...newLinge, poids: parseFloat(e.target.value) })}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Durée de vie (cycles)
-              </label>
-              <Input
-                type="number"
-                step="1"
-                min="0"
-                placeholder="Nombre de cycles de lavage"
-                value={newLinge.dureVie}
-                onChange={(e) => setNewLinge({ ...newLinge, dureVie: e.target.value })}
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                💡 Nombre de cycles de lavage estimé pour cet article
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Service <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={newLinge.serviceId || ""}
-                onChange={(e) => setNewLinge({ ...newLinge, serviceId: parseInt(e.target.value) })}
-                className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                <option value="">Sélectionner un service...</option>
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>{s.code}</option>
-                ))}
-              </select>
-            </div>
-
-            {isUniforme && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Porteur <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={newLinge.porteurId || ""}
-                  onChange={(e) => setNewLinge({ ...newLinge, porteurId: e.target.value ? parseInt(e.target.value) : "" })}
-                  className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required={isUniforme}
-                >
-                  <option value="">Sélectionner un porteur...</option>
-                  {personnel.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.prenom} {p.nom} - {p.codeBarre}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-blue-500 mt-1">
-                  👤 Sélectionnez le personnel porteur de cet uniforme
-                </p>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                État
-              </label>
-              <select
-                value={newLinge.etat}
-                onChange={(e) => setNewLinge({ ...newLinge, etat: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="SALE">Sale</option>
-                <option value="EN_LAVAGE">En lavage</option>
-                <option value="LAVE">Lavé</option>
-                <option value="EN_SECHAGE">En séchage</option>
-                <option value="SECHE">Séché</option>
-                <option value="PLIE">Plié</option>
-                <option value="COLLE">Collé</option>
-                <option value="STOCKE">Stocké</option>
-                <option value="COLLECTE">Collecte</option>
-                <option value="LIVRE">Livre</option>
-                <option value="HORS_SERVICE">Hors service</option>
-                <option value="EN_TRI">En tri</option>
-                <option value="RECEPTION">Réception</option>
-                <option value="PROPRE">Propre</option>
-                <option value="MANQUANT">Manquant</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Observations
-              </label>
-              <textarea
-                value={newLinge.observations}
-                onChange={(e) => setNewLinge({ ...newLinge, observations: e.target.value })}
-                placeholder="Observations..."
-                className="w-full min-h-[60px] px-3 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setShowPopup(false)} type="button" disabled={isSaving}>
-              Annuler
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Enregistrement..." : (lingeToEdit ? "Enregistrer" : "Créer")}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* ─── MODAL ASSOCIATION RFID ────────────────────────────────────── */}
-      <Modal
+      <RfidAssociationModal
         isOpen={showRfidPopup}
-        onClose={() => {
-          setShowRfidPopup(false);
-          setRfidCode("");
-          setSelectedLingeForRfid(null);
-        }}
-        title="Associer un tag RFID"
-        size="md"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Linge sélectionné
-            </label>
-            <Input
-              value={selectedLingeForRfid ? `${selectedLingeForRfid.codebarre} - ${selectedLingeForRfid.categorie}` : "Aucun"}
-              disabled
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tag RFID (EPC)
-            </label>
-            <Input
-              type="text"
-              placeholder="Scanner ou saisir le tag RFID..."
-              value={rfidCode}
-              onChange={(e) => setRfidCode(e.target.value)}
-              autoFocus
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Scannez un tag RFID UHF ou saisissez son code EPC.
-            </p>
-          </div>
-          <div className="flex justify-end gap-3 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowRfidPopup(false);
-                setRfidCode("");
-                setSelectedLingeForRfid(null);
-              }}
-              type="button"
-            >
-              Annuler
-            </Button>
-            <Button
-              onClick={handleAssocierRfid}
-              disabled={!rfidCode.trim()}
-            >
-              <Tag className="w-4 h-4 mr-2" /> Associer RFID
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onClose={closeRfidPopup}
+        linge={selectedLingeForRfid}
+        rfidCode={rfidCode}
+        setRfidCode={setRfidCode}
+        onSubmit={handleAssocierRfid}
+      />
 
-      {/* ─── MODAL DÉTAILS ──────────────────────────────────────────────── */}
-      <Modal
-        isOpen={!!selectedLingeDetail}
+      <LingeDetailModal
+        linge={selectedLingeDetail}
         onClose={() => setSelectedLingeDetail(null)}
-        title={`Détails du linge - #${selectedLingeDetail?.id}`}
-        size="lg"
-      >
-        {selectedLingeDetail && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ID</label>
-              <Input value={selectedLingeDetail.id} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Code Suivi</label>
-              <Input value={selectedLingeDetail.codebarre} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tag RFID</label>
-              <Input value={selectedLingeDetail.rfidTag || "Non associé"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
-              <Input value={selectedLingeDetail.categorie} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Poids</label>
-              <Input value={`${selectedLingeDetail.poids} kg`} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">État</label>
-              <div>{getEtatBadge(selectedLingeDetail.etat)}</div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type de collecte</label>
-              <Input value={selectedLingeDetail.typeCollecte || "Non défini"} disabled />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Durée de vie</label>
-              <Input value={selectedLingeDetail.dureVie ? `${selectedLingeDetail.dureVie} cycles` : "Non définie"} disabled />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Service</label>
-              <Input value={getServiceName(selectedLingeDetail.serviceId)} disabled />
-            </div>
-            {selectedLingeDetail.porteurId && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Porteur</label>
-                <div className="flex items-center gap-2 p-2 rounded-lg border border-input bg-slate-50">
-                  <UserIcon className="w-4 h-4 text-slate-400" />
-                  <span>{selectedLingeDetail.porteurNom || getPorteurName(selectedLingeDetail.porteurId)}</span>
-                </div>
-              </div>
-            )}
-            {selectedLingeDetail.dateCreation && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date de création</label>
-                <Input value={new Date(selectedLingeDetail.dateCreation).toLocaleString('fr-FR')} disabled />
-              </div>
-            )}
-            {selectedLingeDetail.observations && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Observations</label>
-                <Input value={selectedLingeDetail.observations} disabled />
-              </div>
-            )}
-          </div>
-        )}
-        <div className="flex justify-end mt-6">
-          <Button onClick={() => setSelectedLingeDetail(null)}>
-            Fermer
-          </Button>
-        </div>
-      </Modal>
+        onEdit={(linge) => {
+          setSelectedLingeDetail(null);
+          handleEdit(linge);
+        }}
+        getServiceName={getServiceName}
+        getPorteurName={getPorteurName}
+      />
 
-      {/* ─── MODAL IMPRESSION ───────────────────────────────────────────── */}
-      <Modal
+      <PrintConfirmModal
         isOpen={!!lingeToPrint}
         onClose={() => setLingeToPrint(null)}
-        title="Linge créé avec succès"
-        size="md"
-      >
-        <p className="mb-6">Voulez-vous imprimer l'étiquette ?</p>
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => setLingeToPrint(null)}>
-            Non
-          </Button>
-          <Button
-            onClick={() => {
-              setSelectedLingeForPrint(lingeToPrint);
-              setTimeout(() => handlePrint(), 500);
-              setLingeToPrint(null);
-            }}
-          >
-            Oui, imprimer
-          </Button>
-        </div>
-      </Modal>
+        onConfirm={() => {
+          setSelectedLingeForPrint(lingeToPrint);
+          setTimeout(() => handlePrint(), 500);
+          setLingeToPrint(null);
+        }}
+      />
+
+      <LingeStatsModal
+        isOpen={statsOpen}
+        onClose={() => setStatsOpen(false)}
+        stats={stats}
+        loading={statsLoading}
+        error={statsError}
+        filterChips={filterChips}
+        getServiceName={getServiceName}
+        onExport={handleExport}
+        exporting={exporting}
+      />
 
       {/* ─── MODAL D'IMPORT ─────────────────────────────────────────────── */}
       <LingeImportModal />
-
-      {/* ─── ZONE D'IMPRESSION ──────────────────────────────────────────── */}
-      <div className="print-only">
-        <BarcodeLabel linge={selectedLingeForPrint} />
-      </div>
     </div>
   );
 }

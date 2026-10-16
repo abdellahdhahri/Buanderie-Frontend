@@ -9,7 +9,7 @@ export const POSTE_TO_ROUTE = {
   AGENT_LAVAGE: '/lavages',
   AGENT_SECHAGE: '/sechages',
   AGENT_PLIAGE: '/pliage',
-  AGENT_STOCKAGE: '/stockage',
+  AGENT_STOCKAGE: '/stockage-arsenal',
   AGENT_LIVRAISON: '/livraisons',
   CHEF_EQUIPE: '/collecte'
 };

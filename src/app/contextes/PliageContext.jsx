@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { useModal } from "./ModalContext";
 import { getAgent, isAgentConnected } from "../services/agentService";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export const PliageContext = createContext();
 export const usePliage = () => useContext(PliageContext);
@@ -13,6 +13,10 @@ export function PliageProvider({ children }) {
   const [agent,        setAgent]        = useState(null);
   const [dialogueItem, setDialogueItem] = useState(null);
   const [loading,      setLoading]      = useState(false);
+  const [rangementItem, setRangementItem] = useState(null); // linge conforme à poser sur l'étagère du service
+  const [isConfirming, setIsConfirming] = useState(false);
+  // Le contrôle qualité peut se valider seul (compte à rebours) : on évite un double envoi
+  const confirmingRef = useRef(false);
 
   // ✅ Initialiser l'agent depuis localStorage
   useEffect(() => {
@@ -64,6 +68,7 @@ export function PliageProvider({ children }) {
   const deconnecterAgent = useCallback(() => {
     setAgent(null);
     setDialogueItem(null);
+    setRangementItem(null);
   }, []);
 
   const scanPliage = useCallback(async (code, getLingeByCode) => {
@@ -118,6 +123,8 @@ export function PliageProvider({ children }) {
         try { msg = JSON.parse(txt).message || txt; } catch {}
         throw new Error(msg);
       }
+      // Linge plié → contrôle qualité (ancienne étape Stockage)
+      setRangementItem(null);
       setDialogueItem(item);
     } catch (err) {
       showAlert("Erreur pliage", `❌ ${err.message}`, "error");
@@ -126,12 +133,56 @@ export function PliageProvider({ children }) {
     }
   }, [agent, showAlert]);
 
+  /**
+   * Résultat du contrôle qualité :
+   * - défaut sélectionné → réclamation, le linge ne part pas en étagère
+   * - conforme → consigne de rangement sur l'étagère de son service (buanderie)
+   */
+  const confirmerControle = useCallback(async (typeReclamation, description) => {
+    const currentItem = dialogueItem;
+    if (!currentItem || confirmingRef.current) return;
+    confirmingRef.current = true;
+    setIsConfirming(true);
+
+    try {
+      if (typeReclamation) {
+        const res = await fetch(`${API_URL}/api/reclamations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            codeOuTag: currentItem.codeBarre || currentItem.codeSuivi,
+            description: description || `Défaut détecté: ${typeReclamation.label}`,
+            type: typeReclamation.id,
+            matriculeAgent: agent?.codeBarre || agent?.matricule,
+          }),
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          let msg = txt;
+          try { msg = JSON.parse(txt).message || txt; } catch { /* réponse texte brute */ }
+          throw new Error(msg);
+        }
+        showAlert("⚠️ Réclamation créée", `${typeReclamation.label} signalé pour ${currentItem.codeBarre}`, "warning");
+      } else {
+        setRangementItem(currentItem);
+      }
+      setDialogueItem(null);
+    } catch (err) {
+      showAlert("Erreur", `❌ ${err.message}`, "error");
+      setDialogueItem(null);
+    } finally {
+      confirmingRef.current = false;
+      setIsConfirming(false);
+    }
+  }, [agent, dialogueItem, showAlert]);
+
   const fermerDialogue = useCallback(() => setDialogueItem(null), []);
+  const fermerRangement = useCallback(() => setRangementItem(null), []);
 
   return (
     <PliageContext.Provider value={{
-      agent, dialogueItem, loading,
-      scanAgent, deconnecterAgent, scanPliage, fermerDialogue,
+      agent, dialogueItem, rangementItem, loading, isConfirming,
+      scanAgent, deconnecterAgent, scanPliage, confirmerControle, fermerDialogue, fermerRangement,
     }}>
       {children}
     </PliageContext.Provider>

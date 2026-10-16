@@ -1,0 +1,881 @@
+/* ==========================================================================
+   🌙 MODE SOMBRE
+   Toutes les règles sont préfixées par .dark : le mode clair n'est jamais
+   modifié. Le thème est piloté par app/utils/theme.js.
+
+   Sommaire
+     1. Palette
+     2. Variables existantes (layout.css, theme.css) redirigées
+     3. Transition douce au changement de thème
+     4. Mise en page : barre latérale, menu, en-tête
+     5. En-tête : cloche, menu utilisateur, popup de notification
+     6. Tableaux, champs, alertes (SweetAlert)
+     7. Classes Tailwind claires les plus utilisées
+     8. Styles en ligne (style={{…}}) — couleurs neutres
+     9. Styles en ligne — fonds pastel (généré, voir fin de fichier)
+   ========================================================================== */
+
+/* ── 1. Palette ───────────────────────────────────────────────────────────── */
+.dark {
+  --dk-bg: #0b1220;          /* fond de page */
+  --dk-surface: #111a2b;     /* cartes, panneaux */
+  --dk-surface-2: #16213a;   /* fonds discrets (ex-slate-50/100) */
+  --dk-surface-3: #1d2a44;   /* survol */
+  --dk-border: #243149;      /* bordures */
+  --dk-border-soft: #1b2539; /* séparateurs */
+  --dk-text: #e6edf6;        /* texte principal */
+  --dk-text-2: #c1ccdb;      /* texte secondaire */
+  --dk-muted: #8d9bb0;       /* texte atténué */
+  --dk-accent: #2dd4bf;      /* teal lumineux */
+  color-scheme: dark;
+}
+
+/* ── 2. Variables existantes ──────────────────────────────────────────────── */
+.dark {
+  /* layout.css */
+  --color-bg: var(--dk-bg);
+  --color-surface: var(--dk-surface);
+  --color-border: var(--dk-border);
+  --color-text: var(--dk-text);
+  --color-muted: var(--dk-muted);
+  --shadow: 0 8px 32px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .3);
+
+  --color-rh-bg: rgba(92, 124, 250, .14);
+  --color-presences-bg: rgba(253, 154, 43, .14);
+  --color-paie-bg: rgba(32, 201, 151, .14);
+  --color-conges-bg: rgba(242, 85, 85, .14);
+  --color-params-bg: rgba(139, 92, 246, .16);
+  --color-suivi-bg: rgba(56, 189, 248, .14);
+  --color-suivi-hover: rgba(56, 189, 248, .22);
+
+  /* theme.css : on garde le teal du module (au lieu du bleu par défaut) */
+  --background: var(--dk-bg);
+  --foreground: var(--dk-text);
+  --card: var(--dk-surface);
+  --card-foreground: var(--dk-text);
+  --popover: var(--dk-surface);
+  --popover-foreground: var(--dk-text);
+  --primary: #14b8a6;
+  --primary-foreground: #04201d;
+  --secondary: var(--dk-surface-2);
+  --secondary-foreground: var(--dk-text-2);
+  --muted: var(--dk-surface-2);
+  --muted-foreground: var(--dk-muted);
+  --accent: rgba(45, 212, 191, .14);
+  --accent-foreground: #99f6e4;
+  --border: var(--dk-border);
+  --input: var(--dk-border);
+  --input-background: var(--dk-surface-2);
+  --ring: #2dd4bf;
+  --info: #38bdf8;
+  --sidebar: var(--dk-surface);
+  --sidebar-foreground: var(--dk-text);
+  --sidebar-primary: #14b8a6;
+  --sidebar-accent: var(--dk-surface-2);
+  --sidebar-accent-foreground: var(--dk-text);
+  --sidebar-border: var(--dk-border);
+  --sidebar-ring: #2dd4bf;
+}
+
+.dark body {
+  background: var(--dk-bg);
+  color: var(--dk-text);
+}
+
+/* ── 3. Transition douce (classe posée ~350 ms par theme.js) ──────────────── */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition: background-color .3s ease, border-color .3s ease, color .3s ease, fill .3s ease !important;
+}
+
+/* ── 4. Mise en page ──────────────────────────────────────────────────────── */
+.dark .sidebar--open {
+  box-shadow: 4px 0 24px rgba(0, 0, 0, .4);
+}
+
+.dark .sidebar--closed {
+  background: linear-gradient(179deg, #0f3b56, #0d2f3d);
+}
+
+.dark .sidebar__section-label,
+.dark .nav-item__label {
+  color: var(--dk-text-2);
+}
+
+/* Sections du menu (fonds pastel → teintes translucides) */
+.dark .nav-item--rh,
+.dark .nav-item--rh:is(:hover, .nav-item--active)               { background: rgba(92, 124, 250, .13); color: #b4c3ff; }
+.dark .nav-item--presences,
+.dark .nav-item--presences:is(:hover, .nav-item--active)        { background: rgba(253, 154, 43, .12); color: #fdc58a; }
+.dark .nav-item--paie,
+.dark .nav-item--paie:is(:hover, .nav-item--active)             { background: rgba(32, 201, 151, .12); color: #8ce8c9; }
+.dark .nav-item--conges,
+.dark .nav-item--conges:is(:hover, .nav-item--active)           { background: rgba(242, 85, 85, .12); color: #fca5a5; }
+.dark .nav-item--params,
+.dark .nav-item--params:is(:hover, .nav-item--active)           { background: rgba(139, 92, 246, .14); color: #d0bcff; }
+.dark .nav-item--suivi,
+.dark .nav-item--suivi:is(:hover, .nav-item--active)            { background: rgba(56, 189, 248, .12); color: #9bdcfb !important; }
+
+.dark [class*="nav-item__chevron--"] { color: currentColor; }
+
+.dark .nav-item__count {
+  background: rgba(255, 255, 255, .08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
+}
+
+/* Sous-menus : couleurs d'accent éclaircies pour rester lisibles */
+.dark .submenu--rh        { --accent-strong: #b4c3ff; }
+.dark .submenu--presences { --accent-strong: #fdc58a; }
+.dark .submenu--paie      { --accent-strong: #8ce8c9; }
+.dark .submenu--conges    { --accent-strong: #fca5a5; }
+.dark .submenu--params    { --accent-strong: #d0bcff; }
+.dark .submenu--suivi     { --accent-strong: #9bdcfb; }
+
+.dark .submenu__link { color: var(--dk-text-2); }
+.dark .submenu__link:hover .submenu__link-icon { background: var(--dk-surface-3); }
+
+.dark .nav-popup__card:hover,
+.dark .navbar__icon-btn:hover,
+.dark .user-btn:hover {
+  background: var(--dk-surface-2);
+}
+
+/* ── 5. En-tête : cloche, menu utilisateur, popup ─────────────────────────── */
+.dark .navbar {
+  box-shadow: 0 1px 0 var(--dk-border), 0 4px 16px rgba(0, 0, 0, .25);
+}
+
+.dark .notif-dropdown,
+.dark .notif-popup,
+.dark .user-dropdown {
+  background: rgba(17, 26, 43, .98) !important;
+  border-color: var(--dk-border) !important;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, .6) !important;
+}
+
+.dark .notif-dropdown__header,
+.dark .notif-dropdown__footer,
+.dark .user-dropdown__header,
+.dark .notif-item {
+  border-color: var(--dk-border-soft) !important;
+}
+
+.dark .notif-dropdown__title,
+.dark .notif-dropdown__empty-title,
+.dark .notif-item__message,
+.dark .notif-popup__message,
+.dark .user-dropdown__name,
+.dark .user-btn__name {
+  color: var(--dk-text) !important;
+}
+
+.dark .user-dropdown__link,
+.dark .notif-popup__code {
+  color: var(--dk-text-2) !important;
+}
+
+.dark .notif-item:hover,
+.dark .user-dropdown__link:hover,
+.dark .notif-popup__close:hover,
+.dark .notif-popup__btn--ghost:hover {
+  background: var(--dk-surface-3) !important;
+}
+
+.dark .notif-item__code,
+.dark .notif-popup__code,
+.dark .notif-popup__btn--ghost,
+.dark .user-dropdown__separator {
+  background: var(--dk-surface-2) !important;
+  border-color: var(--dk-border) !important;
+}
+
+/* ── 6. Tableaux, champs, alertes ─────────────────────────────────────────── */
+.dark .main-content table th,
+.dark .param-table th {
+  color: #5eead4;
+  background: rgba(45, 212, 191, .07);
+  border-bottom-color: rgba(45, 212, 191, .25);
+}
+
+.dark .main-content table td,
+.dark .param-table td {
+  color: var(--dk-text-2);
+  border-bottom-color: var(--dk-border-soft);
+}
+
+.dark .main-content table tr:hover td,
+.dark .param-table tr:hover td {
+  background: rgba(45, 212, 191, .05);
+}
+
+.dark .main-content table tr.selected-row td,
+.dark .param-table tr.selected-row td,
+.dark .param-table tr.expanded td {
+  background: rgba(45, 212, 191, .1) !important;
+}
+
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+.dark select,
+.dark textarea {
+  background-color: var(--dk-surface-2);
+  border-color: var(--dk-border);
+  color: var(--dk-text);
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--dk-muted) !important;
+}
+
+.dark option {
+  background: var(--dk-surface);
+  color: var(--dk-text);
+}
+
+/* SweetAlert2 */
+.dark .swal2-popup {
+  background: var(--dk-surface) !important;
+  color: var(--dk-text) !important;
+  border: 1px solid var(--dk-border);
+}
+.dark .swal2-title { color: var(--dk-text) !important; }
+.dark .swal2-html-container { color: var(--dk-text-2) !important; }
+.dark .swal2-input,
+.dark .swal2-textarea,
+.dark .swal2-select {
+  background: var(--dk-surface-2) !important;
+  color: var(--dk-text) !important;
+  border-color: var(--dk-border) !important;
+}
+.dark .swal2-timer-progress-bar { background: rgba(255, 255, 255, .25); }
+
+/* Barres de défilement */
+.dark ::-webkit-scrollbar-track { background: var(--dk-surface) !important; }
+.dark ::-webkit-scrollbar-thumb { background: #2c3a55 !important; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #3a4a68 !important; }
+
+/* ── 7. Classes Tailwind claires (hors @layer : priment sur les utilitaires) ─ */
+.dark .bg-white { background-color: var(--dk-surface); }
+.dark .bg-white\/65,
+.dark .bg-white\/80,
+.dark .bg-white\/85,
+.dark .bg-white\/90,
+.dark .bg-white\/95 { background-color: rgba(17, 26, 43, .85); }
+.dark .bg-slate-50,
+.dark .bg-gray-50,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/60,
+.dark .bg-slate-50\/70 { background-color: var(--dk-surface-2); }
+.dark .bg-slate-100,
+.dark .bg-gray-100 { background-color: var(--dk-surface-3); }
+.dark .bg-background { background-color: var(--dk-surface-2); }
+
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-slate-100:hover { background-color: var(--dk-surface-3); }
+
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-gray-900,
+.dark .text-gray-800 { color: var(--dk-text); }
+.dark .text-slate-700,
+.dark .text-slate-600,
+.dark .text-gray-700,
+.dark .text-gray-600 { color: var(--dk-text-2); }
+.dark .text-slate-500,
+.dark .text-gray-500 { color: var(--dk-muted); }
+
+.dark .border-slate-200,
+.dark .border-gray-200,
+.dark .border-slate-300 { border-color: var(--dk-border); }
+.dark .border-slate-100,
+.dark .border-gray-100 { border-color: var(--dk-border-soft); }
+.dark .ring-slate-200 { --tw-ring-color: var(--dk-border); }
+
+/* ── 8. Styles en ligne : couleurs neutres ──────────────────────────────────
+   React écrit les couleurs hexadécimales au format rgb(…) dans l'attribut
+   style : on les cible par sous-chaîne. !important est nécessaire pour
+   l'emporter sur un style en ligne.                                         */
+
+/* Fonds blancs → surface */
+.dark [style*="background: white"],
+.dark [style*="background: rgb(255, 255, 255)"],
+.dark [style*="background-color: white"],
+.dark [style*="background-color: rgb(255, 255, 255)"],
+.dark [style*="background: rgba(255, 255, 255, 0.9"],
+.dark [style*="background: linear-gradient(135deg, rgb(255, 255, 255)"],
+.dark [style*="background: linear-gradient(rgb(255, 255, 255)"] {
+  background: var(--dk-surface) !important;
+}
+
+/* Fonds gris très clairs → surface discrète */
+.dark [style*="background: rgb(248, 250, 252)"],
+.dark [style*="background-color: rgb(248, 250, 252)"],
+.dark [style*="background: rgb(241, 245, 249)"],
+.dark [style*="background-color: rgb(241, 245, 249)"],
+.dark [style*="background: rgb(250, 251, 252)"],
+.dark [style*="background: rgb(249, 250, 251)"],
+.dark [style*="background: linear-gradient(135deg, rgb(248, 250, 252)"],
+.dark [style*="background: linear-gradient(135deg, rgb(250, 251, 252)"],
+.dark [style*="background: linear-gradient(135deg, rgb(241, 245, 249)"] {
+  background: var(--dk-surface-2) !important;
+}
+
+/* Textes foncés → texte clair (" color:" évite background-color / border-color) */
+.dark [style^="color: rgb(15, 23, 42)"], .dark [style*=" color: rgb(15, 23, 42)"],
+.dark [style^="color: rgb(30, 41, 59)"], .dark [style*=" color: rgb(30, 41, 59)"],
+.dark [style^="color: rgb(26, 31, 54)"], .dark [style*=" color: rgb(26, 31, 54)"],
+.dark [style^="color: rgb(17, 24, 39)"], .dark [style*=" color: rgb(17, 24, 39)"],
+.dark [style^="color: black"], .dark [style*=" color: black"] {
+  color: var(--dk-text) !important;
+}
+
+.dark [style^="color: rgb(51, 65, 85)"], .dark [style*=" color: rgb(51, 65, 85)"],
+.dark [style^="color: rgb(71, 85, 105)"], .dark [style*=" color: rgb(71, 85, 105)"],
+.dark [style^="color: rgb(74, 85, 104)"], .dark [style*=" color: rgb(74, 85, 104)"],
+.dark [style^="color: rgb(55, 65, 81)"], .dark [style*=" color: rgb(55, 65, 81)"] {
+  color: var(--dk-text-2) !important;
+}
+
+.dark [style^="color: rgb(100, 116, 139)"], .dark [style*=" color: rgb(100, 116, 139)"] {
+  color: var(--dk-muted) !important;
+}
+
+/* Bordures grises claires */
+.dark [style*="solid rgb(226, 232, 240)"],
+.dark [style*="solid rgb(203, 213, 225)"],
+.dark [style*="solid rgb(229, 231, 235)"],
+.dark [style*="border-color: rgb(226, 232, 240)"] {
+  border-color: var(--dk-border) !important;
+}
+
+.dark [style*="solid rgb(241, 245, 249)"],
+.dark [style*="solid rgb(248, 250, 252)"] {
+  border-color: var(--dk-border-soft) !important;
+}
+
+/* ── 9. Styles en ligne : fonds pastel → teintes translucides ─────────────
+   (généré : couleur Tailwind 50/100 → même famille à 12 % d'opacité)       */
+.dark [style*="background: rgb(254, 242, 242)"],
+.dark [style*="background-color: rgb(254, 242, 242)"],
+.dark [style*="background: linear-gradient(135deg, rgb(254, 242, 242)"] { background: rgba(239, 68, 68, .12) !important; }
+.dark [style*="background: rgb(254, 226, 226)"],
+.dark [style*="background-color: rgb(254, 226, 226)"],
+.dark [style*="background: linear-gradient(135deg, rgb(254, 226, 226)"] { background: rgba(239, 68, 68, .12) !important; }
+.dark [style*="background: rgb(255, 245, 245)"],
+.dark [style*="background-color: rgb(255, 245, 245)"],
+.dark [style*="background: linear-gradient(135deg, rgb(255, 245, 245)"] { background: rgba(239, 68, 68, .12) !important; }
+.dark [style*="background: rgb(240, 253, 244)"],
+.dark [style*="background-color: rgb(240, 253, 244)"],
+.dark [style*="background: linear-gradient(135deg, rgb(240, 253, 244)"] { background: rgba(34, 197, 94, .12) !important; }
+.dark [style*="background: rgb(220, 252, 231)"],
+.dark [style*="background-color: rgb(220, 252, 231)"],
+.dark [style*="background: linear-gradient(135deg, rgb(220, 252, 231)"] { background: rgba(34, 197, 94, .12) !important; }
+.dark [style*="background: rgb(236, 253, 245)"],
+.dark [style*="background-color: rgb(236, 253, 245)"],
+.dark [style*="background: linear-gradient(135deg, rgb(236, 253, 245)"] { background: rgba(16, 185, 129, .12) !important; }
+.dark [style*="background: rgb(209, 250, 229)"],
+.dark [style*="background-color: rgb(209, 250, 229)"],
+.dark [style*="background: linear-gradient(135deg, rgb(209, 250, 229)"] { background: rgba(16, 185, 129, .12) !important; }
+.dark [style*="background: rgb(230, 252, 245)"],
+.dark [style*="background-color: rgb(230, 252, 245)"],
+.dark [style*="background: linear-gradient(135deg, rgb(230, 252, 245)"] { background: rgba(16, 185, 129, .12) !important; }
+.dark [style*="background: rgb(240, 253, 250)"],
+.dark [style*="background-color: rgb(240, 253, 250)"],
+.dark [style*="background: linear-gradient(135deg, rgb(240, 253, 250)"] { background: rgba(20, 184, 166, .12) !important; }
+.dark [style*="background: rgb(204, 251, 241)"],
+.dark [style*="background-color: rgb(204, 251, 241)"],
+.dark [style*="background: linear-gradient(135deg, rgb(204, 251, 241)"] { background: rgba(20, 184, 166, .12) !important; }
+.dark [style*="background: rgb(236, 254, 255)"],
+.dark [style*="background-color: rgb(236, 254, 255)"],
+.dark [style*="background: linear-gradient(135deg, rgb(236, 254, 255)"] { background: rgba(6, 182, 212, .12) !important; }
+.dark [style*="background: rgb(207, 250, 254)"],
+.dark [style*="background-color: rgb(207, 250, 254)"],
+.dark [style*="background: linear-gradient(135deg, rgb(207, 250, 254)"] { background: rgba(6, 182, 212, .12) !important; }
+.dark [style*="background: rgb(240, 249, 255)"],
+.dark [style*="background-color: rgb(240, 249, 255)"],
+.dark [style*="background: linear-gradient(135deg, rgb(240, 249, 255)"] { background: rgba(14, 165, 233, .12) !important; }
+.dark [style*="background: rgb(224, 242, 254)"],
+.dark [style*="background-color: rgb(224, 242, 254)"],
+.dark [style*="background: linear-gradient(135deg, rgb(224, 242, 254)"] { background: rgba(14, 165, 233, .12) !important; }
+.dark [style*="background: rgb(239, 246, 255)"],
+.dark [style*="background-color: rgb(239, 246, 255)"],
+.dark [style*="background: linear-gradient(135deg, rgb(239, 246, 255)"] { background: rgba(59, 130, 246, .12) !important; }
+.dark [style*="background: rgb(219, 234, 254)"],
+.dark [style*="background-color: rgb(219, 234, 254)"],
+.dark [style*="background: linear-gradient(135deg, rgb(219, 234, 254)"] { background: rgba(59, 130, 246, .12) !important; }
+.dark [style*="background: rgb(238, 242, 255)"],
+.dark [style*="background-color: rgb(238, 242, 255)"],
+.dark [style*="background: linear-gradient(135deg, rgb(238, 242, 255)"] { background: rgba(99, 102, 241, .12) !important; }
+.dark [style*="background: rgb(250, 245, 255)"],
+.dark [style*="background-color: rgb(250, 245, 255)"],
+.dark [style*="background: linear-gradient(135deg, rgb(250, 245, 255)"] { background: rgba(168, 85, 247, .12) !important; }
+.dark [style*="background: rgb(245, 243, 255)"],
+.dark [style*="background-color: rgb(245, 243, 255)"],
+.dark [style*="background: linear-gradient(135deg, rgb(245, 243, 255)"] { background: rgba(139, 92, 246, .12) !important; }
+.dark [style*="background: rgb(237, 233, 254)"],
+.dark [style*="background-color: rgb(237, 233, 254)"],
+.dark [style*="background: linear-gradient(135deg, rgb(237, 233, 254)"] { background: rgba(139, 92, 246, .12) !important; }
+.dark [style*="background: rgb(243, 240, 255)"],
+.dark [style*="background-color: rgb(243, 240, 255)"],
+.dark [style*="background: linear-gradient(135deg, rgb(243, 240, 255)"] { background: rgba(139, 92, 246, .12) !important; }
+.dark [style*="background: rgb(255, 251, 235)"],
+.dark [style*="background-color: rgb(255, 251, 235)"],
+.dark [style*="background: linear-gradient(135deg, rgb(255, 251, 235)"] { background: rgba(245, 158, 11, .12) !important; }
+.dark [style*="background: rgb(254, 243, 199)"],
+.dark [style*="background-color: rgb(254, 243, 199)"],
+.dark [style*="background: linear-gradient(135deg, rgb(254, 243, 199)"] { background: rgba(245, 158, 11, .12) !important; }
+.dark [style*="background: rgb(254, 252, 232)"],
+.dark [style*="background-color: rgb(254, 252, 232)"],
+.dark [style*="background: linear-gradient(135deg, rgb(254, 252, 232)"] { background: rgba(234, 179, 8, .12) !important; }
+.dark [style*="background: rgb(255, 247, 237)"],
+.dark [style*="background-color: rgb(255, 247, 237)"],
+.dark [style*="background: linear-gradient(135deg, rgb(255, 247, 237)"] { background: rgba(249, 115, 22, .12) !important; }
+.dark [style*="background: rgb(255, 237, 213)"],
+.dark [style*="background-color: rgb(255, 237, 213)"],
+.dark [style*="background: linear-gradient(135deg, rgb(255, 237, 213)"] { background: rgba(249, 115, 22, .12) !important; }
+.dark [style*="background: rgb(255, 248, 235)"],
+.dark [style*="background-color: rgb(255, 248, 235)"],
+.dark [style*="background: linear-gradient(135deg, rgb(255, 248, 235)"] { background: rgba(249, 115, 22, .12) !important; }
+.dark [style*="background: rgb(253, 242, 248)"],
+.dark [style*="background-color: rgb(253, 242, 248)"],
+.dark [style*="background: linear-gradient(135deg, rgb(253, 242, 248)"] { background: rgba(236, 72, 153, .12) !important; }
+.dark [style*="background: rgb(252, 231, 243)"],
+.dark [style*="background-color: rgb(252, 231, 243)"],
+.dark [style*="background: linear-gradient(135deg, rgb(252, 231, 243)"] { background: rgba(236, 72, 153, .12) !important; }
+
+/* Éléments qui doivent rester clairs (ex. logo sur fond blanc) :
+   ajouter l'attribut data-keep-light */
+.dark [data-keep-light] {
+  background: rgba(255, 255, 255, .95) !important;
+}
+
+
+/* ==========================================================================
+   10. TABLEAUX & CARTES DE STATISTIQUES
+   ========================================================================== */
+
+/* ── Cadres : classes Tailwind avec opacité (ex. Card = bg-white/75) ─────────
+   " bg-…/" (précédé d'un espace) exclut les variantes hover:/focus:        */
+.dark :is([class^="bg-white/"], [class*=" bg-white/"]) {
+  background-color: rgba(17, 26, 43, .88);
+}
+.dark :is([class^="bg-slate-50/"], [class*=" bg-slate-50/"], [class^="bg-slate-100/"], [class*=" bg-slate-100/"], [class^="bg-gray-50/"], [class*=" bg-gray-50/"]) {
+  background-color: rgba(22, 33, 58, .7);
+}
+.dark :is([class^="border-slate-200/"], [class*=" border-slate-200/"], [class^="border-white/"], [class*=" border-white/"]) {
+  border-color: var(--dk-border);
+}
+.dark :is([class^="border-slate-100/"], [class*=" border-slate-100/"], [class^="border-gray-100/"], [class*=" border-gray-100/"]) {
+  border-color: var(--dk-border-soft);
+}
+.dark :is([class*=" divide-slate-100"], [class*=" divide-slate-200"], [class*=" divide-gray-100"], [class*=" divide-gray-200"]) > :not(:last-child) {
+  border-color: var(--dk-border-soft);
+}
+.dark :is([class*=" via-white"], [class*=" from-white"], [class*=" to-white"]) {
+  --tw-gradient-via: transparent;
+  --tw-gradient-from: transparent;
+  --tw-gradient-to: transparent;
+}
+
+/* ── Tableaux : en-têtes, lignes, survol ─────────────────────────────────── */
+.dark thead,
+.dark thead tr {
+  background: transparent !important;
+}
+.dark tbody tr {
+  border-color: var(--dk-border-soft);
+}
+.dark tbody tr:hover > td {
+  background: rgba(45, 212, 191, .05);
+}
+.dark tr.expanded > td,
+.dark .selected-row,
+.dark .selected-row td {
+  background-color: rgba(45, 212, 191, .1) !important;
+  border-bottom-color: rgba(45, 212, 191, .25) !important;
+}
+
+/* Tableaux des pages (WorkflowList.css, LingeList.css, tables.css) */
+.dark .colage-table-container,
+.dark .table-wrapper,
+.dark .modern-table {
+  background: var(--dk-surface) !important;
+}
+.dark .colage-table tr:nth-child(even) {
+  background: rgba(255, 255, 255, .025);
+}
+.dark .colage-table.mini th,
+.dark .modern-table th {
+  background: rgba(45, 212, 191, .07);
+  color: #5eead4;
+  border-color: var(--dk-border);
+}
+.dark .table-mini-container {
+  border-color: var(--dk-border-soft);
+}
+.dark .employee-row td {
+  color: var(--dk-text-2);
+  border-bottom-color: var(--dk-border-soft);
+}
+.dark .employee-row:hover td { background: var(--dk-surface-2); }
+.dark .employee-row.selected td { background: rgba(45, 212, 191, .1); }
+.dark .emp-full-name { color: var(--dk-text); }
+.dark .table-row-avatar { background: var(--dk-surface-3); color: var(--dk-text-2); }
+.dark .action-link-details { color: #60a5fa; }
+
+.dark .placements-nested-table th {
+  background: rgba(45, 212, 191, .08);
+  color: #5eead4;
+}
+.dark .emplacement-management-panel { background: var(--dk-surface); border-color: rgba(45, 212, 191, .2); }
+.dark .panel-header,
+.dark .detail-header { border-color: var(--dk-border-soft); }
+.dark .detail-header h2,
+.dark .panel-header h3,
+.dark .param-icon-card h3 { color: var(--dk-text); }
+.dark .param-icon-card,
+.dark .params-detail-reveal,
+.dark .header-search-box {
+  background: rgba(17, 26, 43, .85);
+  border-color: var(--dk-border);
+}
+.dark .param-icon-card.active { background: rgba(45, 212, 191, .1); }
+.dark .header-search-box:focus-within { background: var(--dk-surface-2); }
+.dark .search-filter-select select,
+.dark .search-input-wrapper input { color: var(--dk-text); background: transparent; }
+
+/* Codes et identifiants dans les cellules */
+.dark .tracking-code,
+.dark .tracking-code-small,
+.dark .matricule-badge,
+.dark .sub-code {
+  background: var(--dk-surface-3);
+  color: var(--dk-text-2);
+  border-color: var(--dk-border);
+}
+.dark .code-badge {
+  background: rgba(45, 212, 191, .1);
+  color: #5eead4;
+  border-color: rgba(45, 212, 191, .2);
+}
+.dark .rfid-tag {
+  background: rgba(59, 130, 246, .14);
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, .3);
+}
+
+/* ── Cartes (sections, statistiques) ─────────────────────────────────────── */
+.dark .section-card,
+.dark .chart-container,
+.dark .kpi-card,
+.dark .back-btn,
+.dark .last-update {
+  background: var(--dk-surface) !important;
+  border-color: var(--dk-border) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
+}
+.dark .stats-page { background: var(--dk-bg); color: var(--dk-text); }
+.dark .stats-header h1,
+.dark .kpi-value { color: var(--dk-text); }
+.dark .kpi-label,
+.dark .chart-container h3 { color: var(--dk-text-2); border-color: var(--dk-border-soft); }
+.dark .back-btn:hover { background: var(--dk-surface-3) !important; }
+.dark .kpi-icon.blue   { background: rgba(59, 130, 246, .14); }
+.dark .kpi-icon.orange { background: rgba(249, 115, 22, .14); }
+.dark .kpi-icon.green  { background: rgba(34, 197, 94, .14); }
+.dark .kpi-icon.purple { background: rgba(168, 85, 247, .14); }
+.dark .kpi-icon.red    { background: rgba(239, 68, 68, .14); }
+
+/* ── Classes pastel Tailwind (généré) : fond translucide + texte éclairci ── */
+.dark :is(.bg-red-50, .bg-red-100, [class^="bg-red-50/"], [class*=" bg-red-50/"], [class^="bg-red-100/"], [class*=" bg-red-100/"]) { background-color: rgba(239, 68, 68, .13); }
+.dark :is(.border-red-100, .border-red-200) { border-color: rgba(239, 68, 68, .3); }
+.dark :is(.text-red-700, .text-red-800, .text-red-900) { color: #fca5a5; }
+.dark :is(.bg-rose-50, .bg-rose-100, [class^="bg-rose-50/"], [class*=" bg-rose-50/"], [class^="bg-rose-100/"], [class*=" bg-rose-100/"]) { background-color: rgba(244, 63, 94, .13); }
+.dark :is(.border-rose-100, .border-rose-200) { border-color: rgba(244, 63, 94, .3); }
+.dark :is(.text-rose-700, .text-rose-800, .text-rose-900) { color: #fda4af; }
+.dark :is(.bg-pink-50, .bg-pink-100, [class^="bg-pink-50/"], [class*=" bg-pink-50/"], [class^="bg-pink-100/"], [class*=" bg-pink-100/"]) { background-color: rgba(236, 72, 153, .13); }
+.dark :is(.border-pink-100, .border-pink-200) { border-color: rgba(236, 72, 153, .3); }
+.dark :is(.text-pink-700, .text-pink-800, .text-pink-900) { color: #f9a8d4; }
+.dark :is(.bg-orange-50, .bg-orange-100, [class^="bg-orange-50/"], [class*=" bg-orange-50/"], [class^="bg-orange-100/"], [class*=" bg-orange-100/"]) { background-color: rgba(249, 115, 22, .13); }
+.dark :is(.border-orange-100, .border-orange-200) { border-color: rgba(249, 115, 22, .3); }
+.dark :is(.text-orange-700, .text-orange-800, .text-orange-900) { color: #fdba74; }
+.dark :is(.bg-amber-50, .bg-amber-100, [class^="bg-amber-50/"], [class*=" bg-amber-50/"], [class^="bg-amber-100/"], [class*=" bg-amber-100/"]) { background-color: rgba(245, 158, 11, .13); }
+.dark :is(.border-amber-100, .border-amber-200) { border-color: rgba(245, 158, 11, .3); }
+.dark :is(.text-amber-700, .text-amber-800, .text-amber-900) { color: #fcd34d; }
+.dark :is(.bg-yellow-50, .bg-yellow-100, [class^="bg-yellow-50/"], [class*=" bg-yellow-50/"], [class^="bg-yellow-100/"], [class*=" bg-yellow-100/"]) { background-color: rgba(234, 179, 8, .13); }
+.dark :is(.border-yellow-100, .border-yellow-200) { border-color: rgba(234, 179, 8, .3); }
+.dark :is(.text-yellow-700, .text-yellow-800, .text-yellow-900) { color: #fde047; }
+.dark :is(.bg-lime-50, .bg-lime-100, [class^="bg-lime-50/"], [class*=" bg-lime-50/"], [class^="bg-lime-100/"], [class*=" bg-lime-100/"]) { background-color: rgba(132, 204, 22, .13); }
+.dark :is(.border-lime-100, .border-lime-200) { border-color: rgba(132, 204, 22, .3); }
+.dark :is(.text-lime-700, .text-lime-800, .text-lime-900) { color: #bef264; }
+.dark :is(.bg-green-50, .bg-green-100, [class^="bg-green-50/"], [class*=" bg-green-50/"], [class^="bg-green-100/"], [class*=" bg-green-100/"]) { background-color: rgba(34, 197, 94, .13); }
+.dark :is(.border-green-100, .border-green-200) { border-color: rgba(34, 197, 94, .3); }
+.dark :is(.text-green-700, .text-green-800, .text-green-900) { color: #86efac; }
+.dark :is(.bg-emerald-50, .bg-emerald-100, [class^="bg-emerald-50/"], [class*=" bg-emerald-50/"], [class^="bg-emerald-100/"], [class*=" bg-emerald-100/"]) { background-color: rgba(16, 185, 129, .13); }
+.dark :is(.border-emerald-100, .border-emerald-200) { border-color: rgba(16, 185, 129, .3); }
+.dark :is(.text-emerald-700, .text-emerald-800, .text-emerald-900) { color: #6ee7b7; }
+.dark :is(.bg-teal-50, .bg-teal-100, [class^="bg-teal-50/"], [class*=" bg-teal-50/"], [class^="bg-teal-100/"], [class*=" bg-teal-100/"]) { background-color: rgba(20, 184, 166, .13); }
+.dark :is(.border-teal-100, .border-teal-200) { border-color: rgba(20, 184, 166, .3); }
+.dark :is(.text-teal-700, .text-teal-800, .text-teal-900) { color: #5eead4; }
+.dark :is(.bg-cyan-50, .bg-cyan-100, [class^="bg-cyan-50/"], [class*=" bg-cyan-50/"], [class^="bg-cyan-100/"], [class*=" bg-cyan-100/"]) { background-color: rgba(6, 182, 212, .13); }
+.dark :is(.border-cyan-100, .border-cyan-200) { border-color: rgba(6, 182, 212, .3); }
+.dark :is(.text-cyan-700, .text-cyan-800, .text-cyan-900) { color: #67e8f9; }
+.dark :is(.bg-sky-50, .bg-sky-100, [class^="bg-sky-50/"], [class*=" bg-sky-50/"], [class^="bg-sky-100/"], [class*=" bg-sky-100/"]) { background-color: rgba(14, 165, 233, .13); }
+.dark :is(.border-sky-100, .border-sky-200) { border-color: rgba(14, 165, 233, .3); }
+.dark :is(.text-sky-700, .text-sky-800, .text-sky-900) { color: #7dd3fc; }
+.dark :is(.bg-blue-50, .bg-blue-100, [class^="bg-blue-50/"], [class*=" bg-blue-50/"], [class^="bg-blue-100/"], [class*=" bg-blue-100/"]) { background-color: rgba(59, 130, 246, .13); }
+.dark :is(.border-blue-100, .border-blue-200) { border-color: rgba(59, 130, 246, .3); }
+.dark :is(.text-blue-700, .text-blue-800, .text-blue-900) { color: #93c5fd; }
+.dark :is(.bg-indigo-50, .bg-indigo-100, [class^="bg-indigo-50/"], [class*=" bg-indigo-50/"], [class^="bg-indigo-100/"], [class*=" bg-indigo-100/"]) { background-color: rgba(99, 102, 241, .13); }
+.dark :is(.border-indigo-100, .border-indigo-200) { border-color: rgba(99, 102, 241, .3); }
+.dark :is(.text-indigo-700, .text-indigo-800, .text-indigo-900) { color: #a5b4fc; }
+.dark :is(.bg-violet-50, .bg-violet-100, [class^="bg-violet-50/"], [class*=" bg-violet-50/"], [class^="bg-violet-100/"], [class*=" bg-violet-100/"]) { background-color: rgba(139, 92, 246, .13); }
+.dark :is(.border-violet-100, .border-violet-200) { border-color: rgba(139, 92, 246, .3); }
+.dark :is(.text-violet-700, .text-violet-800, .text-violet-900) { color: #c4b5fd; }
+.dark :is(.bg-purple-50, .bg-purple-100, [class^="bg-purple-50/"], [class*=" bg-purple-50/"], [class^="bg-purple-100/"], [class*=" bg-purple-100/"]) { background-color: rgba(168, 85, 247, .13); }
+.dark :is(.border-purple-100, .border-purple-200) { border-color: rgba(168, 85, 247, .3); }
+.dark :is(.text-purple-700, .text-purple-800, .text-purple-900) { color: #d8b4fe; }
+.dark :is(.bg-fuchsia-50, .bg-fuchsia-100, [class^="bg-fuchsia-50/"], [class*=" bg-fuchsia-50/"], [class^="bg-fuchsia-100/"], [class*=" bg-fuchsia-100/"]) { background-color: rgba(217, 70, 239, .13); }
+.dark :is(.border-fuchsia-100, .border-fuchsia-200) { border-color: rgba(217, 70, 239, .3); }
+.dark :is(.text-fuchsia-700, .text-fuchsia-800, .text-fuchsia-900) { color: #f0abfc; }
+
+/* ── Badges de statut (généré depuis WorkflowList.css) ───────────────────── */
+.dark .status-badge.collecte { background: rgba(3, 105, 161, .18); color: color-mix(in srgb, #0369a1 45%, #ffffff); }
+.dark .status-badge.receptionne { background: rgba(161, 98, 7, .18); color: color-mix(in srgb, #a16207 45%, #ffffff); }
+.dark .status-badge.en_tri { background: rgba(161, 98, 7, .18); color: color-mix(in srgb, #a16207 45%, #ffffff); }
+.dark .status-badge.en_lavage { background: rgba(21, 128, 61, .18); color: color-mix(in srgb, #15803d 45%, #ffffff); }
+.dark .status-badge.lave { background: rgba(21, 128, 61, .18); color: color-mix(in srgb, #15803d 45%, #ffffff); }
+.dark .status-badge.en_sechage_repassage { background: rgba(109, 40, 217, .18); color: color-mix(in srgb, #6d28d9 45%, #ffffff); }
+.dark .status-badge.seche { background: rgba(67, 56, 202, .18); color: color-mix(in srgb, #4338ca 45%, #ffffff); }
+.dark .status-badge.propre_pret { background: rgba(22, 101, 52, .18); color: color-mix(in srgb, #166534 45%, #ffffff); }
+.dark .status-badge.stocke { background: rgba(154, 52, 18, .18); color: color-mix(in srgb, #9a3412 45%, #ffffff); }
+.dark .status-badge.distribue { background: rgba(71, 85, 105, .18); color: color-mix(in srgb, #475569 45%, #ffffff); }
+.dark .status-badge.pret_livraison { background: rgba(146, 64, 14, .18); color: color-mix(in srgb, #92400e 45%, #ffffff); }
+
+/* ── Pastels en ligne complémentaires ────────────────────────────────────── */
+.dark :is([style*="background: rgb(236, 252, 203)"], [style*="background-color: rgb(236, 252, 203)"], [style*="background: linear-gradient(135deg, rgb(236, 252, 203)"]) { background: rgba(132, 204, 22, .13) !important; }
+.dark :is([style*="background: rgb(243, 232, 255)"], [style*="background-color: rgb(243, 232, 255)"], [style*="background: linear-gradient(135deg, rgb(243, 232, 255)"]) { background: rgba(168, 85, 247, .13) !important; }
+.dark :is([style*="background: rgb(224, 231, 255)"], [style*="background-color: rgb(224, 231, 255)"], [style*="background: linear-gradient(135deg, rgb(224, 231, 255)"]) { background: rgba(99, 102, 241, .13) !important; }
+.dark :is([style*="background: rgb(254, 249, 195)"], [style*="background-color: rgb(254, 249, 195)"], [style*="background: linear-gradient(135deg, rgb(254, 249, 195)"]) { background: rgba(234, 179, 8, .13) !important; }
+.dark :is([style*="background: rgb(187, 247, 208)"], [style*="background-color: rgb(187, 247, 208)"], [style*="background: linear-gradient(135deg, rgb(187, 247, 208)"]) { background: rgba(34, 197, 94, .13) !important; }
+.dark :is([style*="background: rgb(199, 210, 254)"], [style*="background-color: rgb(199, 210, 254)"], [style*="background: linear-gradient(135deg, rgb(199, 210, 254)"]) { background: rgba(99, 102, 241, .13) !important; }
+.dark :is([style*="background: rgb(191, 219, 254)"], [style*="background-color: rgb(191, 219, 254)"], [style*="background: linear-gradient(135deg, rgb(191, 219, 254)"]) { background: rgba(59, 130, 246, .13) !important; }
+
+/* ==========================================================================
+   11. EN-TÊTES DE MENUS DÉROULANTS
+   ========================================================================== */
+
+/* Menu utilisateur (en-tête avec nom / e-mail) — défini dans layout.css
+   et dans le <style> de header.jsx : dégradé clair remplacé */
+.dark .user-dropdown__header {
+  background: linear-gradient(180deg, rgba(45, 212, 191, .07), rgba(45, 212, 191, 0)) !important;
+  border-bottom-color: var(--dk-border-soft) !important;
+}
+.dark .user-dropdown__email { color: var(--dk-muted) !important; }
+.dark .user-dropdown__avatar { box-shadow: 0 0 0 3px var(--dk-surface), 0 4px 12px rgba(0, 0, 0, .4); }
+
+/* Popup des sous-menus (barre latérale repliée) */
+.dark .nav-popup__title {
+  background: linear-gradient(135deg, var(--dk-surface-2), var(--dk-surface)) !important;
+  border-bottom-color: var(--dk-border) !important;
+  color: var(--dk-text) !important;
+}
+.dark .nav-popup__card-label,
+.dark .nav-popup__simple-link { color: var(--dk-text-2); }
+.dark .nav-popup__card:hover,
+.dark .nav-popup__simple-link:hover { background: var(--dk-surface-2); }
+
+/* Bordures pastel des icônes de la popup → teinte de la section */
+.dark .nav-popup__card-icon--rh        { border-color: rgba(92, 124, 250, .35); }
+.dark .nav-popup__card-icon--presences { border-color: rgba(253, 154, 43, .35); }
+.dark .nav-popup__card-icon--paie      { border-color: rgba(32, 201, 151, .35); }
+.dark .nav-popup__card-icon--conges    { border-color: rgba(242, 85, 85, .35); }
+.dark .nav-popup__card-icon--params    { border-color: rgba(139, 92, 246, .4); }
+.dark .nav-popup__card-icon--suivi     { border-color: rgba(56, 189, 248, .35); }
+
+
+/* ==========================================================================
+   12. DÉGRADÉS (tous angles), BLANCS TRANSLUCIDES, SÉPARATEURS
+   (généré) — ex. fond de la page État machines : linear-gradient(180deg, …)
+   ========================================================================== */
+.dark :is([style*="deg, rgb(255, 255, 255)"]) { background: var(--dk-surface) !important; }
+.dark :is([style*="deg, rgb(248, 250, 252)"], [style*="deg, rgb(241, 245, 249)"], [style*="deg, rgb(250, 251, 252)"], [style*="deg, rgb(249, 250, 251)"]) { background: var(--dk-surface-2) !important; }
+.dark [style*="deg, rgb(254, 242, 242)"] { background: rgba(239, 68, 68, .12) !important; }
+.dark [style*="deg, rgb(254, 226, 226)"] { background: rgba(239, 68, 68, .12) !important; }
+.dark [style*="deg, rgb(255, 245, 245)"] { background: rgba(239, 68, 68, .12) !important; }
+.dark [style*="deg, rgb(240, 253, 244)"] { background: rgba(34, 197, 94, .12) !important; }
+.dark [style*="deg, rgb(220, 252, 231)"] { background: rgba(34, 197, 94, .12) !important; }
+.dark [style*="deg, rgb(187, 247, 208)"] { background: rgba(34, 197, 94, .12) !important; }
+.dark [style*="deg, rgb(236, 253, 245)"] { background: rgba(16, 185, 129, .12) !important; }
+.dark [style*="deg, rgb(209, 250, 229)"] { background: rgba(16, 185, 129, .12) !important; }
+.dark [style*="deg, rgb(167, 243, 208)"] { background: rgba(16, 185, 129, .12) !important; }
+.dark [style*="deg, rgb(230, 252, 245)"] { background: rgba(16, 185, 129, .12) !important; }
+.dark [style*="deg, rgb(240, 253, 250)"] { background: rgba(20, 184, 166, .12) !important; }
+.dark [style*="deg, rgb(204, 251, 241)"] { background: rgba(20, 184, 166, .12) !important; }
+.dark [style*="deg, rgb(236, 254, 255)"] { background: rgba(6, 182, 212, .12) !important; }
+.dark [style*="deg, rgb(207, 250, 254)"] { background: rgba(6, 182, 212, .12) !important; }
+.dark [style*="deg, rgb(240, 249, 255)"] { background: rgba(14, 165, 233, .12) !important; }
+.dark [style*="deg, rgb(224, 242, 254)"] { background: rgba(14, 165, 233, .12) !important; }
+.dark [style*="deg, rgb(239, 246, 255)"] { background: rgba(59, 130, 246, .12) !important; }
+.dark [style*="deg, rgb(219, 234, 254)"] { background: rgba(59, 130, 246, .12) !important; }
+.dark [style*="deg, rgb(191, 219, 254)"] { background: rgba(59, 130, 246, .12) !important; }
+.dark [style*="deg, rgb(238, 242, 255)"] { background: rgba(99, 102, 241, .12) !important; }
+.dark [style*="deg, rgb(224, 231, 255)"] { background: rgba(99, 102, 241, .12) !important; }
+.dark [style*="deg, rgb(199, 210, 254)"] { background: rgba(99, 102, 241, .12) !important; }
+.dark [style*="deg, rgb(250, 245, 255)"] { background: rgba(168, 85, 247, .12) !important; }
+.dark [style*="deg, rgb(243, 232, 255)"] { background: rgba(168, 85, 247, .12) !important; }
+.dark [style*="deg, rgb(245, 243, 255)"] { background: rgba(139, 92, 246, .12) !important; }
+.dark [style*="deg, rgb(237, 233, 254)"] { background: rgba(139, 92, 246, .12) !important; }
+.dark [style*="deg, rgb(243, 240, 255)"] { background: rgba(139, 92, 246, .12) !important; }
+.dark [style*="deg, rgb(255, 251, 235)"] { background: rgba(245, 158, 11, .12) !important; }
+.dark [style*="deg, rgb(254, 243, 199)"] { background: rgba(245, 158, 11, .12) !important; }
+.dark [style*="deg, rgb(254, 252, 232)"] { background: rgba(234, 179, 8, .12) !important; }
+.dark [style*="deg, rgb(254, 249, 195)"] { background: rgba(234, 179, 8, .12) !important; }
+.dark [style*="deg, rgb(255, 247, 237)"] { background: rgba(249, 115, 22, .12) !important; }
+.dark [style*="deg, rgb(255, 237, 213)"] { background: rgba(249, 115, 22, .12) !important; }
+.dark [style*="deg, rgb(255, 248, 235)"] { background: rgba(249, 115, 22, .12) !important; }
+.dark [style*="deg, rgb(236, 252, 203)"] { background: rgba(132, 204, 22, .12) !important; }
+.dark [style*="deg, rgb(253, 242, 248)"] { background: rgba(236, 72, 153, .12) !important; }
+.dark [style*="deg, rgb(252, 231, 243)"] { background: rgba(236, 72, 153, .12) !important; }
+
+/* Page entière en dégradé clair (conteneur principal) : fond de page sombre */
+.dark .main-content > * > [style*="deg, rgb(248, 250, 252)"],
+.dark .main-content > [style*="deg, rgb(248, 250, 252)"] {
+  background: var(--dk-bg) !important;
+}
+
+/* Blancs semi-transparents (verre dépoli) — les voiles 0.1–0.3 posés sur
+   des fonds colorés ne sont pas touchés */
+.dark :is(
+  [style*="background: rgba(255, 255, 255, 0.4"], [style*="background: rgba(255, 255, 255, 0.5"],
+  [style*="background: rgba(255, 255, 255, 0.6"], [style*="background: rgba(255, 255, 255, 0.7"],
+  [style*="background: rgba(255, 255, 255, 0.8"]
+) {
+  background: rgba(255, 255, 255, .04) !important;
+}
+
+/* Séparateurs, pistes de progression, puces grises */
+.dark :is([style*="background: rgb(226, 232, 240)"], [style*="background-color: rgb(226, 232, 240)"]) {
+  background: var(--dk-border) !important;
+}
+.dark :is([style*="background: rgb(203, 213, 225)"], [style*="background-color: rgb(203, 213, 225)"]) {
+  background: #3a4a68 !important;
+}
+
+/* Bordures pointillées grises (zones vides, dépôt de fichier…) */
+.dark :is([style*="dashed rgb(226, 232, 240)"], [style*="dashed rgb(203, 213, 225)"], [style*="dotted rgb(226, 232, 240)"]) {
+  border-color: var(--dk-border) !important;
+}
+
+
+/* ==========================================================================
+   13. DÉGRADÉS VERTICAUX (sans angle)
+   Chrome n'écrit pas la direction par défaut (180deg) dans l'attribut style :
+   "linear-gradient(180deg, #f8fafc …)" y devient "linear-gradient(rgb(248, 250, 252) …)".
+   Vérifié dans Chrome (getComputedStyle).
+   ========================================================================== */
+.dark :is([style*="gradient(rgb(255, 255, 255)"]) { background: var(--dk-surface) !important; }
+.dark :is([style*="gradient(rgb(248, 250, 252)"], [style*="gradient(rgb(241, 245, 249)"], [style*="gradient(rgb(250, 251, 252)"], [style*="gradient(rgb(249, 250, 251)"]) { background: var(--dk-surface-2) !important; }
+.dark [style*="gradient(rgb(254, 242, 242)"] { background: rgba(239, 68, 68, .12) !important; }
+.dark [style*="gradient(rgb(254, 226, 226)"] { background: rgba(239, 68, 68, .12) !important; }
+.dark [style*="gradient(rgb(255, 245, 245)"] { background: rgba(239, 68, 68, .12) !important; }
+.dark [style*="gradient(rgb(240, 253, 244)"] { background: rgba(34, 197, 94, .12) !important; }
+.dark [style*="gradient(rgb(220, 252, 231)"] { background: rgba(34, 197, 94, .12) !important; }
+.dark [style*="gradient(rgb(187, 247, 208)"] { background: rgba(34, 197, 94, .12) !important; }
+.dark [style*="gradient(rgb(236, 253, 245)"] { background: rgba(16, 185, 129, .12) !important; }
+.dark [style*="gradient(rgb(209, 250, 229)"] { background: rgba(16, 185, 129, .12) !important; }
+.dark [style*="gradient(rgb(167, 243, 208)"] { background: rgba(16, 185, 129, .12) !important; }
+.dark [style*="gradient(rgb(230, 252, 245)"] { background: rgba(16, 185, 129, .12) !important; }
+.dark [style*="gradient(rgb(240, 253, 250)"] { background: rgba(20, 184, 166, .12) !important; }
+.dark [style*="gradient(rgb(204, 251, 241)"] { background: rgba(20, 184, 166, .12) !important; }
+.dark [style*="gradient(rgb(236, 254, 255)"] { background: rgba(6, 182, 212, .12) !important; }
+.dark [style*="gradient(rgb(207, 250, 254)"] { background: rgba(6, 182, 212, .12) !important; }
+.dark [style*="gradient(rgb(240, 249, 255)"] { background: rgba(14, 165, 233, .12) !important; }
+.dark [style*="gradient(rgb(224, 242, 254)"] { background: rgba(14, 165, 233, .12) !important; }
+.dark [style*="gradient(rgb(239, 246, 255)"] { background: rgba(59, 130, 246, .12) !important; }
+.dark [style*="gradient(rgb(219, 234, 254)"] { background: rgba(59, 130, 246, .12) !important; }
+.dark [style*="gradient(rgb(191, 219, 254)"] { background: rgba(59, 130, 246, .12) !important; }
+.dark [style*="gradient(rgb(238, 242, 255)"] { background: rgba(99, 102, 241, .12) !important; }
+.dark [style*="gradient(rgb(224, 231, 255)"] { background: rgba(99, 102, 241, .12) !important; }
+.dark [style*="gradient(rgb(199, 210, 254)"] { background: rgba(99, 102, 241, .12) !important; }
+.dark [style*="gradient(rgb(250, 245, 255)"] { background: rgba(168, 85, 247, .12) !important; }
+.dark [style*="gradient(rgb(243, 232, 255)"] { background: rgba(168, 85, 247, .12) !important; }
+.dark [style*="gradient(rgb(245, 243, 255)"] { background: rgba(139, 92, 246, .12) !important; }
+.dark [style*="gradient(rgb(237, 233, 254)"] { background: rgba(139, 92, 246, .12) !important; }
+.dark [style*="gradient(rgb(243, 240, 255)"] { background: rgba(139, 92, 246, .12) !important; }
+.dark [style*="gradient(rgb(255, 251, 235)"] { background: rgba(245, 158, 11, .12) !important; }
+.dark [style*="gradient(rgb(254, 243, 199)"] { background: rgba(245, 158, 11, .12) !important; }
+.dark [style*="gradient(rgb(254, 252, 232)"] { background: rgba(234, 179, 8, .12) !important; }
+.dark [style*="gradient(rgb(254, 249, 195)"] { background: rgba(234, 179, 8, .12) !important; }
+.dark [style*="gradient(rgb(255, 247, 237)"] { background: rgba(249, 115, 22, .12) !important; }
+.dark [style*="gradient(rgb(255, 237, 213)"] { background: rgba(249, 115, 22, .12) !important; }
+.dark [style*="gradient(rgb(255, 248, 235)"] { background: rgba(249, 115, 22, .12) !important; }
+.dark [style*="gradient(rgb(236, 252, 203)"] { background: rgba(132, 204, 22, .12) !important; }
+.dark [style*="gradient(rgb(253, 242, 248)"] { background: rgba(236, 72, 153, .12) !important; }
+.dark [style*="gradient(rgb(252, 231, 243)"] { background: rgba(236, 72, 153, .12) !important; }
+
+/* Conteneur de page en dégradé clair (ex. État machines) → fond de page */
+.dark .main-content > * > :is([style*="gradient(rgb(248, 250, 252)"], [style*="deg, rgb(248, 250, 252)"], [style*="gradient(rgb(241, 245, 249)"]),
+.dark .main-content > :is([style*="gradient(rgb(248, 250, 252)"], [style*="deg, rgb(248, 250, 252)"], [style*="gradient(rgb(241, 245, 249)"]) {
+  background: var(--dk-bg) !important;
+}
+
+/* ==========================================================================
+   14. TABLEAU PREMIUM (.premium-table)
+   ========================================================================== */
+.dark .main-content .premium-table thead th {
+  background: linear-gradient(180deg, #13203a 0%, #111c32 100%);
+  border-bottom-color: rgba(45, 212, 191, .2);
+  color: var(--dk-text-2);
+}
+.dark .premium-table__sort:hover { background: rgba(45, 212, 191, .1); color: #5eead4; }
+.dark .premium-table__sort.is-sorted { color: #5eead4; }
+.dark .premium-table__arrows svg { stroke: #3a4a68; }
+.dark .premium-table__sort:hover .premium-table__arrows svg { stroke: #64748b; }
+.dark .premium-table__arrows svg.is-active { stroke: #2dd4bf !important; }
+.dark .main-content .premium-table tbody td {
+  color: var(--dk-text-2);
+  border-bottom-color: var(--dk-border-soft);
+}
+.dark .main-content .premium-table tbody tr:hover td { background: rgba(45, 212, 191, .06); }
+.dark .main-content .premium-table tbody tr.is-selected td { background: rgba(45, 212, 191, .12) !important; }
+.dark .main-content .premium-table tbody tr.is-selected td:first-child { box-shadow: inset 3px 0 0 #2dd4bf; }
+.dark .premium-table__primary { color: var(--dk-text); }
+.dark .premium-table__code { background: var(--dk-surface-3); color: var(--dk-muted); }
+.dark .premium-table__gauge { background: var(--dk-surface-3); }
+.dark .premium-table__icon-btn:hover { background: var(--dk-surface-3); color: #5eead4 !important; }
+.dark .premium-table__icon-btn.is-danger:hover { background: rgba(239, 68, 68, .14); color: #fca5a5 !important; }
+.dark .premium-table__icon-btn.is-open { background: rgba(45, 212, 191, .14); color: #5eead4; }
+.dark .premium-table-wrap--bordered { border-color: var(--dk-border); }
+.dark .premium-table__chip          { background: var(--dk-surface-3); color: var(--dk-text-2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+.dark .premium-table__chip--sale    { background: rgba(249, 115, 22, .14); color: #fdba74; box-shadow: inset 0 0 0 1px rgba(249, 115, 22, .28); }
+.dark .premium-table__chip--propre  { background: rgba(16, 185, 129, .14); color: #6ee7b7; box-shadow: inset 0 0 0 1px rgba(16, 185, 129, .28); }
+.dark .premium-table__chip--neutral { background: rgba(59, 130, 246, .14); color: #93c5fd; box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .28); }
+.dark .premium-table__order         { background: rgba(45, 212, 191, .12); color: #5eead4; box-shadow: inset 0 0 0 1px rgba(45, 212, 191, .25); }
+.dark .premium-table__index         { color: var(--dk-muted); }
+
+/* ==========================================================================
+   15. TABLEAU DE BORD STATISTIQUES (cartes KPI, tuiles déplaçables)
+   ========================================================================== */
+.dark .kpi-tile {
+  background: var(--dk-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 26px -14px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(255, 255, 255, .06);
+}
+.dark .stats-tile:hover .kpi-tile {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .35), 0 18px 34px -14px rgba(0, 0, 0, .7), inset 0 0 0 1px rgba(255, 255, 255, .09);
+}
+.dark .kpi-tile::before { opacity: .14; }
+.dark .kpi-tile__label { color: var(--dk-muted); }
+.dark .kpi-tile__value { color: var(--dk-text); }
+.dark .kpi-tile__trend.is-up   { color: #6ee7b7; background: rgba(16, 185, 129, .14); }
+.dark .kpi-tile__trend.is-down { color: #fca5a5; background: rgba(239, 68, 68, .14); }
+.dark .stats-tile__handle {
+  background: rgba(29, 42, 68, .92);
+  color: var(--dk-muted);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .4), inset 0 0 0 1px rgba(255, 255, 255, .08);
+}
+.dark .stats-tile__handle:hover { background: var(--dk-surface-3); color: #5eead4; }
+.dark .stats-tile.is-dragged::after { border-color: rgba(45, 212, 191, .55); background: rgba(45, 212, 191, .07); }

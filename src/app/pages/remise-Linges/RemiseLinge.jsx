@@ -1,5 +1,5 @@
-// pages/RemiseLinge/RemiseLinge.js
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,9 +17,10 @@ import { getCategorieInfo, formatDate, getRemiseStatutConfig } from "../../servi
 import "../Linge/WorkflowList.css";
 
 import lottie from "lottie-web";
-
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 
 function SuccessAnimation({ show, onComplete }) {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const containerRef = useRef(null);
@@ -30,15 +31,11 @@ function SuccessAnimation({ show, onComplete }) {
       setVisible(true);
       setIsExiting(false);
 
-      // ✅ Charger l'animation Lottie depuis une URL valide
       const loadAnimation = async () => {
         try {
-          // Animation de succès / livraison validée
           const response = await fetch(
             "https://assets2.lottiefiles.com/packages/lf20_usmfx6bp.json"
           );
-
-          
           const animationData = await response.json();
 
           if (containerRef.current) {
@@ -59,7 +56,6 @@ function SuccessAnimation({ show, onComplete }) {
           }
         } catch (err) {
           console.error("Erreur chargement animation Lottie:", err);
-          // Fallback visuel si l'animation échoue
           if (containerRef.current) {
             containerRef.current.innerHTML = `
               <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);">
@@ -74,7 +70,6 @@ function SuccessAnimation({ show, onComplete }) {
 
       loadAnimation();
 
-      // Fermeture automatique après 3 secondes
       const timer = setTimeout(() => {
         setIsExiting(true);
         setTimeout(() => {
@@ -136,7 +131,6 @@ function SuccessAnimation({ show, onComplete }) {
             : "scaleUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
         }}
       >
-        {/* Conteneur Lottie */}
         <div
           ref={containerRef}
           style={{
@@ -154,7 +148,7 @@ function SuccessAnimation({ show, onComplete }) {
             margin: "0 0 8px 0",
           }}
         >
-          ✅ Livraison réussie !
+          {t('remise.delivery_success_title')}
         </h2>
         <p
           style={{
@@ -163,7 +157,7 @@ function SuccessAnimation({ show, onComplete }) {
             margin: 0,
           }}
         >
-          Le linge a été livré avec succès
+          {t('remise.delivery_success_text')}
         </p>
 
         <div
@@ -202,7 +196,7 @@ function SuccessAnimation({ show, onComplete }) {
             fontWeight: 600,
           }}
         >
-          ✨ Confirmation envoyée
+          ✨ {t('remise.confirmation_sent')}
         </div>
       </div>
 
@@ -232,10 +226,10 @@ function SuccessAnimation({ show, onComplete }) {
   );
 }
 
-// ─── COMPOSANTS STATISTIQUES ────────────────────────────────────────────
 
 function ProgressionBar({ value, label }) {
   const pct = Math.min(Math.max(value, 0), 100);
+   const { t } = useTranslation();
   const isComplete = pct === 100;
 
   return (
@@ -283,7 +277,7 @@ function ProgressionBar({ value, label }) {
             fontWeight: 600,
           }}
         >
-          <FaCheckCircle size={12} /> Collecte terminée
+          <FaCheckCircle size={12} /> {t('remise.collection_completed')}
         </div>
       )}
     </div>
@@ -354,6 +348,7 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
 }
 
 function CategorieRow({ categorie, collecte, livre, reste }) {
+  const { t } = useTranslation();
   const isComplete = reste === 0 && collecte > 0;
   const pct = collecte > 0 ? Math.round((livre / collecte) * 100) : 0;
   const info = getCategorieInfo(categorie);
@@ -387,7 +382,7 @@ function CategorieRow({ categorie, collecte, livre, reste }) {
               borderRadius: "12px",
             }}
           >
-            ✓ Complète
+            ✓ {t('remise.complete')}
           </Badge>
         ) : (
           <Badge
@@ -426,6 +421,8 @@ function CategorieRow({ categorie, collecte, livre, reste }) {
 }
 
 function ScanStatusComponent({ status }) {
+  const { t } = useTranslation();
+
   if (!status) return null;
 
   if (status.loading) {
@@ -453,7 +450,7 @@ function ScanStatusComponent({ status }) {
               margin: 0,
             }}
           >
-            Scan en cours...
+            {t('remise.scanning')}
           </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>
             {status.code}
@@ -500,7 +497,7 @@ function ScanStatusComponent({ status }) {
               margin: 0,
             }}
           >
-            ✓ Linge livré avec succès
+            ✓ {t('remise.linen_delivered_success')}
           </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>
             <strong>{status.success.codeBarre}</strong> · {status.success.categorie}
@@ -547,7 +544,7 @@ function ScanStatusComponent({ status }) {
               margin: 0,
             }}
           >
-            Erreur
+            {t('common.error')}
           </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>
             {status.error}
@@ -563,7 +560,9 @@ function ScanStatusComponent({ status }) {
 // ─── COMPOSANT PRINCIPAL ──────────────────────────────────────────────────
 
 function RemiseLingeInner() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+
   const {
     agentRemise,
     agentCollecte,
@@ -589,6 +588,7 @@ function RemiseLingeInner() {
   const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const scanInputRef = useRef(null);
+  
 
   // ─── Alertes ─────────────────────────────────────────────────────────────
   const showAlert = useCallback(
@@ -601,16 +601,26 @@ function RemiseLingeInner() {
         timerProgressBar: true,
         showConfirmButton: !!timer,
         confirmButtonColor: "#0d9488",
-        confirmButtonText: "OK",
+        confirmButtonText: t('common.ok'),
         ...(timer ? { showConfirmButton: false } : {}),
       });
     },
-    []
+    [t]
   );
 
   // ─── Handlers ────────────────────────────────────────────────────────────
   const handleScan = useCallback(
+
+    
     async (code) => {
+       console.log("========== SCAN ==========");
+    console.log("Code reçu :", code);
+    console.log("Étape actuelle :", etape);
+    console.log("Agent remise :", agentRemise);
+    console.log("Agent collecte :", agentCollecte);
+    console.log("Remise :", remise);
+    console.log("==========================");
+
       if (!code?.trim()) return;
 
       setScanValue("");
@@ -620,7 +630,7 @@ function RemiseLingeInner() {
         if (etape === "AGENT_REMISE") {
           const agent = await scanAgentRemise(code.trim());
           await showAlert(
-            "Agent identifié",
+            t('remise.agent_identified'),
             `✅ ${agent.nom} (${agent.matricule})`,
             "success",
             1500
@@ -633,8 +643,8 @@ function RemiseLingeInner() {
         if (etape === "AGENT_COLLECTE") {
           const result = await scanAgentCollecte(code.trim(), agentRemise);
           await showAlert(
-            "✅ Remise créée",
-            `Remise ${result.remise.numeroLivraison} · ${result.remise.collecte?.numeroCollecte}`,
+            t('remise.delivery_created'),
+            `${t('remise.delivery')} ${result.remise.numeroLivraison} · ${result.remise.collecte?.numeroCollecte}`,
             "success",
             2000
           );
@@ -646,15 +656,14 @@ function RemiseLingeInner() {
         if (etape === "SCAN") {
           const result = await scanLinge(code.trim());
 
-          // ✅ Afficher l'animation Lottie à chaque scan réussi
           if (result && !result.error) {
             setShowSuccessAnimation(true);
           }
 
           if (result.isComplete) {
             await Swal.fire({
-              title: "✅ Collecte terminée !",
-              text: "Tous les linges ont été livrés.",
+              title: t('remise.collection_completed_title'),
+              text: t('remise.collection_completed_text'),
               icon: "success",
               timer: 2500,
               timerProgressBar: true,
@@ -669,7 +678,7 @@ function RemiseLingeInner() {
           return;
         }
       } catch (error) {
-        await showAlert("Erreur", error.message, "error");
+        await showAlert(t('common.error'), error.message, "error");
         setTimeout(() => {
           clearScanStatus();
         }, 3000);
@@ -685,22 +694,23 @@ function RemiseLingeInner() {
       scanLinge,
       clearScanStatus,
       showAlert,
+      t,
     ]
   );
 
   // ─── RENDU ──────────────────────────────────────────────────────────────
 
   const ETAPES = [
-    { id: "AGENT_REMISE", label: "Agent remise", done: !!agentRemise },
-    { id: "AGENT_COLLECTE", label: "Agent collecte", done: !!agentCollecte },
-    { id: "SCAN", label: "Scan", done: isCloturee },
+    { id: "AGENT_REMISE", label: t('remise.step_delivery_agent'), done: !!agentRemise },
+    { id: "AGENT_COLLECTE", label: t('remise.step_collection_agent'), done: !!agentCollecte },
+    { id: "SCAN", label: t('remise.step_scan'), done: isCloturee },
   ];
 
   const getPlaceholder = () => {
-    if (!agentRemise) return "👤 Scanner badge agent de remise...";
-    if (!agentCollecte) return "👤 Scanner badge agent de collecte...";
-    if (isCloturee) return "🔒 Collecte terminée";
-    return "📦 Scanner le code-barres du linge...";
+    if (!agentRemise) return t('remise.scan_delivery_agent');
+    if (!agentCollecte) return t('remise.scan_collection_agent');
+    if (isCloturee) return t('remise.collection_finished');
+    return t('remise.scan_linen_barcode');
   };
 
   const getBorderColor = () => {
@@ -714,7 +724,6 @@ function RemiseLingeInner() {
 
   return (
     <div className="collecte-container">
-      {/* ✅ Animation de succès avec Lottie */}
       <SuccessAnimation
         show={showSuccessAnimation}
         onComplete={() => {
@@ -733,21 +742,7 @@ function RemiseLingeInner() {
             marginBottom: "8px",
           }}
         >
-          <div
-            style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "18px",
-              background: "linear-gradient(135deg, #14b8a6, #0d9488)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              boxShadow: "0 6px 20px rgba(20, 184, 166, 0.3)",
-            }}
-          >
-            <FaBoxes size={26} />
-          </div>
+          <PageHeaderIcon size={56} />
           <div>
             <h1
               style={{
@@ -757,7 +752,7 @@ function RemiseLingeInner() {
                 margin: 0,
               }}
             >
-              Remise de linge
+              {t('remise.title')}
             </h1>
             <p
               style={{
@@ -767,8 +762,8 @@ function RemiseLingeInner() {
               }}
             >
               {agentRemise
-                ? `Agent: ${agentRemise.nomPrenom || agentRemise.nom}`
-                : "Aucun agent connecté"}
+                ? `${t('remise.agent')}: ${agentRemise.nomPrenom || agentRemise.nom}`
+                : t('remise.no_agent_connected')}
             </p>
           </div>
         </div>
@@ -783,7 +778,6 @@ function RemiseLingeInner() {
           boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
         }}
       >
-        {/* ─── BARRE SUPÉRIEURE ─────────────────────────────────────────── */}
         <div
           style={{
             display: "flex",
@@ -895,7 +889,7 @@ function RemiseLingeInner() {
                   borderRadius: "12px",
                 }}
               >
-                Remise {remise.numeroLivraison}
+                {t('remise.delivery')} {remise.numeroLivraison}
               </Badge>
             )}
           </div>
@@ -916,7 +910,7 @@ function RemiseLingeInner() {
                 disabled={loading}
               >
                 <FaSpinner className={loading ? "animate-spin" : ""} size={10} />
-                Rafraîchir
+                {t('common.refresh')}
               </Button>
             )}
             <Button
@@ -933,12 +927,11 @@ function RemiseLingeInner() {
               }}
             >
               <FaTimes size={10} />
-              Reset
+              {t('common.reset')}
             </Button>
           </div>
         </div>
 
-        {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card
           style={{
             marginBottom: "20px",
@@ -963,7 +956,6 @@ function RemiseLingeInner() {
           </CardContent>
         </Card>
 
-        {/* ─── MESSAGES D'INFO ──────────────────────────────────────────── */}
         {!agentRemise && (
           <Card
             style={{
@@ -984,10 +976,10 @@ function RemiseLingeInner() {
               >
                 <FaExclamationTriangle color="#dc2626" size={16} />
                 <span style={{ fontWeight: 600, color: "#dc2626" }}>
-                  Aucun agent connecté
+                  {t('remise.no_agent_connected')}
                 </span>
                 <span style={{ color: "#64748b" }}>
-                  Veuillez vous connecter pour effectuer une remise
+                  {t('remise.no_agent_connect_text')}
                 </span>
               </div>
             </CardContent>
@@ -1014,9 +1006,9 @@ function RemiseLingeInner() {
               >
                 <FaUser color="#3b82f6" size={16} />
                 <span style={{ fontWeight: 600, color: "#1d4ed8" }}>
-                  Scannez l'agent de collecte
+                  {t('remise.scan_collection_agent_prompt')}
                 </span>
-                <span style={{ color: "#64748b" }}>pour créer la remise</span>
+                <span style={{ color: "#64748b" }}>{t('remise.to_create_delivery')}</span>
               </div>
             </CardContent>
           </Card>
@@ -1042,20 +1034,18 @@ function RemiseLingeInner() {
               >
                 <FaCheckCircle color="#22c55e" size={16} />
                 <span style={{ fontWeight: 600, color: "#15803d" }}>
-                  Prêt à livrer
+                  {t('remise.ready_to_deliver')}
                 </span>
                 <span style={{ color: "#64748b" }}>
-                  Scannez les linges à remettre
+                  {t('remise.scan_linens_to_deliver')}
                 </span>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* ─── TABLEAU DE BORD ──────────────────────────────────────────── */}
         {etape === "SCAN" && statut && (
           <>
-            {/* Bannière clôture */}
             {isCloturee && (
               <div
                 style={{
@@ -1097,18 +1087,16 @@ function RemiseLingeInner() {
                         margin: 0,
                       }}
                     >
-                      ✓ COLLECTE TERMINÉE
+                      ✓ {t('remise.collection_completed')}
                     </p>
                     <p style={{ fontSize: "14px", color: "#059669", margin: 0 }}>
-                      {statut.totalLivre || 0} / {statut.totalCollecte || 0} linges
-                      livrés · 100%
+                      {statut.totalLivre || 0} / {statut.totalCollecte || 0} {t('remise.linens_delivered')} · 100%
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Cartes de statut */}
             <div
               style={{
                 display: "grid",
@@ -1118,50 +1106,48 @@ function RemiseLingeInner() {
               }}
             >
               <StatutCard
-                label="Total collecté"
+                label={t('remise.total_collected')}
                 value={statut.totalCollecte || 0}
                 icon="📦"
                 color="#0ea5e9"
                 bg="#f0f9ff"
-                subValue="Linges dans la collecte"
+                subValue={t('remise.linens_in_collection')}
               />
               <StatutCard
-                label="Total livré"
+                label={t('remise.total_delivered')}
                 value={statut.totalLivre || 0}
                 icon="✅"
                 color="#059669"
                 bg="#f0fdf4"
-                subValue={`${statut.pourcentage || 0}% du total`}
+                subValue={`${statut.pourcentage || 0}% ${t('remise.of_total')}`}
               />
               <StatutCard
-                label="Reste à livrer"
+                label={t('remise.remaining')}
                 value={statut.totalRestant || 0}
                 icon="⏳"
                 color={statut.totalRestant === 0 ? "#059669" : "#d97706"}
                 bg={statut.totalRestant === 0 ? "#f0fdf4" : "#fffbeb"}
-                subValue={statut.totalRestant === 0 ? "✓ Terminé" : "En attente"}
+                subValue={statut.totalRestant === 0 ? `✓ ${t('remise.completed')}` : t('remise.pending')}
               />
               <StatutCard
-                label="Statut"
+                label={t('remise.status')}
                 value={statut.statut || "—"}
                 icon={statut.statut === "CLOTUREE" ? "🏁" : "🔄"}
                 color={statut.statut === "CLOTUREE" ? "#059669" : "#0ea5e9"}
                 bg={statut.statut === "CLOTUREE" ? "#f0fdf4" : "#f0f9ff"}
                 subValue={
                   statut.statut === "CLOTUREE"
-                    ? "Collecte clôturée"
-                    : "En cours"
+                    ? t('remise.collection_closed')
+                    : t('remise.in_progress')
                 }
               />
             </div>
 
-            {/* Barre de progression */}
             <ProgressionBar
               value={statut.pourcentage || 0}
-              label="Progression de la collecte"
+              label={t('remise.collection_progress')}
             />
 
-            {/* Détail par catégorie */}
             {statut.categories && statut.categories.length > 0 && (
               <div style={{ marginBottom: "20px" }}>
                 <div
@@ -1181,7 +1167,7 @@ function RemiseLingeInner() {
                       margin: 0,
                     }}
                   >
-                    Détail par catégorie
+                    {t('remise.category_details')}
                   </h3>
                   <Badge
                     style={{
@@ -1192,7 +1178,7 @@ function RemiseLingeInner() {
                       borderRadius: "12px",
                     }}
                   >
-                    {statut.categories.length} catégories
+                    {statut.categories.length} {t('remise.categories')}
                   </Badge>
                 </div>
                 <div>
@@ -1209,7 +1195,6 @@ function RemiseLingeInner() {
               </div>
             )}
 
-            {/* Historique */}
             <div>
               <button
                 onClick={() => setHistoriqueOuvert(!historiqueOuvert)}
@@ -1230,8 +1215,7 @@ function RemiseLingeInner() {
                 }}
               >
                 <FaHistory size={14} />
-                {historiqueOuvert ? "Masquer" : "Afficher"} l'historique des
-                remises
+                {historiqueOuvert ? t('remise.hide_history') : t('remise.show_history')}
                 <Badge
                   style={{
                     background: "#f1f5f9",
@@ -1265,7 +1249,7 @@ function RemiseLingeInner() {
                         fontSize: "13px",
                       }}
                     >
-                      Aucune remise pour cette collecte
+                      {t('remise.no_deliveries')}
                     </div>
                   ) : (
                     <div style={{ maxHeight: "200px", overflowY: "auto" }}>
@@ -1329,7 +1313,7 @@ function RemiseLingeInner() {
                                 color: "#94a3b8",
                               }}
                             >
-                              <span>{r.agentRemiseNom || "Agent"}</span>
+                              <span>{r.agentRemiseNom || t('remise.agent')}</span>
                               <span>{formatDate(r.dateRemise)}</span>
                               <span
                                 style={{
@@ -1337,7 +1321,7 @@ function RemiseLingeInner() {
                                   color: "#0f172a",
                                 }}
                               >
-                                {r.nbLinges || 0} linges
+                                {r.nbLinges || 0} {t('remise.linens')}
                               </span>
                             </div>
                           </div>

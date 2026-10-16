@@ -1,16 +1,13 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FaTimes, FaLayerGroup, FaThermometerHalf,
   FaTachometerAlt, FaSoap, FaCheck, FaEdit, FaBoxes
 } from "react-icons/fa";
 import { useLavage } from "../../contextes/LavageContext";
 
-/**
- * Dialog affichée après le scan d'un lot.
- * Montre le programme recommandé et permet une saisie manuelle.
- * Confirme l'ajout au chargement via confirmerAjoutLot().
- */
 export default function LotInfoDialog() {
+  const { t } = useTranslation();
   const { lotDialog, setLotDialog, confirmerAjoutLot } = useLavage();
   const [modeManuel, setModeManuel] = useState(false);
   const [prog, setProg] = useState({ nom: "", temperature: "", vitesse: "", duree: "" });
@@ -97,8 +94,8 @@ export default function LotInfoDialog() {
           background: "#f1f5f9", padding: "4px", borderRadius: "10px"
         }}>
           {[
-            { id: false, icon: <FaSoap size={12} />, label: "Programme suggéré" },
-            { id: true,  icon: <FaEdit size={12} />, label: "Saisie manuelle"   },
+            { id: false, icon: <FaSoap size={12} />, label: t('lot_dialog.suggested_program') },
+            { id: true,  icon: <FaEdit size={12} />, label: t('lot_dialog.manual_entry') },
           ].map(({ id, icon, label }) => (
             <button
               key={String(id)}
@@ -130,9 +127,9 @@ export default function LotInfoDialog() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "10px" }}>
               {[
-                { icon: <FaThermometerHalf />, label: "Température", val: `${lotInfo.temperature}°C`,  color: "#ef4444" },
-                { icon: <FaTachometerAlt />,   label: "Essorage",    val: `${lotInfo.vitesse} rpm`,    color: "#0ea5e9" },
-                { icon: <FaSoap />,            label: "Durée",       val: lotInfo.duree || "—",        color: "#7c3aed" },
+                { icon: <FaThermometerHalf />, label: t('lot_dialog.temperature'), val: `${lotInfo.temperature}°C`,  color: "#ef4444" },
+                { icon: <FaTachometerAlt />,   label: t('lot_dialog.spin_speed'),    val: `${lotInfo.vitesse} rpm`,    color: "#0ea5e9" },
+                { icon: <FaSoap />,            label: t('lot_dialog.duration'),       val: lotInfo.duree || "—",        color: "#7c3aed" },
               ].map(({ icon, label, val, color }) => (
                 <div key={label} style={{
                   background: "#f8fafc", borderRadius: "10px",
@@ -158,10 +155,10 @@ export default function LotInfoDialog() {
             marginBottom: "20px"
           }}>
             {[
-              { key: "nom",         label: "Nom du programme", placeholder: "ex: Coton 60°C", full: true  },
-              { key: "temperature", label: "Température (°C)", placeholder: "ex: 60",         full: false },
-              { key: "vitesse",     label: "Essorage (rpm)",   placeholder: "ex: 1200",       full: false },
-              { key: "duree",       label: "Durée (min)",      placeholder: "ex: 45",         full: false },
+              { key: "nom",         label: t('lot_dialog.program_name'), placeholder: t('lot_dialog.program_name_placeholder'), full: true  },
+              { key: "temperature", label: t('lot_dialog.temperature'), placeholder: t('lot_dialog.temperature_placeholder'), full: false },
+              { key: "vitesse",     label: t('lot_dialog.spin_speed'),   placeholder: t('lot_dialog.spin_speed_placeholder'), full: false },
+              { key: "duree",       label: t('lot_dialog.duration'),      placeholder: t('lot_dialog.duration_placeholder'), full: false },
             ].map(({ key, label, placeholder, full }) => (
               <div key={key} style={{ gridColumn: full ? "1 / -1" : "auto" }}>
                 <label style={{
@@ -194,7 +191,7 @@ export default function LotInfoDialog() {
               fontSize: "12px", fontWeight: 600, color: "#64748b",
               marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px"
             }}>
-              <FaBoxes size={11} /> {linges.length} linge(s) dans ce lot
+              <FaBoxes size={11} /> {linges.length} {t('lot_dialog.linens_in_lot')}
             </div>
             <div style={{ maxHeight: "110px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "3px" }}>
               {linges.map((l, i) => (
@@ -224,7 +221,7 @@ export default function LotInfoDialog() {
               color: "#64748b", fontWeight: 600, fontSize: "14px", cursor: "pointer"
             }}
           >
-            Annuler
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleConfirmer}
@@ -235,7 +232,7 @@ export default function LotInfoDialog() {
               display: "flex", alignItems: "center", justifyContent: "center", gap: "8px"
             }}
           >
-            <FaCheck size={13} /> Ajouter au chargement
+            <FaCheck size={13} /> {t('lot_dialog.add_to_load')}
           </button>
         </div>
       </div>

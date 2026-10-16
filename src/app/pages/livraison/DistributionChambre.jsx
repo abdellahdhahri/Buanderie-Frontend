@@ -1,11 +1,6 @@
 // pages/Distribution/DistributionChambre.js
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import {
-  FaUser, FaBed, FaRedo, FaSpinner, FaCheckDouble,
-  FaCheck, FaDoorOpen, FaCheckCircle, FaExclamationTriangle,
-  FaPlus, FaMinus, FaTrash, FaLayerGroup, FaClock,
-  FaCircle, FaDotCircle
-} from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import ScanInput from "../../components/utils/shared/ScanInput";
@@ -20,25 +15,246 @@ import {
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import "../Linge/WorkflowList.css";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import MuteButton from "../../components/utils/MuteButton";
+import { useVoiceGuide } from "../../hooks/useVoiceGuide";
+import { getSetting } from "../../utils/appSettings";
+import { BedTile, BedGraphic, LegendeLits } from "../collage/components/ChambreLits";
 
+
+
+
+const Icons = {
+  /* ─── Utilisateur / Agent ─── */
+  User: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  ),
+
+  /* ─── Lit ─── */
+  Bed: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 4v16" />
+      <path d="M2 8h18a2 2 0 0 1 2 2v10" />
+      <path d="M2 17h20" />
+      <path d="M6 8v9" />
+    </svg>
+  ),
+
+  /* ─── Porte / Chambre ─── */
+  DoorOpen: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 4h3a2 2 0 0 1 2 2v14" />
+      <path d="M2 20h3" />
+      <path d="M13 20h9" />
+      <path d="M10 12v.01" />
+      <path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.562Z" />
+    </svg>
+  ),
+
+  /* ─── Check ─── */
+  Check: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  ),
+
+  /* ─── Check double ─── */
+  CheckCheck: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 7 17l-5-5" />
+      <path d="m22 10-7.5 7.5L13 16" />
+    </svg>
+  ),
+
+  /* ─── Check circle ─── */
+  CheckCircle: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  ),
+
+  /* ─── Alert triangle ─── */
+  AlertTriangle: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </svg>
+  ),
+
+  /* ─── X ─── */
+  X: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  ),
+
+  /* ─── Refresh / Reset ─── */
+  Refresh: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+      <path d="M3 21v-5h5" />
+    </svg>
+  ),
+
+  /* ─── Loader ─── */
+  Loader: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  ),
+
+  /* ─── Package ─── */
+  Package: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16.5 9.4 7.55 4.24" />
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+      <path d="m3.3 7 8.7 5 8.7-5" />
+      <path d="M12 22V12" />
+    </svg>
+  ),
+
+  /* ─── Layers ─── */
+  Layers: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
+      <path d="m22 12.18-9.17 4.16a2 2 0 0 1-1.66 0L2 12.18" />
+      <path d="m22 17.18-9.17 4.16a2 2 0 0 1-1.66 0L2 17.18" />
+    </svg>
+  ),
+
+  /* ─── Activity ─── */
+  Activity: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
+    </svg>
+  ),
+
+  /* ─── Plus ─── */
+  Plus: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </svg>
+  ),
+
+  /* ─── Minus ─── */
+  Minus: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14" />
+    </svg>
+  ),
+
+  /* ─── Trash ─── */
+  Trash: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  ),
+
+  /* ─── Clock ─── */
+  Clock: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </svg>
+  ),
+
+  /* ─── Circle (empty) ─── */
+  Circle: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+    </svg>
+  ),
+
+  /* ─── Circle filled ─── */
+  CircleDot: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="4" fill={color} />
+    </svg>
+  ),
+
+  /* ─── Info ─── */
+  Info: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4" />
+      <path d="M12 8h.01" />
+    </svg>
+  ),
+
+  /* ─── Sparkles ─── */
+  Sparkles: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+    </svg>
+  ),
+};
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ScanStatus — Barre de statut premium
+   ═══════════════════════════════════════════════════════════════════════════ */
 function ScanStatus({ loading, success, error, code }) {
+  const { t } = useTranslation();
+
   if (loading) {
     return (
       <div style={{
-        padding: "14px 18px",
-        borderRadius: "12px",
-        background: "#eff6ff",
+        padding: "14px 18px", borderRadius: 12,
+        background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
         border: "1px solid #93c5fd",
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        marginTop: "12px",
-        animation: "fadeIn 0.3s ease-out"
+        display: "flex", alignItems: "center", gap: 14, marginTop: 12,
+        boxShadow: "0 4px 12px rgba(59,130,246,0.08)",
+        animation: "fadeIn 0.3s ease-out",
       }}>
-        <FaSpinner className="animate-spin" color="#3b82f6" size={22} />
+        <div style={{
+          width: 40, height: 40, borderRadius: "50%",
+          background: "white", display: "flex",
+          alignItems: "center", justifyContent: "center",
+          boxShadow: "0 2px 8px rgba(59,130,246,0.15)",
+        }}>
+          <div className="animate-spin">
+            <Icons.Loader size={20} color="#3b82f6" strokeWidth={2.5} />
+          </div>
+        </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "14px", margin: 0 }}>Scan en cours...</p>
-          <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{code}</p>
+          <p style={{ fontWeight: 700, color: "#1d4ed8", fontSize: 14, margin: 0 }}>
+            {t('distribution_chambre.scanning')}
+          </p>
+          <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0 0" }}>{code}</p>
         </div>
       </div>
     );
@@ -47,30 +263,26 @@ function ScanStatus({ loading, success, error, code }) {
   if (success) {
     return (
       <div style={{
-        padding: "14px 18px",
-        borderRadius: "12px",
-        background: "#f0fdf4",
+        padding: "14px 18px", borderRadius: 12,
+        background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
         border: "1px solid #86efac",
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        marginTop: "12px",
-        animation: "fadeIn 0.3s ease-out"
+        display: "flex", alignItems: "center", gap: 14, marginTop: 12,
+        boxShadow: "0 4px 12px rgba(34,197,94,0.08)",
+        animation: "fadeIn 0.3s ease-out",
       }}>
         <div style={{
-          width: "36px",
-          height: "36px",
-          borderRadius: "50%",
-          background: "#dcfce7",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
+          width: 40, height: 40, borderRadius: "50%",
+          background: "white", display: "flex",
+          alignItems: "center", justifyContent: "center",
+          boxShadow: "0 2px 8px rgba(34,197,94,0.15)",
         }}>
-          <FaCheckCircle color="#22c55e" size={20} />
+          <Icons.CheckCircle size={20} color="#22c55e" strokeWidth={2.5} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "14px", margin: 0 }}>✓ {success.message || "Succès"}</p>
-          <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{success.detail}</p>
+          <p style={{ fontWeight: 700, color: "#15803d", fontSize: 14, margin: 0 }}>
+            {success.message || t('common.success')}
+          </p>
+          <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0 0" }}>{success.detail}</p>
         </div>
       </div>
     );
@@ -79,30 +291,26 @@ function ScanStatus({ loading, success, error, code }) {
   if (error) {
     return (
       <div style={{
-        padding: "14px 18px",
-        borderRadius: "12px",
-        background: "#fef2f2",
+        padding: "14px 18px", borderRadius: 12,
+        background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
         border: "1px solid #fca5a5",
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        marginTop: "12px",
-        animation: "fadeIn 0.3s ease-out"
+        display: "flex", alignItems: "center", gap: 14, marginTop: 12,
+        boxShadow: "0 4px 12px rgba(239,68,68,0.08)",
+        animation: "fadeIn 0.3s ease-out",
       }}>
         <div style={{
-          width: "36px",
-          height: "36px",
-          borderRadius: "50%",
-          background: "#fee2e2",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
+          width: 40, height: 40, borderRadius: "50%",
+          background: "white", display: "flex",
+          alignItems: "center", justifyContent: "center",
+          boxShadow: "0 2px 8px rgba(239,68,68,0.15)",
         }}>
-          <FaExclamationTriangle color="#ef4444" size={18} />
+          <Icons.AlertTriangle size={20} color="#ef4444" strokeWidth={2.5} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "14px", margin: 0 }}>Erreur</p>
-          <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{error}</p>
+          <p style={{ fontWeight: 700, color: "#dc2626", fontSize: 14, margin: 0 }}>
+            {t('common.error')}
+          </p>
+          <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0 0" }}>{error}</p>
         </div>
       </div>
     );
@@ -111,39 +319,62 @@ function ScanStatus({ loading, success, error, code }) {
   return null;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   StatutCard — Carte statistique premium avec SVG
+   ═══════════════════════════════════════════════════════════════════════════ */
 function StatutCard({ label, value, icon, color, bg, subValue }) {
   return (
-    <div style={{
-      padding: "16px 18px",
-      borderRadius: "14px",
-      background: bg,
-      border: `1px solid ${color}25`,
-      flex: 1,
-      minWidth: "100px",
-      transition: "all 0.2s ease"
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+    <div
+      style={{
+        padding: "16px 18px", borderRadius: 16, background: bg,
+        border: `1.5px solid ${color}25`,
+        flex: 1, minWidth: 120, position: "relative", overflow: "hidden",
+        transition: "all 0.25s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-3px)";
+        e.currentTarget.style.boxShadow = `0 10px 24px ${color}22`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "none";
+      }}
+    >
+      <div style={{
+        position: "absolute", top: -20, right: -20,
+        width: 70, height: 70, borderRadius: "50%",
+        background: `${color}12`, filter: "blur(20px)",
+      }} />
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, position: "relative" }}>
         <div style={{
-          width: "40px",
-          height: "40px",
-          borderRadius: "12px",
-          background: `${color}15`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "20px"
+          width: 42, height: 42, borderRadius: 12,
+          background: `${color}15`, display: "flex",
+          alignItems: "center", justifyContent: "center",
+          border: `1px solid ${color}25`,
         }}>
           {icon}
         </div>
+
         <div>
-          <p style={{ fontSize: "10px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px", margin: 0 }}>
+          <p style={{
+            fontSize: 9.5, fontWeight: 800, color: "#94a3b8",
+            textTransform: "uppercase", letterSpacing: "0.7px",
+            margin: 0,
+          }}>
             {label}
           </p>
-          <p style={{ fontSize: "24px", fontWeight: 700, color: color, margin: 0, lineHeight: 1.2 }}>
+          <p style={{
+            fontSize: 24, fontWeight: 800, color,
+            margin: 0, lineHeight: 1.1, letterSpacing: "-0.02em",
+          }}>
             {value}
           </p>
           {subValue && (
-            <p style={{ fontSize: "10px", color: "#94a3b8", margin: 0 }}>{subValue}</p>
+            <p style={{ fontSize: 10, color: "#94a3b8", margin: 0, fontWeight: 600 }}>
+              {subValue}
+            </p>
           )}
         </div>
       </div>
@@ -151,170 +382,59 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
   );
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CarteLit — lit en SVG, même rendu que la collecte chambre
+   ═══════════════════════════════════════════════════════════════════════════ */
+const TONS_DISTRIBUTION = {
+  EQUIPE:  { main: "#15803D", soft: "#DCFCE7" },
+  INFECTE: { main: "#DC2626", soft: "#FEE2E2" },
+  A_EQUIPER: { main: "#0D9488", soft: "#F0FDFA" },
+};
+
 function CarteLit({ lit, actif, onClick }) {
+  const { t } = useTranslation();
+
   const complet = !lit.litVide;
   const infecte = lit.estInfecte;
   const nb = lit.lingesPoses?.length || 0;
-  
-  const statusConfig = complet 
-    ? { label: "Complété", color: "#10b981", bg: "#dcfce7", icon: "✅" }
-    : infecte 
-      ? { label: "Infecté", color: "#dc2626", bg: "#fee2e2", icon: "⚠️" }
-      : nb > 0 
-        ? { label: "En cours", color: "#7c3aed", bg: "#ede9fe", icon: "●" }
-        : { label: "Vide", color: "#94a3b8", bg: "#f1f5f9", icon: "○" };
+
+  const tone = complet
+    ? { ...TONS_DISTRIBUTION.EQUIPE, label: t('distribution_chambre.completed') }
+    : infecte
+      ? { ...TONS_DISTRIBUTION.INFECTE, label: t('distribution_chambre.infected') }
+      : { ...TONS_DISTRIBUTION.A_EQUIPER, label: t('distribution_chambre.empty') };
 
   return (
-    <motion.div
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+    <BedTile
+      tone={tone}
+      code={lit.codeLit}
+      meta={nb > 0
+        ? `${nb} ${t('distribution_chambre.linen')}${nb > 1 ? 's' : ''} ${t('distribution_chambre.distributed').toLowerCase()}`
+        : t('distribution_chambre.no_linen_placed')}
+      pill={actif ? t('distribution_chambre.in_progress') : tone.label}
+      active={actif}
+      flag={infecte && !complet}
       onClick={onClick}
-      style={{
-        borderRadius: "16px",
-        cursor: "pointer",
-        background: actif ? "white" : "white",
-        border: `2px solid ${actif ? "#7c3aed" : complet ? "#10b981" : infecte ? "#dc2626" : "#e2e8f0"}`,
-        boxShadow: actif 
-          ? "0 0 0 4px rgba(124, 58, 237, 0.15), 0 8px 24px rgba(124, 58, 237, 0.12)" 
-          : complet 
-            ? "0 2px 8px rgba(16, 185, 129, 0.1)" 
-            : "0 2px 8px rgba(0,0,0,0.04)",
-        transition: "all 0.3s ease",
-        position: "relative",
-        overflow: "hidden"
-      }}
     >
-      <div style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        height: "3px",
-        background: actif ? "#7c3aed" : complet ? "#10b981" : infecte ? "#dc2626" : "#e2e8f0",
-        opacity: actif ? 1 : 0.5
-      }} />
-
-      <div style={{
-        padding: "16px 18px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "12px",
-            background: actif ? "#ede9fe" : complet ? "#dcfce7" : infecte ? "#fee2e2" : "#f8fafc",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "18px",
-            transition: "all 0.3s"
-          }}>
-            <FaBed color={actif ? "#7c3aed" : complet ? "#10b981" : infecte ? "#dc2626" : "#94a3b8"} size={16} />
-          </div>
-          <div>
-            <div style={{
-              fontWeight: 700,
-              fontSize: "16px",
-              color: "#0f172a",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
-            }}>
-              Lit {lit.codeLit}
-              <span style={{
-                fontSize: "10px",
-                fontWeight: 600,
-                color: statusConfig.color,
-                background: statusConfig.bg,
-                padding: "2px 10px",
-                borderRadius: "12px"
-              }}>
-                {statusConfig.icon} {statusConfig.label}
-              </span>
-            </div>
-            <div style={{
-              fontSize: "12px",
-              color: "#94a3b8",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              marginTop: "2px"
-            }}>
-              <span>{nb} linge{nb > 1 ? 's' : ''}</span>
-              {nb > 0 && (
-                <>
-                  <span style={{ width: "3px", height: "3px", borderRadius: "50%", background: "#d1d5db" }} />
-                  <span>{lit.lingesPoses?.map(l => l.categorie).join(", ")}</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {actif && (
-          <div style={{
-            padding: "4px 12px",
-            borderRadius: "20px",
-            background: "#ede9fe",
-            color: "#7c3aed",
-            fontSize: "10px",
-            fontWeight: 700
-          }}>
-            ● En cours
-          </div>
-        )}
-      </div>
-
-      {nb > 0 && (
-        <div style={{
-          padding: "0 18px 16px",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "6px"
-        }}>
-          {lit.lingesPoses.map((l, i) => {
-            const c = getCategorie(l.categorie);
-            return (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 10px",
-                  borderRadius: "8px",
-                  background: `${c.color}12`,
-                  border: `1px solid ${c.color}25`,
-                  fontSize: "11px",
-                  fontWeight: 500,
-                  color: c.color
-                }}
-              >
-                <span style={{ fontSize: "14px" }}>{c.emoji}</span>
-                {l.categorie}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {nb === 0 && !complet && !infecte && (
-        <div style={{
-          padding: "0 18px 16px",
-          fontSize: "12px",
-          color: "#94a3b8",
-          fontStyle: "italic"
-        }}>
-          Aucun linge posé
-        </div>
-      )}
-    </motion.div>
+      <BedGraphic
+        tone={tone}
+        filled={complet}
+        center={nb > 0 ? "count" : complet ? "check" : "dash"}
+        count={nb}
+        active={actif}
+      />
+    </BedTile>
   );
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Resume — Écran de fin premium avec SVG
+   ═══════════════════════════════════════════════════════════════════════════ */
 function Resume({ res, onNouvelle, onTerminer }) {
+  const { t } = useTranslation();
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -322,128 +442,130 @@ function Resume({ res, onNouvelle, onTerminer }) {
       transition={{ duration: 0.3 }}
       style={{
         background: "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
-        borderRadius: "20px",
-        padding: "36px",
+        borderRadius: 24, padding: 40,
         border: "2px solid #86efac",
-        boxShadow: "0 8px 32px rgba(16, 185, 129, 0.12)"
+        boxShadow: "0 12px 40px rgba(16, 185, 129, 0.15)",
       }}
     >
-      <div style={{ textAlign: "center", marginBottom: "24px" }}>
-        <div style={{
-          width: "64px",
-          height: "64px",
-          borderRadius: "50%",
-          background: "#dcfce7",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          margin: "0 auto 12px",
-          fontSize: "32px"
-        }}>
-          ✅
-        </div>
+      <div style={{ textAlign: "center", marginBottom: 28 }}>
+        <motion.div
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+          style={{
+            width: 72, height: 72, borderRadius: "50%",
+            background: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 16px",
+            boxShadow: "0 8px 24px rgba(16,185,129,0.2)",
+            border: "2px solid #86efac",
+          }}
+        >
+          <Icons.CheckCheck size={34} color="#15803d" strokeWidth={2.5} />
+        </motion.div>
         <h2 style={{
-          fontSize: "24px",
-          fontWeight: 800,
-          color: "#15803d",
-          margin: 0
+          fontSize: 26, fontWeight: 800, color: "#15803d",
+          margin: 0, letterSpacing: "-0.02em",
         }}>
-          Chambre {res.codeChambre} équipée
+          {t('distribution_chambre.room_equipped', { code: res.codeChambre })}
         </h2>
-        <p style={{
-          fontSize: "14px",
-          color: "#64748b",
-          marginTop: "4px"
-        }}>
-          {res.nbLinges} linge{res.nbLinges > 1 ? "s" : ""} distribué{res.nbLinges > 1 ? "s" : ""} 
-          sur {res.nbLits} lit{res.nbLits > 1 ? "s" : ""}
+        <p style={{ fontSize: 14, color: "#64748b", marginTop: 6, fontWeight: 500 }}>
+          {res.nbLinges} {t('distribution_chambre.linen')}{res.nbLinges > 1 ? 's' : ''} {t('distribution_chambre.distributed_on')} {res.nbLits} {t('distribution_chambre.bed')}{res.nbLits > 1 ? 's' : ''}
         </p>
       </div>
 
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-        gap: "12px",
-        marginBottom: "24px"
+        gap: 12, marginBottom: 28,
       }}>
         {res.litsEquipes?.map((l, i) => (
-          <div key={i} style={{
-            background: "white",
-            borderRadius: "12px",
-            padding: "14px 16px",
-            border: "1px solid #bbf7d0",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px"
-          }}>
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 + i * 0.05 }}
+            style={{
+              background: "white", borderRadius: 14,
+              padding: "14px 16px",
+              border: "1px solid #bbf7d0",
+              display: "flex", alignItems: "center", gap: 12,
+              boxShadow: "0 2px 8px rgba(16,185,129,0.08)",
+            }}
+          >
             <div style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "8px",
-              background: "#dcfce7",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#15803d"
+              width: 36, height: 36, borderRadius: 10,
+              background: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#15803d", border: "1px solid #86efac",
             }}>
-              <FaBed size={14} />
+              <Icons.Bed size={16} color="#15803d" strokeWidth={2.2} />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: "13px", color: "#0f172a" }}>
-                Lit {l.codeLit}
+              <div style={{ fontWeight: 800, fontSize: 13, color: "#0f172a", letterSpacing: "-0.01em" }}>
+                {t('distribution_chambre.bed')} {l.codeLit}
               </div>
-              <div style={{ fontSize: "11px", color: "#64748b" }}>
-                {l.nb} linge{l.nb > 1 ? "s" : ""}
+              <div style={{ fontSize: 11, color: "#64748b", fontWeight: 500 }}>
+                {l.nb} {t('distribution_chambre.linen')}{l.nb > 1 ? 's' : ''}
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+      <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
         <button
           onClick={onNouvelle}
           style={{
-            padding: "12px 28px",
-            borderRadius: "12px",
-            border: "none",
+            padding: "13px 30px", borderRadius: 12, border: "none",
             background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-            color: "white",
-            fontWeight: 700,
-            fontSize: "14px",
-            cursor: "pointer",
-            transition: "all 0.2s",
-            boxShadow: "0 4px 16px rgba(124, 58, 237, 0.25)"
+            color: "white", fontWeight: 800, fontSize: 14, cursor: "pointer",
+            transition: "all 0.2s", boxShadow: "0 6px 20px rgba(124, 58, 237, 0.3)",
+            display: "inline-flex", alignItems: "center", gap: 8,
           }}
-          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.03)"}
-          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = "0 10px 28px rgba(124, 58, 237, 0.4)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 6px 20px rgba(124, 58, 237, 0.3)";
+          }}
         >
-          Autre chambre
+          <Icons.Plus size={15} color="white" strokeWidth={2.5} />
+          {t('distribution_chambre.another_room')}
         </button>
         <button
           onClick={onTerminer}
           style={{
-            padding: "12px 28px",
-            borderRadius: "12px",
-            border: "1px solid #e2e8f0",
-            background: "white",
-            color: "#64748b",
-            fontWeight: 600,
-            fontSize: "14px",
-            cursor: "pointer",
-            transition: "all 0.2s"
+            padding: "13px 30px", borderRadius: 12,
+            border: "1px solid #e2e8f0", background: "white",
+            color: "#64748b", fontWeight: 700, fontSize: 14, cursor: "pointer",
+            transition: "all 0.2s",
           }}
-          onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
-          onMouseLeave={e => e.currentTarget.style.background = "white"}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#f8fafc";
+            e.currentTarget.style.borderColor = "#cbd5e1";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "white";
+            e.currentTarget.style.borderColor = "#e2e8f0";
+          }}
         >
-          Terminer
+          {t('common.finish')}
         </button>
       </div>
     </motion.div>
   );
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPOSANT PRINCIPAL — Logique 100% préservée
+   ═══════════════════════════════════════════════════════════════════════════ */
 export default function DistributionChambre() {
+  const { t } = useTranslation();
+
   const [etape, setEtape] = useState("CHAMBRE");
   const [agent, setAgent] = useState(null);
   const [chambre, setChambre] = useState(null);
@@ -453,6 +575,13 @@ export default function DistributionChambre() {
   const [resume, setResume] = useState(null);
   const [poses, setPoses] = useState([]);
   const [scanStatus, setScanStatus] = useState(null);
+
+  // Assistant vocal (même fonctionnement que la collecte chambre)
+  const [voiceLang, setVoiceLang] = useState(() => getSetting("voice.lang"));
+  const voice = useVoiceGuide(voiceLang);
+  const voiceRef = useRef(voice);
+  useEffect(() => { voiceRef.current = voice; }, [voice]);
+  useEffect(() => () => voiceRef.current.cancel(), []);
 
   const agentRef = useRef(null);
   const chambreRef = useRef(null);
@@ -471,21 +600,22 @@ export default function DistributionChambre() {
       setScanStatus({
         loading: false,
         success: {
-          message: `👤 Agent ${agentData.nom}`,
-          detail: `Connecté · ${agentData.codeBarre || agentData.matricule}`
+          message: `${t('distribution_chambre.agent')} ${agentData.nom}`,
+          detail: `${t('distribution_chambre.connected')} · ${agentData.codeBarre || agentData.matricule}`
         },
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
+      setTimeout(() => voiceRef.current.sayBienvenueDistribution(agentData.nomPrenom || agentData.nom || ""), 600);
     } else {
       setEtape("CHAMBRE");
       setScanStatus({
         loading: false,
         success: null,
-        error: "Aucun agent connecté — veuillez vous reconnecter"
+        error: t('distribution_chambre.no_agent_connected')
       });
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const keepFocus = () => {
@@ -500,10 +630,11 @@ export default function DistributionChambre() {
 
   const cloturerDistribution = useCallback(async () => {
     if (poses.length === 0) {
+      voice.sayAucunLingeDistribue();
       await Swal.fire({
         icon: 'warning',
-        title: '⚠️ Aucun linge distribué',
-        text: 'Posez au moins un linge avant de terminer.',
+        title: t('distribution_chambre.no_linen_distributed_title'),
+        text: t('distribution_chambre.no_linen_distributed_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -512,13 +643,16 @@ export default function DistributionChambre() {
 
     const result = await Swal.fire({
       icon: 'question',
-      title: 'Terminer la distribution ?',
-      text: `${poses.reduce((s, p) => s + p.nb, 0)} linge(s) distribués sur ${poses.length} lit(s)`,
+      title: t('distribution_chambre.finish_distribution_title'),
+      text: t('distribution_chambre.finish_distribution_text', {
+        count: poses.reduce((s, p) => s + p.nb, 0),
+        beds: poses.length
+      }),
       showCancelButton: true,
       confirmButtonColor: '#0d9488',
       cancelButtonColor: '#64748b',
-      confirmButtonText: 'Oui, terminer',
-      cancelButtonText: 'Annuler'
+      confirmButtonText: t('distribution_chambre.yes_finish'),
+      cancelButtonText: t('common.cancel')
     });
 
     if (!result.isConfirmed) return false;
@@ -532,15 +666,16 @@ export default function DistributionChambre() {
     });
     setEtape("RESUME");
     setLitActif(null);
+    voice.sayDistributionTerminee(chambre.codeChambre, nbTotal, poses.length);
     return true;
-  }, [poses, chambre]);
+  }, [poses, chambre, t, voice]);
 
   const handleChambre = useCallback(async code => {
     if (!agent) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Agent non connecté',
-        text: 'Veuillez vous reconnecter.',
+        title: t('distribution_chambre.agent_not_connected_title'),
+        text: t('distribution_chambre.agent_not_connected_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -550,7 +685,7 @@ export default function DistributionChambre() {
     setScanStatus({ loading: true, code });
     try {
       const res = await fetchChambre(code);
-      
+
       setChambre({
         chambreId: res.chambreId,
         codeChambre: res.codeChambre,
@@ -562,35 +697,45 @@ export default function DistributionChambre() {
       setEtape("DISTRIBUER");
       setScanStatus({
         loading: false,
-        success: { message: `✅ Chambre ${res.codeChambre}`, detail: `${res.lits?.length} lit(s) · ${res.disponibles?.length || 0} linge(s)` },
+        success: {
+          message: `${t('distribution_chambre.room')} ${res.codeChambre}`,
+          detail: `${res.lits?.length} ${t('distribution_chambre.bed')}s · ${res.disponibles?.length || 0} ${t('distribution_chambre.linen')}s`
+        },
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
+      const nbDisponibles = res.disponibles?.length || 0;
+      if (nbDisponibles === 0) voice.sayChambreDistributionVide(res.codeChambre);
+      else voice.sayChambreDistribution(res.codeChambre, res.lits?.length || 0, nbDisponibles);
       await Swal.fire({
         icon: 'success',
-        title: `✅ Chambre ${res.codeChambre}`,
-        text: `${res.lits?.length} lit(s) · ${res.disponibles?.length || 0} linge(s) disponibles`,
+        title: `${t('distribution_chambre.room')} ${res.codeChambre}`,
+        text: `${res.lits?.length} ${t('distribution_chambre.bed')}s · ${res.disponibles?.length || 0} ${t('distribution_chambre.linen')}s ${t('distribution_chambre.available')}`,
         timer: 1500,
         showConfirmButton: false
       });
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
+      if (/réseau|network|fetch/i.test(e.message || "")) voice.sayErreurReseau();
+      else voice.sayChambreErreur();
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
+        title: t('common.error'),
         text: e.message
       });
     } finally {
       setLoading(false);
     }
-  }, [agent]);
+  }, [agent, t, voice]);
 
   const handleScanLinge = useCallback(async code => {
     const lit = litRef.current;
     if (!lit) {
+      voice.sayChoisirLit();
       await Swal.fire({
         icon: 'warning',
-        title: '🛏️ Sélectionnez d\'abord un lit',
+        title: t('distribution_chambre.select_bed_first_title'),
+        text: t('distribution_chambre.select_bed_first_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -601,7 +746,7 @@ export default function DistributionChambre() {
     try {
       const c = chambreRef.current;
       const res = await poserLinge(c.chambreId, lit.litId, code);
-      
+
       const linge = c.disponibles.find(l => l.codeBarre === code || l.lingeId === res.lingeId)
         || { lingeId: res.lingeId, codeBarre: res.codeBarre, categorie: res.categorie };
 
@@ -623,15 +768,24 @@ export default function DistributionChambre() {
 
       setScanStatus({
         loading: false,
-        success: { message: "✓ Linge posé", detail: `Lit ${lit.codeLit}` },
+        success: {
+          message: t('distribution_chambre.linen_placed'),
+          detail: `${t('distribution_chambre.bed')} ${lit.codeLit}`
+        },
         error: null
       });
       setTimeout(() => setScanStatus(null), 1500);
+
+      const restants = c.disponibles.filter(l => l.lingeId !== linge.lingeId).length;
+      const nbSurLit = (c.lits.find(l => l.litId === lit.litId)?.lingesPoses?.length || 0) + 1;
+      if (restants === 0) voice.sayTousLingesPoses();
+      else voice.sayLingePose(lit.codeLit, nbSurLit);
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
+      voice.sayErreurGenerique(e.message);
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
+        title: t('common.error'),
         text: e.message,
         timer: 1500,
         showConfirmButton: false
@@ -639,7 +793,7 @@ export default function DistributionChambre() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t, voice]);
 
   const handleScan = useCallback(async code => {
     if (!code || loading) return;
@@ -651,15 +805,13 @@ export default function DistributionChambre() {
     }
 
     if (etape === "DISTRIBUER") {
-      try {
-        const agentTrouve = await fetchAgentByCode(code.trim());
-        if (agentTrouve) {
-          await cloturerDistribution();
-          return;
-        }
-      } catch (e) {}
-      
-      await handleScanLinge(code);
+      const ag = agentRef.current;
+      const c = code.trim();
+      if (ag && (c === ag.codeBarre || c === ag.matricule)) {
+        await cloturerDistribution();
+        return;
+      }
+      await handleScanLinge(c);
     }
   }, [etape, loading, handleChambre, handleScanLinge, cloturerDistribution]);
 
@@ -667,13 +819,13 @@ export default function DistributionChambre() {
     if (etape !== "CHAMBRE" && etape !== "RESUME") {
       const result = await Swal.fire({
         icon: 'warning',
-        title: 'Réinitialiser',
-        text: 'La distribution en cours sera abandonnée.',
+        title: t('distribution_chambre.reset_title'),
+        text: t('distribution_chambre.reset_text'),
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
         cancelButtonColor: '#64748b',
-        confirmButtonText: 'Oui, réinitialiser',
-        cancelButtonText: 'Annuler'
+        confirmButtonText: t('distribution_chambre.yes_reset'),
+        cancelButtonText: t('common.cancel')
       });
       if (!result.isConfirmed) return;
     }
@@ -684,14 +836,14 @@ export default function DistributionChambre() {
     setEtape("CHAMBRE");
     setScanVal("");
     setScanStatus(null);
-  }, [etape]);
+  }, [etape, t]);
 
   const getPlaceholder = () => {
-    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
-    if (etape === "CHAMBRE") return "🚪 Scanner le code chambre...";
-    if (etape === "RESUME") return "✅ Distribution terminée";
-    if (litActif) return `🏷️ Scanner un linge → Lit ${litActif.codeLit}`;
-    return "🛏️ Cliquez sur un lit pour le sélectionner";
+    if (!agent) return t('distribution_chambre.agent_not_connected_placeholder');
+    if (etape === "CHAMBRE") return t('distribution_chambre.scan_room_code');
+    if (etape === "RESUME") return t('distribution_chambre.distribution_completed');
+    if (litActif) return t('distribution_chambre.scan_linen_to_bed', { code: litActif.codeLit });
+    return t('distribution_chambre.select_bed_hint');
   };
 
   const getBorderColor = () => {
@@ -711,123 +863,126 @@ export default function DistributionChambre() {
 
   return (
     <div className="collecte-container">
-      <div style={{ marginBottom: "32px" }}>
+      {/* ═══ Header premium ═══ */}
+      <div style={{
+        marginBottom: 32, display: "flex", alignItems: "center",
+        justifyContent: "space-between", flexWrap: "wrap", gap: 12,
+      }}>
         <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-          marginBottom: "8px"
+          display: "flex", alignItems: "center",
+          gap: 16,
         }}>
-          <div style={{
-            width: "56px",
-            height: "56px",
-            borderRadius: "18px",
-            background: "linear-gradient(135deg, #0d9488, #0f766e)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            boxShadow: "0 6px 20px rgba(13, 148, 136, 0.3)"
-          }}>
-            <FaBed size={26} />
-          </div>
+          <PageHeaderIcon size={60} />
           <div>
             <h1 style={{
-              fontSize: "28px",
-              fontWeight: 800,
-              color: "#0f172a",
-              margin: 0
+              fontSize: 28, fontWeight: 800, color: "#0f172a",
+              margin: 0, letterSpacing: "-0.025em",
             }}>
-              Distribution — Chambre
+              {t('distribution_chambre.title')}
             </h1>
             <p style={{
-              fontSize: "14px",
-              color: "#64748b",
-              margin: "2px 0 0 0"
+              fontSize: 13.5, color: "#64748b",
+              margin: "4px 0 0 0", fontWeight: 500,
+              display: "flex", alignItems: "center", gap: 7,
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
+              {agent ? (
+                <>
+                  <Icons.User size={13} color="#0d9488" strokeWidth={2.2} />
+                  {`${t('distribution_chambre.agent')}: ${agent.nom}`}
+                </>
+              ) : (
+                t('distribution_chambre.no_agent_connected')
+              )}
             </p>
           </div>
         </div>
+
+        <MuteButton
+          muted={voice.muted}
+          onToggle={voice.toggleMute}
+          speaking={voice.speaking}
+          lang={voiceLang}
+          onLangChange={setVoiceLang}
+        />
       </div>
 
       <div style={{
-        background: "white",
-        borderRadius: "20px",
-        padding: "32px",
+        background: "white", borderRadius: 24, padding: 32,
         border: "1px solid #e2e8f0",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.06)"
+        boxShadow: "0 12px 40px rgba(15,23,42,0.06)",
       }}>
 
+        {/* ═══ Barre agent + chambre ═══ */}
         <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-          flexWrap: "wrap",
-          gap: "12px"
+          display: "flex", justifyContent: "space-between",
+          alignItems: "center", marginBottom: 20,
+          flexWrap: "wrap", gap: 12,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             {agent && (
               <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "8px 18px",
-                background: "#faf5ff",
-                borderRadius: "12px",
-                border: "1px solid #e9d5ff"
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "9px 18px", background: "#faf5ff",
+                borderRadius: 12, border: "1px solid #e9d5ff",
               }}>
-                <FaUser color="#7c3aed" size={16} />
-                <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: "14px" }}>{agent.nom}</span>
-                <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
+                <Icons.User size={15} color="#7c3aed" strokeWidth={2.2} />
+                <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: 14 }}>
+                  {agent.nom}
+                </span>
+                <Badge style={{
+                  background: "#ede9fe", color: "#7c3aed",
+                  fontSize: 10, padding: "2px 10px", borderRadius: 12,
+                  fontWeight: 700,
+                }}>
                   {agent.codeBarre || agent.matricule}
                 </Badge>
               </div>
             )}
             {chambre && (
               <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "8px 18px",
-                background: "#f0fdfa",
-                borderRadius: "12px",
-                border: "1px solid #99f6e4"
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "9px 18px", background: "#f0fdfa",
+                borderRadius: 12, border: "1px solid #99f6e4",
               }}>
-                <FaDoorOpen color="#0d9488" size={16} />
-                <span style={{ fontWeight: 700, color: "#0d9488", fontSize: "14px" }}>Chambre {chambre.codeChambre}</span>
-                <Badge style={{ background: "#ccfbf1", color: "#0d9488", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {chambre.lits?.length || 0} lits
+                <Icons.DoorOpen size={15} color="#0d9488" strokeWidth={2.2} />
+                <span style={{ fontWeight: 700, color: "#0d9488", fontSize: 14 }}>
+                  {t('distribution_chambre.room')} {chambre.codeChambre}
+                </span>
+                <Badge style={{
+                  background: "#ccfbf1", color: "#0d9488",
+                  fontSize: 10, padding: "2px 10px", borderRadius: 12,
+                  fontWeight: 700,
+                }}>
+                  {chambre.lits?.length || 0} {t('distribution_chambre.bed')}s
                 </Badge>
               </div>
             )}
             {etape === "DISTRIBUER" && litActif && (
-              <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "11px", padding: "4px 14px", borderRadius: "12px" }}>
-                🛏️ Lit {litActif.codeLit}
+              <Badge style={{
+                background: "#ede9fe", color: "#7c3aed",
+                fontSize: 11, padding: "5px 15px", borderRadius: 12,
+                display: "inline-flex", alignItems: "center", gap: 6,
+                fontWeight: 700,
+              }}>
+                <Icons.Bed size={12} color="#7c3aed" strokeWidth={2.5} />
+                {t('distribution_chambre.bed')} {litActif.codeLit}
               </Badge>
             )}
           </div>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {etape !== "CHAMBRE" && etape !== "RESUME" && (
               <button
                 onClick={reset}
                 style={{
-                  padding: "6px 14px",
-                  borderRadius: "10px",
-                  border: "1px solid #fca5a5",
-                  background: "#fff5f5",
-                  color: "#dc2626",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px"
+                  padding: "7px 15px", borderRadius: 10,
+                  border: "1px solid #fca5a5", background: "#fff5f5",
+                  color: "#dc2626", cursor: "pointer", fontSize: 12,
+                  fontWeight: 700, display: "flex",
+                  alignItems: "center", gap: 6,
                 }}
               >
-                <FaRedo size={10} />
-                Reset
+                <Icons.Refresh size={12} color="#dc2626" strokeWidth={2.5} />
+                {t('common.reset')}
               </button>
             )}
           </div>
@@ -835,28 +990,37 @@ export default function DistributionChambre() {
 
         {!agent && (
           <div style={{
-            padding: "12px 16px",
-            borderRadius: "10px",
-            background: "#fef2f2",
-            border: "1px solid #fca5a5",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            fontSize: "13px",
-            color: "#dc2626"
+            padding: "13px 17px", borderRadius: 12,
+            background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
+            border: "1px solid #fca5a5", marginBottom: 16,
+            display: "flex", alignItems: "center", gap: 11,
+            fontSize: 13, color: "#dc2626",
           }}>
-            <FaExclamationTriangle size={16} />
-            <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
-            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une distribution</span>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: "white", display: "flex",
+              alignItems: "center", justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(220,38,38,0.15)",
+            }}>
+              <Icons.AlertTriangle size={16} color="#dc2626" strokeWidth={2.2} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, color: "#dc2626", fontSize: 13.5 }}>
+                {t('distribution_chambre.no_agent_connected')}
+              </div>
+              <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
+                {t('distribution_chambre.no_agent_connect_text')}
+              </div>
+            </div>
           </div>
         )}
 
+        {/* ═══ Zone scan ═══ */}
         <Card style={{
-          marginBottom: "20px",
+          marginBottom: 20,
           border: `2px dashed ${isCloturee ? "#e2e8f0" : getBorderColor()}`,
           background: isCloturee ? "#f8fafc" : "white",
-          borderRadius: "16px"
+          borderRadius: 16,
         }}>
           <CardContent className="p-5">
             <ScanInput
@@ -876,29 +1040,42 @@ export default function DistributionChambre() {
 
         {etape === "DISTRIBUER" && chambre && !isCloturee && (
           <div style={{
-            padding: "8px 16px",
-            borderRadius: "10px",
-            background: "#fef3c7",
-            border: "1px solid #fcd34d",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            fontSize: "12px",
-            color: "#92400e"
+            padding: "11px 17px", borderRadius: 12,
+            background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+            border: "1px solid #fcd34d", marginBottom: 16,
+            display: "flex", alignItems: "center", gap: 10,
+            fontSize: 12, color: "#92400e", fontWeight: 600,
           }}>
-            <FaUser size={14} />
-            <span>💡 Scanner votre badge agent pour clôturer la distribution</span>
+            <Icons.Info size={15} color="#92400e" strokeWidth={2.2} />
+            <span>{t('distribution_chambre.scan_agent_to_close')}</span>
           </div>
         )}
 
         {agent && etape === "CHAMBRE" && (
-          <Card style={{ background: "#f0fdfa", border: "1px solid #99f6e4", marginBottom: "16px", borderRadius: "12px" }}>
-            <CardContent className="p-4">
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
-                <FaDoorOpen color="#0d9488" size={16} />
-                <span style={{ fontWeight: 600, color: "#0d9488" }}>Scannez le code de la chambre</span>
-                <span style={{ color: "#64748b" }}>pour charger les lits</span>
+          <Card style={{
+            background: "linear-gradient(135deg, #f0fdfa, #ccfbf1)",
+            border: "1.5px solid #99f6e4",
+            marginBottom: 16, borderRadius: 14,
+          }}>
+            <CardContent className="p-5">
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  width: 42, height: 42, borderRadius: 12,
+                  background: "white", display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(13,148,136,0.15)",
+                  border: "1px solid #99f6e4",
+                }}>
+                  <Icons.DoorOpen size={18} color="#0d9488" strokeWidth={2.2} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, color: "#0d9488", fontSize: 13.5 }}>
+                    {t('distribution_chambre.scan_room_to_load')}
+                  </div>
+                  <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
+                    {t('distribution_chambre.to_load_beds')}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -907,59 +1084,63 @@ export default function DistributionChambre() {
         {etape === "DISTRIBUER" && chambre && !isCloturee && (
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: "12px",
-            marginBottom: "20px"
+            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+            gap: 12, marginBottom: 22,
           }}>
             <StatutCard
-              label="Distribués"
+              label={t('distribution_chambre.distributed')}
               value={nbPoses}
-              icon="✅"
+              icon={<Icons.CheckCheck size={19} color="#15803d" strokeWidth={2.5} />}
               color="#15803d"
-              bg="#f0fdf4"
+              bg="linear-gradient(135deg, #f0fdf4, #dcfce7)"
             />
             <StatutCard
-              label="Disponibles"
+              label={t('distribution_chambre.available')}
               value={nbDispo}
-              icon="📦"
+              icon={<Icons.Package size={19} color="#0ea5e9" strokeWidth={2.2} />}
               color="#0ea5e9"
-              bg="#f0f9ff"
+              bg="linear-gradient(135deg, #f0f9ff, #e0f2fe)"
             />
             <StatutCard
-              label="Lits vides"
+              label={t('distribution_chambre.empty_beds')}
               value={litsVides}
-              icon="🛏️"
+              icon={<Icons.Bed size={19} color="#d97706" strokeWidth={2.2} />}
               color="#d97706"
-              bg="#fef3c7"
+              bg="linear-gradient(135deg, #fef3c7, #fde68a)"
             />
             <StatutCard
-              label="Avancement"
+              label={t('distribution_chambre.progress')}
               value={`${pctAvancement}%`}
-              icon="📊"
+              icon={<Icons.Activity size={19} color="#7c3aed" strokeWidth={2.2} />}
               color="#7c3aed"
-              bg="#faf5ff"
-              subValue={pctAvancement === 100 ? "✅ Complet" : ""}
+              bg="linear-gradient(135deg, #faf5ff, #ede9fe)"
+              subValue={pctAvancement === 100 ? `${t('distribution_chambre.complete')}` : ""}
             />
           </div>
         )}
 
         {etape === "DISTRIBUER" && chambre && !isCloturee && (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-            gap: "14px"
-          }}>
+          <>
+          <LegendeLits items={[
+            { ...TONS_DISTRIBUTION.A_EQUIPER, label: t('distribution_chambre.empty') },
+            { ...TONS_DISTRIBUTION.INFECTE, label: t('distribution_chambre.infected') },
+            { ...TONS_DISTRIBUTION.EQUIPE, label: t('distribution_chambre.completed') },
+          ]} />
+          <div className="lits-grid">
             {chambre.lits.map(lit => (
               <CarteLit
                 key={lit.litId}
                 lit={lit}
                 actif={litActif?.litId === lit.litId}
                 onClick={() => {
-                  setLitActif(l => l?.litId === lit.litId ? null : lit);
+                  const dejaActif = litActif?.litId === lit.litId;
+                  setLitActif(dejaActif ? null : lit);
+                  if (!dejaActif) voice.sayLitDistribution(lit.codeLit, lit.estInfecte);
                 }}
               />
             ))}
           </div>
+          </>
         )}
 
         {etape === "RESUME" && resume && (
@@ -978,24 +1159,35 @@ export default function DistributionChambre() {
           />
         )}
 
+        {/* ═══ Footer ═══ */}
         <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          paddingTop: "16px",
-          borderTop: "1px solid #e2e8f0",
-          fontSize: "12px",
-          color: "#64748b",
-          flexWrap: "wrap",
-          gap: "8px",
-          marginTop: "16px"
+          display: "flex", justifyContent: "space-between",
+          alignItems: "center", paddingTop: 18,
+          borderTop: "1px solid #e2e8f0", fontSize: 12,
+          color: "#64748b", flexWrap: "wrap", gap: 8, marginTop: 20,
         }}>
-          <div style={{ display: "flex", gap: "16px" }}>
-            {agent && <span>Agent: <strong style={{ color: "#0f172a" }}>{agent.nom}</strong></span>}
-            {chambre && <span>Chambre: <strong style={{ color: "#0d9488" }}>{chambre.codeChambre}</strong></span>}
-            {litActif && <span style={{ color: "#7c3aed" }}>🛏️ Lit {litActif.codeLit}</span>}
+          <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
+            {agent && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <Icons.User size={12} color="#94a3b8" strokeWidth={2.2} />
+                {t('distribution_chambre.agent')}: <strong style={{ color: "#0f172a" }}>{agent.nom}</strong>
+              </span>
+            )}
+            {chambre && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <Icons.DoorOpen size={12} color="#0d9488" strokeWidth={2.2} />
+                {t('distribution_chambre.room')}: <strong style={{ color: "#0d9488" }}>{chambre.codeChambre}</strong>
+              </span>
+            )}
+            {litActif && (
+              <span style={{ color: "#7c3aed", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <Icons.Bed size={12} color="#7c3aed" strokeWidth={2.2} />
+                {t('distribution_chambre.bed')} {litActif.codeLit}
+              </span>
+            )}
           </div>
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Icons.Clock size={12} color="#94a3b8" strokeWidth={2.2} />
             <span>{new Date().toLocaleDateString("fr-FR")}</span>
             <span>•</span>
             <span>{new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
@@ -1012,6 +1204,10 @@ export default function DistributionChambre() {
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(-8px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.92); }
+          to { opacity: 1; transform: scale(1); }
         }
         .animate-spin {
           animation: spin 1s linear infinite;

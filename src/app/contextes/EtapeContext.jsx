@@ -67,43 +67,75 @@ export function EtapeProvider({ children }) {
     }
   }, [showAlert]);
 
-  // Ajouter un personnel à une étape
-  const addPersonnelToEtape = useCallback(async (lingeEtapeId, codeBarre) => {
-    setLoading(true);
-    try {
-      // Récupérer le personnel par son code
-      const personnel = await fetchPersonnelByCode(codeBarre);
-      
-      if (!personnel || !personnel.id) {
-        throw new Error("Personnel introuvable");
-      }
+// Ajouter un personnel à une étape
+const addPersonnelToEtape = useCallback(async (lingeEtapeId, personnelId) => {
+  setLoading(true);
 
-      // Vérifier si l'association existe déjà
-      const exists = await checkAssociationExists(personnel.id, lingeEtapeId);
-      if (exists) {
-        showAlert("Info", "Ce personnel est déjà associé à cette étape", "info");
-        return null;
-      }
-
-      // Créer l'association
-      const association = await createAssociation({
-        personnelId: personnel.id,
-        lingeEtapeId: lingeEtapeId
-      });
-
-      // Recharger les personnels pour l'étape
-      await loadPersonnels(lingeEtapeId);
-      
-      showAlert("Succès", `Personnel ${personnel.nom} ajouté à l'étape`, "success");
-      return association;
-    } catch (error) {
-      showAlert("Erreur", error.message, "error");
-      return null;
-    } finally {
-      setLoading(false);
+  try {
+    if (!personnelId) {
+      throw new Error("L'identifiant du personnel est obligatoire");
     }
-  }, [showAlert, loadPersonnels]);
 
+    if (!lingeEtapeId) {
+      throw new Error("L'identifiant de l'étape est obligatoire");
+    }
+
+    const idPersonnel = Number(personnelId);
+    const idEtape = Number(lingeEtapeId);
+
+    console.log("👤 Ajout personnel à l'étape");
+    console.log("🆔 personnelId :", idPersonnel);
+    console.log("🧺 lingeEtapeId :", idEtape);
+
+    // Vérifier si l'association existe déjà
+    const exists = await checkAssociationExists(
+      idPersonnel,
+      idEtape
+    );
+
+    if (exists) {
+      showAlert(
+        "Info",
+        "Ce personnel est déjà associé à cette étape",
+        "info"
+      );
+      return null;
+    }
+
+    // Créer l'association
+    const association = await createAssociation({
+      personnelId: idPersonnel,
+      lingeEtapeId: idEtape
+    });
+
+    console.log("✅ Association créée :", association);
+
+    // Recharger les personnels de l'étape
+    await loadPersonnels(idEtape);
+
+    showAlert(
+      "Succès",
+      "Personnel ajouté à l'étape",
+      "success"
+    );
+
+    return association;
+
+  } catch (error) {
+    console.error("❌ Erreur ajout personnel :", error);
+
+    showAlert(
+      "Erreur",
+      error.message,
+      "error"
+    );
+
+    return null;
+
+  } finally {
+    setLoading(false);
+  }
+}, [showAlert, loadPersonnels]);
   // Retirer un personnel d'une étape
   const removePersonnelFromEtape = useCallback(async (associationId, lingeEtapeId) => {
     setLoading(true);

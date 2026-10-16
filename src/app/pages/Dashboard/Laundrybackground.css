@@ -1,0 +1,164 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   🫧 LaundryBackground — couches du fond animé
+   Palette : bleu nuit hospitalier · cyan eau · turquoise · blanc lin
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.laundry-bg {
+    --px: 0;
+    --py: 0;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+/* 1 ─ Voile : assombrit la photo pour garder les cartes lisibles ───── */
+.laundry-bg__tint {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(165deg,
+            rgba(2, 10, 28, 0.74) 0%,
+            rgba(6, 40, 72, 0.50) 48%,
+            rgba(2, 12, 30, 0.82) 100%);
+}
+
+/* 2 ─ Aurores : halos doux qui dérivent + parallaxe souris ─────────── */
+.laundry-bg__aurora {
+    position: absolute;
+    inset: -10%;
+    translate: calc(var(--px) * -26px) calc(var(--py) * -18px);
+}
+
+.laundry-bg__aurora span {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.55;
+    will-change: transform;
+}
+
+.laundry-bg__aurora .a1 {
+    width: 56vmax;
+    height: 56vmax;
+    left: -12%;
+    top: -18%;
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.70) 0%, rgba(34, 211, 238, 0) 65%);
+    animation: aurora-a 26s ease-in-out infinite alternate;
+}
+
+.laundry-bg__aurora .a2 {
+    width: 48vmax;
+    height: 48vmax;
+    right: -10%;
+    top: 5%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.65) 0%, rgba(59, 130, 246, 0) 65%);
+    animation: aurora-b 32s ease-in-out infinite alternate;
+}
+
+.laundry-bg__aurora .a3 {
+    width: 42vmax;
+    height: 42vmax;
+    left: 25%;
+    bottom: -20%;
+    background: radial-gradient(circle, rgba(20, 184, 166, 0.60) 0%, rgba(20, 184, 166, 0) 65%);
+    animation: aurora-c 29s ease-in-out infinite alternate;
+}
+
+.laundry-bg__aurora .a4 {
+    width: 34vmax;
+    height: 34vmax;
+    right: 18%;
+    bottom: 8%;
+    opacity: 0.35;
+    background: radial-gradient(circle, rgba(129, 140, 248, 0.60) 0%, rgba(129, 140, 248, 0) 65%);
+    animation: aurora-a 38s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes aurora-a {
+    0%   { transform: translate3d(0, 0, 0) scale(1); }
+    50%  { transform: translate3d(9vw, 6vh, 0) scale(1.15); }
+    100% { transform: translate3d(3vw, 14vh, 0) scale(0.95); }
+}
+
+@keyframes aurora-b {
+    0%   { transform: translate3d(0, 0, 0) scale(1.05); }
+    50%  { transform: translate3d(-10vw, 8vh, 0) scale(0.92); }
+    100% { transform: translate3d(-4vw, -6vh, 0) scale(1.18); }
+}
+
+@keyframes aurora-c {
+    0%   { transform: translate3d(0, 0, 0) scale(0.95); }
+    50%  { transform: translate3d(-8vw, -10vh, 0) scale(1.12); }
+    100% { transform: translate3d(10vw, -4vh, 0) scale(1); }
+}
+
+/* 3 ─ Grille technique très discrète ───────────────────────────────── */
+.laundry-bg__grid {
+    position: absolute;
+    inset: -60px;
+    background-image:
+        linear-gradient(rgba(125, 211, 252, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(125, 211, 252, 0.07) 1px, transparent 1px);
+    background-size: 56px 56px;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 40%, #000 0%, transparent 75%);
+    mask-image: radial-gradient(ellipse at 50% 40%, #000 0%, transparent 75%);
+    translate: calc(var(--px) * -10px) calc(var(--py) * -8px);
+    animation: grid-drift 45s linear infinite;
+    will-change: transform;
+}
+
+@keyframes grid-drift {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(56px, 56px, 0); }
+}
+
+/* 4 ─ Rayons de lumière depuis le haut ─────────────────────────────── */
+.laundry-bg__rays {
+    position: absolute;
+    top: -25%;
+    left: 50%;
+    width: 170vmax;
+    height: 130vmax;
+    margin-left: -85vmax;
+    background: repeating-conic-gradient(
+        from 200deg at 50% 0%,
+        rgba(186, 230, 253, 0.11) 0deg 3deg,
+        transparent 3deg 13deg
+    );
+    -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 62%);
+    mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 62%);
+    transform-origin: 50% 0%;
+    opacity: 0.55;
+    animation: rays-sway 20s ease-in-out infinite alternate;
+    will-change: transform;
+}
+
+@keyframes rays-sway {
+    from { transform: rotate(-6deg); }
+    to   { transform: rotate(6deg); }
+}
+
+/* 5 ─ Canvas (bulles, particules, vagues) ──────────────────────────── */
+.laundry-bg__canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: block;
+}
+
+/* 6 ─ Vignettage : concentre le regard au centre ───────────────────── */
+.laundry-bg__vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(2, 6, 16, 0.55) 100%);
+}
+
+/* ── Accessibilité : réduit tout mouvement ────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .laundry-bg__aurora span,
+    .laundry-bg__grid,
+    .laundry-bg__rays {
+        animation: none !important;
+    }
+}

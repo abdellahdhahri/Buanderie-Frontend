@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { useModal } from "./ModalContext";
 import { getAgent, isAgentConnected } from "../services/agentService";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export const StockageContext = createContext();
 export const useStockage = () => useContext(StockageContext);
@@ -40,7 +40,7 @@ export function StockageProvider({ children }) {
   const scanAgent = useCallback(async (code) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/personnel/code?code=${encodeURIComponent(code)}`);
+      const res = await fetch(`${API_URL}/api/sqlserver/personnel/code?code=${encodeURIComponent(code)}`);
       if (res.ok) {
         const personnel = await res.json();
         const ag = {
@@ -166,7 +166,7 @@ export function StockageProvider({ children }) {
           type: typeReclamation.id,
           matriculeAgent: currentAgent.codeBarre,
         };
-        const res = await fetch(`${API_URL}/reclamations`, {
+        const res = await fetch(`${API_URL}/api/reclamations`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)

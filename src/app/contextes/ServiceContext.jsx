@@ -1,14 +1,14 @@
-// src/contextes/ServiceContext.jsx
 
 import React, { createContext, useState, useEffect, useContext } from "react";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+
 export const ServiceContext = createContext();
 
-// ─── HOOK PERSONNALISÉ ────────────────────────────────────────────────────
 export const useServiceContext = () => {
   const context = useContext(ServiceContext);
   if (!context) {
-    throw new Error('useServiceContext must be used within a ServiceProvider');
+    throw new Error("useServiceContext must be used within a ServiceProvider");
   }
   return context;
 };
@@ -18,32 +18,31 @@ export const ServiceProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ─── CHARGEMENT DES SERVICES ───────────────────────────────────────────
   useEffect(() => {
     const fetchServices = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch("http://localhost:8082/api/sqlserver/services?page=0&size=200");
-        
+        const response = await fetch(
+          `${API_BASE_URL}/api/sqlserver/services?page=0&size=200`
+        );
+
         if (!response.ok) {
           throw new Error(`Erreur HTTP ${response.status}`);
         }
-        
+
         const data = await response.json();
-        console.log("📦 Liste des services brute :", data.content);
-        
+
         // Normaliser les données
-        const list = (data.content || data || []).map(s => ({
+        const list = (data.content || data || []).map((s) => ({
           id: s.id,
           nom: s.code || s.nom || `Service ${s.id}`,
           code: s.code || s.nom,
-          description: s.description || s.nom || '',
+          description: s.description || s.nom || "",
           type: s.typeService || s.type || null,
         }));
-        
+
         setServices(list);
-        console.log("✅ Liste des services normalisée :", list);
       } catch (err) {
         console.error("❌ Erreur fetch services :", err);
         setError(err.message);
@@ -56,11 +55,10 @@ export const ServiceProvider = ({ children }) => {
     fetchServices();
   }, []);
 
-  // ─── RÉCUPÉRER LES CHAMBRES D'UN SERVICE ──────────────────────────────
   const getChambresByServiceId = async (serviceId, page = 0, size = 300) => {
     try {
       const response = await fetch(
-        `http://localhost:8082/api/sqlserver/chambres/service/${serviceId}?page=${page}&size=${size}`
+        `${API_BASE_URL}/api/sqlserver/chambres/service/${serviceId}?page=${page}&size=${size}`
       );
 
       if (!response.ok) {
@@ -77,14 +75,12 @@ export const ServiceProvider = ({ children }) => {
     }
   };
 
-  // ─── RÉCUPÉRER UN SERVICE PAR SON ID ──────────────────────────────────
   const getServiceById = (serviceId) => {
-    return services.find(s => s.id === serviceId) || null;
+    return services.find((s) => s.id === serviceId) || null;
   };
 
-  // ─── RÉCUPÉRER UN SERVICE PAR SON CODE ────────────────────────────────
   const getServiceByCode = (code) => {
-    return services.find(s => s.code === code) || null;
+    return services.find((s) => s.code === code) || null;
   };
 
   const value = {

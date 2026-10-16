@@ -60,11 +60,6 @@ function hasPrivilege(
 }
 
 
-/*
- * ============================================================
- * PROTECTED LAYOUT
- * ============================================================
- */
 
 export function ProtectedLayout() {
 
@@ -73,19 +68,13 @@ export function ProtectedLayout() {
   const matches = useMatches();
 
 
-  /*
-   * ==========================================================
-   * RECUPERATION AUTH
-   * ==========================================================
-   */
+
 
   const authString =
     localStorage.getItem("auth");
 
 
-  /*
-   * Pas authentifié
-   */
+
 
   if (!authString) {
 
@@ -107,11 +96,6 @@ export function ProtectedLayout() {
   }
 
 
-  /*
-   * ==========================================================
-   * PARSE AUTH
-   * ==========================================================
-   */
 
   let auth;
 
@@ -138,11 +122,7 @@ export function ProtectedLayout() {
   }
 
 
-  /*
-   * ==========================================================
-   * VERIFICATION JWT
-   * ==========================================================
-   */
+
 
   if (!auth?.token) {
 
@@ -161,11 +141,7 @@ export function ProtectedLayout() {
   }
 
 
-  /*
-   * ==========================================================
-   * PRIVILEGES UTILISATEUR
-   * ==========================================================
-   */
+  
 
   const privileges =
     Array.isArray(auth.privileges)
@@ -173,15 +149,7 @@ export function ProtectedLayout() {
       : [];
 
 
-  /*
-   * ==========================================================
-   * ROUTE ACTUELLE
-   * ==========================================================
-   *
-   * useMatches() contient les routes actuellement matchées.
-   *
-   * On cherche celle qui contient handle.privileges.
-   */
+ 
 
   const protectedMatch =
     [...matches]
@@ -192,11 +160,7 @@ export function ProtectedLayout() {
       );
 
 
-  /*
-   * ==========================================================
-   * AUCUNE PROTECTION
-   * ==========================================================
-   */
+ 
 
   if (!protectedMatch) {
 
@@ -204,21 +168,11 @@ export function ProtectedLayout() {
   }
 
 
-  /*
-   * ==========================================================
-   * PRIVILEGES REQUIS
-   * ==========================================================
-   */
 
   const requiredPrivileges =
     protectedMatch.handle.privileges;
 
 
-  /*
-   * ==========================================================
-   * VERIFICATION
-   * ==========================================================
-   */
 
   const authorized =
     hasPrivilege(
@@ -227,50 +181,11 @@ export function ProtectedLayout() {
     );
 
 
-  /*
-   * ==========================================================
-   * DEBUG
-   * ==========================================================
-   */
-
-  console.log(
-    "===================================="
-  );
-
-  console.log(
-    "🔐 PROTECTION ROUTE"
-  );
-
-  console.log(
-    "Route :",
-    location.pathname
-  );
-
-  console.log(
-    "Privilèges utilisateur :",
-    privileges
-  );
-
-  console.log(
-    "Privilèges requis :",
-    requiredPrivileges
-  );
-
-  console.log(
-    "Autorisé :",
-    authorized
-  );
-
-  console.log(
-    "===================================="
-  );
 
 
-  /*
-   * ==========================================================
-   * ACCES REFUSE
-   * ==========================================================
-   */
+
+
+ 
 
   if (!authorized) {
 

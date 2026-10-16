@@ -1,10 +1,7 @@
-// BacContext.jsx
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 
-// ✅ Créer le contexte avec un nom unique
 const BacContext = createContext();
 
-// ✅ Hook personnalisé pour utiliser le contexte
 export const useBac = () => {
   const context = useContext(BacContext);
   if (!context) {

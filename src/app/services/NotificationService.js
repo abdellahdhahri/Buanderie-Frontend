@@ -2,8 +2,7 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import Swal from 'sweetalert2';
 import { toast } from 'sonner';
-// URL de l'API - Utilise VITE_API_URL ou fallback
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 
                (import.meta.env.VITE_API_URL 
@@ -47,11 +46,7 @@ class NotificationService {
         this.subscriptions = [];
         this.active = false;
         
-        // Afficher la configuration au démarrage
-        log('📡 Configuration NotificationService:');
-        log(`   - API_URL: ${API_URL}`);
-        log(`   - WS_ENDPOINT: ${WS_ENDPOINT}`);
-        log(`   - Mode: ${import.meta.env.MODE}`);
+
     }
 
    
@@ -161,11 +156,9 @@ class NotificationService {
         if (this.initialized) return;
         if (this.active) return;
 
-        log('🔧 Initialisation du client WebSocket...');
 
         this.client = new Client({
             webSocketFactory: () => {
-                log('🔄 Création de la connexion WebSocket vers:', WS_ENDPOINT);
                 return new SockJS(WS_ENDPOINT);
             },
 
@@ -183,7 +176,8 @@ class NotificationService {
                 this.reconnectAttempts = 0;
                 this.active = true;
 
-          
+                // (Ré)abonnement à chaque connexion, y compris après une reconnexion
+                this.subscribeToTopics();
             },
 
             onDisconnect: () => {
@@ -246,38 +240,20 @@ class NotificationService {
     handleNotification(notification) {
         log('📨 Notification reçue:', notification);
 
-        const {
-            type,
-            titre,
-            title,
-            message,
-            lingeId,
-            codeBarre,
-            categorie
-        } = notification;
+        const { type, titre, title, message } = notification;
 
         const notificationTitle = titre || title || 'Notification';
 
-        // Notification réclamation
-        if (type === 'RECLAMATION') {
-            this.showStandardNotification('WARNING', notificationTitle, message, null);
-            return;
-        }
+        // L'en-tête (header.jsx) écoute cet événement : il affiche la popup
+        // en haut de l'écran, ajoute la notification à la liste et met à jour le compteur.
+        window.dispatchEvent(
+            new CustomEvent('new-notification', { detail: JSON.stringify(notification) })
+        );
 
-        // Fin de vie
+        // Fin de vie : alerte bloquante en plus de la popup
         if (type === 'FIN_DE_VIE') {
             this.showCriticalNotification(notificationTitle, message, 'WARNING');
-            return;
         }
-
-        // Stock uniforme
-        if (type === 'STOCK_UNIFORME') {
-            this.showStandardNotification('SUCCESS', notificationTitle, message, null);
-            return;
-        }
-
-        // Notification générale
-        this.showStandardNotification('INFO', notificationTitle, message, null);
     }
 
 
@@ -365,8 +341,7 @@ class NotificationService {
 
     start() {
         try {
-            log('🔔 Démarrage du service de notification...');
-            log(`📡 Configuration: API=${API_URL}, WS=${WS_ENDPOINT}`);
+        
 
             if (!this.initialized) {
                 this.initialize();

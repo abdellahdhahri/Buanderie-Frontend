@@ -1,5 +1,6 @@
 // pages/Distribution/DistributionUniforme.js
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FaUser, FaRedo, FaSpinner, FaCheckDouble,
   FaCheck, FaUserTie, FaCheckCircle, FaExclamationTriangle,
@@ -18,9 +19,15 @@ import {
 } from "../../services/distributionUniformeService";
 import Swal from "sweetalert2";
 import "../Linge/WorkflowList.css";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import MuteButton from "../../components/utils/MuteButton";
+import { useVoiceGuide } from "../../hooks/useVoiceGuide";
+import { getSetting } from "../../utils/appSettings";
 
 // ─── ScanStatus ──────────────────────────────────────────────────────────────
 function ScanStatus({ loading, success, error, code }) {
+  const { t } = useTranslation();
+
   if (loading) {
     return (
       <div style={{
@@ -36,7 +43,9 @@ function ScanStatus({ loading, success, error, code }) {
       }}>
         <FaSpinner className="animate-spin" color="#3b82f6" size={22} />
         <div>
-          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "14px", margin: 0 }}>Scan en cours...</p>
+          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "14px", margin: 0 }}>
+            {t('distribution_uniforme.scanning')}
+          </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{code}</p>
         </div>
       </div>
@@ -68,7 +77,9 @@ function ScanStatus({ loading, success, error, code }) {
           <FaCheckCircle color="#22c55e" size={20} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "14px", margin: 0 }}>✓ {success.message || "Succès"}</p>
+          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "14px", margin: 0 }}>
+            ✓ {success.message || t('common.success')}
+          </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{success.detail}</p>
         </div>
       </div>
@@ -100,7 +111,9 @@ function ScanStatus({ loading, success, error, code }) {
           <FaExclamationTriangle color="#ef4444" size={18} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "14px", margin: 0 }}>Erreur</p>
+          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "14px", margin: 0 }}>
+            {t('common.error')}
+          </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{error}</p>
         </div>
       </div>
@@ -153,6 +166,7 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
 
 // ─── CarteUniforme ──────────────────────────────────────────────────────────
 function CarteUniforme({ linge, onRetirer, personnelNom }) {
+  const { t } = useTranslation();
   const c = getCategorie(linge.categorie);
   return (
     <div style={{
@@ -187,7 +201,7 @@ function CarteUniforme({ linge, onRetirer, personnelNom }) {
           gap: "4px"
         }}
       >
-        <FaCheck size={8} /> Retirer
+        <FaCheck size={8} /> {t('distribution_uniforme.remove')}
       </button>
     </div>
   );
@@ -195,6 +209,7 @@ function CarteUniforme({ linge, onRetirer, personnelNom }) {
 
 // ─── CarteUniformeDispo ──────────────────────────────────────────────────────
 function CarteUniformeDispo({ linge, onDistribuer, personnelNom }) {
+  const { t } = useTranslation();
   const c = getCategorie(linge.categorie);
   return (
     <div style={{
@@ -229,7 +244,7 @@ function CarteUniformeDispo({ linge, onDistribuer, personnelNom }) {
           gap: "4px"
         }}
       >
-        <FaCheck size={8} /> Distribuer
+        <FaCheck size={8} /> {t('distribution_uniforme.distribute')}
       </button>
     </div>
   );
@@ -237,6 +252,8 @@ function CarteUniformeDispo({ linge, onDistribuer, personnelNom }) {
 
 // ─── ResumeUniforme ──────────────────────────────────────────────────────────
 function ResumeUniforme({ res, onNouvelle, onTerminer }) {
+  const { t } = useTranslation();
+
   return (
     <div style={{
       background: "#f0fdf4",
@@ -247,10 +264,10 @@ function ResumeUniforme({ res, onNouvelle, onTerminer }) {
     }}>
       <div style={{ fontSize: 44, marginBottom: 10 }}>✅</div>
       <div style={{ fontWeight: 900, fontSize: 18, color: "#15803d", marginBottom: 6 }}>
-        Uniformes distribués
+        {t('distribution_uniforme.uniforms_distributed')}
       </div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>
-        {res.nbDistribues} uniforme{res.nbDistribues > 1 ? "s" : ""} pour {res.personnelNom}
+        {res.nbDistribues} {t('distribution_uniforme.uniform')}{res.nbDistribues > 1 ? 's' : ''} {t('distribution_uniforme.for')} {res.personnelNom}
       </div>
       <div style={{
         display: "grid",
@@ -289,7 +306,7 @@ function ResumeUniforme({ res, onNouvelle, onTerminer }) {
           fontSize: 13,
           cursor: "pointer"
         }}>
-          Autre personnel
+          {t('distribution_uniforme.another_personnel')}
         </button>
         <button onClick={onTerminer} style={{
           flex: 1,
@@ -302,7 +319,7 @@ function ResumeUniforme({ res, onNouvelle, onTerminer }) {
           fontSize: 13,
           cursor: "pointer"
         }}>
-          Terminer
+          {t('common.finish')}
         </button>
       </div>
     </div>
@@ -311,6 +328,8 @@ function ResumeUniforme({ res, onNouvelle, onTerminer }) {
 
 // ─── COMPOSANT PRINCIPAL ──────────────────────────────────────────────────
 export default function DistributionUniforme() {
+  const { t } = useTranslation();
+
   const [etape, setEtape] = useState("PERSONNEL");
   const [agent, setAgent] = useState(null);
   const [personnel, setPersonnel] = useState(null);
@@ -325,6 +344,13 @@ export default function DistributionUniforme() {
   const agentRef = useRef(null);
   const personnelRef = useRef(null);
   const scanInputRef = useRef(null);
+
+  // Assistant vocal
+  const [voiceLang, setVoiceLang] = useState(() => getSetting("voice.lang"));
+  const voice = useVoiceGuide(voiceLang);
+  const voiceRef = useRef(voice);
+  useEffect(() => { voiceRef.current = voice; }, [voice]);
+  useEffect(() => () => voiceRef.current.cancel(), []);
 
   useEffect(() => { agentRef.current = agent; }, [agent]);
   useEffect(() => { personnelRef.current = personnel; }, [personnel]);
@@ -341,22 +367,23 @@ export default function DistributionUniforme() {
       setScanStatus({
         loading: false,
         success: {
-          message: `👤 Agent ${agentData.nom}`,
-          detail: `Connecté · ${agentData.codeBarre || agentData.matricule}`
+          message: `👤 ${t('distribution_uniforme.agent')} ${agentData.nom}`,
+          detail: `${t('distribution_uniforme.connected')} · ${agentData.codeBarre || agentData.matricule}`
         },
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
+      setTimeout(() => voiceRef.current.sayBienvenueDistributionUniforme(agentData.nomPrenom || agentData.nom || ""), 600);
     } else {
       console.warn("⚠️ Aucun agent trouvé dans le stockage");
       setEtape("PERSONNEL");
       setScanStatus({
         loading: false,
         success: null,
-        error: "Aucun agent connecté — veuillez vous reconnecter"
+        error: t('distribution_uniforme.no_agent_connected')
       });
     }
-  }, []);
+  }, [t]);
 
   // ─── Focus permanent ──────────────────────────────────────────────────
   useEffect(() => {
@@ -373,10 +400,11 @@ export default function DistributionUniforme() {
   // ─── Clôturer la distribution ──────────────────────────────────────────
   const cloturerDistribution = useCallback(async () => {
     if (distribues.length === 0) {
+      voice.sayAucunUniformeDistribue();
       await Swal.fire({
         icon: 'warning',
-        title: '⚠️ Aucun uniforme distribué',
-        text: 'Distribuez au moins un uniforme avant de terminer.',
+        title: t('distribution_uniforme.no_uniform_distributed_title'),
+        text: t('distribution_uniforme.no_uniform_distributed_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -389,22 +417,26 @@ export default function DistributionUniforme() {
       uniformes: distribues
     });
     setEtape("RESUME");
+    voice.sayDistributionUniformeTerminee(personnel.nom, distribues.length);
     setScanStatus({
       loading: false,
-      success: { message: "✅ Distribution terminée", detail: `${distribues.length} uniforme(s) distribué(s)` },
+      success: { 
+        message: "✅ " + t('distribution_uniforme.distribution_completed'), 
+        detail: `${distribues.length} ${t('distribution_uniforme.uniform')}s ${t('distribution_uniforme.distributed')}` 
+      },
       error: null
     });
     setTimeout(() => setScanStatus(null), 2000);
     return true;
-  }, [distribues, personnel]);
+  }, [distribues, personnel, t, voice]);
 
   // ─── Scan Personnel ──────────────────────────────────────────────────────
   const handlePersonnel = useCallback(async code => {
     if (!agent) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Agent non connecté',
-        text: 'Veuillez vous reconnecter.',
+        title: t('distribution_uniforme.agent_not_connected_title'),
+        text: t('distribution_uniforme.agent_not_connected_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -424,37 +456,45 @@ export default function DistributionUniforme() {
       setDisponibles(data.disponibles || []);
       setDistribues([]);
       setEtape("DISTRIBUER");
+      voice.sayPersonnelDistribution(data.personnelNom, data.disponibles?.length || 0);
       setScanStatus({
         loading: false,
-        success: { message: `✅ ${data.personnelNom}`, detail: `${data.disponibles?.length || 0} uniforme(s) disponible(s)` },
+        success: { 
+          message: `✅ ${data.personnelNom}`, 
+          detail: `${data.disponibles?.length || 0} ${t('distribution_uniforme.uniform')}s ${t('distribution_uniforme.available')}` 
+        },
         error: null
       });
       setTimeout(() => setScanStatus(null), 2000);
       await Swal.fire({
         icon: 'success',
         title: `✅ ${data.personnelNom}`,
-        text: `${data.disponibles?.length || 0} uniforme(s) disponible(s) · ${data.enPossession?.length || 0} en possession`,
+        text: `${data.disponibles?.length || 0} ${t('distribution_uniforme.uniform')}s ${t('distribution_uniforme.available')} · ${data.enPossession?.length || 0} ${t('distribution_uniforme.in_possession')}`,
         timer: 1500,
         showConfirmButton: false
       });
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
+      if (/réseau|network|fetch/i.test(e.message || "")) voice.sayErreurReseau();
+      else voice.sayErreurGenerique(e.message);
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
+        title: t('common.error'),
         text: e.message
       });
     } finally {
       setLoading(false);
     }
-  }, [agent]);
+  }, [agent, t, voice]);
 
   // ─── Scan Uniforme ──────────────────────────────────────────────────────
   const handleScanUniforme = useCallback(async code => {
     if (!personnel) {
+      voice.sayScannerPersonnelDabord();
       await Swal.fire({
         icon: 'warning',
-        title: 'Scannez d\'abord un badge personnel',
+        title: t('distribution_uniforme.scan_personnel_first_title'),
+        text: t('distribution_uniforme.scan_personnel_first_text'),
         timer: 1500,
         showConfirmButton: false
       });
@@ -473,25 +513,30 @@ export default function DistributionUniforme() {
       setDisponibles(prev => prev.filter(l => l.lingeId !== data.lingeId));
       setEnPossession(prev => [...prev, data]);
       setDistribues(prev => [...prev, data]);
+      voice.sayUniformeDistribue(distribues.length + 1);
 
       setScanStatus({
         loading: false,
-        success: { message: "✓ Uniforme distribué", detail: data.codeBarre },
+        success: { 
+          message: t('distribution_uniforme.uniform_distributed'), 
+          detail: data.codeBarre 
+        },
         error: null
       });
       setTimeout(() => setScanStatus(null), 1500);
       await Swal.fire({
         icon: 'success',
-        title: '✓ Uniforme distribué',
+        title: t('distribution_uniforme.uniform_distributed'),
         text: data.codeBarre,
         timer: 1000,
         showConfirmButton: false
       });
     } catch (e) {
       setScanStatus({ loading: false, success: null, error: e.message });
+      voice.sayErreurGenerique(e.message);
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
+        title: t('common.error'),
         text: e.message,
         timer: 1500,
         showConfirmButton: false
@@ -499,22 +544,23 @@ export default function DistributionUniforme() {
     } finally {
       setLoading(false);
     }
-  }, [personnel, agent]);
+  }, [personnel, agent, distribues.length, t, voice]);
 
   // ─── Retirer un uniforme ──────────────────────────────────────────────
   const handleRetirer = useCallback(async (linge) => {
     setEnPossession(prev => prev.filter(l => l.lingeId !== linge.lingeId));
     setDisponibles(prev => [...prev, linge]);
     setDistribues(prev => prev.filter(l => l.lingeId !== linge.lingeId));
+    voice.sayUniformeRetire();
 
     await Swal.fire({
       icon: 'info',
-      title: 'Uniforme retiré',
+      title: t('distribution_uniforme.uniform_removed'),
       text: linge.codeBarre,
       timer: 1000,
       showConfirmButton: false
     });
-  }, []);
+  }, [t, voice]);
 
   // ─── Gestion scan ──────────────────────────────────────────────────────
   const handleScan = useCallback(async code => {
@@ -523,16 +569,13 @@ export default function DistributionUniforme() {
 
     console.log("🔍 Scan reçu:", code, "Étape:", etape);
 
-    // Étape PERSONNEL : scan directement le personnel
     if (etape === "PERSONNEL") {
       console.log("👔 Scan personnel:", code);
       await handlePersonnel(code);
       return;
     }
 
-    // Étape DISTRIBUER
     if (etape === "DISTRIBUER") {
-      // ✅ Vérifier si c'est un matricule agent avec la bonne API
       try {
         const agentTrouve = await fetchAgentByCode(code.trim());
         if (agentTrouve) {
@@ -541,11 +584,9 @@ export default function DistributionUniforme() {
           return;
         }
       } catch (e) {
-        // Ce n'est pas un agent, continuer comme un uniforme
         console.log("❌ Ce n'est pas un agent valide:", e.message);
       }
       
-      // Si ce n'est pas un agent, c'est un uniforme
       console.log("👕 Distribution de l'uniforme:", code);
       await handleScanUniforme(code);
     }
@@ -556,13 +597,13 @@ export default function DistributionUniforme() {
     if (etape !== "PERSONNEL" && etape !== "RESUME") {
       const result = await Swal.fire({
         icon: 'warning',
-        title: 'Réinitialiser',
-        text: 'La distribution en cours sera abandonnée.',
+        title: t('distribution_uniforme.reset_title'),
+        text: t('distribution_uniforme.reset_text'),
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
         cancelButtonColor: '#64748b',
-        confirmButtonText: 'Oui, réinitialiser',
-        cancelButtonText: 'Annuler'
+        confirmButtonText: t('distribution_uniforme.yes_reset'),
+        cancelButtonText: t('common.cancel')
       });
       if (!result.isConfirmed) return;
     }
@@ -574,15 +615,13 @@ export default function DistributionUniforme() {
     setEtape("PERSONNEL");
     setScanVal("");
     setScanStatus(null);
-    // Ne pas réinitialiser l'agent
-  }, [etape]);
+  }, [etape, t]);
 
-  // ─── Helpers ──────────────────────────────────────────────────────────
   const getPlaceholder = () => {
-    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
-    if (etape === "PERSONNEL") return "👔 Scanner le badge du personnel...";
-    if (etape === "RESUME") return "✅ Distribution terminée";
-    return "👕 Scanner un uniforme à distribuer...";
+    if (!agent) return t('distribution_uniforme.agent_not_connected_placeholder');
+    if (etape === "PERSONNEL") return t('distribution_uniforme.scan_personnel_badge');
+    if (etape === "RESUME") return t('distribution_uniforme.distribution_completed');
+    return t('distribution_uniforme.scan_uniform_to_distribute');
   };
 
   const getBorderColor = () => {
@@ -597,27 +636,16 @@ export default function DistributionUniforme() {
   return (
     <div className="collecte-container">
 
-      {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: "32px" }}>
+      <div style={{
+        marginBottom: "32px", display: "flex", alignItems: "center",
+        justifyContent: "space-between", flexWrap: "wrap", gap: "12px"
+      }}>
         <div style={{
           display: "flex",
           alignItems: "center",
-          gap: "16px",
-          marginBottom: "8px"
+          gap: "16px"
         }}>
-          <div style={{
-            width: "56px",
-            height: "56px",
-            borderRadius: "18px",
-            background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            boxShadow: "0 6px 20px rgba(124, 58, 237, 0.3)"
-          }}>
-            <FaUserTie size={26} />
-          </div>
+          <PageHeaderIcon size={56} />
           <div>
             <h1 style={{
               fontSize: "28px",
@@ -625,17 +653,25 @@ export default function DistributionUniforme() {
               color: "#0f172a",
               margin: 0
             }}>
-              Distribution — Uniformes
+              {t('distribution_uniforme.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
+              {agent ? `${t('distribution_uniforme.agent')}: ${agent.nom}` : t('distribution_uniforme.no_agent_connected')}
             </p>
           </div>
         </div>
+
+        <MuteButton
+          muted={voice.muted}
+          onToggle={voice.toggleMute}
+          speaking={voice.speaking}
+          lang={voiceLang}
+          onLangChange={setVoiceLang}
+        />
       </div>
 
       <div style={{
@@ -646,7 +682,6 @@ export default function DistributionUniforme() {
         boxShadow: "0 4px 20px rgba(0,0,0,0.06)"
       }}>
 
-        {/* ─── BARRE SUPÉRIEURE ─────────────────────────────────────────── */}
         <div style={{
           display: "flex",
           justifyContent: "space-between",
@@ -712,13 +747,12 @@ export default function DistributionUniforme() {
                 }}
               >
                 <FaRedo size={10} />
-                Reset
+                {t('common.reset')}
               </button>
             )}
           </div>
         </div>
 
-        {/* ─── Message si agent non connecté ────────────────────────────── */}
         {!agent && (
           <div style={{
             padding: "12px 16px",
@@ -733,12 +767,11 @@ export default function DistributionUniforme() {
             color: "#dc2626"
           }}>
             <FaExclamationTriangle size={16} />
-            <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
-            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une distribution</span>
+            <span style={{ fontWeight: 600, color: "#dc2626" }}>{t('distribution_uniforme.no_agent_connected')}</span>
+            <span style={{ color: "#64748b" }}>{t('distribution_uniforme.no_agent_connect_text')}</span>
           </div>
         )}
 
-        {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
           border: `2px dashed ${isCloturee ? "#e2e8f0" : getBorderColor()}`,
@@ -761,7 +794,6 @@ export default function DistributionUniforme() {
           </CardContent>
         </Card>
 
-        {/* ─── INDICATEUR SCAN AGENT ────────────────────────────────────── */}
         {etape === "DISTRIBUER" && personnel && !isCloturee && (
           <div style={{
             padding: "8px 16px",
@@ -776,24 +808,22 @@ export default function DistributionUniforme() {
             color: "#92400e"
           }}>
             <FaUser size={14} />
-            <span>💡 Scanner votre badge agent pour clôturer la distribution</span>
+            <span>💡 {t('distribution_uniforme.scan_agent_to_close')}</span>
           </div>
         )}
 
-        {/* ─── ÉTAPES VIDE ───────────────────────────────────────────────── */}
         {agent && etape === "PERSONNEL" && (
           <Card style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaIdBadge color="#15803d" size={16} />
-                <span style={{ fontWeight: 600, color: "#15803d" }}>Scannez le badge du personnel</span>
-                <span style={{ color: "#64748b" }}>pour voir ses uniformes</span>
+                <span style={{ fontWeight: 600, color: "#15803d" }}>{t('distribution_uniforme.scan_personnel_badge_prompt')}</span>
+                <span style={{ color: "#64748b" }}>{t('distribution_uniforme.to_see_uniforms')}</span>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* ─── STATUTS ────────────────────────────────────────────────────── */}
         {etape === "DISTRIBUER" && personnel && !isCloturee && (
           <div style={{
             display: "grid",
@@ -802,21 +832,21 @@ export default function DistributionUniforme() {
             marginBottom: "20px"
           }}>
             <StatutCard
-              label="À distribuer"
+              label={t('distribution_uniforme.to_distribute')}
               value={disponibles.length}
               icon="📦"
               color="#0ea5e9"
               bg="#f0f9ff"
             />
             <StatutCard
-              label="En possession"
+              label={t('distribution_uniforme.in_possession')}
               value={enPossession.length}
               icon="✅"
               color="#15803d"
               bg="#f0fdf4"
             />
             <StatutCard
-              label="Distribués"
+              label={t('distribution_uniforme.distributed')}
               value={distribues.length}
               icon="🎯"
               color="#7c3aed"
@@ -825,7 +855,6 @@ export default function DistributionUniforme() {
           </div>
         )}
 
-        {/* ─── LISTES DES UNIFORMES ────────────────────────────────────── */}
         {etape === "DISTRIBUER" && personnel && !isCloturee && (
           <div style={{
             display: "grid",
@@ -833,7 +862,6 @@ export default function DistributionUniforme() {
             gap: "16px",
             marginBottom: "16px"
           }}>
-            {/* Disponibles */}
             <div style={{
               background: "#faf5ff",
               borderRadius: "12px",
@@ -850,14 +878,14 @@ export default function DistributionUniforme() {
                 color: "#7c3aed"
               }}>
                 <FaBoxes size={14} />
-                Disponibles
+                {t('distribution_uniforme.available')}
                 <Badge style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "10px" }}>
                   {disponibles.length}
                 </Badge>
               </div>
               {disponibles.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "20px", color: "#94a3b8", fontSize: "12px" }}>
-                  Aucun uniforme disponible
+                  {t('distribution_uniforme.no_uniform_available')}
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "250px", overflowY: "auto" }}>
@@ -873,7 +901,6 @@ export default function DistributionUniforme() {
               )}
             </div>
 
-            {/* En possession */}
             <div style={{
               background: "#f0fdf4",
               borderRadius: "12px",
@@ -890,14 +917,14 @@ export default function DistributionUniforme() {
                 color: "#15803d"
               }}>
                 <FaUserTie size={14} />
-                En possession
+                {t('distribution_uniforme.in_possession')}
                 <Badge style={{ background: "#dcfce7", color: "#15803d", fontSize: "10px" }}>
                   {enPossession.length}
                 </Badge>
               </div>
               {enPossession.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "20px", color: "#94a3b8", fontSize: "12px" }}>
-                  Aucun uniforme en possession
+                  {t('distribution_uniforme.no_uniform_in_possession')}
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "250px", overflowY: "auto" }}>
@@ -932,7 +959,6 @@ export default function DistributionUniforme() {
           />
         )}
 
-        {/* ─── FOOTER ────────────────────────────────────────────────────── */}
         <div style={{
           display: "flex",
           justifyContent: "space-between",
@@ -946,8 +972,8 @@ export default function DistributionUniforme() {
           marginTop: "16px"
         }}>
           <div style={{ display: "flex", gap: "16px" }}>
-            {agent && <span>Agent: <strong style={{ color: "#0f172a" }}>{agent.nom}</strong></span>}
-            {personnel && <span>Personnel: <strong style={{ color: "#15803d" }}>{personnel.nom}</strong></span>}
+            {agent && <span>{t('distribution_uniforme.agent')}: <strong style={{ color: "#0f172a" }}>{agent.nom}</strong></span>}
+            {personnel && <span>{t('distribution_uniforme.personnel')}: <strong style={{ color: "#15803d" }}>{personnel.nom}</strong></span>}
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <span>{new Date().toLocaleDateString("fr-FR")}</span>

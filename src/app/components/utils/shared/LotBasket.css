@@ -1,0 +1,175 @@
+/* Panier à linge du dialogue de suggestion de lot — voir LotBasket.jsx */
+.lot-basket-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.lot-basket {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px 16px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.lot-basket:hover {
+  transform: translateY(-3px);
+  border-color: var(--tone);
+  box-shadow: 0 14px 32px -12px color-mix(in srgb, var(--tone) 45%, transparent);
+}
+
+.lot-basket:focus-visible {
+  outline: 2px solid var(--tone);
+  outline-offset: 3px;
+}
+
+.lot-basket__svg {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  transition: transform 0.25s;
+}
+
+.lot-basket:hover .lot-basket__svg {
+  transform: scale(1.03);
+}
+
+.lot-basket__code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.lot-basket__weight {
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.lot-basket__unit {
+  font-size: 12px;
+  font-weight: 600;
+  fill: #64748b;
+}
+
+.lot-basket__pct {
+  position: absolute;
+  top: 12px;
+  inset-inline-end: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--tone-soft);
+  color: var(--tone);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.lot-basket__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.lot-basket__chip {
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.lot-basket__gauge {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lot-basket__gauge-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.lot-basket__gauge-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--tone);
+  transition: width 0.4s ease;
+}
+
+.lot-basket__capacity {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.lot-basket__warn {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #ffe4e6;
+  color: #e11d48;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Mode sombre */
+.dark .lot-basket {
+  background: var(--dk-surface, #111a2b);
+  border-color: var(--dk-border, #243149);
+}
+
+.dark .lot-basket__chip {
+  background: var(--dk-surface-2, #16213a);
+  color: var(--dk-text-2, #c1ccdb);
+}
+
+.dark .lot-basket__gauge-track {
+  background: var(--dk-surface-3, #1d2a44);
+}
+
+.dark .lot-basket__capacity {
+  color: var(--dk-muted, #8d9bb0);
+}
+
+/* Lot sélectionné (écrans lavage / séchage) */
+.lot-basket.is-selected {
+  border-color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 5%, #ffffff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone) 18%, transparent);
+}
+
+.dark .lot-basket.is-selected {
+  background: color-mix(in srgb, var(--tone) 10%, var(--dk-surface, #111a2b));
+}
+
+.lot-basket__check {
+  position: absolute;
+  top: 12px;
+  inset-inline-start: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--tone);
+  color: #ffffff;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--tone) 40%, transparent);
+}

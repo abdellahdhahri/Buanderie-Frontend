@@ -1,0 +1,199 @@
+/* ==========================================================================
+   Tableau de bord statistiques — grilles déplaçables & cartes KPI premium
+   ========================================================================== */
+
+/* ── Grilles ─────────────────────────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  gap: 16px;
+  align-items: stretch;
+}
+.stats-grid--kpi {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.stats-grid--widgets { grid-template-columns: minmax(0, 1fr); }
+
+@media (min-width: 640px)  { .stats-grid--kpi { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1024px) {
+  .stats-grid--kpi { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .stats-grid--widgets { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* En dessous de lg, les cartes larges reviennent sur une colonne */
+@media (max-width: 1023px) { .stats-grid--widgets > .stats-tile { grid-column: auto !important; } }
+
+/* ── Tuile déplaçable ────────────────────────────────────────────────────── */
+.stats-tile {
+  position: relative;
+  min-width: 0;
+  border-radius: 22px;
+  transition: box-shadow .2s ease, transform .2s ease, opacity .2s ease;
+}
+/* Le contenu (Card) occupe toute la hauteur de la rangée */
+.stats-tile > :not(.stats-tile__handle) { height: 100%; }
+
+.stats-tile__handle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .85);
+  color: #94a3b8;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .12), inset 0 0 0 1px rgba(15, 23, 42, .06);
+  cursor: grab;
+  opacity: 0;
+  transform: scale(.9);
+  transition: opacity .15s ease, transform .15s ease, color .15s ease, background .15s ease;
+}
+.stats-tile:hover .stats-tile__handle,
+.stats-tile__handle:focus-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+.stats-tile__handle:hover { color: #0d9488; background: #fff; }
+.stats-tile__handle:active { cursor: grabbing; }
+.stats-tile__handle:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(20, 184, 166, .35); }
+
+/* Carte en cours de déplacement : emplacement en pointillés */
+.stats-tile.is-dragged {
+  opacity: .45;
+}
+.stats-tile.is-dragged::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  border: 2px dashed rgba(13, 148, 136, .55);
+  background: rgba(20, 184, 166, .06);
+  pointer-events: none;
+}
+.stats-grid.is-dragging .stats-tile:not(.is-dragged) {
+  box-shadow: 0 0 0 1px rgba(13, 148, 136, .12);
+}
+
+/* ── Carte KPI premium ───────────────────────────────────────────────────── */
+.kpi-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  padding: 16px 18px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 24px -14px rgba(15, 23, 42, .14), inset 0 0 0 1px rgba(15, 23, 42, .06);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.stats-tile:hover .kpi-tile {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .05), 0 16px 32px -14px rgba(15, 23, 42, .2), inset 0 0 0 1px rgba(15, 23, 42, .07);
+}
+/* Halo coloré discret dans l'angle */
+.kpi-tile::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--kpi-color);
+  opacity: .08;
+  filter: blur(8px);
+  pointer-events: none;
+}
+/* Liseré de couleur en bas */
+.kpi-tile::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(90deg, var(--kpi-color), transparent);
+  opacity: .55;
+}
+
+.kpi-tile__top { display: flex; align-items: center; gap: 10px; padding-right: 28px; }
+.kpi-tile__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  color: var(--kpi-color);
+  background: color-mix(in srgb, var(--kpi-color) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kpi-color) 18%, transparent);
+}
+.kpi-tile__label {
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #64748b;
+}
+.kpi-tile__bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.kpi-tile__value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.03em;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-tile__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.kpi-tile__trend.is-up   { color: #047857; background: #ecfdf5; }
+.kpi-tile__trend.is-down { color: #b91c1c; background: #fef2f2; }
+.kpi-tile__trend small { font-size: 10px; font-weight: 500; opacity: .75; }
+
+/* ── Barre d'outils de disposition ───────────────────────────────────────── */
+.stats-layout-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+/* Carte KPI cliquable (ex. linges incomplets → liste des linges) */
+.kpi-tile.is-clickable { cursor: pointer; }
+.kpi-tile.is-clickable:focus-visible { outline: 2px solid var(--kpi-color); outline-offset: 2px; }
+.kpi-tile__go {
+  position: absolute;
+  bottom: 14px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: var(--kpi-color);
+  background: color-mix(in srgb, var(--kpi-color) 10%, transparent);
+  opacity: .7;
+  transition: opacity .15s ease, transform .2s ease, background .15s ease;
+}
+.kpi-tile.is-clickable:hover .kpi-tile__go {
+  opacity: 1;
+  transform: translate(2px, -2px);
+  background: color-mix(in srgb, var(--kpi-color) 18%, transparent);
+}

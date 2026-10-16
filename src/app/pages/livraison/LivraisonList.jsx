@@ -1,8 +1,8 @@
-// pages/Livraison/LivraisonList.js
 import React, {
   useState, useRef, useEffect,
   useCallback, useMemo
 } from "react";
+import { useTranslation } from "react-i18next";
 import { useContext } from "react";
 import { ServiceContext } from "../../contextes/ServiceContext";
 import { useModal } from "../../contextes/ModalContext";
@@ -31,9 +31,14 @@ import {
 } from "../../services/distributionService";
 import Swal from "sweetalert2";
 import "../Linge/WorkflowList.css";
+import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import MuteButton from "../../components/utils/MuteButton";
+import { useVoiceGuide } from "../../hooks/useVoiceGuide";
+import { getSetting, bipScan } from "../../utils/appSettings";
 
-// ─── ScanStatus ──────────────────────────────────────────────────────────────
 function ScanStatus({ loading, success, error, code }) {
+  const { t } = useTranslation();
+
   if (loading) {
     return (
       <div style={{
@@ -49,7 +54,9 @@ function ScanStatus({ loading, success, error, code }) {
       }}>
         <FaSpinner className="animate-spin" color="#3b82f6" size={22} />
         <div>
-          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "14px", margin: 0 }}>Scan en cours...</p>
+          <p style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "14px", margin: 0 }}>
+            {t('livraison.scanning')}
+          </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{code}</p>
         </div>
       </div>
@@ -81,7 +88,9 @@ function ScanStatus({ loading, success, error, code }) {
           <FaCheckCircle color="#22c55e" size={20} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "14px", margin: 0 }}>✓ {success.message || "Succès"}</p>
+          <p style={{ fontWeight: 600, color: "#15803d", fontSize: "14px", margin: 0 }}>
+            ✓ {success.message || t('common.success')}
+          </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{success.detail}</p>
         </div>
       </div>
@@ -113,7 +122,9 @@ function ScanStatus({ loading, success, error, code }) {
           <FaExclamationTriangle color="#ef4444" size={18} />
         </div>
         <div>
-          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "14px", margin: 0 }}>Erreur</p>
+          <p style={{ fontWeight: 600, color: "#dc2626", fontSize: "14px", margin: 0 }}>
+            {t('common.error')}
+          </p>
           <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{error}</p>
         </div>
       </div>
@@ -166,6 +177,7 @@ function StatutCard({ label, value, icon, color, bg, subValue }) {
 
 // ─── LigneComparatif ──────────────────────────────────────────────────────────
 function LigneComparatif({ item }) {
+  const { t } = useTranslation();
   const c = getCategorie(item.categorie);
   const livree = Number(item.quantiteLivree || 0);
   const demande = Number(item.quantiteDemandee || 0);
@@ -207,7 +219,7 @@ function LigneComparatif({ item }) {
       <td style={{ padding: "8px 12px", textAlign: "center" }}>
         {complet ? (
           <span style={{ padding: "2px 10px", borderRadius: "10px", background: "#dcfce7", color: "#15803d", fontSize: "10px", fontWeight: 600 }}>
-            Terminé
+            {t('livraison.completed')}
           </span>
         ) : livree > 0 ? (
           <span style={{ padding: "2px 10px", borderRadius: "10px", background: "#dbeafe", color: "#1d4ed8", fontSize: "10px", fontWeight: 600 }}>
@@ -215,7 +227,7 @@ function LigneComparatif({ item }) {
           </span>
         ) : (
           <span style={{ padding: "2px 10px", borderRadius: "10px", background: "#f1f5f9", color: "#94a3b8", fontSize: "10px", fontWeight: 600 }}>
-            Attente
+            {t('livraison.pending')}
           </span>
         )}
       </td>
@@ -231,6 +243,7 @@ function useRefMirror(v) {
 
 // ─── Page principale ──────────────────────────────────────────────────────
 export default function LivraisonList() {
+  const { t } = useTranslation();
   const { services } = useContext(ServiceContext);
 
   const [etape, setEtape] = useState("SERVICE");
@@ -248,40 +261,48 @@ export default function LivraisonList() {
   const distributionRef = useRefMirror(distribution);
   const scanInputRef = useRef(null);
 
- useEffect(() => {
-  
-  const agentData = getAgentFromStorage();
-  
-  if (agentData) {
-    setAgent(agentData);
-    setEtape("SERVICE");
-    setScanStatus({
-      loading: false,
-      success: { 
-        message: `👤 Agent ${agentData.nomPrenom || agentData.nom}`, 
-        detail: `Connecté · ${agentData.codeBarre || agentData.matricule}` 
-      },
-      error: null
-    });
-    setTimeout(() => setScanStatus(null), 2000);
-  } else {
-    console.warn("⚠️ Aucun agent trouvé dans le stockage");
-    setEtape("SERVICE");
-    setScanStatus({
-      loading: false,
-      success: null,
-      error: "Aucun agent connecté — veuillez vous reconnecter"
-    });
-  }
-}, []);
+  // Assistant vocal
+  const [voiceLang, setVoiceLang] = useState(() => getSetting("voice.lang"));
+  const voice = useVoiceGuide(voiceLang);
+  const voiceRef = useRef(voice);
+  useEffect(() => { voiceRef.current = voice; }, [voice]);
+  useEffect(() => () => voiceRef.current.cancel(), []);
+
+  useEffect(() => {
+    const agentData = getAgentFromStorage();
+    if (agentData) {
+      setAgent(agentData);
+      setEtape("SERVICE");
+      setScanStatus({
+        loading: false,
+        success: { 
+          message: `👤 ${t('livraison.agent')} ${agentData.nomPrenom || agentData.nom}`, 
+          detail: `${t('livraison.connected')} · ${agentData.codeBarre || agentData.matricule}` 
+        },
+        error: null
+      });
+      setTimeout(() => setScanStatus(null), 2000);
+      setTimeout(() => voiceRef.current.sayBienvenueDistributionService(agentData.nomPrenom || agentData.nom || ""), 600);
+    } else {
+      console.warn("⚠️ Aucun agent trouvé dans le stockage");
+      setEtape("SERVICE");
+      setScanStatus({
+        loading: false,
+        success: null,
+        error: t('livraison.no_agent_connected')
+      });
+    }
+  }, [t]);
+
   // ─── Scan automatique ──────────────────────────────────────────────────
   useEffect(() => {
-    if (scanValue.trim().length < 2) return;
+    if (scanValue.trim().length < (Number(getSetting("scan.minLength")) || 3)) return;
     const timeout = setTimeout(() => {
       const code = scanValue.trim();
       setScanValue("");
+      bipScan();
       handleScan(code);
-    }, 300);
+    }, Math.max(100, (Number(getSetting("scan.delayMs")) || 400) - 100)); // un peu avant le champ de scan : évite un double envoi
     return () => clearTimeout(timeout);
   }, [scanValue]);
 
@@ -308,10 +329,11 @@ export default function LivraisonList() {
       setComparatif(data);
 
       if (isDistributionComplete(data)) {
+        voiceRef.current.sayDistributionServiceComplete();
         await Swal.fire({
           icon: 'success',
-          title: 'Distribution terminée',
-          text: 'Tous les articles ont été livrés',
+          title: t('livraison.distribution_completed'),
+          text: t('livraison.all_articles_delivered'),
           timer: 2000,
           showConfirmButton: false
         });
@@ -321,15 +343,18 @@ export default function LivraisonList() {
         setHistorique([]);
         setService(null);
       }
+      return data;
     } catch (error) {
       console.error("Erreur rafraîchissement:", error);
+      return null;
     }
-  }, []);
+  }, [t]);
 
   // ─── Auto-refresh ──────────────────────────────────────────────────────
   useEffect(() => {
     if (etape !== "SCAN" || !distribution?.id) return;
-    const id = setInterval(() => rafraichirComparatif(distribution.id), 3000);
+    // Fréquence : Paramètres › Rafraîchissement
+    const id = setInterval(() => rafraichirComparatif(distribution.id), (Number(getSetting("refresh.distributionSeconds")) || 3) * 1000);
     return () => clearInterval(id);
   }, [etape, distribution, rafraichirComparatif]);
 
@@ -347,20 +372,21 @@ export default function LivraisonList() {
     if (!distribution) return false;
 
     setLoading(true);
-    setScanStatus({ loading: true, code: "Clôture en cours..." });
+    setScanStatus({ loading: true, code: t('livraison.closing') });
 
     try {
       const reste = stats.reste || 0;
       if (reste > 0) {
+        voice.sayArticlesRestantsCloture(reste);
         const result = await Swal.fire({
           icon: 'warning',
-          title: 'Articles restants',
-          text: `${reste} article(s) non livré(s). Clôturer quand même ?`,
+          title: t('livraison.remaining_articles'),
+          text: t('livraison.remaining_articles_text', { count: reste }),
           showCancelButton: true,
           confirmButtonColor: '#d97706',
           cancelButtonColor: '#64748b',
-          confirmButtonText: 'Oui, clôturer',
-          cancelButtonText: 'Annuler'
+          confirmButtonText: t('livraison.yes_close'),
+          cancelButtonText: t('common.cancel')
         });
         if (!result.isConfirmed) {
           setScanStatus(null);
@@ -370,11 +396,12 @@ export default function LivraisonList() {
       }
 
       await cloturerDistribution(distribution.id);
+      voice.sayDistributionServiceCloturee(service?.nom || service?.code || "");
 
       await Swal.fire({
         icon: 'success',
-        title: '✅ Distribution clôturée',
-        text: `Service ${service?.nom || ''} terminé`,
+        title: t('livraison.distribution_closed'),
+        text: t('livraison.service_completed', { name: service?.nom || '' }),
         timer: 2000,
         showConfirmButton: false
       });
@@ -391,23 +418,23 @@ export default function LivraisonList() {
     } catch (error) {
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
-        text: error.message || 'Erreur lors de la clôture'
+        title: t('common.error'),
+        text: error.message || t('livraison.close_error')
       });
       setScanStatus(null);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [distribution, service, stats.reste]);
+  }, [distribution, service, stats.reste, t, voice]);
 
   // ─── Scan Service ──────────────────────────────────────────────────────
   const execScanService = useCallback(async (code) => {
     if (!agent) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Agent requis',
-        text: 'Veuillez vous reconnecter'
+        title: t('livraison.agent_required'),
+        text: t('livraison.agent_required_text')
       });
       return;
     }
@@ -421,8 +448,9 @@ export default function LivraisonList() {
       
       setService(svc);
       setDistribution(dist);
-      await rafraichirComparatif(dist.id);
+      const comp = await rafraichirComparatif(dist.id);
       setEtape("SCAN");
+      voice.sayServiceDistribution(svc.nom || svc.code, calculerStats(comp || []).reste);
       setScanStatus({
         loading: false,
         success: { message: `✅ ${svc.code}`, detail: `${dist.id}` },
@@ -431,94 +459,92 @@ export default function LivraisonList() {
       setTimeout(() => setScanStatus(null), 2000);
       await Swal.fire({
         icon: 'success',
-        title: '✅ Distribution créée',
-        text: `Scannez les articles pour ${svc.nom}`,
+        title: t('livraison.distribution_created'),
+        text: t('livraison.scan_articles_for', { name: svc.nom }),
         timer: 1500,
         showConfirmButton: false
       });
     } catch (error) {
       setScanStatus({ loading: false, success: null, error: error.message });
+      if (/réseau|network|fetch/i.test(error.message || "")) voice.sayErreurReseau();
+      else voice.sayErreurGenerique(error.message);
       await Swal.fire({
         icon: 'error',
-        title: 'Erreur',
+        title: t('common.error'),
         text: error.message
       });
     } finally {
       setLoading(false);
     }
-  }, [agent, rafraichirComparatif]);
+  }, [agent, rafraichirComparatif, t, voice]);
 
   // ─── Scan Linge ──────────────────────────────────────────────────────
- // Dans LivraisonList.js, remplacer execScanLinge
+  const execScanLinge = useCallback(async (code) => {
+    const dist = distributionRef.current;
+    if (!dist?.id) return;
+    setLoading(true);
+    setScanStatus({ loading: true, code });
 
-// ─── Scan Linge ──────────────────────────────────────────────────────
-const execScanLinge = useCallback(async (code) => {
-  const dist = distributionRef.current;
-  if (!dist?.id) return;
-  setLoading(true);
-  setScanStatus({ loading: true, code });
+    try {
+      const result = await scanArticleForDistribution(dist.id, code);
 
-  try {
-    const result = await scanArticleForDistribution(dist.id, code);
-
-    const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    
-    // Utiliser le résultat pour l'historique
-    setHistorique(prev => [{ 
-      code, 
-      ok: true, 
-      msg: result.message || "Livré",
-      heure 
-    }, ...prev.slice(0, 49)]);
-    
-    setScanStatus({
-      loading: false,
-      success: { 
-        message: result.message || "✓ Article livré", 
-        detail: code 
-      },
-      error: null
-    });
-    setTimeout(() => setScanStatus(null), 1500);
-    await rafraichirComparatif(dist.id);
-  } catch (error) {
-    const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    setHistorique(prev => [{ 
-      code, 
-      ok: false, 
-      msg: error.message, 
-      heure 
-    }, ...prev.slice(0, 49)]);
-    setScanStatus({ 
-      loading: false, 
-      success: null, 
-      error: error.message 
-    });
-    await Swal.fire({
-      icon: 'error',
-      title: 'Scan refusé',
-      text: error.message,
-      timer: 1500,
-      showConfirmButton: false
-    });
-    setTimeout(() => setScanStatus(null), 2000);
-  } finally {
-    setLoading(false);
-  }
-}, [distributionRef, rafraichirComparatif]);
+      const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      
+      setHistorique(prev => [{ 
+        code, 
+        ok: true, 
+        msg: result.message || t('livraison.delivered'),
+        heure 
+      }, ...prev.slice(0, 49)]);
+      
+      setScanStatus({
+        loading: false,
+        success: { 
+          message: result.message || t('livraison.article_delivered'), 
+          detail: code 
+        },
+        error: null
+      });
+      setTimeout(() => setScanStatus(null), 1500);
+      const comp = await rafraichirComparatif(dist.id);
+      if (comp && !isDistributionComplete(comp)) voice.sayArticleLivre(calculerStats(comp).reste);
+    } catch (error) {
+      const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setHistorique(prev => [{ 
+        code, 
+        ok: false, 
+        msg: error.message, 
+        heure 
+      }, ...prev.slice(0, 49)]);
+      setScanStatus({ 
+        loading: false, 
+        success: null, 
+        error: error.message 
+      });
+      voice.sayArticleRefuse(error.message);
+      await Swal.fire({
+        icon: 'error',
+        title: t('livraison.scan_rejected'),
+        text: error.message,
+        timer: 1500,
+        showConfirmButton: false
+      });
+      setTimeout(() => setScanStatus(null), 2000);
+    } finally {
+      setLoading(false);
+    }
+  }, [distributionRef, rafraichirComparatif, t, voice]);
 
   // ─── Gestion du scan ──────────────────────────────────────────────────
   const handleScan = useCallback(async (code) => {
     if (!code || loading) return;
     setScanValue("");
 
-    // Étape SERVICE : scan du service
     if (etape === "SERVICE") {
       await execScanService(code);
       return;
     }
 
-    // Étape SCAN : détecter agent pour clôturer
     if (etape === "SCAN") {
       const agentTrouve = await verifierSiAgent(code);
       if (agentTrouve) {
@@ -534,13 +560,13 @@ const execScanLinge = useCallback(async (code) => {
   const handleReset = async () => {
     const result = await Swal.fire({
       icon: 'warning',
-      title: 'Réinitialiser',
-      text: 'La distribution en cours sera abandonnée.',
+      title: t('livraison.reset_title'),
+      text: t('livraison.reset_text'),
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#64748b',
-      confirmButtonText: 'Oui, réinitialiser',
-      cancelButtonText: 'Annuler'
+      confirmButtonText: t('livraison.yes_reset'),
+      cancelButtonText: t('common.cancel')
     });
     if (!result.isConfirmed) return;
 
@@ -554,7 +580,7 @@ const execScanLinge = useCallback(async (code) => {
     setEtape("SERVICE");
     await Swal.fire({
       icon: 'info',
-      title: 'Réinitialisé',
+      title: t('livraison.reset_success'),
       timer: 1000,
       showConfirmButton: false
     });
@@ -562,10 +588,10 @@ const execScanLinge = useCallback(async (code) => {
 
   // ─── Helpers ──────────────────────────────────────────────────────────
   const getPlaceholder = () => {
-    if (!agent) return "👤 Agent non connecté — veuillez vous reconnecter";
-    if (etape === "SERVICE") return "🏢 Scanner le code du service...";
-    if (etape === "SCAN") return "🏷️ Scanner les articles...";
-    return "Scanner...";
+    if (!agent) return t('livraison.agent_not_connected_placeholder');
+    if (etape === "SERVICE") return t('livraison.scan_service_code');
+    if (etape === "SCAN") return t('livraison.scan_articles');
+    return t('livraison.scan');
   };
 
   const getBorderColor = () => {
@@ -579,35 +605,23 @@ const execScanLinge = useCallback(async (code) => {
   const showAgentHint = etape === "SCAN" && distribution;
 
   const servicesFiltres = useMemo(() =>
-    services.filter(s => !searchSvc || s.nom?.toLowerCase().includes(searchSvc.toLowerCase())),
+    services.filter(s => !searchSvc || s.nom?.toLowerCase().includes(searchSvc.toLowerCase()) || s.code?.toLowerCase().includes(searchSvc.toLowerCase())),
     [services, searchSvc]
   );
 
-  // ─── RENDU ──────────────────────────────────────────────────────────────
   return (
     <div className="collecte-container">
 
-      {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: "32px" }}>
+      <div style={{
+        marginBottom: "32px", display: "flex", alignItems: "center",
+        justifyContent: "space-between", flexWrap: "wrap", gap: "12px"
+      }}>
         <div style={{
           display: "flex",
           alignItems: "center",
-          gap: "16px",
-          marginBottom: "8px"
+          gap: "16px"
         }}>
-          <div style={{
-            width: "56px",
-            height: "56px",
-            borderRadius: "18px",
-            background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            boxShadow: "0 6px 20px rgba(14, 165, 233, 0.3)"
-          }}>
-            <FaTruck size={26} />
-          </div>
+          <PageHeaderIcon size={56} />
           <div>
             <h1 style={{
               fontSize: "28px",
@@ -615,17 +629,25 @@ const execScanLinge = useCallback(async (code) => {
               color: "#0f172a",
               margin: 0
             }}>
-              Distribution
+              {t('livraison.title')}
             </h1>
             <p style={{
               fontSize: "14px",
               color: "#64748b",
               margin: "2px 0 0 0"
             }}>
-              {agent ? `Agent: ${agent.nom}` : "Aucun agent connecté"}
+              {agent ? `${t('livraison.agent')}: ${agent.nom}` : t('livraison.no_agent_connected')}
             </p>
           </div>
         </div>
+
+        <MuteButton
+          muted={voice.muted}
+          onToggle={voice.toggleMute}
+          speaking={voice.speaking}
+          lang={voiceLang}
+          onLangChange={setVoiceLang}
+        />
       </div>
 
       <div style={{
@@ -636,7 +658,6 @@ const execScanLinge = useCallback(async (code) => {
         boxShadow: "0 4px 20px rgba(0,0,0,0.06)"
       }}>
 
-        {/* ─── BARRE SUPÉRIEURE ─────────────────────────────────────────── */}
         <div style={{
           display: "flex",
           justifyContent: "space-between",
@@ -676,7 +697,7 @@ const execScanLinge = useCallback(async (code) => {
                 <FaBuilding color="#0284c7" size={16} />
                 <span style={{ fontWeight: 700, color: "#0284c7", fontSize: "14px" }}>{service.nom}</span>
                 <Badge style={{ background: "#e0f2fe", color: "#0284c7", fontSize: "10px", padding: "2px 10px", borderRadius: "12px" }}>
-                  {stats.demande} articles
+                  {stats.demande} {t('livraison.articles')}
                 </Badge>
               </div>
             )}
@@ -697,13 +718,12 @@ const execScanLinge = useCallback(async (code) => {
                 }}
               >
                 <FaRedo size={10} />
-                Reset
+                {t('common.reset')}
               </Button>
             )}
           </div>
         </div>
 
-        {/* ─── Message si agent non connecté ────────────────────────────── */}
         {!agent && (
           <div style={{
             padding: "12px 16px",
@@ -718,12 +738,11 @@ const execScanLinge = useCallback(async (code) => {
             color: "#dc2626"
           }}>
             <FaExclamationTriangle size={16} />
-            <span style={{ fontWeight: 600, color: "#dc2626" }}>Aucun agent connecté</span>
-            <span style={{ color: "#64748b" }}>Veuillez vous connecter pour effectuer une distribution</span>
+            <span style={{ fontWeight: 600, color: "#dc2626" }}>{t('livraison.no_agent_connected')}</span>
+            <span style={{ color: "#64748b" }}>{t('livraison.no_agent_connect_text')}</span>
           </div>
         )}
 
-        {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
         <Card style={{
           marginBottom: "20px",
           border: `2px dashed ${isCloturee ? "#e2e8f0" : getBorderColor()}`,
@@ -746,30 +765,28 @@ const execScanLinge = useCallback(async (code) => {
           </CardContent>
         </Card>
 
-        {/* ─── INDICATEUR SCAN AGENT ────────────────────────────────────── */}
         {showAgentHint && (
           <Card style={{ background: "#fef3c7", border: "1px solid #fcd34d", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">
               <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
                 <FaUser color="#d97706" size={16} />
-                <span style={{ fontWeight: 600, color: "#92400e" }}>💡 Scanner votre badge agent pour clôturer la distribution</span>
+                <span style={{ fontWeight: 600, color: "#92400e" }}>💡 {t('livraison.scan_agent_to_close')}</span>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* ─── ÉTAPE SERVICE : LISTE ────────────────────────────────────── */}
         {agent && etape === "SERVICE" && (
           <Card style={{ background: "#f0f9ff", border: "1px solid #bae6fd", marginBottom: "16px", borderRadius: "12px" }}>
             <CardContent className="p-4">
               <div style={{ fontSize: "13px", fontWeight: 600, color: "#0284c7", marginBottom: "10px" }}>
-                🏢 Choisir un service
+                🏢 {t('livraison.choose_service')}
               </div>
               <div style={{ position: "relative", marginBottom: "10px" }}>
                 <FaSearch size={12} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }} />
                 <input
                   type="text"
-                  placeholder="Rechercher..."
+                  placeholder={t('common.search')}
                   value={searchSvc}
                   onChange={e => setSearchSvc(e.target.value)}
                   style={{
@@ -813,7 +830,6 @@ const execScanLinge = useCallback(async (code) => {
           </Card>
         )}
 
-        {/* ─── STATUTS ────────────────────────────────────────────────────── */}
         {(etape === "SCAN" || etape === "SERVICE") && agent && (
           <div style={{
             display: "grid",
@@ -822,14 +838,14 @@ const execScanLinge = useCallback(async (code) => {
             marginBottom: "20px"
           }}>
             <StatutCard
-              label="Demandés"
+              label={t('livraison.requested')}
               value={stats.demande || 0}
               icon="📋"
               color="#0ea5e9"
               bg="#f0f9ff"
             />
             <StatutCard
-              label="Livrés"
+              label={t('livraison.delivered')}
               value={stats.livree || 0}
               icon="✅"
               color="#15803d"
@@ -837,24 +853,23 @@ const execScanLinge = useCallback(async (code) => {
               subValue={stats.pct > 0 ? `${stats.pct}%` : ""}
             />
             <StatutCard
-              label="Reste"
+              label={t('livraison.remaining')}
               value={stats.reste || 0}
               icon="⏳"
               color="#d97706"
               bg="#fef3c7"
             />
             <StatutCard
-              label="Avancement"
+              label={t('livraison.progress')}
               value={`${stats.pct || 0}%`}
               icon="📊"
               color="#7c3aed"
               bg="#faf5ff"
-              subValue={stats.pct === 100 ? "✅ Terminé" : ""}
+              subValue={stats.pct === 100 ? `✅ ${t('livraison.completed')}` : ""}
             />
           </div>
         )}
 
-        {/* ─── HISTORIQUE DES SCANS ─────────────────────────────────────── */}
         {etape === "SCAN" && historique.length > 0 && (
           <div style={{
             background: "#f8fafc",
@@ -864,9 +879,9 @@ const execScanLinge = useCallback(async (code) => {
             marginBottom: "16px"
           }}>
             <div style={{ fontWeight: 600, fontSize: "12px", color: "#64748b", marginBottom: "8px", display: "flex", justifyContent: "space-between" }}>
-              <span>📋 Derniers scans</span>
+              <span>📋 {t('livraison.last_scans')}</span>
               <button onClick={() => setHistorique([])} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "11px" }}>
-                Effacer
+                {t('common.clear')}
               </button>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", maxHeight: "70px", overflowY: "auto" }}>
@@ -895,7 +910,6 @@ const execScanLinge = useCallback(async (code) => {
           </div>
         )}
 
-        {/* ─── COMPARATIF ────────────────────────────────────────────────── */}
         {(etape === "SCAN" || etape === "SERVICE") && comparatif.length > 0 && (
           <div style={{
             marginTop: "20px",
@@ -912,19 +926,19 @@ const execScanLinge = useCallback(async (code) => {
               justifyContent: "space-between",
               alignItems: "center"
             }}>
-              <span style={{ fontWeight: 600, fontSize: "13px", color: "#0f172a" }}>📊 Comparatif</span>
+              <span style={{ fontWeight: 600, fontSize: "13px", color: "#0f172a" }}>📊 {t('livraison.comparison')}</span>
               <span style={{ fontSize: "12px", color: "#64748b" }}>{stats.livree} / {stats.demande} ({stats.pct}%)</span>
             </div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
                 <thead>
                   <tr style={{ background: "#f8fafc" }}>
-                    <th style={{ padding: "6px 12px", textAlign: "left", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>Catégorie</th>
-                    <th style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>Collecté</th>
-                    <th style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>Demandé</th>
-                    <th style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>Livré</th>
-                    <th style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>Reste</th>
-                    <th style={{ padding: "6px 12px", textAlign: "center", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>État</th>
+                    <th style={{ padding: "6px 12px", textAlign: "left", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>{t('livraison.category')}</th>
+                    <th style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>{t('livraison.collected')}</th>
+                    <th style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>{t('livraison.requested')}</th>
+                    <th style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>{t('livraison.delivered')}</th>
+                    <th style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>{t('livraison.remaining')}</th>
+                    <th style={{ padding: "6px 12px", textAlign: "center", fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>{t('livraison.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -934,14 +948,14 @@ const execScanLinge = useCallback(async (code) => {
                 </tbody>
                 <tfoot>
                   <tr style={{ background: "#f8fafc", borderTop: "2px solid #e2e8f0" }}>
-                    <td style={{ padding: "6px 12px", fontWeight: 700 }}>Total</td>
+                    <td style={{ padding: "6px 12px", fontWeight: 700 }}>{t('livraison.total')}</td>
                     <td style={{ padding: "6px 12px", textAlign: "right", color: "#64748b" }}>—</td>
                     <td style={{ padding: "6px 12px", textAlign: "right", fontWeight: 700 }}>{stats.demande}</td>
                     <td style={{ padding: "6px 12px", textAlign: "right", fontWeight: 700, color: "#0ea5e9" }}>{stats.livree}</td>
                     <td style={{ padding: "6px 12px", textAlign: "right", fontWeight: 700, color: "#f59e0b" }}>{stats.reste}</td>
                     <td style={{ padding: "6px 12px", textAlign: "center" }}>
                       {stats.pct === 100 ? (
-                        <span style={{ padding: "2px 10px", borderRadius: "8px", background: "#dcfce7", color: "#15803d", fontSize: "10px", fontWeight: 600 }}>Terminé</span>
+                        <span style={{ padding: "2px 10px", borderRadius: "8px", background: "#dcfce7", color: "#15803d", fontSize: "10px", fontWeight: 600 }}>{t('livraison.completed')}</span>
                       ) : (
                         <span style={{ padding: "2px 10px", borderRadius: "8px", background: "#dbeafe", color: "#1d4ed8", fontSize: "10px", fontWeight: 600 }}>{stats.pct}%</span>
                       )}
@@ -953,7 +967,6 @@ const execScanLinge = useCallback(async (code) => {
           </div>
         )}
 
-        {/* ─── FOOTER ────────────────────────────────────────────────────── */}
         <div style={{
           display: "flex",
           justifyContent: "space-between",
@@ -967,9 +980,9 @@ const execScanLinge = useCallback(async (code) => {
           marginTop: "16px"
         }}>
           <div style={{ display: "flex", gap: "16px" }}>
-            {agent && <span>Agent: <strong style={{ color: "#0f172a" }}>{agent.nom}</strong></span>}
-            {service && <span>Service: <strong style={{ color: "#0f172a" }}>{service.nom}</strong></span>}
-            {distribution && <span style={{ color: "#7c3aed" }}>Distribution #{distribution.id}</span>}
+            {agent && <span>{t('livraison.agent')}: <strong style={{ color: "#0f172a" }}>{agent.nom}</strong></span>}
+            {service && <span>{t('livraison.service')}: <strong style={{ color: "#0f172a" }}>{service.nom}</strong></span>}
+            {distribution && <span style={{ color: "#7c3aed" }}>{t('livraison.distribution')} #{distribution.id}</span>}
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <span>{new Date().toLocaleDateString("fr-FR")}</span>

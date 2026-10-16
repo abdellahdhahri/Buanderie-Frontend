@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { FaBarcode, FaTimes } from "react-icons/fa";
+import { getSetting, bipScan } from "../../utils/appSettings";
 
 /**
  * Input de scan avec focus permanent.
@@ -37,15 +38,16 @@ export default function ScanInput({
 
   // Debounce auto (lecteur code-barres envoie d'un coup)
   useEffect(() => {
-    if (!autoDebounce || value.trim().length < 3) return;
-    const t = setTimeout(() => onSubmit(value.trim()), 400);
+    // Délai et longueur minimale réglés dans Paramètres › Lecture / Scan
+    if (!autoDebounce || value.trim().length < (Number(getSetting("scan.minLength")) || 3)) return;
+    const t = setTimeout(() => { bipScan(); onSubmit(value.trim()); }, Number(getSetting("scan.delayMs")) || 400);
     return () => clearTimeout(t);
   }, [value, autoDebounce]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const code = value.trim();
-    if (code) onSubmit(code);
+    if (code) { bipScan(); onSubmit(code); }
   };
 
   return (
