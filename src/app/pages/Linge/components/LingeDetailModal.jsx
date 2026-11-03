@@ -87,6 +87,18 @@ export function LingeDetailModal({ linge, onClose, onEdit, getServiceName, getPo
               icon: <Clock />,
               hidden: !linge.dateCreation,
             },
+            {
+              label: t('linge.source', 'Source'),
+              value: linge.source === "EXTERNE" ? t('integration.imported', 'Importé') : linge.source,
+              hidden: !linge.source,
+            },
+            { label: t('linge.external_id', 'ID externe'), value: linge.idExterne, mono: true, hidden: !linge.idExterne },
+            {
+              label: t('linge.sync_date', 'Dernière synchronisation'),
+              value: linge.dateSynchro ? formatDateTime(linge.dateSynchro) : null,
+              icon: <Clock />,
+              hidden: !linge.dateSynchro,
+            },
           ],
         },
         {

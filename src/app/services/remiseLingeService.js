@@ -6,7 +6,6 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 export const normalizeAgent = (agentData) => {
   // On tente plusieurs noms de clés possibles pour l'ID numérique
   const resolvedId =
-    agentData.Id ??
     agentData.idPersonnel ??
     agentData.personnelId ??
     agentData.codePersonnel ??
@@ -20,13 +19,11 @@ export const normalizeAgent = (agentData) => {
     );
   }
 
-  // L'API SQL Server renvoie les clés en PascalCase (Nom, NomPrenom, CodeBarre...)
-  const nom = agentData.nom ?? agentData.Nom ?? "";
-  const prenom = agentData.prenom ?? agentData.Prenom ?? "";
-  const codeBarre = agentData.codeBarre ?? agentData.CodeBarre;
-  const matricule = agentData.matricule ?? agentData.Matricule;
-  const nomPrenom =
-    agentData.nomPrenom ?? agentData.NomPrenom ?? [prenom, nom].filter(Boolean).join(" ");
+  const nom = agentData.nom ?? "";
+  const prenom = agentData.prenom ?? "";
+  const codeBarre = agentData.codeBarre;
+  const matricule = agentData.matricule;
+  const nomPrenom = agentData.nomPrenom ?? [prenom, nom].filter(Boolean).join(" ");
 
   return {
     matricule: codeBarre || matricule,
@@ -35,7 +32,7 @@ export const normalizeAgent = (agentData) => {
     nomPrenom: nomPrenom || nom || "Inconnu",
     codeBarre: codeBarre || matricule,
     id: resolvedId,
-    poste: agentData.poste || agentData.fonction || agentData.Fonction || "AGENT_REMISE"
+    poste: agentData.poste || agentData.fonction || "AGENT_REMISE"
   };
 };
 
@@ -98,12 +95,12 @@ export const isAgentConnected = () => {
 };
 
 /**
- * Récupère un agent par son code (API SQL Server)
+ * Récupère un agent par son code
  */
 export const fetchAgentByMatricule = async (code) => {
   const token = getTokenFromStorage();
   const response = await fetch(
-    `${API_URL}/api/sqlserver/personnel/code/${encodeURIComponent(code)}?code=${encodeURIComponent(code)}`,
+    `${API_URL}/api/personnel/code/${encodeURIComponent(code)}`,
     {
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -119,19 +116,70 @@ export const fetchAgentByMatricule = async (code) => {
 };
 
 /**
- * Crée une nouvelle remise
+ * Message d'erreur du backend tel quel (JSON message/error/erreur, ou texte brut)
  */
-export const createRemise = async (matriculeAgentRemise, id) => {
+const lireErreur = async (response) => {
+  const errorText = await response.text();
+  try {
+    const json = JSON.parse(errorText);
+    return json.message || json.error || json.erreur || errorText || `Erreur ${response.status}`;
+  } catch {
+    return errorText || `Erreur ${response.status}`;
+  }
+};
+
+/**
+ * Aperçu avant création : collectes non clôturées de l'agent de collecte,
+ * reste à remettre par service et par collecte (de la plus ancienne à la plus récente)
+ */
+export const fetchCollectesNonCloturees = async (personnelId) => {
+  const token = getTokenFromStorage();
+  const response = await fetch(
+    `${API_URL}/api/remises-linge/agent/${personnelId}/collectes-non-cloturees`,
+    { headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) } }
+  );
+  if (!response.ok) {
+    throw new Error(await lireErreur(response));
+  }
+  const data = await response.json();
+  return {
+    personnelId: data?.personnelId ?? personnelId,
+    nbCollectes: data?.nbCollectes ?? (data?.collectes || []).length,
+    services: Array.isArray(data?.services) ? data.services : [],
+    collectes: Array.isArray(data?.collectes) ? data.collectes : [],
+  };
+};
+
+/**
+ * Détail d'une remise (items par catégorie, état)
+ */
+export const fetchRemiseById = async (remiseId) => {
+  const token = getTokenFromStorage();
+  const response = await fetch(`${API_URL}/api/remises-linge/${remiseId}`, {
+    headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
+  });
+  if (!response.ok) {
+    throw new Error(await lireErreur(response));
+  }
+  return response.json();
+};
+
+/**
+ * Crée une nouvelle remise
+ * serviceId : uniquement si l'agent a des collectes ouvertes sur plusieurs services
+ */
+export const createRemise = async (matriculeAgentRemise, id, serviceId = null) => {
   if (id === undefined || id === null) {
     throw new Error(
       "Impossible de créer la remise : l'ID de l'agent collecte est manquant. " +
-      "Vérifie le champ ID renvoyé par /api/sqlserver/personnel/code/{code}."
+      "Vérifie le champ ID renvoyé par /api/personnel/code/{code}."
     );
   }
 
   const token = getTokenFromStorage();
 
-  const url = `${API_URL}/api/remises-linge?matriculeAgentRemise=${encodeURIComponent(matriculeAgentRemise)}&id=${id}`;
+  const url = `${API_URL}/api/remises-linge?matriculeAgentRemise=${encodeURIComponent(matriculeAgentRemise)}&id=${id}`
+    + (serviceId != null ? `&serviceId=${serviceId}` : "");
   console.log("📡 Appel API création remise:", url);
 
   const response = await fetch(url, {
@@ -143,13 +191,7 @@ export const createRemise = async (matriculeAgentRemise, id) => {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    let errorMessage = errorText;
-    try {
-      const json = JSON.parse(errorText);
-      errorMessage = json.message || json.error || errorText;
-    } catch {}
-    throw new Error(errorMessage);
+    throw new Error(await lireErreur(response));
   }
 
   return response.json();
@@ -205,13 +247,30 @@ export const scanLingeForRemise = async (remiseId, codeBarre) => {
   );
 
   if (!response.ok) {
-    const errorText = await response.text();
-    let errorMessage = errorText;
-    try {
-      const json = JSON.parse(errorText);
-      errorMessage = json.message || json.error || errorText;
-    } catch {}
-    throw new Error(errorMessage);
+    throw new Error(await lireErreur(response));
+  }
+
+  return response.json();
+};
+
+/**
+ * Annule la remise d'un linge scanné par erreur (réponse = item de sa catégorie)
+ */
+export const annulerLingeRemise = async (remiseId, codeBarre) => {
+  const token = getTokenFromStorage();
+  const response = await fetch(
+    `${API_URL}/api/remises-linge/${remiseId}/annuler-linge?codeBarre=${encodeURIComponent(codeBarre)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(await lireErreur(response));
   }
 
   return response.json();

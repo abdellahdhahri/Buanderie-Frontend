@@ -105,26 +105,30 @@ export const fetchLingesEmplacement = (arsenalEmplacementID) =>
 export const localiserLinge = (code) =>
   request(`/linge/${enc(code)}/localisation`);
 
-/* ── Personnel (Cubix) : choix de l'agent sans scanner son badge ──────── */
+/** Annule le rangement en arsenal d'un linge (il redevient « à ranger »). */
+export const annulerRangement = (code, badgeAgent) =>
+  request(`/linge/${enc(code)}/annuler-rangement?${query({ badgeAgent })}`, { method: "POST" });
+
+/* ── Personnel : choixde l'agent sans scanner son badge ──────── */
 
 const normalizePersonnel = (p) => {
-  const nom = p.Nom ?? p.nom ?? "";
-  const prenom = p.Prenom ?? p.prenom ?? "";
-  const codeBarre = p.CodeBarre ?? p.codeBarre ?? "";
-  const matricule = p.Matricule ?? p.matricule ?? "";
+  const nom = p.nom ?? "";
+  const prenom = p.prenom ?? "";
+  const codeBarre = p.codeBarre ?? "";
+  const matricule = p.matricule ?? "";
   return {
-    id: p.Id ?? p.id,
-    nomPrenom: p.NomPrenom ?? p.nomPrenom ?? ([prenom, nom].filter(Boolean).join(" ") || nom),
+    id: p.id,
+    nomPrenom: p.nomPrenom ?? ([prenom, nom].filter(Boolean).join(" ") || nom),
     matricule,
     codeBarre,
-    fonction: p.Fonction ?? p.fonction ?? null,
+    fonction: p.fonction ?? null,
     // Valeur envoyée à /agent/{badge}/remises, comme un scan de badge
     badge: codeBarre || matricule,
   };
 };
 
 export async function fetchPersonnel() {
-  const response = await apiFetch("/api/sqlserver/personnel");
+  const response = await apiFetch("/api/personnel?actifs=true");
   if (!response.ok) throw new Error(`Erreur ${response.status}`);
   const data = await response.json();
   const list = Array.isArray(data) ? data : data?.content || data?.data || [];

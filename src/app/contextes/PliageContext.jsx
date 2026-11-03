@@ -39,7 +39,7 @@ export function PliageProvider({ children }) {
   const scanAgent = useCallback(async (code) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/sqlserver/personnel/code?code=${encodeURIComponent(code)}`);
+      const res = await fetch(`${API_URL}/api/personnel/code/${encodeURIComponent(code)}`);
       if (res.ok) {
         const personnel = await res.json();
         const ag = {

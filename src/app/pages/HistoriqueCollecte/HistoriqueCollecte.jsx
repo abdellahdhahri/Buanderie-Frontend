@@ -18,6 +18,7 @@ import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 import { SortableHeader } from "../../components/ui/SortableHeader";
 import { useSortableData } from "../../hooks/useSortableData";
 import { getSetting, formatDateTime } from "../../utils/appSettings";
+import { useCircuitInfecte } from "../../hooks/useEstablishment";
 import { getCategorieMeta } from "../../constants/categoriesLinge";
 import {
   C, Glyph, tint, dot, KpiTile, Avatar, StatusPill, useRelativeTime, DrawerShell,
@@ -140,8 +141,8 @@ function extractPersonnelName(p) {
   if (p.nom_prenom) return p.nom_prenom;
   if (p.nomComplet) return p.nomComplet;
   if (p.fullName) return p.fullName;
-  const nom = p.nom || p.Nom || p.lastName || "";
-  const prenom = p.prenom || p.Prenom || p.firstName || "";
+  const nom = p.nom || p.lastName || "";
+  const prenom = p.prenom || p.firstName || "";
   if (nom || prenom) return `${nom} ${prenom}`.trim();
   return p.matricule || p.code || null;
 }
@@ -205,6 +206,7 @@ function ProgressRing({ pct, size = 112, color = C.teal }) {
    ═══════════════════════════════════════════════════════════════ */
 function DetailDrawer({ collecte, resume, resumeLoading, onClose, agentName, serviceName, t, relative }) {
   const [copied, setCopied] = useState(false);
+  const circuitInfecte = useCircuitInfecte();
 
   if (!collecte) return null;
 
@@ -337,7 +339,7 @@ function DetailDrawer({ collecte, resume, resumeLoading, onClose, agentName, ser
                 </p>
               </div>
               <div className="w-full sm:flex-1 grid grid-cols-2 gap-2">
-                {SEGMENTS.map((s) => (
+                {SEGMENTS.filter((s) => circuitInfecte || s.k !== "infectes").map((s) => (
                   <div key={s.k} className="rounded-xl border border-slate-100 px-3 py-2.5" style={{ background: `${s.color}08` }}>
                     <div className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full" style={{ background: s.color }} />
@@ -462,6 +464,7 @@ const EMPTY_FILTERS = { search: "", source: "", etat: "", dateFrom: "", dateTo: 
 
 export default function HistoriqueCollecte() {
   const { t } = useTranslation();
+  const circuitInfecte = useCircuitInfecte();
   const { services = [] } = useContext(ServiceContext) || {};
 
   const [collectes, setCollectes] = useState([]);
@@ -621,7 +624,7 @@ export default function HistoriqueCollecte() {
   return (
     <div className="space-y-4">
       {/* En-tête */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="page-head flex items-center gap-4 mb-6">
         <PageHeaderIcon size={52} />
         <div>
           <h1 className="text-[28px] font-extrabold text-slate-900 m-0 leading-tight">{t("historique_collecte.title")}</h1>
@@ -642,7 +645,9 @@ export default function HistoriqueCollecte() {
           hint={t("historique_collecte.kpi_completion_hint", "Pièces traitées / attendues")} />
         <KpiTile icon={IconAlert} color={kpis.infectes ? C.red : C.amber} delay={0.15}
           label={t("historique_collecte.kpi_alerts", "Alertes")} value={kpis.infectes + kpis.manquants}
-          hint={t("historique_collecte.kpi_alerts_hint", "{{infected}} infectée(s) · {{missing}} manquante(s)", { infected: kpis.infectes, missing: kpis.manquants })} />
+          hint={circuitInfecte
+            ? t("historique_collecte.kpi_alerts_hint", "{{infected}} infectée(s) · {{missing}} manquante(s)", { infected: kpis.infectes, missing: kpis.manquants })
+            : t("historique_collecte.alert_missing", "{{count}} pièce(s) manquante(s)", { count: kpis.manquants })} />
       </div>
 
       {/* Barre d'outils : origine + actions */}

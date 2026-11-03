@@ -1,5 +1,5 @@
 import printJS from "print-js";
-import { getEstablishment } from "../services/establishmentService";
+import { getEstablishment, urlLogo, DEFAULT_LOGO } from "../services/establishmentService";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MOTEUR D'ÉTIQUETTES — une seule mise en page pour toutes les étiquettes,
@@ -208,7 +208,10 @@ export function buildLabelHtml(type, item, ctx, settings = getLabelSettings(type
   const medium = !small && h <= 42;
   const color = def.color;
   const code = def.code(item);
-  const est = getEstablishment();
+  const identite = getEstablishment();
+  // Logo serveur, sinon logo du produit ; URL absolue pour la fenêtre d'impression
+  const logo = new URL(urlLogo(identite) || DEFAULT_LOGO, window.location.origin).href;
+  const est = { name: identite.raisonSociale || identite.nomApplication, logo };
   const title = ctx.t(`barcode_label.types.${type}`, ctx.t("barcode_label.types.default"));
   const date = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
 

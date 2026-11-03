@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef  } from "react";
 import { Link, useLocation ,useNavigate } from "react-router";
-import logoSoftSys from "../../../assets/logo_SoftSys.png";
+import { useEstablishment } from "../../hooks/useEstablishment";
+import { DEFAULT_LOGO } from "../../services/establishmentService";
 import { useAuth } from "../../contextes/Authentication/AuthContext";
 import { useTranslation } from "react-i18next";
 import { Badge } from "../ui/badge";
@@ -17,6 +18,8 @@ import { logoutAgent } from "../../services/agentService";
 import LanguageSwitcher from "../../components/utils/LanguageSwitcher";
 import { isDarkTheme, setDarkTheme, onThemeChange } from "../../utils/theme";
 import { getBreadcrumbTrail } from "./PageHeaderIcon";
+import { NAV_ITEMS } from "./sidebar";
+import { isAdministrateur } from "../../utils/privileges";
 
 
 const Icons = {
@@ -217,6 +220,7 @@ const NOTIFICATION_STYLES = {
 
 export function Header({ sidebarOpen, setSidebarOpen }) {
   const { t } = useTranslation();
+  const establishment = useEstablishment();
   const { agent, admin } = useAuth();
 
   const [isDark, setIsDark] = useState(isDarkTheme);
@@ -457,7 +461,18 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
 
           {!sidebarOpen && (
             <Link to="/" className="navbar__logo-link">
-              <img src={logoSoftSys} alt="SoftSys" style={{ height: "48px", objectFit: "contain" }} />
+              <img
+                src={establishment.logo}
+                alt={establishment.nomApplication}
+                style={{ height: "48px", maxWidth: "160px", objectFit: "contain" }}
+                onError={(e) => { if (!e.currentTarget.src.endsWith(DEFAULT_LOGO)) e.currentTarget.src = DEFAULT_LOGO; }}
+              />
+              <span className="brand-text">
+                <span className="brand-text__name">{establishment.nomApplication}</span>
+                {establishment.raisonSociale && (
+                  <span className="brand-text__sub">{establishment.raisonSociale}</span>
+                )}
+              </span>
             </Link>
           )}
 
@@ -782,14 +797,16 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
                       <Icons.Award size={14} color="#64748b" />
                       <span>{t("nav.dashboard") || "Tableau de bord"}</span>
                     </Link>
-                    <Link
-                      to="/parametres"
-                      className="user-dropdown__link"
-                      onClick={() => setUserDropOpen(false)}
-                    >
-                      <Icons.Settings size={14} color="#64748b" />
-                      <span>{t("nav.settings") || "Paramètres"}</span>
-                    </Link>
+                    {isAdministrateur(privileges, NAV_ITEMS) && (
+                      <Link
+                        to="/parametres"
+                        className="user-dropdown__link"
+                        onClick={() => setUserDropOpen(false)}
+                      >
+                        <Icons.Settings size={14} color="#64748b" />
+                        <span>{t("nav.settings") || "Paramètres"}</span>
+                      </Link>
+                    )}
 
                     <div className="user-dropdown__separator" />
 

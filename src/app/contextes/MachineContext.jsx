@@ -24,13 +24,6 @@ export const MachineProvider = ({ children }) => {
     totalItems: 0,
   });
 
-  // États pour l'import
-  const [machinesToImport, setMachinesToImport] = useState([]);
-  const [selectedImportMachines, setSelectedImportMachines] = useState([]);
-  const [isImportLoading, setIsImportLoading] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [importType, setImportType] = useState('LAVEUR');
-
   const loadMachines = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -175,86 +168,6 @@ export const MachineProvider = ({ children }) => {
     }
   }, []);
 
-  // ─── Machines à importer ──────────────────────────────────────────────────
-  const loadMachinesToImport = useCallback(async () => {
-    setIsImportLoading(true);
-    setError(null);
-    try {
-      const data = await machineService.getMachinesToImport();
-      setMachinesToImport(data);
-      setSelectedImportMachines([]);
-    } catch (err) {
-      setError(err.message);
-      Swal.fire({
-        title: '❌ Erreur',
-        text: err.message || 'Impossible de charger les machines à importer',
-        icon: 'error',
-      });
-    } finally {
-      setIsImportLoading(false);
-    }
-  }, []);
-
-  const importMachines = useCallback(async () => {
-    if (selectedImportMachines.length === 0) {
-      Swal.fire({
-        title: '⚠️ Aucune sélection',
-        text: 'Veuillez sélectionner au moins une machine à importer',
-        icon: 'warning',
-      });
-      return;
-    }
-
-    setIsImportLoading(true);
-    try {
-      const payload = selectedImportMachines.map(id => ({
-        id: id,
-        type: importType,
-      }));
-
-      const result = await machineService.importMachines(payload);
-      
-      Swal.fire({
-        title: '✅ Import réussi',
-        text: `${result.length || selectedImportMachines.length} machine(s) importée(s) avec succès`,
-        icon: 'success',
-        timer: 2000,
-        showConfirmButton: false,
-      });
-
-      setIsImportModalOpen(false);
-      setSelectedImportMachines([]);
-      await loadAllData();
-      
-      return result;
-    } catch (err) {
-      Swal.fire({
-        title: '❌ Erreur d\'import',
-        text: err.message || 'Une erreur est survenue lors de l\'import',
-        icon: 'error',
-      });
-      throw err;
-    } finally {
-      setIsImportLoading(false);
-    }
-  }, [selectedImportMachines, importType, loadAllData]);
-
-  const toggleImportSelection = useCallback((id) => {
-    setSelectedImportMachines(prev =>
-      prev.includes(id)
-        ? prev.filter(item => item !== id)
-        : [...prev, id]
-    );
-  }, []);
-
-  const selectAllImportMachines = useCallback(() => {
-    if (selectedImportMachines.length === machinesToImport.length) {
-      setSelectedImportMachines([]);
-    } else {
-      setSelectedImportMachines(machinesToImport.map(m => m.id));
-    }
-  }, [machinesToImport, selectedImportMachines]);
-
   // ─── Initialisation ───────────────────────────────────────────────────────
   useEffect(() => {
     loadAllData();
@@ -286,18 +199,6 @@ export const MachineProvider = ({ children }) => {
     
     terminerCycle,
     demarrerCycle,
-    
-    machinesToImport,
-    selectedImportMachines,
-    isImportLoading,
-    isImportModalOpen,
-    setIsImportModalOpen,
-    importType,
-    setImportType,
-    loadMachinesToImport,
-    importMachines,
-    toggleImportSelection,
-    selectAllImportMachines,
   };
 
   return (

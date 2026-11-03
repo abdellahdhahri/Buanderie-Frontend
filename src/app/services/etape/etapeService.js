@@ -225,12 +225,12 @@ export const checkAssociationExists = async (personnelId, lingeEtapeId) => {
 };
 
 /**
- * Récupère un personnel par son code (API SQL Server)
+ * Récupère un personnel par son code
  */
 export const fetchPersonnelByCode = async (code) => {
   const token = getTokenFromStorage();
   const response = await fetch(
-    `${API_URL}/api/sqlserver/personnel/code/${encodeURIComponent(code)}?code=${encodeURIComponent(code)}`,
+    `${API_URL}/api/personnel/code/${encodeURIComponent(code)}`,
     {
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})

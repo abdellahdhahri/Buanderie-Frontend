@@ -73,12 +73,12 @@ export const isAgentConnected = () => {
 };
 
 /**
- * Récupère un agent par son code (API SQL Server)
+ * Récupère un agent par son code
  */
 export const fetchAgentByCode = async (code) => {
   const token = getTokenFromStorage();
   const response = await fetch(
-    `${API_URL}/api/sqlserver/personnel/code/${encodeURIComponent(code)}?code=${encodeURIComponent(code)}`,
+    `${API_URL}/api/personnel/code/${encodeURIComponent(code)}`,
     {
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})

@@ -8,7 +8,7 @@ export const collecteService = {
    */
   getServiceByCode: async (code) => {
     const response = await fetch(
-      `${API_URL}/api/sqlserver/services/ref/${encodeURIComponent(code)}`
+      `${API_URL}/api/services/ref/${encodeURIComponent(code)}`
     );
     if (!response.ok) return null;
     return response.json();

@@ -97,7 +97,7 @@ export const fetchAgentByMatricule = async (matricule) => {
  */
 export const fetchServiceByReference = async (reference) => {
   const token = getTokenFromStorage();
-  const response = await fetch(`${API_URL}/api/sqlserver/services/ref/${encodeURIComponent(reference)}`, {
+  const response = await fetch(`${API_URL}/api/services/ref/${encodeURIComponent(reference)}`, {
     headers: {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     }

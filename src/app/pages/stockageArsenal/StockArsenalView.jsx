@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import Swal from "sweetalert2";
 import { motion } from "framer-motion";
 import { Boxes, RefreshCw } from "lucide-react";
 import { Modal } from "../../components/ui/modal";
-import { fetchLingesEmplacement, fetchStockArsenal } from "../../services/receptionArsenalService";
+import { annulerRangement, fetchLingesEmplacement, fetchStockArsenal } from "../../services/receptionArsenalService";
 import { CategoryBar, CategoryChips, EmptyState, Loading, Panel } from "./arsenalUi";
 import { accentOf } from "./arsenalUtils";
 import { CategoryDonut, ShelfGlyph } from "./illustrations";
@@ -48,6 +49,33 @@ export default function StockArsenalView({ arsenal }) {
     } catch (e) {
       toast.error(e.message);
       setLinges([]);
+    }
+  };
+
+  // Retirer un linge de l'étagère (annulation de son rangement)
+  const [retrait, setRetrait] = useState(null); // code du linge en cours de retrait
+  const retirerLinge = async (l) => {
+    const { isConfirmed } = await Swal.fire({
+      title: t("stockageArsenal.cancel_storing_title"),
+      text: t("stockageArsenal.cancel_storing_confirm", { code: l.codeBarre }),
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#e03131",
+      confirmButtonText: t("stockageArsenal.remove_from_shelf"),
+      cancelButtonText: t("common.cancel"),
+    });
+    if (!isConfirmed) return;
+    setRetrait(l.codeBarre);
+    try {
+      const res = await annulerRangement(l.codeBarre);
+      toast.success(res.message || t("stockageArsenal.storing_cancelled"));
+      setLinges((list) => (list || []).filter((x) => x.codeBarre !== l.codeBarre));
+      setSelected((s) => (s ? { ...s, total: Math.max((s.total || 1) - 1, 0) } : s));
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setRetrait(null);
     }
   };
 
@@ -167,6 +195,14 @@ export default function StockArsenalView({ arsenal }) {
                   <code>{l.codeBarre}</code>
                   <span>{l.designation}</span>
                   <em>{t(`categories.${l.categorie}`, l.categorie)}</em>
+                  <button
+                    type="button"
+                    className="sa-link sa-link--danger"
+                    onClick={() => retirerLinge(l)}
+                    disabled={retrait === l.codeBarre}
+                  >
+                    {retrait === l.codeBarre ? "…" : t("stockageArsenal.remove_from_shelf")}
+                  </button>
                 </div>
               ))}
             </div>

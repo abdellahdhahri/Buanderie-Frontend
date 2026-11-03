@@ -64,7 +64,7 @@ export const fetchPersonnelById = async (personnelId) => {
   if (!personnelId) return null;
   try {
     const res = await fetch(
-      `${API_BASE_URL}/api/sqlserver/personnel/${personnelId}`,
+      `${API_BASE_URL}/api/personnel/${personnelId}`,
       { headers: { accept: "*/*" } }
     );
     if (!res.ok) {

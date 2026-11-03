@@ -308,7 +308,7 @@ export default function ImmobilisationList() {
         }}
       >
         <div className="space-y-4">
-        <div style={{ marginBottom: "32px" }}>
+        <div className="page-head" style={{ marginBottom: "32px" }}>
   <div style={{
     display: "flex",
     alignItems: "center",

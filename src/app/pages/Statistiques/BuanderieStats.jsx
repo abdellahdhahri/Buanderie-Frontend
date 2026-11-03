@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchLingesIncomplets } from "../../services/analyseService";
 import { useSetting } from "../../utils/appSettings";
+import { useCircuitInfecte } from "../../hooks/useEstablishment";
 import { useTranslation } from "react-i18next";
 import {
   FaSync, FaBell, FaArrowUp, FaArrowDown,
@@ -734,6 +735,8 @@ export default function BuanderieStats() {
   const { data, loading, error, lastUpdate, refresh } = useDashboard();
   // Cartes masquées : Paramètres › Tableau de bord
   const hiddenKpis = useSetting("dashboard.hiddenKpis") || [];
+  // Hôtel : pas de circuit infecté, l'indicateur d'infection est masqué
+  const circuitInfecte = useCircuitInfecte();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const kpiLayout = usePersistentOrder("stats.layout.kpis", KPI_IDS);
   const widgetLayout = usePersistentOrder("stats.layout.widgets", WIDGET_IDS);
@@ -802,7 +805,7 @@ export default function BuanderieStats() {
   return (
     <div className="p-6">
       {/* ─── HEADER ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="page-head flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <PageHeaderIcon size={40} />
           <div>
@@ -850,7 +853,7 @@ export default function BuanderieStats() {
       {/* ─── KPI (déplaçables) ──────────────────────────────────────────── */}
       <DraggableGrid
         className="stats-grid--kpi mb-5"
-        items={kpiItems.filter((k) => !hiddenKpis.includes(k.id))}
+        items={kpiItems.filter((k) => !hiddenKpis.includes(k.id) && (circuitInfecte || k.id !== "infection"))}
         order={kpiLayout.order}
         setOrder={kpiLayout.setOrder}
         onCommit={kpiLayout.save}
@@ -871,8 +874,8 @@ export default function BuanderieStats() {
         <span>🔄 {t('dashboard.auto_update')} · 30s</span>
         <span>
           📊 {num(kpis.totalLinges)} {t('dashboard.linens')} ·
-          ⚙️ {kpis.tauxOccupationMachines || 0}% {t('dashboard.machines')} ·
-          📈 {kpis.tauxInfectionMois || 0}% {t('dashboard.infection')}
+          ⚙️ {kpis.tauxOccupationMachines || 0}% {t('dashboard.machines')}
+          {circuitInfecte && <> · 📈 {kpis.tauxInfectionMois || 0}% {t('dashboard.infection')}</>}
         </span>
       </div>
     </div>

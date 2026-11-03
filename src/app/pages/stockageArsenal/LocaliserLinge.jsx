@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, TriangleAlert, Warehouse } from "lucide-react";
+import { ArrowRight, TriangleAlert, Undo2, Warehouse } from "lucide-react";
+import { toast } from "sonner";
+import Swal from "sweetalert2";
 import ScanInput from "../../components/utils/shared/ScanInput";
-import { localiserLinge } from "../../services/receptionArsenalService";
+import { annulerRangement, localiserLinge } from "../../services/receptionArsenalService";
 import { Hero, Loading, Panel, ScanZone } from "./arsenalUi";
 import { accentOf } from "./arsenalUtils";
 import { Illustration, ShelfGlyph } from "./illustrations";
@@ -26,6 +28,31 @@ export default function LocaliserLinge() {
   };
 
   const data = result?.data;
+
+  // Annuler le rangement du linge localisé : il redevient « à ranger » pour sa remise
+  const [annulation, setAnnulation] = useState(false);
+  const annulerCeRangement = async () => {
+    const { isConfirmed } = await Swal.fire({
+      title: t("stockageArsenal.cancel_storing_title"),
+      text: t("stockageArsenal.cancel_storing_confirm", { code: data.codeBarre }),
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#e03131",
+      confirmButtonText: t("stockageArsenal.cancel_storing"),
+      cancelButtonText: t("common.cancel"),
+    });
+    if (!isConfirmed) return;
+    setAnnulation(true);
+    try {
+      const res = await annulerRangement(data.codeBarre);
+      toast.success(res.message || t("stockageArsenal.storing_cancelled"));
+      setResult({ data: await localiserLinge(data.codeBarre) });
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setAnnulation(false);
+    }
+  };
 
   return (
     <Panel>
@@ -83,7 +110,17 @@ export default function LocaliserLinge() {
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : null}
+
+            {data.localise && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                <button type="button" className="sa-btn sa-btn--sm" style={{ color: "var(--sa-danger)" }} onClick={annulerCeRangement} disabled={annulation}>
+                  <Undo2 size={14} /> {annulation ? "…" : t("stockageArsenal.cancel_storing")}
+                </button>
+              </div>
+            )}
+
+            {!data.localise && (
               <div className="sa-hero" style={{ gridTemplateColumns: "110px 1fr", gap: 18 }}>
                 <Illustration kind="empty" color="#d97706" />
                 <div>

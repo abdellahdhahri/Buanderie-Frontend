@@ -13,8 +13,16 @@ import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 import { SortableHeader } from "../../components/ui/SortableHeader";
 import { useSortableData } from "../../hooks/useSortableData";
 import { FormModal, FormSection } from "../../components/ui/modal-kit";
+import { lireErreur } from "../../services/integrationService";
+import { useIntegration } from "../../hooks/useIntegration";
+import { useCircuitInfecte } from "../../hooks/useEstablishment";
+import { BadgeImporte, BadgeInactif } from "../Arsenal/ArsenalEmplacements";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+const JSON_HEADERS = { "Content-Type": "application/json" };
+const TYPES_LIT = ["SIMPLE", "DOUBLE", "KING"];
+const CHAMBRE_VIDE = { code: "", codeBarre: "", serviceId: "", actif: true, creerLitParDefaut: false };
+const LIT_VIDE = { chambreId: "", code: "", reference: "", description: "", type: "SIMPLE", actif: true };
 
 // Palette du template (layout.css / kpi-card)
 const C = {
@@ -273,7 +281,8 @@ function KpiTile({ icon: Icon, label, value, hint, color, delay = 0 }) {
 /* ═══════════════════════════════════════════════════════════════
    CARTE LIT — 0 = libre, 2 = occupé
    ═══════════════════════════════════════════════════════════════ */
-function BedCard({ lit, isSelected, onClick, t, index, chambreCode }) {
+function BedCard({ lit, isSelected, onClick, t, index, chambreCode, circuitInfecte, infectionVerrouillee, onToggleInfection, onEdit, onDisable }) {
+  const lectureSeule = lit.source === "EXTERNE";
   const isFree = lit.etat === 0;
   const isOccupied = lit.etat === 2;
   const color = isFree ? C.green : isOccupied ? C.orange : "#94a3b8";
@@ -290,7 +299,7 @@ function BedCard({ lit, isSelected, onClick, t, index, chambreCode }) {
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick()}
       className={`group relative rounded-2xl border bg-white cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0d9488]/40 ${
         isSelected ? "border-[#0d9488] ring-2 ring-[#0d9488]/20" : "border-slate-200"
-      }`}
+      } ${lit.actif === false ? "opacity-60" : ""}`}
     >
       {/* Illustration */}
       <div
@@ -298,7 +307,7 @@ function BedCard({ lit, isSelected, onClick, t, index, chambreCode }) {
         style={{ background: `linear-gradient(180deg, ${color}12, transparent)` }}
       >
         <BedIllustration occupied={isOccupied} color={color} />
-        {lit.infecte && (
+        {circuitInfecte && lit.infecte && (
           <span
             className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
             style={{ color: C.red, background: `${C.red}14`, border: `1px solid ${C.red}33` }}
@@ -326,21 +335,61 @@ function BedCard({ lit, isSelected, onClick, t, index, chambreCode }) {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="font-bold text-sm text-slate-800 truncate">{lit.code || `LIT-${lit.id}`}</p>
-            <p className="text-[11px] text-slate-500 truncate">{lit.description || t("chambre.standard_bed")}</p>
+            <p className="text-[11px] text-slate-500 truncate">
+              {lit.description || t("chambre.standard_bed")}{lit.type ? ` · ${lit.type}` : ""}
+            </p>
+            <div className="-ml-1.5 mt-1 flex flex-wrap gap-y-1">
+              <BadgeImporte item={lit} />
+              <BadgeInactif item={lit} />
+            </div>
           </div>
-          <span
-            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide shrink-0"
-            style={{ color, background: `${color}14` }}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${isOccupied ? "animate-pulse" : ""}`} style={{ background: color }} />
-            {label}
-          </span>
+          {lit.etat != null && (
+            <span
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide shrink-0"
+              style={{ color, background: `${color}14` }}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${isOccupied ? "animate-pulse" : ""}`} style={{ background: color }} />
+              {label}
+            </span>
+          )}
         </div>
         <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
           <span className="premium-table__code truncate max-w-[140px]">
-            {lit.codeBarre || `#${String(lit.id).padStart(4, "0")}`}
+            {lit.reference || `#${String(lit.id).padStart(4, "0")}`}
           </span>
           <BarcodeLabel item={lit} type="lit" ctx={{ chambre: chambreCode }} />
+        </div>
+        <div className="flex items-center justify-between gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+          {circuitInfecte ? (
+          <label
+            className={`inline-flex items-center gap-2 text-[11px] font-bold text-slate-600 ${infectionVerrouillee ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+            title={infectionVerrouillee ? t("chambre.infection_locked", "L'état d'infection est synchronisé depuis le système externe") : undefined}
+          >
+            <input
+              type="checkbox"
+              role="switch"
+              checked={!!lit.infecte}
+              disabled={infectionVerrouillee}
+              onChange={(e) => onToggleInfection(lit, e.target.checked)}
+              className="w-4 h-4 accent-[#e03131]"
+            />
+            {t("chambre.infected")}
+          </label>
+          ) : <span />}
+          {lectureSeule ? (
+            <span className="text-[10px] text-slate-400">{t("integration.read_only", "Lecture seule")}</span>
+          ) : (
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => onEdit(lit)} className="premium-table__icon-btn" title={t("chambre.edit_bed", "Modifier le lit")}>
+                <Edit className="w-4 h-4" />
+              </button>
+              {lit.actif !== false && (
+                <button type="button" onClick={() => onDisable(lit)} className="premium-table__icon-btn is-danger" title={t("chambre.disable_bed", "Désactiver le lit")}>
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </motion.div>
@@ -375,7 +424,8 @@ export default function ChambreList() {
   const [selectedChambre, setSelectedChambre] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [rafraichir, setRafraichir] = useState(0);
   const [expandedId, setExpandedId] = useState(null);
   const [chambreLits, setChambreLits] = useState([]);
   const [isLitsLoading, setIsLitsLoading] = useState(false);
@@ -383,13 +433,23 @@ export default function ChambreList() {
   const [selectedId, setSelectedId] = useState(null);
   const [services, setServices] = useState([]);
   const [viewMode, setViewMode] = useState("table");
-  const [newRec, setNewRec] = useState({ code: "", serviceId: "" });
+  const [newRec, setNewRec] = useState(CHAMBRE_VIDE);
+  const [tous, setTous] = useState(false);
+  const [litEdition, setLitEdition] = useState(null);
+  const [litForm, setLitForm] = useState(LIT_VIDE);
+  const [savingLit, setSavingLit] = useState(false);
+  const { estImporte } = useIntegration();
+  const chambresImportees = estImporte("CHAMBRE");
+  const litsImportes = estImporte("LIT");
+  const circuitInfecte = useCircuitInfecte();
+  const infectionImportee = circuitInfecte && estImporte("LIT_INFECTE");
+  const selectionImportee = selectedChambre?.source === "EXTERNE";
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/sqlserver/services?page=0&size=50`);
+      const response = await fetch(`${API_URL}/api/services`);
       if (response.ok) {
         const data = await response.json();
         const list = data.content || data._embedded?.services || data;
@@ -401,35 +461,38 @@ export default function ChambreList() {
     }
   };
 
-  const fetchChambres = async () => {
+  const fetchChambres = useCallback(() => {
     setIsLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/api/sqlserver/chambres?page=0&size=300`);
-      if (response.ok) {
-        const data = await response.json();
-        const list = data.content || data;
-        const normalizedList = Array.isArray(list)
-          ? list.map((c) => ({
-              id: c.Id,
-              code: c.Code,
-              serviceId: c.ServiceId,
-              codeBarre: c.CodeBarre,
-            }))
-          : [];
-        setChambres(normalizedList);
-      } else {
-        setChambres([]);
-      }
-    } catch (err) {
-      console.error(err);
-      setChambres([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setRafraichir((n) => n + 1);
+  }, []);
 
   useEffect(() => {
-    fetchChambres();
+    let actif = true;
+    fetch(`${API_URL}/api/chambres${tous ? "?tous=true" : ""}`)
+      .then((response) => (response.ok ? response.json() : []))
+      .then((data) => {
+        if (!actif) return;
+        setChambres(Array.isArray(data)
+          ? data.map((c) => ({
+              id: c.id,
+              cle: c.cle,
+              code: c.code,
+              serviceId: c.serviceId,
+              codeBarre: c.codeBarre,
+              actif: c.actif !== false,
+              source: c.source,
+            }))
+          : []);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (actif) setChambres([]);
+      })
+      .finally(() => actif && setIsLoading(false));
+    return () => { actif = false; };
+  }, [tous, rafraichir]);
+
+  useEffect(() => {
     fetchServices();
   }, []);
 
@@ -441,7 +504,7 @@ export default function ChambreList() {
     setIsLitsLoading(true);
     setChambreLits([]);
     try {
-      const response = await fetch(`${API_URL}/api/sqlserver/lits/chambre/${chambreId}`);
+      const response = await fetch(`${API_URL}/api/lits/chambre/${chambreId}${tous ? "?tous=true" : ""}`);
       if (response.ok) {
         const data = await response.json();
         setChambreLits(Array.isArray(data) ? data : []);
@@ -453,7 +516,7 @@ export default function ChambreList() {
     } finally {
       setIsLitsLoading(false);
     }
-  }, []);
+  }, [tous]);
 
   const closePanel = useCallback(() => {
     setExpandedId(null);
@@ -504,20 +567,26 @@ export default function ChambreList() {
 
   const handleOpenCreateModal = useCallback(() => {
     setSelectedChambre(null);
-    setNewRec({ code: "", serviceId: services.length > 0 ? services[0].id : "" });
+    setNewRec({ ...CHAMBRE_VIDE, serviceId: services.length > 0 ? services[0].id : "" });
     setIsModalOpen(true);
   }, [services]);
 
   const handleOpenEditModal = useCallback((chambre) => {
     setSelectedChambre(chambre);
-    setNewRec({ code: chambre.code || "", serviceId: chambre.serviceId || "" });
+    setNewRec({
+      ...CHAMBRE_VIDE,
+      code: chambre.code || "",
+      codeBarre: chambre.codeBarre || "",
+      serviceId: chambre.serviceId || "",
+      actif: chambre.actif !== false,
+    });
     setIsModalOpen(true);
   }, []);
 
   const handleSave = useCallback(
     async (e) => {
       e.preventDefault();
-      if (!newRec.code?.trim()) {
+      if (!selectionImportee && !newRec.code?.trim()) {
         Swal.fire({
           title: t("chambre.alerts.code_required"),
           text: t("chambre.alerts.code_required_text"),
@@ -527,19 +596,23 @@ export default function ChambreList() {
       }
       setIsSaving(true);
       try {
-        const payload = {
-          code: newRec.code.trim(),
-          serviceId: newRec.serviceId ? parseInt(newRec.serviceId) : null,
-        };
-        if (selectedChambre) {
-          setChambres((prev) =>
-            prev.map((r) => (r.id === selectedChambre.id ? { ...r, ...payload } : r))
-          );
-          Swal.fire({ title: t("chambre.alerts.updated"), icon: "success", timer: 1500, showConfirmButton: false });
-        } else {
-          setChambres((prev) => [{ id: Date.now(), ...payload }, ...prev]);
-          Swal.fire({ title: t("chambre.alerts.created"), icon: "success", timer: 1500, showConfirmButton: false });
-        }
+        // Le PUT remplace toujours serviceId ; une chambre importée ne modifie que son service
+        const serviceId = newRec.serviceId ? parseInt(newRec.serviceId) : null;
+        const champs = { code: newRec.code.trim(), codeBarre: newRec.codeBarre.trim() || null, serviceId, actif: newRec.actif };
+        const payload = !selectedChambre
+          ? { ...champs, creerLitParDefaut: newRec.creerLitParDefaut }
+          : selectionImportee ? { serviceId } : champs;
+        const response = await fetch(
+          selectedChambre ? `${API_URL}/api/chambres/${selectedChambre.id}` : `${API_URL}/api/chambres`,
+          { method: selectedChambre ? "PUT" : "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) }
+        );
+        if (!response.ok) throw new Error(await lireErreur(response, t("chambre.alerts.error")));
+        Swal.fire({
+          title: t(selectedChambre ? "chambre.alerts.updated" : "chambre.alerts.created"),
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        });
         setIsModalOpen(false);
         fetchChambres();
       } catch (err) {
@@ -548,7 +621,7 @@ export default function ChambreList() {
         setIsSaving(false);
       }
     },
-    [selectedChambre, newRec, t]
+    [selectedChambre, selectionImportee, newRec, fetchChambres, t]
   );
 
   const deleteRec = useCallback(
@@ -565,16 +638,99 @@ export default function ChambreList() {
       });
       if (result.isConfirmed) {
         try {
-          setChambres((prev) => prev.filter((r) => r.id !== id));
+          // DELETE désactive la chambre : elle disparaît de la liste des actives
+          const response = await fetch(`${API_URL}/api/chambres/${id}`, { method: "DELETE" });
+          if (!response.ok) throw new Error(await lireErreur(response, t("chambre.alerts.error")));
           if (expandedId === id) closePanel();
+          fetchChambres();
           Swal.fire({ title: t("chambre.alerts.deleted"), icon: "success", timer: 1500, showConfirmButton: false });
         } catch (err) {
           Swal.fire({ title: t("chambre.alerts.error"), text: err.message, icon: "error" });
         }
       }
     },
-    [expandedId, closePanel, t]
+    [expandedId, closePanel, fetchChambres, t]
   );
+
+  const ouvrirLit = (lit) => {
+    setLitEdition(lit || "nouveau");
+    setLitForm(lit
+      ? {
+          chambreId: lit.chambreId,
+          code: lit.code || "",
+          reference: lit.reference || "",
+          description: lit.description || "",
+          type: lit.type || "SIMPLE",
+          actif: lit.actif !== false,
+        }
+      : { ...LIT_VIDE, chambreId: expandedId });
+  };
+
+  const enregistrerLit = async (e) => {
+    e.preventDefault();
+    setSavingLit(true);
+    try {
+      const nouveau = litEdition === "nouveau";
+      const payload = {
+        chambreId: Number(litForm.chambreId),
+        code: litForm.code.trim(),
+        reference: litForm.reference.trim(),
+        description: litForm.description.trim(),
+        type: litForm.type.trim(),
+        actif: litForm.actif,
+        ...(nouveau ? { infecte: false } : {}),
+      };
+      const response = await fetch(nouveau ? `${API_URL}/api/lits` : `${API_URL}/api/lits/${litEdition.id}`, {
+        method: nouveau ? "POST" : "PUT",
+        headers: JSON_HEADERS,
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error(await lireErreur(response, t("chambre.alerts.error")));
+      setLitEdition(null);
+      fetchChambreLits(expandedId);
+      Swal.fire({ title: t("chambre.bed_saved", "Lit enregistré"), icon: "success", timer: 1500, showConfirmButton: false });
+    } catch (err) {
+      Swal.fire({ title: t("chambre.alerts.error"), text: err.message, icon: "error" });
+    } finally {
+      setSavingLit(false);
+    }
+  };
+
+  const desactiverLit = async (lit) => {
+    const result = await Swal.fire({
+      title: t("chambre.bed_disable_confirm", "Désactiver ce lit ?"),
+      text: lit.code,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: t("chambre.disable_bed", "Désactiver le lit"),
+      cancelButtonText: t("chambre.alerts.delete_no"),
+    });
+    if (!result.isConfirmed) return;
+    try {
+      const response = await fetch(`${API_URL}/api/lits/${lit.id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error(await lireErreur(response, t("chambre.alerts.error")));
+      fetchChambreLits(expandedId);
+    } catch (err) {
+      Swal.fire({ title: t("chambre.alerts.error"), text: err.message, icon: "error" });
+    }
+  };
+
+  const basculerInfection = async (lit, infecte) => {
+    try {
+      const response = await fetch(`${API_URL}/api/lits/${lit.id}/infection`, {
+        method: "PATCH",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ infecte }),
+      });
+      if (!response.ok) throw new Error(await lireErreur(response, t("chambre.alerts.error")));
+      const maj = await response.json().catch(() => null);
+      setChambreLits((prev) => prev.map((l) => (l.id === lit.id ? { ...l, ...(maj || { infecte }) } : l)));
+    } catch (err) {
+      Swal.fire({ title: t("chambre.alerts.error"), text: err.message, icon: "error" });
+    }
+  };
 
   // Services réellement utilisés par au moins une chambre (pour le filtre)
   const usedServices = useMemo(() => {
@@ -607,6 +763,8 @@ export default function ChambreList() {
 
   const panelOpen = expandedId !== null;
   const openChambre = chambres.find((c) => c.id === expandedId) || selectedChambre;
+  const chambresActives = chambres.filter((c) => c.actif);
+  const peutDesactiver = (chambre) => chambre?.source !== "EXTERNE" && chambre?.actif !== false;
 
   /* ─── Rendu ─────────────────────────────────────────────────── */
   const emptyState = (
@@ -628,7 +786,7 @@ export default function ChambreList() {
         >
           <X className="w-4 h-4" /> {t("chambre.clear_filters", "Réinitialiser les filtres")}
         </button>
-      ) : (
+      ) : !chambresImportees && (
         <button
           type="button"
           onClick={handleOpenCreateModal}
@@ -661,7 +819,7 @@ export default function ChambreList() {
       {/* ═══ COLONNE PRINCIPALE ═══ */}
       <div className="flex-1 min-w-0 space-y-4">
         {/* En-tête (identique aux autres pages) */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div className="page-head flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
             <PageHeaderIcon size={52} />
             <div>
@@ -691,17 +849,21 @@ export default function ChambreList() {
 
         {/* Barre d'outils */}
         <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-          <ToolbarButton color={C.green} icon={Plus} onClick={handleOpenCreateModal}>
-            {t("chambre.new")}
-          </ToolbarButton>
+          {!chambresImportees && (
+            <>
+              <ToolbarButton color={C.green} icon={Plus} onClick={handleOpenCreateModal}>
+                {t("chambre.new")}
+              </ToolbarButton>
 
-          <div className="w-px h-[30px] bg-slate-200 mx-1" />
+              <div className="w-px h-[30px] bg-slate-200 mx-1" />
+            </>
+          )}
 
           <ToolbarButton color={C.blue} icon={Edit} disabled={!panelOpen}
             onClick={() => openChambre && handleOpenEditModal(openChambre)}>
             <span className="hidden sm:inline">{t("chambre.edit")}</span>
           </ToolbarButton>
-          <ToolbarButton color={C.red} icon={Trash2} disabled={!panelOpen}
+          <ToolbarButton color={C.red} icon={Trash2} disabled={!panelOpen || !peutDesactiver(openChambre)}
             onClick={() => expandedId && deleteRec(expandedId)}>
             <span className="hidden sm:inline">{t("chambre.delete")}</span>
           </ToolbarButton>
@@ -776,6 +938,10 @@ export default function ChambreList() {
                   <option value="none">{t("chambre.not_assigned")}</option>
                 </select>
               </div>
+              <label className="flex items-center gap-2 text-sm text-slate-600 shrink-0">
+                <input type="checkbox" checked={tous} onChange={(e) => { setIsLoading(true); setTous(e.target.checked); }} />
+                {t("chambre.show_inactive", "Afficher les inactives")}
+              </label>
             </div>
           </CardContent>
         </Card>
@@ -810,7 +976,7 @@ export default function ChambreList() {
                           <tr
                             key={chambre.id}
                             onClick={() => toggleExpand(chambre)}
-                            className={isOpen ? "is-selected" : ""}
+                            className={`${isOpen ? "is-selected" : ""} ${chambre.actif === false ? "opacity-60" : ""}`}
                             style={{ cursor: "pointer" }}
                           >
                             <td style={{ textAlign: "center" }}>
@@ -832,7 +998,11 @@ export default function ChambreList() {
                                   <IconDoor size={20} />
                                 </div>
                                 <div>
-                                  <div className="premium-table__primary">{chambre.code || `CH-${chambre.id}`}</div>
+                                  <div className="premium-table__primary">
+                                    {chambre.code || `CH-${chambre.id}`}
+                                    <BadgeImporte item={chambre} />
+                                    <BadgeInactif item={chambre} />
+                                  </div>
                                   <span className="premium-table__muted">#{String(chambre.id).padStart(4, "0")}</span>
                                 </div>
                               </div>
@@ -864,14 +1034,16 @@ export default function ChambreList() {
                                 >
                                   <Edit className="w-4 h-4" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => deleteRec(chambre.id)}
-                                  className="premium-table__icon-btn is-danger"
-                                  title={t("chambre.delete")}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                {peutDesactiver(chambre) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteRec(chambre.id)}
+                                    className="premium-table__icon-btn is-danger"
+                                    title={t("chambre.delete")}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -903,7 +1075,7 @@ export default function ChambreList() {
                   onClick={() => toggleExpand(chambre)}
                   className={`group relative bg-white rounded-[20px] border cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)] ${
                     isOpen ? "border-[#0d9488] ring-2 ring-[#0d9488]/20" : "border-slate-200/70 shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
-                  }`}
+                  } ${chambre.actif === false ? "opacity-60" : ""}`}
                 >
                   <div className="h-[88px] p-3 pb-0">
                     <RoomPlan color={accent} beds={2} />
@@ -912,7 +1084,11 @@ export default function ChambreList() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <h3 className="font-extrabold text-base text-slate-800 truncate">{chambre.code || `CH-${chambre.id}`}</h3>
-                        <p className="premium-table__muted">#{String(chambre.id).padStart(4, "0")}</p>
+                        <p className="premium-table__muted">
+                          #{String(chambre.id).padStart(4, "0")}
+                          <BadgeImporte item={chambre} />
+                          <BadgeInactif item={chambre} />
+                        </p>
                       </div>
                       <span
                         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
@@ -938,9 +1114,11 @@ export default function ChambreList() {
                         <button type="button" onClick={() => handleOpenEditModal(chambre)} className="premium-table__icon-btn" title={t("chambre.edit")}>
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button type="button" onClick={() => deleteRec(chambre.id)} className="premium-table__icon-btn is-danger" title={t("chambre.delete")}>
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {peutDesactiver(chambre) && (
+                          <button type="button" onClick={() => deleteRec(chambre.id)} className="premium-table__icon-btn is-danger" title={t("chambre.delete")}>
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1056,8 +1234,8 @@ export default function ChambreList() {
                     { label: t("chambre.beds_total", "Lits"), value: bedStats.total, color: "#64748b" },
                     { label: t("chambre.free"), value: bedStats.free, color: C.green },
                     { label: t("chambre.occupied"), value: bedStats.occupied, color: C.orange },
-                    { label: t("chambre.infected"), value: bedStats.infected, color: C.red },
-                  ].map((s) => (
+                    circuitInfecte && { label: t("chambre.infected"), value: bedStats.infected, color: C.red },
+                  ].filter(Boolean).map((s) => (
                     <div key={s.label} className="rounded-xl bg-white border border-slate-100 px-3 py-2">
                       <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full" style={{ background: s.color }} />
@@ -1074,6 +1252,20 @@ export default function ChambreList() {
 
             {/* Liste des lits */}
             <div className="flex-1 overflow-y-auto p-4">
+              {((!litsImportes && openChambre.actif !== false) || infectionImportee) && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  {infectionImportee ? (
+                    <p className="text-[11px] text-slate-500">
+                      {t("chambre.infection_locked", "L'état d'infection est synchronisé depuis le système externe")}
+                    </p>
+                  ) : <span />}
+                  {!litsImportes && openChambre.actif !== false && (
+                    <ToolbarButton color={C.green} icon={Plus} onClick={() => ouvrirLit(null)} className="!px-3 !py-1.5 !text-xs">
+                      {t("chambre.new_bed", "Ajouter un lit")}
+                    </ToolbarButton>
+                  )}
+                </div>
+              )}
               {isLitsLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
                   {[1, 2, 3, 4].map((i) => (
@@ -1098,6 +1290,11 @@ export default function ChambreList() {
                       chambreCode={openChambre.code}
                       onClick={() => setSelectedId((prev) => (prev === lit.id ? null : lit.id))}
                       t={t}
+                      circuitInfecte={circuitInfecte}
+                      infectionVerrouillee={infectionImportee}
+                      onToggleInfection={basculerInfection}
+                      onEdit={ouvrirLit}
+                      onDisable={desactiverLit}
                     />
                   ))}
                 </div>
@@ -1125,7 +1322,15 @@ export default function ChambreList() {
             value={newRec.code}
             onChange={(e) => setNewRec({ ...newRec, code: e.target.value.toUpperCase() })}
             placeholder={t("chambre.form.code_placeholder")}
-            required
+            required={!selectionImportee}
+            disabled={selectionImportee}
+          />
+          <Input
+            label={t("chambre.code_barre")}
+            value={newRec.codeBarre}
+            onChange={(e) => setNewRec({ ...newRec, codeBarre: e.target.value })}
+            placeholder={selectedChambre ? "" : t("chambre.form.barcode_auto", "Généré si vide")}
+            disabled={selectionImportee}
           />
           <div>
             <label className="block text-sm font-bold mb-2 text-slate-700">
@@ -1147,6 +1352,69 @@ export default function ChambreList() {
               ))}
             </select>
           </div>
+          {selectedChambre ? (
+            <label className={`flex items-center gap-2 text-sm font-medium self-end h-10 ${selectionImportee ? "opacity-50" : ""}`}>
+              <input type="checkbox" checked={newRec.actif} disabled={selectionImportee}
+                onChange={(e) => setNewRec({ ...newRec, actif: e.target.checked })} />
+              {t("common.active", "Actif")}
+            </label>
+          ) : (
+            <label className="flex items-center gap-2 text-sm font-medium self-end h-10 md:col-span-2">
+              <input type="checkbox" checked={newRec.creerLitParDefaut}
+                onChange={(e) => setNewRec({ ...newRec, creerLitParDefaut: e.target.checked })} />
+              {t("chambre.form.single_bed", "Créer un lit unique avec cette chambre (hôtel)")}
+            </label>
+          )}
+          {selectionImportee && (
+            <p className="text-xs text-slate-500 md:col-span-2">
+              {t("chambre.form.imported_hint", "Chambre importée : seul le service est modifiable.")}
+            </p>
+          )}
+        </FormSection>
+      </FormModal>
+
+      <FormModal
+        isOpen={!!litEdition}
+        onClose={() => setLitEdition(null)}
+        title={litEdition === "nouveau" ? t("chambre.new_bed", "Ajouter un lit") : `${t("chambre.edit_bed", "Modifier le lit")} #${litEdition?.id ?? ""}`}
+        mode={litEdition === "nouveau" ? "create" : "edit"}
+        onSubmit={enregistrerLit}
+        saving={savingLit}
+      >
+        <FormSection title={t("chambre.bed", "Lit")} icon="specs" columns={2}>
+          <Input label={`${t("chambre.code")} *`} value={litForm.code}
+            onChange={(e) => setLitForm({ ...litForm, code: e.target.value })} required={litEdition === "nouveau"} />
+          <Input label={t("chambre.bed_reference", "Référence")} value={litForm.reference} maxLength={20}
+            onChange={(e) => setLitForm({ ...litForm, reference: e.target.value })} />
+          <Input label={t("chambre.bed_description", "Description")} value={litForm.description}
+            onChange={(e) => setLitForm({ ...litForm, description: e.target.value })} />
+          <Input label={t("chambre.bed_type", "Type")} value={litForm.type} maxLength={20} list="types-lit"
+            onChange={(e) => setLitForm({ ...litForm, type: e.target.value.toUpperCase() })} />
+          <datalist id="types-lit">
+            {TYPES_LIT.map((type) => <option key={type} value={type} />)}
+          </datalist>
+          <div>
+            <label className="block text-sm font-bold mb-2 text-slate-700">{t("chambre.bed_room", "Chambre")}</label>
+            <select
+              value={litForm.chambreId || ""}
+              onChange={(e) => setLitForm({ ...litForm, chambreId: e.target.value })}
+              disabled={litEdition === "nouveau"}
+              className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/20 transition-all"
+            >
+              {chambresActives.map((c) => <option key={c.id} value={c.id}>{c.code}</option>)}
+            </select>
+            {litEdition !== "nouveau" && (
+              <p className="text-xs text-slate-400 mt-1">
+                {t("chambre.bed_move_hint", "Un lit ne peut changer de chambre que s'il n'a aucun linge affecté.")}
+              </p>
+            )}
+          </div>
+          {litEdition !== "nouveau" && (
+            <label className="flex items-center gap-2 text-sm font-medium self-end h-10">
+              <input type="checkbox" checked={litForm.actif} onChange={(e) => setLitForm({ ...litForm, actif: e.target.checked })} />
+              {t("common.active", "Actif")}
+            </label>
+          )}
         </FormSection>
       </FormModal>
     </div>

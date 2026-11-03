@@ -9,7 +9,8 @@ import { useState, useEffect } from 'react';
 import "./BuanderieDashboard.css";
 import { FaBoxes, FaHandHolding, FaReceipt, FaSoap, FaWind, FaBoxOpen, FaWarehouse, FaTruck, FaSearch, FaHistory, FaRss, FaExclamationTriangle, FaChartPie } from "react-icons/fa";
 import { VscFilterFilled } from "react-icons/vsc";
-import { NAV_ITEMS } from '../../components/layout/sidebar';
+import { NAV_ITEMS, filterNavByPrivileges } from '../../components/layout/sidebar';
+import { useAuth } from '../../contextes/Authentication/AuthContext';
 import SpotlightCard from '../../components/ui/SpotlightCard';
 import LaundryBackground from './LaundryBackground'; 
 import React from "react";
@@ -57,6 +58,9 @@ function DashboardBuanderieInner() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { linges, isRfidMode } = useContext(LingeContext);
+  const { privileges = [] } = useAuth();
+  // Mêmes menus que la barre latérale : uniquement ceux autorisés par les privilèges
+  const menus = filterNavByPrivileges(NAV_ITEMS, privileges);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -109,9 +113,7 @@ function DashboardBuanderieInner() {
 
         {/* ─── Grille des cartes ───────────────────────────────────────────── */}
         <div className="dashboard-grid">
-          {NAV_ITEMS.map((item) => {
-            // Vérifier si l'élément doit être affiché (avec ses enfants)
-            // Cette logique est déjà gérée par le sidebar, mais on l'utilise pour le dashboard
+          {menus.map((item) => {
             const hasChildren = item.children && item.children.length > 0;
             const itemLabel = getLabel(item);
 

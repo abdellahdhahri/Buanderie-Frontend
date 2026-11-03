@@ -20,13 +20,14 @@ export function ReceptionProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [bacsRecus, setBacsRecus] = useState([]);
   const [sacsInfectes, setSacsInfectes] = useState([]);
+  const [lingesSansBac, setLingesSansBac] = useState([]);
 
   const isMounted = useRef(true);
 
   const scanAgent = useCallback(async (code) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/sqlserver/personnel/code?code=${encodeURIComponent(code)}`);
+      const res = await fetch(`${API_URL}/api/personnel/code/${encodeURIComponent(code)}`);
       if (res.ok) {
         const personnel = await res.json();
         const ag = {
@@ -38,8 +39,11 @@ export function ReceptionProvider({ children }) {
           id: personnel.id,
           poste: personnel.fonction || "AGENT_RECEPTION"
         };
-        if (isMounted.current) setAgent(ag);
-        Swal.fire({ 
+        if (isMounted.current) {
+          setAgent(ag);
+          setLingesSansBac([]);
+        }
+        Swal.fire({
           title: "Agent identifié", 
           text: `${ag.nomPrenom || ag.nom} (${ag.codeBarre || ag.matricule})`, 
           icon: "success", 
@@ -66,6 +70,21 @@ export function ReceptionProvider({ children }) {
     setAgent(null);
     setBacsRecus([]);
     setSacsInfectes([]);
+    setLingesSansBac([]);
+  }, []);
+
+  const recevoirLingeSansBac = useCallback(async (codeLinge, matricule, infecte) => {
+    const res = await fetch(
+      `${API_URL}/api/reception/linge?codeLinge=${encodeURIComponent(codeLinge)}&matricule=${encodeURIComponent(matricule)}&infecte=${infecte ? "true" : "false"}`,
+      { method: "POST", headers: { "Content-Type": "application/json" } }
+    );
+    if (!res.ok) {
+      const txt = await res.text();
+      let msg = txt || `Erreur ${res.status}`;
+      try { msg = JSON.parse(txt).message || msg; } catch { msg = txt || msg; }
+      throw new Error(msg);
+    }
+    return res.json();
   }, []);
 
   const fetchLingesDuBac = useCallback(async (bacId) => {
@@ -108,9 +127,9 @@ export function ReceptionProvider({ children }) {
 
 
 
-  const scanReception = useCallback(async (code, agentParam) => {
+  const scanReception = useCallback(async (code, agentParam, options = {}) => {
   const agentUtilise = agentParam || agent;
-  
+
   setLoading(true);
   try {
     const codeUpper = code.toUpperCase().trim();
@@ -120,11 +139,19 @@ export function ReceptionProvider({ children }) {
       // Récupérer le bac
       const bac = await getBacByCode(codeUpper);
       if (!bac) {
-        Swal.fire({ 
-          title: "Bac introuvable", 
-          text: `[${codeUpper}]`, 
-          icon: "error" 
-        });
+        const matricule = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
+        const linge = await recevoirLingeSansBac(code.trim(), matricule, !!options.infecte);
+        if (isMounted.current) {
+          setLingesSansBac(prev => [{ ...linge, recuLe: new Date() }, ...prev.filter(l => l.codeBarre !== linge.codeBarre)]);
+          setDernierRecu({ type: "LINGE", code: linge.codeBarre, data: linge });
+          Swal.fire({
+            title: linge.typeCollecte === "INFECTE" ? "🔴 Linge infecté reçu" : "✅ Linge reçu",
+            html: `<b>${linge.codeBarre}</b><br/>Service : <b>${linge.service || "—"}</b>`,
+            icon: linge.typeCollecte === "INFECTE" ? "warning" : "success",
+            timer: 1300,
+            showConfirmButton: false
+          });
+        }
         return;
       }
 
@@ -230,7 +257,7 @@ export function ReceptionProvider({ children }) {
   } finally {
     if (isMounted.current) setLoading(false);
   }
-}, [agent, getBacByCode, fetchLingesDuBac]);
+}, [agent, getBacByCode, fetchLingesDuBac, recevoirLingeSansBac]);
 
 
 const fetchItemsDuSac = useCallback(async (numeroSac) => {
@@ -395,6 +422,18 @@ const fetchItemsDuSac = useCallback(async (numeroSac) => {
     setRfidResultat(null);
     setBacsRecus([]);
     setSacsInfectes([]);
+    setLingesSansBac([]);
+  }, []);
+
+  const nouvelleReception = useCallback(() => {
+    setDernierRecu(null);
+    setBacEnCours(null);
+    setLingesAffichés([]);
+    setAfficherLinges(false);
+    setRfidResultat(null);
+    setBacsRecus([]);
+    setSacsInfectes([]);
+    setLingesSansBac([]);
   }, []);
 
   return (
@@ -402,6 +441,8 @@ const fetchItemsDuSac = useCallback(async (numeroSac) => {
       agent,
       bacsRecus,
       sacsInfectes,
+      lingesSansBac,
+      nouvelleReception,
       dernierRecu,
       bacEnCours,
       lingesAffichés,

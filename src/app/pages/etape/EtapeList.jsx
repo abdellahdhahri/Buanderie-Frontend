@@ -294,7 +294,7 @@ const searchPersonnels = useCallback(async (query) => {
       }
     }
 
-    const response = await fetch(`${API_URL}/api/sqlserver/personnel`, {
+    const response = await fetch(`${API_URL}/api/personnel?actifs=true`, {
       headers: {
         ...(tokenValue ? { 'Authorization': `Bearer ${tokenValue}` } : {})
       }
@@ -323,15 +323,14 @@ const searchPersonnels = useCallback(async (query) => {
       return;
     }
 
-    // ✅ Normalisation PascalCase (API SQL Server) → camelCase (attendu par le composant)
     const normalized = list.map((p) => ({
-      id: p.Id ?? p.id,
-      nom: p.Nom ?? p.nom ?? "",
-      prenom: p.Prenom ?? p.prenom ?? "",
-      nomPrenom: p.NomPrenom ?? p.nomPrenom ?? `${p.Nom ?? ""} ${p.Prenom ?? ""}`.trim(),
-      matricule: p.Matricule ?? p.matricule ?? p.CodeBarre ?? p.codeBarre,
-      codeBarre: p.CodeBarre ?? p.codeBarre,
-      fonction: p.Fonction ?? p.fonction,
+      id: p.id,
+      nom: p.nom ?? "",
+      prenom: p.prenom ?? "",
+      nomPrenom: p.nomPrenom ?? `${p.nom ?? ""} ${p.prenom ?? ""}`.trim(),
+      matricule: p.matricule ?? p.codeBarre,
+      codeBarre: p.codeBarre,
+      fonction: p.fonction,
     }));
 
     const filtered = normalized.filter(p =>
@@ -984,7 +983,7 @@ function EtapeListInner() {
       >
         <div className="space-y-4">
           {/* En-tête */}
-          <div style={{ marginBottom: "32px" }}>
+          <div className="page-head" style={{ marginBottom: "32px" }}>
             <div style={{
               display: "flex",
               alignItems: "center",

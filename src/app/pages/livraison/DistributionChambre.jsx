@@ -864,7 +864,7 @@ export default function DistributionChambre() {
   return (
     <div className="collecte-container">
       {/* ═══ Header premium ═══ */}
-      <div style={{
+      <div className="page-head" style={{
         marginBottom: 32, display: "flex", alignItems: "center",
         justifyContent: "space-between", flexWrap: "wrap", gap: 12,
       }}>

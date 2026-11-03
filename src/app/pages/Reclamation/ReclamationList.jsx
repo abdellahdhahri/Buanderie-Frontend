@@ -525,7 +525,7 @@ export default function ReclamationList() {
   return (
     <div className="space-y-4">
       {/* En-tête */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="page-head flex items-center gap-4 mb-6">
         <PageHeaderIcon size={52} />
         <div>
           <h1 className="text-[28px] font-extrabold text-slate-900 m-0 leading-tight">{t("reclamations.title")}</h1>

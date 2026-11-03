@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
 import { ChatbotFloatingButton } from "./ChatbotFloatingButton";
 import { ChatbotWindow } from "./ChatbotWindow";
+import { useAuth } from "../../contextes/Authentication/AuthContext";
+import { NAV_ITEMS } from "../layout/sidebar";
+import { isAdministrateur } from "../../utils/privileges";
 
 const ChatbotContext = createContext();
 
@@ -38,6 +41,14 @@ export const ChatbotProvider = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [viewport, setViewport] = useState(getViewport);
   const [fraction, setFraction] = useState(() => readStoredPosition() ?? defaultPosition(getViewport()));
+
+  // Chatbot réservé à l'administrateur (tous les droits)
+  const { isAuthenticated, admin, privileges } = useAuth();
+  const canUseChatbot = isAuthenticated && (admin || isAdministrateur(privileges, NAV_ITEMS));
+
+  useEffect(() => {
+    if (!canUseChatbot) setIsOpen(false);
+  }, [canUseChatbot]);
 
   useEffect(() => {
     const onResize = () => setViewport(getViewport());
@@ -79,9 +90,13 @@ export const ChatbotProvider = ({ children }) => {
   return (
     <ChatbotContext.Provider value={value}>
       {children}
-      {/* ✅ Toujours montés → accessibles depuis n'importe quelle page */}
-      <ChatbotFloatingButton />
-      <ChatbotWindow />
+      {/* ✅ Montés pour l'administrateur → accessibles depuis n'importe quelle page */}
+      {canUseChatbot && (
+        <>
+          <ChatbotFloatingButton />
+          <ChatbotWindow />
+        </>
+      )}
     </ChatbotContext.Provider>
   );
 };

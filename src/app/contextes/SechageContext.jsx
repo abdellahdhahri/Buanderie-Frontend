@@ -39,7 +39,7 @@ const identifierAgent = useCallback(async (codeOrAgent) => {
   const code = codeOrAgent;
   setLoading(true);
   try {
-    const r = await fetch(`${API_URL}/api/sqlserver/personnel/code/${code}?code=${encodeURIComponent(code)}`);
+    const r = await fetch(`${API_URL}/api/personnel/code/${encodeURIComponent(code)}`);
     if (r.ok) {
       const raw = await r.json();
       setAgent({
@@ -122,9 +122,9 @@ const setAgentDirect = useCallback((agentData) => {
       }
       const lot = lotsDisponibles.find(l => l.codeLot === code);
       if (!lot) { showAlert("❌ Lot introuvable", code, "error"); return; }
-      if (machine && poidsActuel + (lot.poidsActuel||0) > machine.capaciteKg) {
+     /* if (machine && poidsActuel + (lot.poidsActuel||0) > machine.capaciteKg) {
         showAlert("⚠️ Capacité dépassée", `Machine pleine (${machine.capaciteKg} kg).`, "warning"); return;
-      }
+      }*/
       const rInfo = await fetch(`${API_BASE}/sechage/scan-lot/${code}`);
       const lotInfo = rInfo.ok ? await rInfo.json() : null;
       setLotDialog({ lotInfo, lot });

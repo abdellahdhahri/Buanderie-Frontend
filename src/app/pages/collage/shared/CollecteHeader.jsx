@@ -11,7 +11,7 @@ export function CollecteHeader({
   agent, agentLabel, noAgentLabel, accent,
 }) {
   return (
-    <div style={{ marginBottom: 32 }}>
+    <div className="page-head" style={{ marginBottom: 32 }}>
       <div style={{
         display: "flex", alignItems: "center",
         gap: 16, marginBottom: 8,

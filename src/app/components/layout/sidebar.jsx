@@ -1,12 +1,13 @@
 // Sidebar.jsx
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router";
-import logoSoftSys from "../../../assets/logo_SoftSys.png";
+import { useEstablishment } from "../../hooks/useEstablishment";
+import { DEFAULT_LOGO } from "../../services/establishmentService";
 import { useAuth } from "../../contextes/Authentication/AuthContext";
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  IconDashboard, IconSettings, IconBin, IconSteps, IconBundle, IconInfectedBag, IconMachines, IconProgram, IconShelves, IconMonitoring, IconTracking, IconWashCycle, IconBed, IconMachineStatus, IconInventory, IconGarment, IconDirtyZone, IconCollect, IconReception, IconSort, IconWashing, IconCleanZone, IconDrying, IconFolded, IconDelivery, IconDistribution, IconReporting, IconHistory, IconStats, IconComplaint, IconCollectHistory, IconLogout,
+  IconDashboard, IconSettings, IconHospital, IconBin, IconSteps, IconBundle, IconInfectedBag, IconMachines, IconProgram, IconShelves, IconMonitoring, IconTracking, IconWashCycle, IconBed, IconMachineStatus, IconInventory, IconGarment, IconDirtyZone, IconCollect, IconReception, IconSort, IconWashing, IconCleanZone, IconDrying, IconFolded, IconDelivery, IconDistribution, IconReporting, IconHistory, IconStats, IconComplaint, IconCollectHistory, IconLogout,
 } from "./sidebarIcons";
 
 export const NAV_ITEMS = [
@@ -24,6 +25,12 @@ export const NAV_ITEMS = [
     privilege: "LIG12",
     icon: <IconSettings />,
     children: [
+      {
+        label: "Services",
+        path: "/services",
+        privilege: "LIG1201",
+        icon: <IconHospital />,
+      },
       {
         label: "Bacs",
         path: "/bac",
@@ -47,6 +54,7 @@ export const NAV_ITEMS = [
   path: "/sacs",
   privilege: "LIG1401",   
   icon: <IconInfectedBag />,
+  infecte: true, // masqué pour un hôtel (pas de circuit infecté)
 },
       {
         label: "Machines",
@@ -252,6 +260,31 @@ export const NAV_ITEMS = [
   },
 ];
 
+/**
+ * Menus visibles selon les privilèges de l'utilisateur (ADMIN / ALL = tout).
+ * Utilisé par la barre latérale et par le tableau de bord d'accueil.
+ */
+// Retire les entrées du circuit infecté (établissement de type HOTEL)
+function sansCircuitInfecte(items) {
+  return items
+    .filter((item) => !item.infecte)
+    .map((item) => (item.children ? { ...item, children: sansCircuitInfecte(item.children) } : item));
+}
+
+export function filterNavByPrivileges(items, privileges = []) {
+  const hasFullAccess = privileges.includes("ADMIN") || privileges.includes("ALL");
+  const hasPrivilege = (code) => !code || hasFullAccess || privileges.includes(code);
+
+  return items
+    .map((item) => {
+      if (!hasPrivilege(item.privilege)) return null;
+      if (!item.children) return item;
+      const children = item.children.filter((child) => hasPrivilege(child.privilege));
+      return children.length ? { ...item, children } : null;
+    })
+    .filter(Boolean);
+}
+
 export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
   const [openSubmenu, setOpenSubmenu] = useState(null);
@@ -277,53 +310,11 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
     logout
   } = useAuth();
 
-  const hasFullAccess =
-    privileges.includes("ADMIN") || privileges.includes("ALL");
-
-  const hasPrivilege = (code) => {
-
-    if (!code) {
-      return true;
-    }
-
-    if (hasFullAccess) {
-      return true;
-    }
-
-    return privileges.includes(code);
-  };
-
-  const filteredNavItems = NAV_ITEMS
-    .map((item) => {
-
-      if (item.children) {
-
-        if (!hasPrivilege(item.privilege)) {
-          return null;
-        }
-
-        const filteredChildren = item.children.filter(
-          (child) => hasPrivilege(child.privilege)
-        );
-
-        if (filteredChildren.length === 0) {
-          return null;
-        }
-
-        return {
-          ...item,
-          children: filteredChildren,
-        };
-      }
-
-      if (!hasPrivilege(item.privilege)) {
-        return null;
-      }
-
-      return item;
-
-    })
-    .filter(Boolean);
+  const establishment = useEstablishment();
+  const filteredNavItems = filterNavByPrivileges(
+    establishment.circuitInfecte ? NAV_ITEMS : sansCircuitInfecte(NAV_ITEMS),
+    privileges
+  );
 
   const activeNavItem = filteredNavItems.find(
     (item) =>
@@ -377,10 +368,17 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
               className="sidebar__logo-link"
             >
               <img
-                src={logoSoftSys}
+                src={establishment.logo}
                 className="sidebar__logo"
-                alt="SoftSys"
+                alt={establishment.nomApplication}
+                onError={(e) => { if (!e.currentTarget.src.endsWith(DEFAULT_LOGO)) e.currentTarget.src = DEFAULT_LOGO; }}
               />
+              <span className="brand-text">
+                <span className="brand-text__name">{establishment.nomApplication}</span>
+                {establishment.raisonSociale && (
+                  <span className="brand-text__sub">{establishment.raisonSociale}</span>
+                )}
+              </span>
             </Link>
 
             <button

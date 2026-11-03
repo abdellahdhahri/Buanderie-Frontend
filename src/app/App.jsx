@@ -38,7 +38,6 @@ export default function App() {
 
     return (
        <I18nextProvider i18n={i18n}>
-        <ChatbotProvider>
             <LanguageProvider> 
                 <ProgrammeProvider>
                     <BacProvider>
@@ -46,6 +45,7 @@ export default function App() {
                             <ModalProvider>
                                 <ServiceProvider>
                                     <AuthProvider>
+                                      <ChatbotProvider>
                                         <LingeProvider>
                                             <RouterProvider router={router} />
                                             <Toaster 
@@ -56,6 +56,7 @@ export default function App() {
                                                 duration={4000}
                                             />
                                         </LingeProvider>
+                                      </ChatbotProvider>
                                     </AuthProvider>
                                 </ServiceProvider>
                             </ModalProvider>
@@ -63,7 +64,6 @@ export default function App() {
                     </BacProvider>
                 </ProgrammeProvider>
             </LanguageProvider>
-            </ChatbotProvider>
         </I18nextProvider>
     );
 }

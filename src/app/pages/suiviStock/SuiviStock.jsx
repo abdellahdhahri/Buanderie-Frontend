@@ -128,7 +128,7 @@ export default function SuiviStock() {
   return (
     <div className="collecte-container sa-page ss-page">
       {/* 1. En-tête */}
-      <header className="ss-head">
+      <header className="page-head ss-head">
         <div className="sa-header">
           <motion.div whileHover={{ rotate: -5, scale: 1.05 }} transition={{ duration: 0.3 }}>
             <PageHeaderIcon size={60} radius={20} />

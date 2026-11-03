@@ -42,6 +42,8 @@ import EtapeList from "./pages/etape/EtapeList";
 import BuanderieWorkflow from "./pages/workflow/BuanderieWorkflow";
 import SacInfecteList from "./pages/sacLinge/SacInfecteList";
 import ParametresPage from "./pages/Parametres/ParametresPage";
+import ServiceList from "./pages/Services/ServiceList";
+import { SiCircuitInfecte } from "./components/layout/SiCircuitInfecte";
 
 
 export const router = createBrowserRouter([
@@ -179,6 +181,13 @@ export const router = createBrowserRouter([
 
 
           {
+            path: "services",
+            Component: ServiceList,
+            handle: {
+              privileges: ["LIG1201"],
+            },
+          },
+          {
             path: "bac",
             Component: BacList,
             handle: {
@@ -203,7 +212,8 @@ export const router = createBrowserRouter([
           },
            {
             path: "sacs",
-            Component: SacInfecteList,
+            // Masqué pour un hôtel (pas de circuit infecté)
+            element: <SiCircuitInfecte><SacInfecteList /></SiCircuitInfecte>,
             handle: {
               privileges: ["LIG1203"],
             },
@@ -395,9 +405,10 @@ export const router = createBrowserRouter([
           },
 
           {
-            // Paramètres du compte : accessible à tout utilisateur connecté
+            // Écran Paramètres : réservé à l'administrateur (tous les privilèges)
             path: "parametres",
             Component: ParametresPage,
+            handle: { adminOnly: true },
           },
 
         ],

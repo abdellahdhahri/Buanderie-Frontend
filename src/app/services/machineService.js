@@ -1,3 +1,5 @@
+import { lireErreur } from "./integrationService";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 export const machineService = {
@@ -19,7 +21,7 @@ export const machineService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Erreur création machine");
+    if (!response.ok) throw new Error(await lireErreur(response, "Erreur création machine"));
     return response.json();
   },
 
@@ -29,7 +31,7 @@ export const machineService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error(`Erreur mise à jour machine ${id}`);
+    if (!response.ok) throw new Error(await lireErreur(response, `Erreur mise à jour machine ${id}`));
     return response.json();
   },
 
@@ -37,7 +39,7 @@ export const machineService = {
     const response = await fetch(`${API_URL}/api/machines/${id}`, {
       method: "DELETE",
     });
-    if (!response.ok) throw new Error(`Erreur suppression machine ${id}`);
+    if (!response.ok) throw new Error(await lireErreur(response, `Erreur suppression machine ${id}`));
     return response.json();
   },
 
@@ -72,22 +74,6 @@ export const machineService = {
       }),
     });
     if (!response.ok) throw new Error("Erreur démarrage cycle");
-    return response.json();
-  },
-
-  getMachinesToImport: async () => {
-    const response = await fetch(`${API_URL}/api/machines/machinesAimporter`);
-    if (!response.ok) throw new Error("Erreur chargement machines importables");
-    return response.json();
-  },
-
-  importMachines: async (payload) => {
-    const response = await fetch(`${API_URL}/api/machines/import`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) throw new Error("Erreur import machines");
     return response.json();
   },
 };

@@ -134,8 +134,53 @@ a {
 }
 
 .sidebar__logo {
-  height: 60px;
+  height: 40px;
+  max-width: 96px;
   object-fit: contain;
+}
+
+/* Nom de l'application + raison sociale (identité de l'établissement) */
+.sidebar__logo-link,
+.navbar__logo-link {
+  gap: 10px;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.brand-text__name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.brand-text__sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.dark .brand-text__name {
+  color: #f1f5f9;
+}
+
+.sidebar .brand-text__name,
+.sidebar .brand-text__sub {
+  max-width: 110px;
 }
 
 .sidebar__close-btn,
@@ -1286,3 +1331,18 @@ a {
 .sidebar--closed .nav-item--params    { color: color-mix(in srgb, var(--color-params) 40%, #fff) !important; }
 .sidebar--closed .nav-item--suivi     { color: color-mix(in srgb, var(--color-suivi) 40%, #fff) !important; }
 .sidebar--closed .nav-item--logout    { color: rgba(255, 255, 255, .85) !important; }
+
+/* ── En-tête des pages (icône + titre + actions) : bandeau sur fond blanc ── */
+.page-head {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 18px 22px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .05);
+  margin-bottom: 24px;
+}
+.page-head.sa-topbar,
+.page-head.ss-head { padding-bottom: 0; }
+@media (max-width: 640px) {
+  .page-head { padding: 14px 16px; border-radius: 12px; }
+}

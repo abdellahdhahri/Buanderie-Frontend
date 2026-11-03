@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { FaRss } from "react-icons/fa";
-import { Eye, Tag, Loader2, User as UserIcon } from "lucide-react";
+import { Eye, Tag, Loader2, User as UserIcon, Building2 } from "lucide-react";
 import { Card, CardContent } from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
 import { EtatBadge } from "./EtatBadge";
@@ -20,6 +20,7 @@ export function LingeTable({
   onRowClick,
   onDetail,
   onAssociateRfid,
+  onAssignService,
   showMissing = false,
 }) {
   const { t } = useTranslation();
@@ -75,6 +76,14 @@ export function LingeTable({
                     >
                       <td className="text-center py-3 px-4">
                         <span className="code-badge">{l.id}</span>
+                        {l.source === "EXTERNE" && (
+                          <span
+                            className="ml-1.5 inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200"
+                            title={l.idExterne ? `${t('linge.external_id', 'ID externe')} : ${l.idExterne}` : undefined}
+                          >
+                            {t('integration.imported', 'Importé')}
+                          </span>
+                        )}
                       </td>
                       <td className="text-center py-3 px-4">
                         {displayMode === "RFID" ? (
@@ -90,7 +99,20 @@ export function LingeTable({
                       <td className="text-center font-semibold text-slate-800">{t(`categories.${l.categorie}`, l.categorie)}</td>
                       <td className="text-center font-bold">{l.poids != null ? `${l.poids} kg` : <span className="text-slate-300">—</span>}</td>
                       <td className="text-center"><EtatBadge etat={l.etat} /></td>
-                      <td className="text-center">{serviceName}</td>
+                      <td className="text-center">
+                        {l.serviceId ? serviceName : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAssignService?.(l);
+                            }}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 hover:underline"
+                            title={t('linge.assign_service', 'Affecter un service')}
+                          >
+                            <Building2 className="w-3 h-3" /> {serviceName}
+                          </button>
+                        )}
+                      </td>
                       <td className="text-center">
                         {isUniformeRow ? (
                           l.porteurNom ? (

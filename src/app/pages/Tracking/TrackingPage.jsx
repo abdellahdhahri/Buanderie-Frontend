@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { LingeContext } from "../../contextes/LingeContext";
 import { ServiceContext } from "../../contextes/ServiceContext";
 import { getSetting, formatDateTime as formatDateTimeReglage } from "../../utils/appSettings";
+import { localiserLinge } from "../../services/receptionArsenalService";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../../components/ui/button";
@@ -595,7 +596,7 @@ function InfoRow({ Icon, label, value }) {
   );
 }
 
-function ItemDetailModal({ item, history, chambre, serviceName, onClose, onOpenJournal, t }) {
+function ItemDetailModal({ item, history, chambre, serviceName, localisation, onClose, onOpenJournal, t }) {
   if (!item) return null;
   const etat = item.etat;
   const config = getEtatStyle(etat);
@@ -658,6 +659,21 @@ function ItemDetailModal({ item, history, chambre, serviceName, onClose, onOpenJ
           <InfoRow Icon={Icons.Hash} label="Identifiant" value={`#${item.id}`} />
           <InfoRow Icon={Icons.Building} label={t('tracking.service', 'Service')} value={serviceName || "—"} />
           <InfoRow Icon={Icons.MapPin} label={t('tracking.room', 'Chambre')} value={chambre?.code || "—"} />
+          {/* Rangement en arsenal (GET /api/receptions-arsenal/linge/{code}/localisation) */}
+          {!localisation ? (
+            <InfoRow Icon={Icons.Warehouse} label={t('tracking.arsenal', 'Arsenal')} value="…" />
+          ) : localisation.data?.localise ? (
+            <>
+              <InfoRow Icon={Icons.Warehouse} label={t('tracking.arsenal', 'Arsenal')} value={localisation.data.arsenal || "—"} />
+              <InfoRow Icon={Icons.Package} label={t('tracking.emplacement', 'Emplacement')} value={localisation.data.emplacement || "—"} />
+            </>
+          ) : localisation.data ? (
+            <InfoRow
+              Icon={Icons.Warehouse}
+              label={t('tracking.arsenal', 'Arsenal')}
+              value={localisation.data.message || t('tracking.not_in_arsenal', "Non rangé dans un arsenal")}
+            />
+          ) : null}
           {visibleFields.map((f) => (
             <InfoRow key={f.key} Icon={f.Icon} label={f.label} value={f.value} />
           ))}
@@ -710,6 +726,8 @@ export default function TrackingPage() {
   const [selectedHistoryId, setSelectedHistoryId] = useState(null);
   const [showJournal, setShowJournal] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  // Arsenal + emplacement du linge : { code, data } (data null si l'appel a échoué)
+  const [localisation, setLocalisation] = useState(null);
   const { getLingeByCode, getHistorique, isRfidMode } = useContext(LingeContext);
   const scanInputRef = useRef(null);
   const [isFocused, setIsFocused] = useState(true);
@@ -720,11 +738,11 @@ export default function TrackingPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API_URL}/api/sqlserver/chambres?page=0&size=300`, { signal: controller.signal })
+    fetch(`${API_URL}/api/chambres?tous=true`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
-        const list = data?.content || data;
-        setChambres(Array.isArray(list) ? list.map((c) => ({ id: c.Id ?? c.id, code: c.Code ?? c.code, serviceId: c.ServiceId ?? c.serviceId })) : []);
+        // Les linges référencent la chambre par sa cle (identifiant des processus)
+        setChambres(Array.isArray(data) ? data.map((c) => ({ id: c.cle ?? c.id, code: c.code, serviceId: c.serviceId })) : []);
       })
       .catch((err) => { if (err.name !== "AbortError") console.error("Erreur chargement chambres:", err); });
     return () => controller.abort();
@@ -736,11 +754,16 @@ export default function TrackingPage() {
   const currentStation = item ? ETAT_TO_STATION[item.etat] : null;
 
   const performSearch = useCallback(async (code, silent = false) => {
-    if (!silent) { setLoading(true); setError(""); setItem(null); setHistory([]); }
+    if (!silent) { setLoading(true); setError(""); setItem(null); setHistory([]); setLocalisation(null); }
     try {
       const foundItem = await getLingeByCode(code);
       if (foundItem) {
         setItem(foundItem);
+        // Localisation en arsenal, sans bloquer l'affichage du linge
+        const codeLinge = foundItem.codeBarre || code;
+        localiserLinge(codeLinge)
+          .then((data) => setLocalisation({ code: codeLinge, data }))
+          .catch(() => setLocalisation({ code: codeLinge, data: null }));
         const hist = await getHistorique(code);
         setHistory(hist || []);
         setIsAnimating(true);
@@ -763,7 +786,7 @@ export default function TrackingPage() {
   }, [autoRefresh, item, performSearch]);
 
   const handleReset = () => {
-    setSearchValue(""); setItem(null); setHistory([]); setError("");
+    setSearchValue(""); setItem(null); setHistory([]); setError(""); setLocalisation(null);
     setLoading(false); setIsAnimating(false); setSelectedHistoryId(null); setShowDetail(false);
     if (scanInputRef.current) scanInputRef.current.focus();
   };
@@ -1008,7 +1031,7 @@ export default function TrackingPage() {
 
       <AnimatePresence>
         {showDetail && item && (
-          <ItemDetailModal item={item} history={history} chambre={itemChambre} serviceName={itemServiceName} onClose={() => setShowDetail(false)} onOpenJournal={() => setShowJournal(true)} t={t} />
+          <ItemDetailModal item={item} history={history} chambre={itemChambre} serviceName={itemServiceName} localisation={localisation?.code === item.codeBarre ? localisation : null} onClose={() => setShowDetail(false)} onOpenJournal={() => setShowJournal(true)} t={t} />
         )}
       </AnimatePresence>
 

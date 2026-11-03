@@ -8,7 +8,6 @@ import "./WorkflowList.css";
 import "./LingeList.css";
 import { printLabel } from "../../utils/labels";
 import Swal from 'sweetalert2';
-import { LingeImportModal } from "./LingeImportModal";
 import { EMPTY_LINGE_FORM, EMPTY_FILTERS } from "./lingeConstants";
 import { LingeHeader } from "./components/LingeHeader";
 import { LingeToolbar } from "./components/LingeToolbar";
@@ -24,6 +23,8 @@ import { LingeStatsModal } from "./components/LingeStatsModal";
 import { fetchAllLinges, computeLingeStats, exportLingesXlsx } from "./lingeStats";
 import { fetchLingesIncomplets } from "../../services/analyseService";
 import { getSetting } from "../../utils/appSettings";
+import { useIntegration } from "../../hooks/useIntegration";
+import { lireErreur } from "../../services/integrationService";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -44,9 +45,10 @@ export default function LingeList() {
     associerTagRfid,
     pagedData,
     setPagedData,
-    setIsImportModalOpen,
-    setImportType,
+    categories,
   } = useContext(LingeContext);
+  const { estImporte } = useIntegration();
+  const lingesImportes = estImporte("LINGE");
 
   const { services } = useContext(ServiceContext);
   const navigate = useNavigate();
@@ -95,18 +97,20 @@ export default function LingeList() {
   const fetchPersonnel = async () => {
     setIsPersonnelLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/sqlserver/personnel`);
+      // Tout le personnel (inactifs compris) pour afficher le porteur des linges existants
+      const response = await fetch(`${API_URL}/api/personnel`);
       if (response.ok) {
         const data = await response.json();
         const normalized = (Array.isArray(data) ? data : []).map((p) => ({
-          id:         p.Id         ?? p.id,
-          nom:        p.Nom        ?? p.nom        ?? "",
-          prenom:     p.Prenom     ?? p.prenom     ?? "",
-          nomPrenom:  p.NomPrenom  ?? p.nomPrenom  ?? "",
-          matricule:  p.Matricule  ?? p.matricule  ?? "",
-          codeBarre:  p.CodeBarre  ?? p.codeBarre  ?? "",
-          fonction:   p.Fonction   ?? p.fonction   ?? null,
-          serviceId:  p.ServiceID  ?? p.serviceId  ?? null,
+          id:         p.id,
+          nom:        p.nom        ?? "",
+          prenom:     p.prenom     ?? "",
+          nomPrenom:  p.nomPrenom  ?? "",
+          matricule:  p.matricule  ?? "",
+          codeBarre:  p.codeBarre  ?? "",
+          fonction:   p.fonction   ?? null,
+          serviceId:  p.serviceId  ?? null,
+          actif:      p.actif !== false,
         }));
         setPersonnel(normalized);
       }
@@ -206,8 +210,7 @@ export default function LingeList() {
         });
 
         if (!response.ok) {
-          const error = await response.text();
-          throw new Error(error);
+          throw new Error(await lireErreur(response, t('linge.error_operation')));
         }
 
         const updated = await response.json();
@@ -392,12 +395,6 @@ export default function LingeList() {
     }
   };
 
-  // ─── OUVERTURE IMPORT ──────────────────────────────────────────────────
-  const handleOpenImport = () => {
-    setImportType('LINGE');
-    setIsImportModalOpen(true);
-  };
-
   // ─── RÉINITIALISATION FILTRES (le rechargement suit le changement) ────
   const resetFilters = () => {
     setFilters(EMPTY_FILTERS);
@@ -478,7 +475,7 @@ export default function LingeList() {
 
   // ─── GET SERVICE NAME ──────────────────────────────────────────────────
   const getServiceName = (serviceId) => {
-    if (!serviceId) return t('linge.unassigned');
+    if (!serviceId) return t('linge.service_unassigned', 'Non affecté');
     const service = services.find(s => s.id === serviceId);
     return service ? service.code : t('linge.unassigned');
   };
@@ -509,11 +506,12 @@ export default function LingeList() {
       <LingeToolbar
         hasSelection={!!selectedId}
         isLoading={isLoading}
+        canCreate={!lingesImportes}
         onNew={() => {
           setShowPopup(true);
           setLingeToEdit(null);
         }}
-        onImport={handleOpenImport}
+        onSynchronised={() => loadPage(0)}
         onAssociateRfid={handleToolbarRfid}
         onDetail={() => selectedId && ouvrirDetail(selectedId)}
         onEdit={() => selectedId && ouvrirEdition(selectedLinge)}
@@ -544,6 +542,7 @@ export default function LingeList() {
           onStats={openStats}
           onExport={handleExport}
           exporting={exporting}
+          categories={categories}
         />
       )}
 
@@ -558,6 +557,7 @@ export default function LingeList() {
         onDetail={ouvrirDetail}
         showMissing={modeIncomplets}
         onAssociateRfid={openRfidPopup}
+        onAssignService={ouvrirEdition}
       />
 
       <LingePagination
@@ -580,7 +580,8 @@ export default function LingeList() {
         creationMode={creationMode}
         setCreationMode={setCreationMode}
         services={services}
-        personnel={personnel}
+        personnel={personnel.filter((p) => p.actif || p.id === Number(newLinge.porteurId))}
+        categories={categories}
         isSaving={isSaving}
       />
 
@@ -625,9 +626,6 @@ export default function LingeList() {
         onExport={handleExport}
         exporting={exporting}
       />
-
-      {/* ─── MODAL D'IMPORT ─────────────────────────────────────────────── */}
-      <LingeImportModal />
     </div>
   );
 }

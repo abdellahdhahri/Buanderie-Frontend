@@ -94,6 +94,15 @@ export const IconBin = (p) => (
   </Icon>
 );
 
+// Services : bâtiment hospitalier avec croix
+export const IconHospital = (p) => (
+  <Icon {...p}>
+    <path d="M4 21V7.5A1.5 1.5 0 0 1 5.5 6H9V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V6h3.5A1.5 1.5 0 0 1 20 7.5V21Z" {...tint} />
+    <path d="M12 6.5v4M10 8.5h4" />
+    <path d="M3 21h18M10 21v-4h4v4" />
+  </Icon>
+);
+
 // Étapes : circuit en étapes
 export const IconSteps = (p) => (
   <Icon {...p}>

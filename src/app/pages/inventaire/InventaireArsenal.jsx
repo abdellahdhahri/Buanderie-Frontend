@@ -387,7 +387,7 @@ export default function InventaireArsenal() {
     <div className="relative flex h-full gap-4">
       <motion.div className="transition-all duration-500 ease-in-out w-full">
         <div className="space-y-4">
-          <div style={{ marginBottom: "32px" }}>
+          <div className="page-head" style={{ marginBottom: "32px" }}>
             <div style={{
               display: "flex",
               alignItems: "center",

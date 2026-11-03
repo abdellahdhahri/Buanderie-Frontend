@@ -20,6 +20,7 @@ import {
   User,
   Users,
   Warehouse,
+  Undo2,
 } from "lucide-react";
 import AgentPicker from "./AgentPicker";
 import ScanInput from "../../components/utils/shared/ScanInput";
@@ -32,12 +33,21 @@ import {
   isNonConforme,
   rangerLinge,
   rangerTout,
+  annulerRangement,
 } from "../../services/receptionArsenalService";
 import { CategoryBar, CategoryChips, EmptyState, Loading, ScanZone, ShelfGrid } from "./arsenalUi";
 import { accentOf, shelfLabel } from "./arsenalUtils";
 import { Illustration, ShelfGlyph } from "./illustrations";
 
 const ORDER = ["agent", "remises", "quantite", "etagere", "unParUn"];
+
+// Catégories à compter pour une remise (une seule ligne « total » si le backend n'en fournit pas)
+const TOTAL_KEY = "__total__";
+const categoriesOf = (remise) => {
+  const cats = Object.keys(remise?.parCategorie || {});
+  return cats.length ? cats : [TOTAL_KEY];
+};
+const sumQuantites = (quantites) => Object.values(quantites).reduce((s, q) => s + (Number(q) || 0), 0);
 
 const fade = {
   initial: { opacity: 0, y: 8 },
@@ -100,7 +110,7 @@ export default function RangementArsenal({ arsenal, emplacements }) {
   const [agent, setAgent] = useState(null); // { badge, nom, remises }
   const [agentMode, setAgentMode] = useState("scan"); // "scan" | "liste"
   const [remise, setRemise] = useState(null);
-  const [quantite, setQuantite] = useState("");
+  const [quantites, setQuantites] = useState({}); // { DRAP: "3", ... } saisi par catégorie
   const [etagere, setEtagereState] = useState(null);
 
   // Mode un par un
@@ -162,24 +172,40 @@ export default function RangementArsenal({ arsenal, emplacements }) {
 
   const selectRemise = (r) => {
     setRemise(r);
-    setQuantite("");
+    setQuantites(Object.fromEntries(categoriesOf(r).map((c) => [c, ""])));
     setEtagere(null);
     setStep("quantite");
   };
 
   /* ── Quantité & étagère ──────────────────────────────────────────────── */
 
-  const bumpQuantite = (delta) =>
-    setQuantite((q) => String(Math.max(0, (Number(q) || 0) + delta)));
+  const setQuantite = (categorie, value) => setQuantites((qs) => ({ ...qs, [categorie]: value }));
+
+  const bumpQuantite = (categorie, delta) =>
+    setQuantites((qs) => ({ ...qs, [categorie]: String(Math.max(0, (Number(qs[categorie]) || 0) + delta)) }));
+
+  const quantiteTotale = sumQuantites(quantites);
+  const quantitesSaisies = Object.values(quantites).every((q) => q !== "");
 
   const confirmQuantite = (e) => {
     e.preventDefault();
-    const n = Number(quantite);
-    if (quantite === "" || !Number.isInteger(n) || n < 0) {
+    const invalide = Object.values(quantites).some((q) => {
+      const n = Number(q);
+      return q === "" || !Number.isInteger(n) || n < 0;
+    });
+    if (invalide) {
       toast.error(t("stockageArsenal.invalid_quantity"));
       return;
     }
     setStep("etagere");
+  };
+
+  // Catégories dont la quantité comptée diffère de la quantité attendue
+  const ecartsCategorie = () => {
+    const attendu = remise?.parCategorie || {};
+    return Object.entries(attendu)
+      .filter(([cat, qte]) => Number(quantites[cat]) !== Number(qte))
+      .map(([cat]) => t(`categories.${cat}`, cat));
   };
 
   const handleShelfScan = (code) => {
@@ -193,12 +219,22 @@ export default function RangementArsenal({ arsenal, emplacements }) {
 
   const validerTout = async () => {
     if (!etagere) return;
+
+    // Le contrôle se fait catégorie par catégorie : un écart sur l'une d'elles
+    // impose le rangement un par un, même si le total correspond.
+    const ecarts = ecartsCategorie();
+    if (ecarts.length) {
+      toast.warning(t("stockageArsenal.category_mismatch", { categories: ecarts.join(", ") }));
+      await startUnParUn();
+      return;
+    }
+
     setBusy(true);
     try {
       const res = await rangerTout(remise.remiseLingeId, {
         arsenalID: arsenal.id,
         emplacement: emplacementParam(etagere),
-        quantiteComptee: Number(quantite),
+        quantiteComptee: quantiteTotale,
         badgeAgent: agent.badge,
       });
       toast.success(res?.message || t("stockageArsenal.stored_all"));
@@ -231,6 +267,18 @@ export default function RangementArsenal({ arsenal, emplacements }) {
   };
 
   const addJournal = (entry) => setJournal((j) => [{ id: Date.now() + Math.random(), ...entry }, ...j].slice(0, 30));
+
+  // Annule le rangement d'un linge scanné par erreur : il redevient « à ranger »
+  const annulerScan = async (entry) => {
+    try {
+      const res = await annulerRangement(entry.code, agent?.badge);
+      setJournal((j) => j.map((x) => (x.id === entry.id ? { ...x, annule: true, message: res.message } : x)));
+      toast.success(res.message || t("stockageArsenal.storing_cancelled"));
+      if (remise) setARanger(await fetchLingesARanger(remise.remiseLingeId));
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
 
   const processUnParUn = async (code) => {
     const emp = findEmplacementByCode(emplacements, code);
@@ -330,7 +378,14 @@ export default function RangementArsenal({ arsenal, emplacements }) {
           <TrackItem
             icon={<Hash size={13} />}
             label={t("stockageArsenal.steps.quantite")}
-            value={at > ORDER.indexOf("quantite") ? t("stockageArsenal.n_counted", { count: Number(quantite) }) : null}
+            value={at > ORDER.indexOf("quantite") ? t("stockageArsenal.n_counted", { count: quantiteTotale }) : null}
+            meta={
+              at > ORDER.indexOf("quantite") && !(TOTAL_KEY in quantites)
+                ? Object.entries(quantites)
+                    .map(([cat, q]) => `${t(`categories.${cat}`, cat)} : ${Number(q) || 0}`)
+                    .join(" · ")
+                : null
+            }
             state={stateOf("quantite")}
             action={step === "etagere" ? t("common.edit") : null}
             onAction={() => setStep("quantite")}
@@ -438,31 +493,50 @@ export default function RangementArsenal({ arsenal, emplacements }) {
             <motion.div key="quantite" {...fade}>
               <StageHead eyebrow={stepOf(3)} title={t("stockageArsenal.quantity_title")} text={t("stockageArsenal.quantity_hint")} art="count" />
               <form onSubmit={confirmQuantite}>
-                <div className="sa-qty">
-                  <button type="button" className="sa-qty__btn" onClick={() => bumpQuantite(-1)} aria-label="-1">
-                    <Minus size={18} />
-                  </button>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    inputMode="numeric"
-                    autoFocus
-                    className="sa-qty__input"
-                    value={quantite}
-                    onChange={(e) => setQuantite(e.target.value)}
-                    placeholder="0"
-                    aria-label={t("stockageArsenal.quantity_placeholder")}
-                  />
-                  <button type="button" className="sa-qty__btn" onClick={() => bumpQuantite(1)} aria-label="+1">
-                    <Plus size={18} />
-                  </button>
+                <div className="sa-qty-list">
+                  {categoriesOf(remise).map((cat, i) => {
+                    const label = cat === TOTAL_KEY ? t("stockageArsenal.quantity_placeholder") : t(`categories.${cat}`, cat);
+                    return (
+                      <div key={cat} className="sa-qty-row" style={{ "--c": accentOf(cat) }}>
+                        <span className="sa-qty-row__label">
+                          {cat !== TOTAL_KEY && <i className="sa-dot" />}
+                          {label}
+                        </span>
+                        <div className="sa-qty sa-qty--sm">
+                          <button type="button" className="sa-qty__btn" onClick={() => bumpQuantite(cat, -1)} aria-label="-1">
+                            <Minus size={16} />
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            inputMode="numeric"
+                            autoFocus={i === 0}
+                            className="sa-qty__input"
+                            value={quantites[cat] ?? ""}
+                            onChange={(e) => setQuantite(cat, e.target.value)}
+                            placeholder="0"
+                            aria-label={label}
+                          />
+                          <button type="button" className="sa-qty__btn" onClick={() => bumpQuantite(cat, 1)} aria-label="+1">
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {categoriesOf(remise).length > 1 && (
+                    <div className="sa-qty-row sa-qty-row--total">
+                      <span className="sa-qty-row__label">{t("stockageArsenal.quantity_total")}</span>
+                      <strong>{quantiteTotale}</strong>
+                    </div>
+                  )}
                 </div>
                 <div className="sa-stage__foot">
                   <button type="button" className="sa-btn sa-btn--ghost" onClick={backToRemises}>
                     <ArrowLeft size={16} /> {t("stockageArsenal.back_to_remises")}
                   </button>
-                  <button type="submit" className="sa-btn sa-btn--primary" disabled={quantite === ""}>
+                  <button type="submit" className="sa-btn sa-btn--primary" disabled={!quantitesSaisies}>
                     {t("stockageArsenal.next_shelf")} <ArrowRight size={16} />
                   </button>
                 </div>
@@ -497,7 +571,7 @@ export default function RangementArsenal({ arsenal, emplacements }) {
                   {busy
                     ? t("common.saving")
                     : etagere
-                      ? t("stockageArsenal.validate_into", { count: Number(quantite), shelf: shelfLabel(etagere) })
+                      ? t("stockageArsenal.validate_into", { count: quantiteTotale, shelf: shelfLabel(etagere) })
                       : t("stockageArsenal.choose_shelf_first")}
                 </button>
               </div>
@@ -572,10 +646,15 @@ export default function RangementArsenal({ arsenal, emplacements }) {
                   {journal.length > 0 ? (
                     <div className="sa-journal">
                       {journal.map((j) => (
-                        <div key={j.id} className={`sa-journal__item ${j.ok ? "is-ok" : "is-ko"}`}>
-                          {j.ok ? <CircleCheck size={14} /> : <TriangleAlert size={14} />}
+                        <div key={j.id} className={`sa-journal__item ${j.annule ? "is-cancelled" : j.ok ? "is-ok" : "is-ko"}`}>
+                          {j.annule ? <Undo2 size={14} /> : j.ok ? <CircleCheck size={14} /> : <TriangleAlert size={14} />}
                           <code>{j.code}</code>
-                          <span>{j.message}</span>
+                          <span style={{ flex: 1 }}>{j.message}</span>
+                          {j.ok && !j.annule && (
+                            <button type="button" className="sa-link sa-link--danger" onClick={() => annulerScan(j)}>
+                              {t("stockageArsenal.cancel_storing")}
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>

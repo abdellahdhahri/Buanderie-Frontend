@@ -5,6 +5,8 @@ import {
 } from "lucide-react";
 import { FormModal, FormSection, FormField, Segmented } from "../../../components/ui/modal-kit";
 import { CategoryPicker } from "../../../components/ui/CategoryPicker";
+import { CATEGORIES_LINGE } from "../../../constants/categoriesLinge";
+import { getActiveCategories } from "../../../utils/appSettings";
 import { ETAT_OPTIONS } from "../lingeConstants";
 import { PersonnelAutocomplete } from "./PersonnelAutocomplete";
 
@@ -21,6 +23,13 @@ const HiddenRequired = ({ value }) => (
   />
 );
 
+// Catégories du backend, sans celles désactivées dans Paramètres › Catégories
+const categoriesProposees = (categories) => {
+  if (!categories?.length) return undefined;
+  const actives = getActiveCategories();
+  return categories.filter((c) => !CATEGORIES_LINGE.includes(c) || actives.includes(c));
+};
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ✏️ CRÉATION / MODIFICATION D'UN LINGE — blocs repliables du kit de modales
 // ═══════════════════════════════════════════════════════════════════════════
@@ -35,6 +44,7 @@ export function LingeFormModal({
   setCreationMode,
   services,
   personnel,
+  categories,
   isSaving,
 }) {
   const { t } = useTranslation();
@@ -113,6 +123,7 @@ export function LingeFormModal({
         <FormField label={t('linge.category')} required span={2}>
           <div style={{ position: "relative" }}>
             <CategoryPicker
+              categories={categoriesProposees(categories)}
               value={newLinge.categorie}
               onChange={(categorie) => set({
                 categorie,

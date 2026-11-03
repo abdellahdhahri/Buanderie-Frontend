@@ -1,24 +1,20 @@
 import React, { useState, useContext, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { LingeContext } from "../../contextes/LingeContext";
-import { useNavigate } from "react-router-dom";
 import { useModal } from "../../contextes/ModalContext";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  FaBarcode, FaFilter, FaCheck, FaTimes, FaUser,
-  FaTags, FaHistory, FaCheckCircle, FaBox,
-  FaExclamationTriangle, FaPlus, FaMinus, FaArrowRight
-} from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
+  ArrowRight, Boxes, CheckCircle, History, Loader2, LogOut, PieChart, RotateCcw, Scale, Tag, X,
+} from "lucide-react";
+import { STATS_INITIALES, MODE_RFID, MODE_CODEBARRE } from "../../constants/tri";
+import { LotBasketCard, LotBasketSvg, getFillTone } from "../../components/utils/shared/LotBasket";
+import { getCategorieMeta } from "../../constants/categoriesLinge";
+import { BadgeScanArt, ScannerGlyph } from "../Reception/ReceptionArt";
+import { SortArt, SortGlyph } from "./TriArt";
 import "../Linge/WorkflowList.css";
-import { STATS_INITIALES, STYLES_ETAPE as STYLES, MODE_RFID, MODE_CODEBARRE } from "../../constants/tri";
-import StatCard from "../../components/utils/tri/StatCard";
-import LotField from "../../components/utils/tri/LotField";
-import { LotBasketCard } from "../../components/utils/shared/LotBasket";
-import { Card, CardContent } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
+import "../Reception/Reception.css";
+import "./Tri.css";
 import { TriProvider, useTri } from "../../contextes/TriContext";
-import EtapesStepper from "../../components/utils/shared/EtapesStepper";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import { getAgent, isAgentConnected } from "../../services/agentService";
 import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
@@ -29,11 +25,9 @@ function TriInner() {
   const { t } = useTranslation();
 
   const { getLingeByCode, isRfidMode } = useContext(LingeContext);
-  const navigate           = useNavigate();
   const { showAlert, showConfirm } = useModal();
 
   const [scanValue,     setScanValue]     = useState("");
-  const [isFocused,     setIsFocused]     = useState(true);
   const [isLoading,     setIsLoading]     = useState(false);
   const [agentScanne,   setAgentScanne]   = useState(null);
   const [lingeScanne,   setLingeScanne]   = useState(null);
@@ -95,7 +89,6 @@ function TriInner() {
     const timer = setTimeout(() => {
       if (isMounted.current && scanInputRef.current) {
         scanInputRef.current.focus();
-        setIsFocused(true);
       }
     }, 100);
     return () => clearTimeout(timer);
@@ -105,7 +98,6 @@ function TriInner() {
     setTimeout(() => {
       if (isMounted.current && scanInputRef.current) {
         scanInputRef.current.focus();
-        setIsFocused(true);
       }
     }, delay);
   }, []);
@@ -351,87 +343,12 @@ function TriInner() {
       });
   }, [showConfirm, showAlert, resetAllStates, t]);
 
-  const DialogLotsSuggere = () => {
-    if (!showDialog || lotsSuggere.length === 0) return null;
-
-    return (
-      <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(0,0,0,0.6)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9999,
-        backdropFilter: "blur(4px)"
-      }}>
-        <div style={{
-          background: "white",
-          borderRadius: "24px",
-          padding: "28px",
-          maxWidth: lotsSuggere.length > 2 ? "760px" : "580px",
-          width: "95%",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.3)",
-          maxHeight: "90vh",
-          overflowY: "auto"
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <FaTags size={20} color="#2563eb" />
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: "16px", color: "#0f172a" }}>
-                  {t('tri.choose_lot')}
-                </div>
-                <div style={{ fontSize: "12px", color: "#64748b" }}>
-                  {lingeEnCours?.codeSuivi || lingeEnCours?.codeBarre} • {t(`categories.${lingeEnCours?.categorie}`, lingeEnCours?.categorie || "")} • {lingeEnCours?.typeCollecte}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setShowDialog(false);
-                setLotsSuggere([]);
-                setLingeEnCours(null);
-                setLingeScanne(null);
-                focusInput();
-              }}
-              style={{
-                background: "#f1f5f9",
-                border: "none",
-                borderRadius: "50%",
-                width: "32px",
-                height: "32px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#64748b"
-              }}
-            >
-              <FaTimes size={14} />
-            </button>
-          </div>
-
-          <div className="lot-basket-grid">
-            {lotsSuggere.map((lot, index) => (
-              <LotBasketCard key={lot.id || index} lot={lot} t={t} onSelect={() => affecterAuLot(lot.id)} />
-            ))}
-          </div>
-
-          {lotsSuggere.length === 0 && (
-            <div style={{ textAlign: "center", padding: "30px", color: "#94a3b8" }}>
-              <FaExclamationTriangle size={32} style={{ opacity: 0.3, marginBottom: "10px" }} />
-              <div>{t('tri.no_lot_available')}</div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+  const fermerDialogue = () => {
+    setShowDialog(false);
+    setLotsSuggere([]);
+    setLingeEnCours(null);
+    setLingeScanne(null);
+    focusInput();
   };
 
   const getPlaceholder = () => {
@@ -441,332 +358,397 @@ function TriInner() {
 
   const getBorderColor = () => {
     if (!agentScanne) return "#dc2626";
-    return "#f59e0b";
+    return "#e67700";
   };
 
+  // ─── Rendu ────────────────────────────────────────────────────────────
+  const nomAgent = getAgentFullName();
+  const libelleCategorie = (cat) => (cat ? t(`categories.${cat}`, cat) : t("reception.non_categorise"));
+
+  // Répartition des articles triés pendant la session
+  const parCategorie = historiqueTri.reduce((acc, h) => {
+    const cat = h.categorie || "AUTRE";
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Lots alimentés pendant la session (le plus récent en premier)
+  const lotsSession = Object.values(
+    historiqueTri.reduce((acc, h) => {
+      if (!acc[h.lotCode]) acc[h.lotCode] = { code: h.lotCode, n: 0, poids: 0, categorie: h.categorie, typeCollecte: h.typeCollecte };
+      acc[h.lotCode].n += 1;
+      acc[h.lotCode].poids += Number(h.poids) || 0;
+      return acc;
+    }, {})
+  );
+
+  const lotPoids = Number(lotSuggere?.poidsActuel) || 0;
+  const lotCapacite = Number(lotSuggere?.capaciteMax) || 0;
+  const lotPct = lotCapacite > 0 ? Math.min(100, (lotPoids / lotCapacite) * 100) : null;
+  const lotTone = getFillTone(lotPct);
+
+  const lingeCourant = lingeEnCours || lingeScanne;
+
   return (
-    <div className="collecte-container">
+    <div className="collecte-container rc">
 
-      <DialogLotsSuggere />
-
-      {/* ── Header ── */}
-      <div style={{ marginBottom: "32px" }}>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-          marginBottom: "8px"
-        }}>
-          <PageHeaderIcon size={52} />
-          <div>
-            <h1 style={{
-              fontSize: "28px",
-              fontWeight: 800,
-              color: "#0f172a",
-              margin: 0
-            }}>
-              {t('tri.title')}
-            </h1>
-            <p style={{
-              fontSize: "14px",
-              color: "#64748b",
-              margin: "2px 0 0 0"
-            }}>
-              {agentScanne 
-                ? t('tri.subtitle', { agent: getAgentFullName() })
-                : t('tri.subtitle_no_agent')}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div
-        className="collecte-panel-grand"
-        style={{
-          background: "white",
-          borderRadius: "20px",
-          padding: "32px",
-          border: "1px solid #e2e8f0",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
-          minHeight: "600px"
-        }}
-      >
-
-        {/* Barre supérieure */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-          flexWrap: "wrap",
-          gap: "12px"
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            {agentScanne ? (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "8px 16px",
-                background: "#f0fdf4",
-                borderRadius: "10px",
-                border: "1px solid #bbf7d0"
-              }}>
-                <FaCheckCircle color="#22c55e" size={16} />
-                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
-                  {getAgentFullName()}
-                </span>
-                <Badge variant="outline" style={{ fontSize: "11px" }}>
-                  {agentScanne.codeBarre || agentScanne.matricule}
-                </Badge>
-                <button
-                  onClick={handleLogoutAgent}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#94a3b8",
-                    cursor: "pointer"
-                  }}
-                >
-                  <FaTimes size={12} />
+      {/* ── Fenêtre de choix du lot ── */}
+      <AnimatePresence>
+        {showDialog && lotsSuggere.length > 0 && (
+          <motion.div className="tr-modal" data-modal="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div
+              className={`tr-modal__box ${lotsSuggere.length > 2 ? "" : "is-narrow"}`}
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.22 }}
+            >
+              <div className="tr-modal__head">
+                <CategoryTile categorie={lingeEnCours?.categorie} size={44} />
+                <div style={{ minWidth: 0 }}>
+                  <h2>{t('tri.choose_lot')}</h2>
+                  <p>
+                    <code style={{ fontWeight: 700, color: "var(--rc-text)" }}>{lingeEnCours?.codeSuivi || lingeEnCours?.codeBarre}</code>
+                    <span>{libelleCategorie(lingeEnCours?.categorie)}</span>
+                    <TypeCollecte type={lingeEnCours?.typeCollecte} />
+                  </p>
+                </div>
+                <button type="button" className="tr-modal__close" onClick={fermerDialogue} aria-label={t('common.close')}>
+                  <X size={16} />
                 </button>
               </div>
-            ) : (
-              <div style={{ fontSize: "13px", color: "#94a3b8" }}>{t('tri.no_agent_title')}</div>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetAll}
-            >
-              {t('tri.reset')}
-            </Button>
+              <div className="tr-modal__body">
+                <div className="tr-modal__hint">
+                  <SortGlyph size={20} /> {t('tri.choose_lot_hint', { count: lotsSuggere.length })}
+                </div>
+                <div className="lot-basket-grid">
+                  {lotsSuggere.map((lot, index) => (
+                    <LotBasketCard key={lot.id || index} lot={lot} t={t} onSelect={() => affecterAuLot(lot.id)} />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── En-tête ── */}
+      <header className="page-head rc-head">
+        <div className="rc-head__title">
+          <PageHeaderIcon size={52} />
+          <div>
+            <h1>{t('tri.title')}</h1>
+            <p>{agentScanne ? t('tri.ready_text') : t('tri.subtitle_no_agent')}</p>
           </div>
         </div>
+        <div className="rc-head__right">
+          {agentScanne && (
+            <div className="rc-agent">
+              <span className="rc-agent__avatar">{initiales(nomAgent)}</span>
+              <span>
+                <span className="rc-agent__name" style={{ display: "block" }}>{nomAgent}</span>
+                <span className="rc-agent__id">{agentScanne.codeBarre || agentScanne.matricule}</span>
+              </span>
+              <button type="button" className="rc-agent__out" onClick={handleLogoutAgent} title={t('tri.confirm_logout')} aria-label={t('tri.confirm_logout')}>
+                <LogOut size={14} />
+              </button>
+            </div>
+          )}
+          <button type="button" className="rc-btn" onClick={handleResetAll}>
+            <RotateCcw size={14} /> {t('tri.reset')}
+          </button>
+        </div>
+      </header>
 
-        {/* ─── Message si agent non connecté ──────────────────────────────── */}
-        {!agentScanne && (
-          <div style={{
-            padding: "12px 16px",
-            borderRadius: "10px",
-            background: "#fef2f2",
-            border: "1px solid #fca5a5",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            fontSize: "13px",
-            color: "#dc2626"
-          }}>
-            <FaExclamationTriangle size={16} />
-            <span style={{ fontWeight: 600 }}>{t('tri.no_agent_title')}</span>
-            <span style={{ color: "#64748b" }}>{t('tri.no_agent_message')}</span>
+      {/* ── Aucun agent : accueil ── */}
+      {!agentScanne ? (
+        <section className="rc-card rc-welcome">
+          <BadgeScanArt />
+          <div>
+            <span className="rc-eyebrow">{t('tri.no_agent_title')}</span>
+            <h2>{t('tri.welcome_title')}</h2>
+            <p>{t('tri.no_agent_message')}</p>
+            <div className="rc-scan__field" style={{ "--scan": "var(--rc-sac)" }}>
+              <ScanInput
+                ref={scanInputRef}
+                placeholder={getPlaceholder()}
+                value={scanValue}
+                onChange={setScanValue}
+                onSubmit={handleScanAgent}
+                borderColor={getBorderColor()}
+                keepFocus={true}
+                autoDebounce={true}
+                disabled
+              />
+            </div>
           </div>
-        )}
-
-        {/* ─── ZONE DE SCAN ────────────────────────────────────────────── */}
-        <Card style={{
-          marginBottom: "20px",
-          border: `2px dashed ${getBorderColor()}`
-        }}>
-          <CardContent className="p-5">
-            <ScanInput
-              ref={scanInputRef}
-              placeholder={getPlaceholder()}
-              value={scanValue}
-              onChange={setScanValue}
-              onSubmit={agentScanne ? handleScanLinge : handleScanAgent}
-              borderColor={getBorderColor()}
-              keepFocus={true}
-              autoDebounce={true}
-              disabled={!agentScanne || isLoading || showDialog}
-            />
-          </CardContent>
-        </Card>
-
-        {/* ─── INFO AGENT ────────────────────────────────────────────────── */}
-        {agentScanne && (
-          <Card style={{ background: "#fef3c7", border: "1px solid #fcd34d", marginBottom: "16px" }}>
-            <CardContent className="p-4">
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
-                <FaTags color="#d97706" size={16} />
-                <span style={{ fontWeight: 600, color: "#92400e" }}>{t('tri.ready')}</span>
-                <span style={{ color: "#64748b" }}>{t('tri.ready_text')}</span>
+        </section>
+      ) : (
+        <div className="rc-layout">
+          {/* ═══ Colonne principale ═══ */}
+          <div className="rc-main">
+            {/* Zone de scan */}
+            <section className="rc-card rc-scan">
+              <div className="rc-scan__top">
+                <ScannerGlyph />
+                <div style={{ minWidth: 0 }}>
+                  <h2>{t('tri.scan_title')}</h2>
+                  <p>{t('tri.ready_text')}</p>
+                </div>
+                <span className="rc-mode">
+                  <i /> {modeScan === MODE_RFID ? t('tri.mode_rfid') : t('tri.mode_barcode')}
+                </span>
               </div>
-            </CardContent>
-          </Card>
-        )}
+              <div className="rc-scan__field">
+                <ScanInput
+                  ref={scanInputRef}
+                  placeholder={getPlaceholder()}
+                  value={scanValue}
+                  onChange={setScanValue}
+                  onSubmit={handleScanLinge}
+                  borderColor={getBorderColor()}
+                  keepFocus={true}
+                  autoDebounce={true}
+                  disabled={isLoading || showDialog}
+                />
+              </div>
+              {isLoading && (
+                <div className="rc-scan__opts" style={{ color: "var(--rc-muted)", fontSize: 13 }}>
+                  <Loader2 size={15} className="animate-spin" /> {t('common.loading')}
+                </div>
+              )}
+            </section>
 
-        {/* ─── STATISTIQUES ────────────────────────────────────────────────── */}
-        {agentScanne && (
-          <div style={{ 
-            display: "grid", 
-            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", 
-            gap: "12px", 
-            marginBottom: "20px"
-          }}>
-            <StatCard value={statistiques.totalTrie || 0} label={t('tri.articles_tried')} color="#0ea5e9" />
-            <StatCard value={statistiques.lotsUtilises || 0} label={t('tri.lots_used')} color="#22c55e" />
-            <StatCard value={(statistiques.poidsTotal?.toFixed(1) || "0") + " " + t('tri.weight')} label={t('tri.total_weight')} color="#8b5cf6" />
-          </div>
-        )}
-
-        {/* ─── LOT AFFECTÉ ────────────────────────────────────────────────── */}
-        {lotSuggere && (
-          <div style={{ 
-            background: "linear-gradient(135deg, #dbeafe, #eff6ff)", 
-            borderRadius: "12px", 
-            padding: "16px", 
-            border: "2px solid #3b82f6", 
-            marginBottom: "16px" 
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px", flexWrap: "wrap" }}>
-              <FaCheckCircle size={20} color="#2563eb" />
-              <span style={{ fontWeight: 700, fontSize: "16px", color: "#1e3a8a" }}>{t('tri.lot_affected')}</span>
-              <Badge style={{ background: "#2563eb", color: "white", fontSize: "11px" }}>
-                {lotSuggere.codeLot}
-              </Badge>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px" }}>
-              <LotField label={t('tri.type')} value={lotSuggere.typeCollecte} />
-              <LotField label={t('tri.category')} value={lotSuggere.categorie} />
-              <LotField label={t('tri.weight')} value={`${lotSuggere.poidsActuel?.toFixed(2) || "0"} / ${lotSuggere.capaciteMax || "0"} kg`} />
-              <LotField label={t('tri.status')} value={lotSuggere.etat} color={lotSuggere.etat === "EN_TRI" ? "#22c55e" : "#f59e0b"} />
-            </div>
-          </div>
-        )}
-
-        {/* ─── LINGE SCANNÉ ───────────────────────────────────────────────── */}
-        {lingeScanne && !lotSuggere && (
-          <div style={{ 
-            background: "#f0fdf4", 
-            borderRadius: "12px", 
-            padding: "12px 16px", 
-            border: "2px solid #22c55e", 
-            marginBottom: "16px" 
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              <FaBarcode size={18} color="#22c55e" />
-              <span style={{ fontWeight: 600 }}>{t('tri.last_scanned')}</span>
-              <code style={{ 
-                padding: "2px 10px", 
-                background: "#dcfce7", 
-                borderRadius: "6px", 
-                fontSize: "13px", 
-                fontWeight: 600, 
-                color: "#15803d" 
-              }}>
-                {lingeScanne.codeSuivi || lingeScanne.codeBarre}
-              </code>
-              <span style={{ fontSize: "12px", color: "#64748b" }}>{lingeScanne.categorie} • {lingeScanne.typeCollecte}</span>
-              <span style={{ fontSize: "12px", color: "#64748b" }}>{lingeScanne.poids} kg</span>
-            </div>
-          </div>
-        )}
-
-        {/* ─── HISTORIQUE ────────────────────────────────────────────────── */}
-        {historiqueTri.length > 0 && (
-          <div style={{ 
-            background: "#f8fafc", 
-            borderRadius: "12px", 
-            padding: "16px", 
-            border: "1px solid #e2e8f0", 
-            marginTop: "16px" 
-          }}>
-            <div style={{ 
-              fontWeight: 600, 
-              fontSize: "14px", 
-              color: "#1e293b", 
-              marginBottom: "12px", 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "8px" 
-            }}>
-              <FaHistory />
-              {t('tri.history')} ({historiqueTri.length})
-            </div>
-            <div style={{ 
-              maxHeight: "200px", 
-              overflowY: "auto", 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "4px" 
-            }}>
-              {historiqueTri.map((item, index) => (
-                <div
-                  key={index}
-                  style={{ 
-                    display: "flex", 
-                    alignItems: "center", 
-                    justifyContent: "space-between", 
-                    padding: "6px 12px", 
-                    background: "white", 
-                    borderRadius: "8px", 
-                    border: "1px solid #e2e8f0", 
-                    fontSize: "12px", 
-                    flexWrap: "wrap", 
-                    gap: "4px" 
-                  }}
+            {/* Linge en cours de tri */}
+            <AnimatePresence mode="popLayout">
+              {lingeCourant && !lotSuggere && (
+                <motion.section
+                  key={lingeCourant.codeSuivi || lingeCourant.codeBarre}
+                  className="rc-card rc-spot"
+                  style={{ "--k": getCategorieMeta(lingeCourant.categorie).accent }}
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
                 >
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ color: "#94a3b8", fontSize: "10px" }}>#{index + 1}</span>
-                    <code style={{ fontWeight: 600, color: "#0ea5e9", fontSize: "12px" }}>{item.codeLinge}</code>
-                    <span style={{ color: "#475569", fontSize: "12px" }}>{item.categorie}</span>
-                    <Badge style={{ 
-                      background: item.typeCollecte === "BLANC" ? "#dcfce7" : "#fee2e2", 
-                      color: item.typeCollecte === "BLANC" ? "#15803d" : "#dc2626", 
-                      fontSize: "9px" 
-                    }}>
-                      {item.typeCollecte}
-                    </Badge>
-                    <span style={{ color: "#64748b", fontSize: "11px" }}>→ {item.lotCode}</span>
+                  <div className="rc-spot__art">
+                    <CategoryTile categorie={lingeCourant.categorie} size={46} bare />
                   </div>
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                    <span style={{ fontSize: "10px", color: "#94a3b8" }}>{item.poids} kg</span>
-                    <span style={{ fontSize: "10px", color: "#94a3b8" }}>{item.date}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <span className="rc-spot__type">{t('tri.last_scanned')}</span>
+                    <code className="rc-spot__code">{lingeCourant.codeSuivi || lingeCourant.codeBarre}</code>
+                    <div className="rc-spot__meta">
+                      <span><b>{libelleCategorie(lingeCourant.categorie)}</b></span>
+                      <TypeCollecte type={lingeCourant.typeCollecte} />
+                      {lingeCourant.poids != null && <span><Scale size={12} /> {lingeCourant.poids} {t('tri.weight')}</span>}
+                    </div>
+                  </div>
+                  {showDialog && (
+                    <span className="rc-pill rc-pill--warn"><i /> {t('tri.choose_lot')}</span>
+                  )}
+                </motion.section>
+              )}
+            </AnimatePresence>
+
+            {/* Lot affecté */}
+            <AnimatePresence mode="popLayout">
+              {lotSuggere && (
+                <motion.section
+                  key={`${lotSuggere.codeLot}-${historiqueTri.length}`}
+                  className="rc-card tr-lot"
+                  style={{ "--k": lotTone.main }}
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <LotBasketSvg code={lotSuggere.codeLot} poids={lotPoids} capacite={lotCapacite} />
+                  <div style={{ minWidth: 0 }}>
+                    <span className="rc-spot__type" style={{ "--k": "var(--rc-ok)" }}>
+                      <CheckCircle size={12} /> {t('tri.lot_affected')}
+                    </span>
+                    <code className="rc-spot__code">{lotSuggere.codeLot}</code>
+                    {historiqueTri[0] && (
+                      <span className="tr-route">
+                        <code>{historiqueTri[0].codeLinge}</code>
+                        <ArrowRight size={13} />
+                        <code>{lotSuggere.codeLot}</code>
+                      </span>
+                    )}
+                    <div className="tr-lot__fields">
+                      <div className="tr-field"><small>{t('tri.type')}</small><TypeCollecte type={lotSuggere.typeCollecte} /></div>
+                      <div className="tr-field"><small>{t('tri.category')}</small><b>{libelleCategorie(lotSuggere.categorie)}</b></div>
+                      <div className="tr-field"><small>{t('tri.weight')}</small><b>{lotPoids.toFixed(2)} / {lotCapacite || "—"} kg</b></div>
+                      <div className="tr-field">
+                        <small>{t('tri.status')}</small>
+                        <span className={`rc-pill ${lotSuggere.etat === "EN_TRI" ? "rc-pill--ok" : "rc-pill--warn"}`}><i /> {lotSuggere.etat}</span>
+                      </div>
+                    </div>
+                    {lotPct != null && (
+                      <div className="tr-gauge" title={`${Math.round(lotPct)} %`}>
+                        <span style={{ width: `${lotPct}%` }} />
+                      </div>
+                    )}
+                  </div>
+                </motion.section>
+              )}
+            </AnimatePresence>
+
+            {/* Historique de la session */}
+            <section className="rc-card">
+              <div className="rc-card__head">
+                <h3 className="rc-card__title"><History size={16} /> {t('tri.history')}</h3>
+                <span className="rc-count" style={{ marginLeft: "auto" }}>{historiqueTri.length}</span>
+              </div>
+              <div className="rc-card__body">
+                {historiqueTri.length === 0 ? (
+                  <div className="rc-empty">
+                    <SortArt />
+                    <strong>{t('tri.no_history')}</strong>
+                    <span>{t('tri.history_empty_hint')}</span>
+                  </div>
+                ) : (
+                  <div className="rc-grid">
+                    {historiqueTri.map((item, index) => {
+                      const { Icon, accent } = getCategorieMeta(item.categorie);
+                      return (
+                        <motion.div
+                          key={`${item.codeLinge}-${historiqueTri.length - index}`}
+                          className={`rc-item tr-hist ${index === 0 ? "is-active" : ""}`}
+                          style={{ "--c": accent }}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                        >
+                          <span className="rc-item__icon"><Icon size={20} strokeWidth={1.9} /></span>
+                          <span className="rc-item__body">
+                            <span className="rc-item__code">{item.codeLinge}</span>
+                            <span className="rc-item__cat">{libelleCategorie(item.categorie)}</span>
+                            <span className="rc-item__foot">
+                              <span className="tr-route"><ArrowRight size={12} /><code>{item.lotCode}</code></span>
+                              <TypeCollecte type={item.typeCollecte} />
+                            </span>
+                            <span className="rc-item__foot" style={{ marginTop: 6 }}>
+                              <span className="tr-time">{item.poids != null ? `${item.poids} kg` : ""}</span>
+                              <span className="tr-time">{item.date}</span>
+                            </span>
+                          </span>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* ═══ Colonne de droite ═══ */}
+          <aside className="rc-side">
+            <div className="rc-kpis">
+              <Kpi color="var(--rc)" icon={<SortGlyph size={22} c="currentColor" />} value={statistiques.totalTrie || 0} label={t('tri.articles_tried')} />
+              <Kpi color="var(--rc-ok)" icon={<Boxes size={18} />} value={statistiques.lotsUtilises || 0} label={t('tri.lots_used')} />
+              <Kpi color="#7c3aed" icon={<Scale size={18} />} value={`${Number(statistiques.poidsTotal || 0).toFixed(1)} ${t('tri.weight')}`} label={t('tri.total_weight')} />
+              <Kpi color="var(--rc-bac)" icon={<Tag size={17} />} text value={lotSuggere?.codeLot || "—"} label={t('tri.last_lot')} />
+            </div>
+
+            {historiqueTri.length > 0 && (
+              <section className="rc-card">
+                <div className="rc-card__head">
+                  <h3 className="rc-card__title"><PieChart size={16} /> {t('tri.by_category')}</h3>
+                </div>
+                <div className="rc-card__body">
+                  <div className="rc-dist" style={{ marginBottom: 0 }}>
+                    <div className="rc-dist__bar" aria-hidden="true">
+                      {Object.entries(parCategorie).map(([cat, n]) => (
+                        <span key={cat} style={{ flexGrow: n, background: getCategorieMeta(cat).accent }} />
+                      ))}
+                    </div>
+                    <div className="rc-chips">
+                      {Object.entries(parCategorie).map(([cat, n]) => (
+                        <span key={cat} className="rc-chip" style={{ "--c": getCategorieMeta(cat).accent }}>
+                          <i /> {libelleCategorie(cat)} <b>{n}</b>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))}
+              </section>
+            )}
+
+            <section className="rc-card">
+              <div className="rc-card__head">
+                <h3 className="rc-card__title"><Boxes size={16} /> {t('tri.session_lots')}</h3>
+                <span className="rc-count" style={{ marginLeft: "auto" }}>{lotsSession.length}</span>
+              </div>
+              <div className="rc-card__body">
+                {lotsSession.length === 0 ? (
+                  <div className="rc-empty" style={{ padding: "14px 8px" }}>
+                    <span>{t('tri.session_lots_empty')}</span>
+                  </div>
+                ) : (
+                  <div className="tr-lots">
+                    {lotsSession.map((l) => (
+                      <div key={l.code} className={`tr-lots__item ${l.code === lotSuggere?.codeLot ? "is-last" : ""}`}>
+                        <span className="tr-lots__glyph"><SortGlyph size={22} /></span>
+                        <span className="tr-lots__main">
+                          <code>{l.code}</code>
+                          <small>{libelleCategorie(l.categorie)} · {l.typeCollecte}</small>
+                        </span>
+                        <span className="tr-lots__n">
+                          {l.n} {t('reception.linges_count')}
+                          <small>{l.poids.toFixed(1)} kg</small>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <div className="rc-foot">
+              <span>{t('tri.matricule')} : <b style={{ color: "var(--rc-text)" }}>{agentScanne.matricule}</b></span>
+              <span>{new Date().toLocaleDateString("fr-FR")}</span>
             </div>
-          </div>
-        )}
-
-        {/* ─── FOOTER ────────────────────────────────────────────────────── */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: "16px",
-          paddingTop: "16px",
-          borderTop: "1px solid #e2e8f0",
-          flexWrap: "wrap",
-          gap: "8px"
-        }}>
-          <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#64748b" }}>
-            {agentScanne && (
-              <>
-                <span>{t('tri.agent')}: <strong style={{ color: "#0f172a" }}>{getAgentFullName()}</strong></span>
-                <span>{t('tri.matricule')}: <strong style={{ color: "#0f172a" }}>{agentScanne.matricule}</strong></span>
-              </>
-            )}
-            {!agentScanne && (
-              <span style={{ color: "#dc2626" }}>⚠️ {t('tri.no_agent_title')}</span>
-            )}
-            {lotSuggere && (
-              <span>{t('tri.last_lot')}: <strong style={{ color: "#3b82f6" }}>{lotSuggere.codeLot}</strong></span>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: "8px", fontSize: "12px", color: "#94a3b8" }}>
-            <span>{new Date().toLocaleDateString("fr-FR")}</span>
-            <span>•</span>
-            <span>{new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
-          </div>
+          </aside>
         </div>
-
-      </div>
+      )}
     </div>
+  );
+}
+
+/* ── Aides ─────────────────────────────────────────────────────────────── */
+
+const initiales = (nom = "") =>
+  nom.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase() || "?";
+
+function Kpi({ color, icon, value, label, text = false }) {
+  return (
+    <div className="rc-kpi" style={{ "--k": color }}>
+      <span className="rc-kpi__icon">{icon}</span>
+      <span className={`rc-kpi__value ${text ? "rc-kpi__value--text" : ""}`}>{value}</span>
+      <span className="rc-kpi__label">{label}</span>
+    </div>
+  );
+}
+
+/** Icône de la catégorie sur une tuile teintée. */
+function CategoryTile({ categorie, size = 40, bare = false }) {
+  const { Icon, accent } = getCategorieMeta(categorie);
+  const icon = <Icon size={Math.round(size * 0.55)} strokeWidth={1.8} color={accent} />;
+  if (bare) return icon;
+  return (
+    <span className="rc-item__icon" style={{ "--c": accent, width: size, height: size, borderRadius: Math.round(size * 0.3) }}>
+      {icon}
+    </span>
+  );
+}
+
+/** Pastille BLANC / INFECTE. */
+function TypeCollecte({ type }) {
+  if (!type) return null;
+  const infecte = String(type).toUpperCase().startsWith("INFECT");
+  return (
+    <span className={`tr-type ${infecte ? "tr-type--infecte" : "tr-type--blanc"}`}>
+      <i /> {type}
+    </span>
   );
 }
 

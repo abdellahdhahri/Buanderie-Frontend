@@ -231,6 +231,8 @@ export default function ProgrammeList() {
     }
 
     const payload = {
+      // Colonne "type" NOT NULL côté backend
+      type: editingProgramme?.type || mode,
       nom: formData.nom.trim(),
       temperatureCelsius: parseInt(formData.temperatureCelsius) || null,
       dureeMinutes: parseInt(formData.dureeMinutes) || null,
@@ -320,7 +322,7 @@ export default function ProgrammeList() {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-2">
-        <div style={{ marginBottom: "32px" }}>
+        <div className="page-head" style={{ marginBottom: "32px" }}>
           <div style={{
             display: "flex",
             alignItems: "center",

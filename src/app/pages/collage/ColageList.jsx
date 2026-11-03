@@ -15,6 +15,7 @@ import { getSetting, bipScan } from "../../utils/appSettings";
 import {
   fetchChambreByCode,
   fetchLitsChambre,
+  fetchLitsInfectes,
   fetchAgentByCode,
   ouvrirCollecteChambre,
   scannerLit,
@@ -23,6 +24,7 @@ import {
   marquerLingeManquant,
   declarerLingeInfecte,
   cloturerCollecte,
+  cloturerCollecteALaFermeture,
   annulerCollecteVide,
 } from "../../services/collecte/collecteChambreService";
 
@@ -660,6 +662,22 @@ function ColageListInner() {
     return () => { voice.cancel(); };
   }, []);
 
+  // Fermeture de la fenêtre / de l'onglet ou sortie de la page : la collecte
+  // ouverte est clôturée automatiquement pour ne pas rester « en cours ».
+  useEffect(() => {
+    const cloturerSiOuverte = () => {
+      const c = collecteRef.current;
+      if (!c?.id) return;
+      collecteRef.current = null; // évite une double clôture (pagehide puis démontage)
+      cloturerCollecteALaFermeture(c.id);
+    };
+    window.addEventListener("pagehide", cloturerSiOuverte);
+    return () => {
+      window.removeEventListener("pagehide", cloturerSiOuverte);
+      cloturerSiOuverte();
+    };
+  }, []);
+
   useEffect(() => {
     const agentData = getAgent();
     if (agentData && isAgentConnected()) {
@@ -741,25 +759,36 @@ function ColageListInner() {
         ch.codeBarre || ch.code || code,
         agent.codeBarre || agent.matricule
       );
+      // Tous les lits de la chambre + lits infectés : le backend n'envoie
+      // que les lits ayant des linges LIVRE, les autres doivent aussi être signalés
+      const [tousLesLits, idsInfectes] = await Promise.all([
+        fetchLitsChambre(ch.id).catch((err) => {
+          console.warn("Lits de la chambre indisponibles :", err);
+          return [];
+        }),
+        fetchLitsInfectes().catch((err) => {
+          console.warn("Lits infectés indisponibles :", err);
+          return new Set();
+        }),
+      ]);
+
       const litsCollecte = (res.lits || []).map((l) => ({
         ...l, statut: l.statut || "",
+        estInfecte: !!l.estInfecte || idsInfectes.has(String(l.litId)),
         linges: (l.linges || []).map((lg) => ({
           ...lg, sacInfecteId: lg.sacInfecteId ?? null,
         })),
       }));
 
       // Ajouter les lits de la chambre sans linge, pour afficher tous les lits
-      let tousLesLits = [];
-      try {
-        tousLesLits = await fetchLitsChambre(ch.Id ?? ch.id ?? ch.chambreId);
-      } catch (err) {
-        console.warn("Lits de la chambre indisponibles :", err);
-      }
       const litsVides = tousLesLits
         .filter((l) => !litsCollecte.some(
           (lc) => String(lc.litId) === String(l.id) || (l.code && lc.codeLit === l.code)
         ))
-        .map((l) => ({ litId: l.id, codeLit: l.code || `#${l.id}`, statut: "", linges: [] }));
+        .map((l) => ({
+          litId: l.id, codeLit: l.code || `#${l.id}`, statut: "", linges: [],
+          estInfecte: idsInfectes.has(String(l.id)),
+        }));
 
       setCollecte({
         id: res.collecteId,
@@ -1088,6 +1117,9 @@ function ColageListInner() {
     if (collecte && aucunLingeTraite) {
       try { await annulerCollecteVide(collecte.id); }
       catch (e) { console.warn("Annulation de la collecte vide impossible :", e); }
+    } else if (collecte) {
+      try { await cloturerCollecte(collecte.id); }
+      catch (e) { console.warn("Clôture de la collecte impossible :", e); }
     }
     setAgent(null); setCollecte(null); annulerSelection();
     setLingeInfecteEnCours(null); setDlgInfecte(null);
@@ -1152,7 +1184,7 @@ function ColageListInner() {
         onScanner={handleScannerSacPourInfecte}
       />
 
-      <div style={{ marginBottom: 28 }}>
+      <div className="page-head" style={{ marginBottom: 28 }}>
         <div style={{
           display: "flex", alignItems: "center",
           justifyContent: "space-between", flexWrap: "wrap", gap: 12,

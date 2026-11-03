@@ -12,6 +12,7 @@ import { useMachineContext } from "../../contextes/MachineContext";
 import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 import { DetailModal, Block } from "../../components/ui/modal-kit";
 import { useSetting, formatDateTime } from "../../utils/appSettings";
+import { useCircuitInfecte } from "../../hooks/useEstablishment";
 import "../Linge/WorkflowList.css";
 import "./machines-dashboard.css";
 
@@ -527,6 +528,7 @@ function Section({ color, Icon, title, machines, children }) {
 
 export default function MachinesDashboard() {
   const { t } = useTranslation();
+  const circuitInfecte = useCircuitInfecte();
   const { machines, cycles, isLoading, lastRefresh, loadAllData, terminerCycle } = useMachineContext();
   const refreshSeconds = Number(useSetting("refresh.machinesSeconds")) || 15;
 
@@ -588,7 +590,7 @@ export default function MachinesDashboard() {
       )}
 
       {/* ═══ En-tête ═══ */}
-      <motion.header className="md-head" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+      <motion.header className="page-head md-head" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="md-head__title">
           <PageHeaderIcon size={56} />
           <div>
@@ -626,7 +628,7 @@ export default function MachinesDashboard() {
           visual={<Ring pct={100} color="#0284c7"><WashingMachine size={16} /></Ring>}
           value={machines.length}
           label={t("machines_dashboard.stats_machines")}
-          extra={`${machinesNormal.length} ${t("machines_dashboard.filter_normal").toLowerCase()} · ${machinesInfecte.length} ${t("machines_dashboard.filter_infected").toLowerCase()} · ${machinesSecheurs.length} ${t("machines_dashboard.filter_dryers", "Sécheurs").toLowerCase()}`}
+          extra={`${machinesNormal.length} ${t("machines_dashboard.filter_normal").toLowerCase()} · ${circuitInfecte ? `${machinesInfecte.length} ${t("machines_dashboard.filter_infected").toLowerCase()} · ` : ""}${machinesSecheurs.length} ${t("machines_dashboard.filter_dryers", "Sécheurs").toLowerCase()}`}
         />
         <Kpi
           color="#10b981"

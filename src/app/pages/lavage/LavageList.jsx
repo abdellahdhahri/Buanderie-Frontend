@@ -1037,7 +1037,7 @@ function LavageInner() {
       <ScanLingesPropresModal />
 
       {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
-      <div style={{
+      <div className="page-head" style={{
         marginBottom: "32px", display: "flex", alignItems: "center",
         justifyContent: "space-between", flexWrap: "wrap", gap: "12px"
       }}>

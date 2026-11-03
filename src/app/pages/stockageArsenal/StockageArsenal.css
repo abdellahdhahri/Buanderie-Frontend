@@ -467,6 +467,23 @@
 }
 .sa-qty__input::-webkit-outer-spin-button,
 .sa-qty__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* Saisie par catégorie */
+.sa-qty-list { display: flex; flex-direction: column; gap: 8px; max-width: 460px; }
+.sa-qty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--sa-border);
+  border-radius: 12px;
+  background: var(--sa-surface);
+}
+.sa-qty-row__label { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--sa-text); min-width: 0; }
+.sa-qty-row--total { background: var(--sa-surface-2); padding: 10px 14px; }
+.sa-qty-row--total strong { font-size: 20px; font-variant-numeric: tabular-nums; color: var(--sa-deep); }
+.sa-qty--sm .sa-qty__btn { width: 40px; }
+.sa-qty--sm .sa-qty__input { width: 72px; font-size: 20px; padding: 6px 0; }
 .sa-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
 
 /* ── Étagères ────────────────────────────────────────────────────────── */
@@ -778,3 +795,11 @@
 .dark .sa-journal__item.is-ok { color: #63e6be; }
 .dark .sa-journal__item.is-ko, .dark .sa-error { color: #ffa8a8; }
 .dark .sa-error { background: rgba(250, 82, 82, 0.08); border-color: rgba(250, 82, 82, 0.3); }
+
+/* Annulations (rangement) */
+.sa-link--danger { color: var(--sa-danger); }
+.sa-link--danger:hover { background: color-mix(in srgb, var(--sa-danger) 8%, transparent); }
+.sa-link:disabled { opacity: 0.5; cursor: default; }
+.sa-list__row .sa-link { margin-inline-start: 4px; flex-shrink: 0; }
+.sa-journal__item.is-cancelled { border-color: var(--sa-faint); color: var(--sa-muted); }
+.sa-journal__item.is-cancelled code { text-decoration: line-through; }

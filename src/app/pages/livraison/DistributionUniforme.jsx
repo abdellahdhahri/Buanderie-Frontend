@@ -636,7 +636,7 @@ export default function DistributionUniforme() {
   return (
     <div className="collecte-container">
 
-      <div style={{
+      <div className="page-head" style={{
         marginBottom: "32px", display: "flex", alignItems: "center",
         justifyContent: "space-between", flexWrap: "wrap", gap: "12px"
       }}>

@@ -24,7 +24,7 @@ export const ServiceProvider = ({ children }) => {
       setError(null);
       try {
         const response = await fetch(
-          `${API_BASE_URL}/api/sqlserver/services?page=0&size=200`
+          `${API_BASE_URL}/api/services`
         );
 
         if (!response.ok) {
@@ -34,12 +34,15 @@ export const ServiceProvider = ({ children }) => {
         const data = await response.json();
 
         // Normaliser les données
-        const list = (data.content || data || []).map((s) => ({
+        const list = (Array.isArray(data) ? data : data.content || []).map((s) => ({
           id: s.id,
           nom: s.code || s.nom || `Service ${s.id}`,
           code: s.code || s.nom,
           description: s.description || s.nom || "",
           type: s.typeService || s.type || null,
+          reference: s.reference || null,
+          source: s.source || null,
+          actif: s.actif !== false,
         }));
 
         setServices(list);
@@ -55,11 +58,9 @@ export const ServiceProvider = ({ children }) => {
     fetchServices();
   }, []);
 
-  const getChambresByServiceId = async (serviceId, page = 0, size = 300) => {
+  const getChambresByServiceId = async (serviceId) => {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/sqlserver/chambres/service/${serviceId}?page=${page}&size=${size}`
-      );
+      const response = await fetch(`${API_BASE_URL}/api/chambres`);
 
       if (!response.ok) {
         throw new Error(
@@ -68,7 +69,7 @@ export const ServiceProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      return data;
+      return (Array.isArray(data) ? data : []).filter((c) => c.serviceId === serviceId);
     } catch (error) {
       console.error("❌ Erreur getChambresByServiceId :", error);
       throw error;

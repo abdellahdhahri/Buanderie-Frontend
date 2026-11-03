@@ -134,8 +134,8 @@ export function LavageProvider({ children }) {
       const lot = lotsDisponibles.find(l => l.codeLot === code);
       if (!lot) { showAlert("❌ Lot introuvable", code, "error"); return; }
 
-      if (machine && poidsActuelSelectionnes + (lot.poidsActuel || 0) > machine.capaciteKg) {
-        showAlert("⚠️ Capacité dépassée", `Machine pleine (${machine.capaciteKg} kg).`, "warning");
+      if (machine && poidsActuelSelectionnes + (lot.poidsActuel || 0) < 0) {
+        //showAlert("⚠️ Capacité dépassée", `Machine pleine (${machine.capaciteKg} kg).`, "warning");
         return;
       }
       const [rInfo, rLinges] = await Promise.all([

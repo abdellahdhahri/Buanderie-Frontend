@@ -443,7 +443,7 @@ export default function CycleLavageList() {
       >
         <div className="space-y-4">
           {/* ─── EN-TÊTE ────────────────────────────────────────────────────── */}
-          <div style={{ marginBottom: "32px" }}>
+          <div className="page-head" style={{ marginBottom: "32px" }}>
             <div style={{
               display: "flex",
               alignItems: "center",

@@ -118,7 +118,7 @@ export default function StockageArsenal() {
   return (
     <div className="collecte-container sa-page">
       {/* En-tête : titre + arsenal courant + onglets */}
-      <header className="sa-topbar">
+      <header className="page-head sa-topbar">
         <div className="sa-header">
           <PageHeaderIcon size={44} radius={14} />
           <div style={{ minWidth: 0 }}>

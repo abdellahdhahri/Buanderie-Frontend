@@ -2,10 +2,12 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserRound, ShieldCheck, Palette, Bell, Building2, ChevronRight, ScanLine, Tags, Mic, SlidersHorizontal } from "lucide-react";
+import { UserRound, ShieldCheck, Palette, Bell, Building2, ChevronRight, ScanLine, Tags, Mic, SlidersHorizontal, Plug } from "lucide-react";
 import { useAuth } from "../../contextes/Authentication/AuthContext";
 import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 import { IconSettings } from "../../components/layout/sidebarIcons";
+import { NAV_ITEMS } from "../../components/layout/sidebar";
+import { isAdministrateur } from "../../utils/privileges";
 import { ProfileSection } from "./components/ProfileSection";
 import { SecuritySection } from "./components/SecuritySection";
 import { AppearanceSection } from "./components/AppearanceSection";
@@ -15,6 +17,7 @@ import { ScanSection } from "./components/ScanSection";
 import { LabelsSection } from "./components/LabelsSection";
 import { VoiceSection } from "./components/VoiceSection";
 import { PreferencesSection } from "./components/PreferencesSection";
+import { IntegrationSection } from "./components/IntegrationSection";
 
 // Onglets : l'identifiant est aussi celui utilisé dans l'URL (?tab=…)
 const TABS = [
@@ -27,14 +30,16 @@ const TABS = [
   { id: "etiquettes", Icon: Tags, key: "settings.tabs.labels", fallback: "Étiquettes", hintKey: "settings.tabs.labels_hint", hint: "Contenu et format", Component: LabelsSection },
   { id: "notifications", Icon: Bell, key: "settings.tabs.notifications", fallback: "Notifications", hintKey: "settings.tabs.notifications_hint", hint: "Alertes et préférences", Component: NotificationsSection },
   // Paramètres généraux : réservé aux administrateurs
-  { id: "etablissement", Icon: Building2, key: "settings.tabs.establishment", fallback: "Établissement", hintKey: "settings.tabs.establishment_hint", hint: "Nom et logo", Component: EstablishmentSection, adminOnly: true },
+  { id: "etablissement", Icon: Building2, key: "settings.tabs.establishment", fallback: "Établissement", hintKey: "settings.tabs.establishment_hint", hint: "Identité, logo, couleur", Component: EstablishmentSection, adminOnly: true },
+  { id: "integration", Icon: Plug, key: "settings.tabs.integration", fallback: "Intégration", hintKey: "settings.tabs.integration_hint", hint: "Services, personnel, linges, machines", Component: IntegrationSection, adminOnly: true },
 ];
 
 export default function ParametresPage() {
   const { t } = useTranslation();
-  const { admin } = useAuth();
+  const { admin, privileges } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabs = TABS.filter((tab) => !tab.adminOnly || admin);
+  const estAdmin = admin || isAdministrateur(privileges, NAV_ITEMS);
+  const tabs = TABS.filter((tab) => !tab.adminOnly || estAdmin);
   const active = tabs.find((tab) => tab.id === searchParams.get("tab")) ?? tabs[0];
   const ActiveSection = active.Component;
 
@@ -43,7 +48,7 @@ export default function ParametresPage() {
   return (
     <div >
       {/* ─── En-tête (même style que les autres pages) ─── */}
-      <div style={{ marginBottom: "28px" }}>
+      <div className="page-head" style={{ marginBottom: "28px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <PageHeaderIcon size={52} icon={<IconSettings />} />
           <div>

@@ -28,6 +28,9 @@ import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 import { SortableHeader } from "../../components/ui/SortableHeader";
 import { useSortableData } from "../../hooks/useSortableData";
 import { DetailModal, FormModal, FormSection } from "../../components/ui/modal-kit";
+import { arsenalService, getServices } from "../../services/arsenalService";
+import { useIntegration } from "../../hooks/useIntegration";
+import { ArsenalEmplacements, BadgeImporte, BadgeInactif } from "./ArsenalEmplacements";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -38,7 +41,7 @@ function ArsenalListInner() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedArsenal, setSelectedArsenal] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [arsenalLinges, setArsenalLinges] = useState([]);
   const [isLingesLoading, setIsLingesLoading] = useState(false);
@@ -48,40 +51,35 @@ function ArsenalListInner() {
   const [selectedLingeDetail, setSelectedLingeDetail] = useState(null);
   const [services, setServices] = useState([]);
   const [newRec, setNewRec] = useState({ code: "", nom: "", serviceId: "" });
+  const [tous, setTous] = useState(false);
+  const { estImporte } = useIntegration();
+  const arsenauxImportes = estImporte("ARSENAL");
+  const selectionImportee = selectedArsenal?.source === "EXTERNE";
+
+  const [rafraichir, setRafraichir] = useState(0);
 
   // ─── Fetch ────────────────────────────────────────────────────────────────
-  const fetchServices = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/sqlserver/services?page=0&size=50`);
-      if (response.ok) {
-        const data = await response.json();
-        const list = data.content || data._embedded?.services || data;
-        setServices(Array.isArray(list) ? list : []);
-      }
-    } catch (err) {
-      console.error(err);
-      setServices([]);
-    }
-  };
-
-  const fetchArsenals = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/api/Arsenals`);
-      if (response.ok) {
-        const data = await response.json();
-        setArsenals(data);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    getServices()
+      .then(setServices)
+      .catch((err) => {
+        console.error(err);
+        setServices([]);
+      });
+  }, []);
 
   useEffect(() => {
-    fetchArsenals();
-    fetchServices();
+    let actif = true;
+    arsenalService.getAll(tous)
+      .then((data) => actif && setArsenals(Array.isArray(data) ? data : []))
+      .catch((err) => actif && Swal.fire({ title: t('common.error'), text: err.message, icon: "error" }))
+      .finally(() => actif && setIsLoading(false));
+    return () => { actif = false; };
+  }, [tous, rafraichir, t]);
+
+  const fetchArsenals = useCallback(() => {
+    setIsLoading(true);
+    setRafraichir((n) => n + 1);
   }, []);
 
   // ─── Fetch linges ─────────────────────────────────────────────────────────
@@ -168,7 +166,7 @@ function ArsenalListInner() {
 
   const handleSave = useCallback(async (e) => {
     e.preventDefault();
-    if (!newRec.nom?.trim()) {
+    if (!selectionImportee && !newRec.nom?.trim()) {
       Swal.fire({ 
         title: t('arsenal.errors.name_required'), 
         text: t('arsenal.errors.name_required_text'), 
@@ -178,28 +176,15 @@ function ArsenalListInner() {
     }
     setIsSaving(true);
     try {
-      const payload = {
-        code: newRec.code?.trim() || undefined,
-        nom: newRec.nom.trim(),
-        serviceId: newRec.serviceId ? parseInt(newRec.serviceId) : null
-      };
-      const url = selectedArsenal
-        ? `${API_URL}/api/Arsenals/${selectedArsenal.id}`
-        : `${API_URL}/api/Arsenals`;
-      const method = selectedArsenal ? "PUT" : "POST";
+      const serviceId = newRec.serviceId ? parseInt(newRec.serviceId) : null;
+      // Arsenal importé : seul le service reste modifiable
+      const payload = selectionImportee
+        ? { serviceId }
+        : { code: newRec.code?.trim() || undefined, nom: newRec.nom.trim(), serviceId };
 
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
-      }
-
-      const data = await response.json();
+      const data = selectedArsenal
+        ? await arsenalService.update(selectedArsenal.id, payload)
+        : await arsenalService.create(payload);
       if (selectedArsenal) {
         setArsenals(prev => prev.map(r => r.id === data.id ? data : r));
         Swal.fire({ 
@@ -224,7 +209,7 @@ function ArsenalListInner() {
     } finally {
       setIsSaving(false);
     }
-  }, [selectedArsenal, newRec, t]);
+  }, [selectedArsenal, selectionImportee, newRec, t, fetchArsenals]);
 
   const deleteRec = useCallback(async (id) => {
     const result = await Swal.fire({
@@ -239,40 +224,35 @@ function ArsenalListInner() {
     });
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`${API_URL}/api/Arsenals/${id}`, { method: "DELETE" });
-        if (response.ok) {
-          setArsenals(prev => prev.filter(r => r.id !== id));
-          if (expandedId === id) {
-            setExpandedId(null);
-            setArsenalLinges([]);
-          }
-          Swal.fire({ 
-            title: t('arsenal.success.deleted'), 
-            icon: "success", 
-            timer: 1500, 
-            showConfirmButton: false 
-          });
+        await arsenalService.desactiver(id);
+        if (expandedId === id) {
+          setExpandedId(null);
+          setArsenalLinges([]);
         }
+        fetchArsenals();
+        Swal.fire({
+          title: t('arsenal.success.deleted'),
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false
+        });
       } catch (err) {
         Swal.fire({ title: t('common.error'), text: err.message, icon: "error" });
       }
     }
-  }, [expandedId, t]);
+  }, [expandedId, t, fetchArsenals]);
 
   const handleDetailLinge = useCallback((linge) => {
     setSelectedLingeDetail(linge);
     setShowDetailModal(true);
   }, []);
 
-  // ─── Impression ───────────────────────────────────────────────────────────
 
-  // Étiquette (réglages : Paramètres › Étiquettes)
   const handlePrintArsenalCode = useCallback((arsenal) => {
     if (!arsenal) return;
     printLabel("arsenal", { ...arsenal, serviceNom: getServiceName(arsenal.serviceId) }, { t });
   }, [getServiceName, t]);
 
-  // ─── Filtrage ─────────────────────────────────────────────────────────────
   const filteredArsenals = useMemo(() => {
     if (!searchTerm) return arsenals;
     const term = searchTerm.toLowerCase();
@@ -288,7 +268,7 @@ function ArsenalListInner() {
 
   return (
     <div className="space-y-4">
-      <div style={{ marginBottom: "32px" }}>
+      <div className="page-head" style={{ marginBottom: "32px" }}>
         <div style={{
           display: "flex",
           alignItems: "center",
@@ -318,12 +298,14 @@ function ArsenalListInner() {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-        <button
-          onClick={handleOpenCreateModal}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" /> {t('arsenal.new')}
-        </button>
+        {!arsenauxImportes && (
+          <button
+            onClick={handleOpenCreateModal}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" /> {t('arsenal.new')}
+          </button>
+        )}
 
         <div className="w-px h-8 bg-slate-200 mx-1" />
 
@@ -366,7 +348,7 @@ function ArsenalListInner() {
         </button>
 
         <button
-          disabled={!expandedId}
+          disabled={!expandedId || selectionImportee || selectedArsenal?.actif === false}
           onClick={() => expandedId && deleteRec(expandedId)}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e03131]/30 rounded-[14px] text-sm font-bold text-[#e03131] hover:bg-[#e03131]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -384,15 +366,21 @@ function ArsenalListInner() {
       {/* Recherche */}
       <Card>
         <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder={t('arsenal.search_placeholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder={t('arsenal.search_placeholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input type="checkbox" checked={tous} onChange={(e) => { setIsLoading(true); setTous(e.target.checked); }} />
+              {t('arsenal.show_inactive', 'Afficher les inactifs')}
+            </label>
           </div>
         </CardContent>
       </Card>
@@ -443,7 +431,7 @@ function ArsenalListInner() {
                         <tr
                           className={`border-b border-border transition-colors ${
                             isExpanded ? "bg-blue-50/70" : "hover:bg-accent/50"
-                          }`}
+                          } ${arsenal.actif === false ? "opacity-60" : ""}`}
                         >
                           <td className="text-center py-3 px-4">
                             <button
@@ -464,7 +452,11 @@ function ArsenalListInner() {
                             </div>
                           </td>
                           <td className="text-center py-3 px-4">
-                            <div className="font-medium">{arsenal.nom}</div>
+                            <div className="font-medium">
+                              {arsenal.nom}
+                              <BadgeImporte item={arsenal} />
+                              <BadgeInactif item={arsenal} />
+                            </div>
                           </td>
                           <td className="text-center py-3 px-4">
                             <div className="flex items-center justify-center gap-2">
@@ -494,16 +486,18 @@ function ArsenalListInner() {
                               >
                                 <Edit className="w-4 h-4 text-[#006f94]" />
                               </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteRec(arsenal.id);
-                                }}
-                                className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
-                                title={t('common.delete')}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {arsenal.source !== "EXTERNE" && arsenal.actif !== false && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteRec(arsenal.id);
+                                  }}
+                                  className="p-2 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
+                                  title={t('common.delete')}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -521,7 +515,9 @@ function ArsenalListInner() {
                                   className="overflow-hidden"
                                 >
                                   <div className="bg-gradient-to-b from-blue-50/80 to-slate-50/50 px-6 py-4">
-                                    {/* En-tête de la section linges */}
+                                    <ArsenalEmplacements arsenal={arsenal} tous={tous} />
+
+{/* En-tête de la section linges */}
                                     <div className="flex items-center justify-between mb-3">
                                       <div className="flex items-center gap-2">
                                         <Package className="w-4 h-4 text-blue-600" />
@@ -651,8 +647,11 @@ function ArsenalListInner() {
                 value={newRec.code}
                 onChange={(e) => setNewRec({ ...newRec, code: e.target.value.toUpperCase() })}
                 placeholder={t('arsenal.code_placeholder')}
+                disabled={selectionImportee}
               />
-              <p className="text-xs text-slate-400 mt-1">{t('arsenal.code_hint')}</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {selectionImportee ? t('arsenal.imported_hint', 'Arsenal importé : seul le service est modifiable.') : t('arsenal.code_hint')}
+              </p>
             </div>
             <div>
               <Input
@@ -660,7 +659,8 @@ function ArsenalListInner() {
                 value={newRec.nom}
                 onChange={(e) => setNewRec({ ...newRec, nom: e.target.value })}
                 placeholder={t('arsenal.name_placeholder')}
-                required
+                required={!selectionImportee}
+                disabled={selectionImportee}
               />
             </div>
             <div className="col-span-2">

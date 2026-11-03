@@ -2,7 +2,6 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Search, FilterX, BarChart3, FileSpreadsheet, Loader2, X } from "lucide-react";
 import { Card, CardContent } from "../../../components/ui/card";
-import { CATEGORIES } from "../../../contextes/LingeContext";
 import { ETAT_OPTIONS } from "../lingeConstants";
 
 // Bouton icône de la colonne d'actions, avec infobulle à gauche
@@ -38,7 +37,7 @@ function RailButton({ icon: Icon, label, color, onClick, disabled, busy, badge }
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔎 FILTRES + actions (effacer, statistiques, export Excel)
 // ═══════════════════════════════════════════════════════════════════════════
-export function LingeFilters({ filters, onChange, services, onReset, onStats, onExport, exporting }) {
+export function LingeFilters({ filters, onChange, services, categories = [], onReset, onStats, onExport, exporting }) {
   const { t } = useTranslation();
   const activeCount = ["etat", "categorie", "serviceId", "search"].filter((k) => filters[k]).length;
   const selectCls = "w-full h-10 px-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring";
@@ -62,8 +61,8 @@ export function LingeFilters({ filters, onChange, services, onReset, onStats, on
               <label className="block text-sm font-medium mb-2">{t('linge.category')}</label>
               <select value={filters.categorie} onChange={(e) => onChange({ ...filters, categorie: e.target.value })} className={selectCls}>
                 <option value="">{t('common.all')}</option>
-                {CATEGORIES.map((cat, i) => (
-                  <option key={i} value={cat}>{t(`categories.${cat}`, cat)}</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>{t(`categories.${cat}`, cat)}</option>
                 ))}
               </select>
             </div>

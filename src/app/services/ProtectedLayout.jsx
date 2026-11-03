@@ -6,6 +6,8 @@ import {
   useLocation,
   useMatches,
 } from "react-router-dom";
+import { NAV_ITEMS } from "../components/layout/sidebar";
+import { isAdministrateur } from "../utils/privileges";
 
 
 
@@ -150,6 +152,20 @@ export function ProtectedLayout() {
 
 
  
+
+  // Écran Paramètres : administrateur uniquement
+  const adminOnly = matches.some((match) => match.handle?.adminOnly);
+
+  if (adminOnly && !isAdministrateur(privileges, NAV_ITEMS)) {
+    console.warn("🚫 ACCÈS REFUSÉ (administrateur uniquement)", location.pathname);
+    return (
+      <Navigate
+        to="/"
+        replace
+        state={{ unauthorized: true, attemptedPath: location.pathname }}
+      />
+    );
+  }
 
   const protectedMatch =
     [...matches]

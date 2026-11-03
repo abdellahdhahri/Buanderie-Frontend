@@ -97,7 +97,7 @@ function CollageListServiceInner() {
     setScanStatus(null);
     try {
       const svcRes = await fetch(
-        `${API_URL}/api/sqlserver/services/ref/${encodeURIComponent(code)}`
+        `${API_URL}/api/services/ref/${encodeURIComponent(code)}`
       );
       const svc = svcRes.ok ? await svcRes.json() : null;
       if (!svc) {

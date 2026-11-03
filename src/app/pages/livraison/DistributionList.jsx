@@ -48,7 +48,7 @@ export default function DistributionList() {
     }}>
 
       {/* ─── Header ──────────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+      <div className="page-head" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
         <PageHeaderIcon size={52} />
         <div>
           <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: 0 }}>

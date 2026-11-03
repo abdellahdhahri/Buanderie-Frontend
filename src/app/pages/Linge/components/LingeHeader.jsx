@@ -9,7 +9,7 @@ export function LingeHeader({ displayMode }) {
   const { t } = useTranslation();
 
   return (
-    <div style={{ marginBottom: "32px" }}>
+    <div className="page-head" style={{ marginBottom: "32px" }}>
       <div style={{
         display: "flex",
         alignItems: "center",

@@ -46,7 +46,7 @@ export const fetchChambreByCode = async (code) => {
   }
 
   const response = await fetch(
-    `${API_URL}/api/sqlserver/chambres/code/${encodeURIComponent(code.trim())}`,
+    `${API_URL}/api/chambres/code/${encodeURIComponent(code.trim())}`,
     {
       method: "GET",
       headers: getHeaders(),
@@ -60,21 +60,37 @@ export const fetchChambreByCode = async (code) => {
 export const fetchLitsChambre = async (chambreId) => {
   if (chambreId == null) return [];
   const response = await fetch(
-    `${API_URL}/api/sqlserver/lits/chambre/${encodeURIComponent(chambreId)}`,
+    `${API_URL}/api/lits/chambre/${encodeURIComponent(chambreId)}`,
     { method: "GET", headers: getHeaders() }
   );
   const data = await handleResponse(response);
   return (Array.isArray(data) ? data : []).map((l) => ({
-    id: l.Id ?? l.id,
-    code: l.Code ?? l.code ?? l.CodeBarre ?? l.codeBarre,
+    id: l.cle ?? l.id,
+    code: l.code,
   }));
+};
+
+// ─── 1c. Lits infectés : Set des identifiants (cle) de lit ─────────────────
+// Le backend n'envoie à l'ouverture que les lits ayant des linges LIVRE :
+// cette liste permet de signaler aussi les lits infectés sans linge.
+export const fetchLitsInfectes = async () => {
+  const response = await fetch(`${API_URL}/api/lits/infectes`, {
+    method: "GET",
+    headers: getHeaders(),
+  });
+  const data = await handleResponse(response);
+  return new Set(
+    (Array.isArray(data) ? data : [])
+      .filter((l) => l.infecte !== false)
+      .map((l) => String(l.cle ?? l.id))
+  );
 };
 
 // ─── 2. Récupérer un agent ─────────────────────────────────────────────────
 export const fetchAgentByCode = async (code) => {
   if (!code) throw new Error("Code agent obligatoire");
   const response = await fetch(
-    `${API_URL}/api/sqlserver/personnel/code/${encodeURIComponent(code)}`,
+    `${API_URL}/api/personnel/code/${encodeURIComponent(code)}`,
     {
       method: "GET",
       headers: getHeaders(),
@@ -214,4 +230,19 @@ export const cloturerCollecte = async (collecteId) => {
     }
   );
   return handleResponse(response);
+};
+// ─── 8b. Clôture à la fermeture de la fenêtre ──────────────────────────────
+// `keepalive` laisse la requête partir même si la page est en train de se
+// fermer ; aucune réponse n'est attendue (le backend annule si rien n'est traité).
+export const cloturerCollecteALaFermeture = (collecteId) => {
+  if (!collecteId) return;
+  try {
+    fetch(`${API_URL}/api/collecte/chambre/${collecteId}/cloturer`, {
+      method: "POST",
+      headers: getHeaders(),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // page déjà en cours de fermeture : rien à faire
+  }
 };

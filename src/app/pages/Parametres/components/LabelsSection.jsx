@@ -7,6 +7,7 @@ import {
   LABEL_TYPES, LABEL_TYPE_KEYS, LABEL_SIZES, LABEL_ELEMENTS,
   getLabelSettings, saveLabelSettings, defaultLabelSettings, buildLabelHtml, printLabel,
 } from "../../../utils/labels";
+import { useEstablishment } from "../../../hooks/useEstablishment";
 
 const MM_TO_PX = 3.7795;
 
@@ -14,7 +15,13 @@ const MM_TO_PX = 3.7795;
 function LabelPreview({ type, settings, t }) {
   const def = LABEL_TYPES[type];
   const { w, h } = LABEL_SIZES[settings.size];
-  const html = useMemo(() => buildLabelHtml(type, def.sample, { t }, settings), [type, def, settings, t]);
+  // Recalculé quand l'identité (logo, nom) change ou finit de charger
+  const establishment = useEstablishment();
+  const html = useMemo(
+    () => buildLabelHtml(type, def.sample, { t }, settings),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [type, def, settings, t, establishment.logo, establishment.nomApplication, establishment.raisonSociale]
+  );
   // Mise à l'échelle pour tenir dans ~340 px de large
   const scale = Math.min(2.4, 340 / (w * MM_TO_PX));
 

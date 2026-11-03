@@ -14,7 +14,6 @@ import {
   CheckCircle,
   Clock,
   Wrench,
-  Upload,
   ChevronLeft,
   ChevronRight,
   Package,
@@ -29,7 +28,9 @@ import { Input } from "../../components/ui/input";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMachineContext } from "../../contextes/MachineContext";
-import { MachineImportModal } from "./MachineImportModal";
+import { SynchroniserButton } from "../../components/ui/SynchroniserButton";
+import { useIntegration } from "../../hooks/useIntegration";
+import { formatDateTime } from "../../utils/appSettings";
 import BarcodeLabel from "../../components/BarcodeLabel";
 import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
 import { SortableHeader } from "../../components/ui/SortableHeader";
@@ -39,6 +40,7 @@ import { DetailModal, FormModal, FormSection } from "../../components/ui/modal-k
 const TYPES_MACHINE = [
   { value: "LAVEUR", label: "🧺 Laveur", icon: "🧺", color: "#2563eb", bg: "#eff6ff" },
   { value: "SECHEUR", label: "🌬️ Sécheur", icon: "🌬️", color: "#d97706", bg: "#fef3c7" },
+  { value: "LAVEUR_SECHEUR", label: "🧺🌬️ Laveur/Sécheur", icon: "🧺🌬️", color: "#7c3aed", bg: "#f5f3ff" },
 ];
 
 const ETATS_TECHNIQUES = [
@@ -78,9 +80,9 @@ export default function MachineList() {
     createMachine,
     updateMachine,
     deleteMachine,
-    setIsImportModalOpen,
-    setImportType,
   } = useMachineContext();
+  const { estImporte } = useIntegration();
+  const machinesImportees = estImporte("MACHINE");
 
   const [activeTab, setActiveTab] = useState("LAVEUR");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -137,16 +139,8 @@ export default function MachineList() {
     return { total, fonctionnel, disponible };
   };
 
-  const laveurStats = getStats('LAVEUR');
-  const secheurStats = getStats('SECHEUR');
-
   const handlePageChange = (page) => {
     setPagination(prev => ({ ...prev, currentPage: page }));
-  };
-
-  const handleOpenImport = () => {
-    setImportType(activeTab);
-    setIsImportModalOpen(true);
   };
 
   const getEtatTechniqueBadge = (etat) => {
@@ -219,7 +213,7 @@ export default function MachineList() {
       type: machine.type || activeTab,
       marque: machine.marque || "",
       categorie: machine.categorie || "",
-      capaciteKg: machine.capaciteKg || "",
+      capaciteKg: machine.capaciteKg ?? "",
       code: machine.code || "",
       etatTechnique: machine.etatTechnique || "FONCTIONNEL",
       etatImmobilisation: machine.etatImmobilisation || "DISPONIBLE",
@@ -249,9 +243,9 @@ export default function MachineList() {
         designation: newRec.designation?.trim(),
         modele: newRec.modele?.trim(),
         type: newRec.type || activeTab,
-        marque: newRec.marque?.trim(),
+        marque: newRec.marque?.trim() || null,
         categorie: newRec.categorie || null,
-        capaciteKg: parseFloat(newRec.capaciteKg) || 0,
+        capaciteKg: newRec.capaciteKg === "" ? null : parseFloat(newRec.capaciteKg),
         code: newRec.code?.trim() || undefined,
         etatTechnique: newRec.etatTechnique || "FONCTIONNEL",
         etatImmobilisation: newRec.etatImmobilisation || "DISPONIBLE",
@@ -283,7 +277,7 @@ export default function MachineList() {
     } catch (err) {
       Swal.fire({ 
         title: "❌", 
-        text: t('machines.error_text'), 
+        text: err.message || t('machines.error_text'), 
         icon: "error" 
       });
     } finally {
@@ -318,7 +312,7 @@ export default function MachineList() {
       } catch (err) {
         Swal.fire({ 
           title: "❌", 
-          text: t('machines.error_text'), 
+          text: err.message || t('machines.error_text'), 
           icon: "error" 
         });
       }
@@ -334,13 +328,13 @@ export default function MachineList() {
     setShowDetailModal(true);
   };
 
-  const currentStats = activeTab === 'LAVEUR' ? laveurStats : secheurStats;
+  const currentStats = getStats(activeTab);
 
   return (
     <div className="relative flex h-full gap-4">
       <motion.div className="transition-all duration-500 ease-in-out w-full">
         <div className="space-y-4">
-          <div style={{ marginBottom: "24px" }}>
+          <div className="page-head" style={{ marginBottom: "24px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
               <PageHeaderIcon size={52} />
               <div>
@@ -357,7 +351,7 @@ export default function MachineList() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
               {TYPES_MACHINE.map((tab) => {
-                const stats = tab.value === 'LAVEUR' ? laveurStats : secheurStats;
+                const stats = getStats(tab.value);
                 const isActive = activeTab === tab.value;
                 return (
                   <button
@@ -401,23 +395,16 @@ export default function MachineList() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-4 sticky top-0 z-10">
-            <button
-              onClick={handleOpenCreateModal}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" /> {t('machines.new')}
-            </button>
+            {!machinesImportees && (
+              <button
+                onClick={handleOpenCreateModal}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" /> {t('machines.new')}
+              </button>
+            )}
 
-            <button
-              onClick={handleOpenImport}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-[14px] text-sm font-bold text-indigo-700 hover:from-indigo-100 hover:to-purple-100 transition-all shadow-[0_2px_8px_rgba(99,102,241,0.15)] hover:shadow-[0_4px_16px_rgba(99,102,241,0.25)] hover:scale-[1.02]"
-            >
-              <Upload className="w-4 h-4 stroke-[2.5]" /> 
-{t('machines.import_btn', {
-  type: activeTab === 'LAVEUR'
-    ? t('machines.laveurs')
-    : t('machines.secheurs'),
-})}            </button>
+            <SynchroniserButton referentiel="MACHINE" onTermine={loadMachines} />
 
             <div style={{ width: "1px", height: "30px", background: "#e2e8f0", margin: "0 8px" }} />
 
@@ -539,6 +526,14 @@ export default function MachineList() {
                             <div className="font-mono text-sm font-medium text-blue-600">
                               {machine.code || machine.reference || '-'}
                             </div>
+                            {machine.source === "EXTERNE" && (
+                              <span
+                                className="mt-1 inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200"
+                                title={machine.idExterne ? `${t('machines.external_id', 'ID externe')} : ${machine.idExterne}` : undefined}
+                              >
+                                {t('integration.imported', 'Importé')}
+                              </span>
+                            )}
                           </td>
                           <td className="text-center py-3 px-4">
                             <div className="font-medium text-sm">
@@ -642,8 +637,6 @@ export default function MachineList() {
         </div>
       </motion.div>
 
-      <MachineImportModal />
-
       <DetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
@@ -663,6 +656,9 @@ export default function MachineList() {
             { label: "ID", value: selectedMachineDetail.id, mono: true },
             { label: t('machines.code'), value: selectedMachineDetail.code, mono: true },
             { label: t('machines.designation'), value: selectedMachineDetail.designation || selectedMachineDetail.reference },
+            { label: t('machines.source', 'Source'), value: selectedMachineDetail.source === "EXTERNE" ? t('integration.imported', 'Importé') : selectedMachineDetail.source, hidden: !selectedMachineDetail.source },
+            { label: t('machines.external_id', 'ID externe'), value: selectedMachineDetail.idExterne, mono: true, hidden: !selectedMachineDetail.idExterne },
+            { label: t('machines.sync_date', 'Dernière synchronisation'), value: selectedMachineDetail.dateSynchro ? formatDateTime(selectedMachineDetail.dateSynchro) : null, hidden: !selectedMachineDetail.dateSynchro },
           ] },
           { title: t('modal.characteristics', 'Caractéristiques'), icon: "specs", items: [
             { label: t('machines.brand'), value: selectedMachineDetail.marque },
@@ -680,7 +676,7 @@ export default function MachineList() {
       <FormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={selectedMachine ? `${t('machines.edit')} #${selectedMachine.id}` : `${t('machines.new')} ${activeTab === 'LAVEUR' ? t('machines.laveur') : t('machines.secheur')}`}
+        title={selectedMachine ? `${t('machines.edit')} #${selectedMachine.id}` : `${t('machines.new')} ${activeTab === 'LAVEUR' ? t('machines.laveur') : activeTab === 'SECHEUR' ? t('machines.secheur') : t(`machine_type.${activeTab}`, TYPE_COLORS[activeTab].label)}`}
         mode={selectedMachine ? "edit" : "create"}
         size={"lg"}
         onSubmit={handleSave}

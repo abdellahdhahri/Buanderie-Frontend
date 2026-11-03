@@ -1,8 +1,9 @@
 import React from "react";
 import { LabelIcon } from "../../../components/ui/LabelIcon";
+import { SynchroniserButton } from "../../../components/ui/SynchroniserButton";
 import { useTranslation } from "react-i18next";
 import {
-  Plus, Eye, Trash2, Edit, History, RefreshCw, Tag, Upload
+  Plus, Eye, Trash2, Edit, History, RefreshCw, Tag
 } from "lucide-react";
 
 const Separator = () => (
@@ -15,8 +16,9 @@ const Separator = () => (
 export function LingeToolbar({
   hasSelection,
   isLoading,
+  canCreate = true,
   onNew,
-  onImport,
+  onSynchronised,
   onAssociateRfid,
   onDetail,
   onEdit,
@@ -29,19 +31,16 @@ export function LingeToolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-3 bg-white/65 backdrop-blur-md p-4 rounded-[20px] border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] mb-6">
-      <button
-        onClick={onNew}
-        className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
-      >
-        <Plus className="w-4 h-4 stroke-[2.5]" /> {t('linge.new_article')}
-      </button>
+      {canCreate && (
+        <button
+          onClick={onNew}
+          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#0ca678]/30 rounded-[14px] text-sm font-bold text-[#0ca678] hover:bg-[#0ca678]/5 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:scale-[1.02]"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" /> {t('linge.new_article')}
+        </button>
+      )}
 
-      <button
-        onClick={onImport}
-        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-[14px] text-sm font-bold text-indigo-700 hover:from-indigo-100 hover:to-purple-100 transition-all shadow-[0_2px_8px_rgba(99,102,241,0.15)] hover:shadow-[0_4px_16px_rgba(99,102,241,0.25)] hover:scale-[1.02]"
-      >
-        <Upload className="w-4 h-4 stroke-[2.5]" /> {t('linge.import_linens')}
-      </button>
+      <SynchroniserButton referentiel="LINGE" onTermine={onSynchronised} />
 
       <Separator />
 

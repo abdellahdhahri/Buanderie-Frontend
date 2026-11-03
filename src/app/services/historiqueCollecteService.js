@@ -49,12 +49,12 @@ export const fetchCollecteDetails = async (collecteId) => {
 };
 
 /**
- * ✅ Récupère un personnel par son ID depuis SQL Server
- * GET /api/sqlserver/personnel/{id}
+ * ✅ Récupère un personnel par son ID
+ * GET /api/personnel/{id}
  */
 export const fetchPersonnelById = async (personnelId) => {
   const token = getTokenFromStorage();
-  const response = await fetch(`${API_URL}/api/sqlserver/personnel/${personnelId}`, {
+  const response = await fetch(`${API_URL}/api/personnel/${personnelId}`, {
     headers: {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     }
@@ -98,7 +98,7 @@ export const fetchPersonnelsByIds = async (personnelIds) => {
  */
 export const fetchServiceById = async (serviceId) => {
   const token = getTokenFromStorage();
-  const response = await fetch(`${API_URL}/api/sqlserver/services/${serviceId}`, {
+  const response = await fetch(`${API_URL}/api/services/${serviceId}`, {
     headers: {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     }

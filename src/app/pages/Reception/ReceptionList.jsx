@@ -2,40 +2,36 @@
 import { useState, useRef, useCallback, useEffect, useContext } from "react";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { User, CheckCircle, XCircle, RotateCcw, Package, ShieldAlert, Wifi, Eye } from "lucide-react";
-import { Card, CardContent } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  User, CheckCircle, RotateCcw, Package, ShieldAlert, Wifi, Eye, EyeOff,
+  Plus, LogOut, Clock, ListChecks, Loader2, Search, X,
+} from "lucide-react";
 import { ReceptionProvider, useReception } from "../../contextes/ReceptionContext";
 import { LingeContext } from "../../contextes/LingeContext";
 import { getSetting, bipScan } from "../../utils/appSettings";
+import { useCircuitInfecte } from "../../hooks/useEstablishment";
 import ScanInput from "../../components/utils/shared/ScanInput";
 import { getAgent, isAgentConnected } from "../../services/agentService";
 import Swal from "sweetalert2";
 import { PageHeaderIcon } from "../../components/layout/PageHeaderIcon";
+import LingesSansBac from "../../components/utils/reception/LingesSansBac";
+import { getCategorieMeta } from "../../constants/categoriesLinge";
+import { BacGlyph, SacGlyph, LingeGlyph, ScannerGlyph, BadgeScanArt, EmptyBasketArt } from "./ReceptionArt";
+import "./Reception.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
-// ─── Couleurs par catégorie ──────────────────────────────────────────────
-const CATEGORIE_COLORS = {
-  DRAP: { bg: "#fee2e2", color: "#dc2626", emoji: "🛏️" },
-  TAIE_OREILLER: { bg: "#ffedd5", color: "#ea580c", emoji: "🪶" },
-  SERVIETTE_BAIN: { bg: "#fef3c7", color: "#d97706", emoji: "🧺" },
-  SERVIETTE_VISAGE: { bg: "#ecfccb", color: "#65a30d", emoji: "🧻" },
-  PEIGNOIR: { bg: "#cffafe", color: "#0891b2", emoji: "🧥" },
-  NAPPE: { bg: "#ede9fe", color: "#7c3aed", emoji: "🍽️" },
-  SERVIETTE_TABLE: { bg: "#fce7f3", color: "#be185d", emoji: "🍴" },
-  UNIFORME: { bg: "#ccfbf1", color: "#0f766e", emoji: "👔" },
-  AUTRE: { bg: "#f1f5f9", color: "#475569", emoji: "📦" },
-};
-
 function ReceptionInner() {
   const { t } = useTranslation();
+  const circuitInfecte = useCircuitInfecte();
 
   const {
     agent: agentFromContext,
     bacsRecus = [],
     sacsInfectes = [],
+    lingesSansBac = [],
+    nouvelleReception,
     dernierRecu,
     bacEnCours,
     scanAgent,
@@ -55,6 +51,7 @@ function ReceptionInner() {
   const [rfidTags, setRfidTags] = useState("");
   const [rfidLoading, setRfidLoading] = useState(false);
   const [agent, setAgent] = useState(null);
+  const [infecteSansBac, setInfecteSansBac] = useState(false);
 
   // ✅ États locaux pour l'affichage des linges/items
   const [lingesAffiches, setLingesAffiches] = useState([]);
@@ -134,16 +131,16 @@ function ReceptionInner() {
             poste: agentData.poste || "AGENT_RECEPTION",
           };
           setAgent(ag);
-          scanReception(code, ag);
+          scanReception(code, ag, { infecte: infecteSansBac });
         } else {
           scanAgent(code);
         }
       } else {
-        scanReception(code, agent);
+        scanReception(code, agent, { infecte: infecteSansBac });
       }
     }, Math.max(100, (Number(getSetting("scan.delayMs")) || 400) - 100)); // un peu avant le champ de scan : évite un double envoi
     return () => clearTimeout(timer);
-  }, [scanValue, mode, agent, scanAgent, scanReception]);
+  }, [scanValue, mode, agent, scanAgent, scanReception, infecteSansBac]);
 
   // ─── Soumission manuelle ───────────────────────────────────────────────
   const handleSubmit = (e) => {
@@ -165,12 +162,12 @@ function ReceptionInner() {
           poste: agentData.poste || "AGENT_RECEPTION",
         };
         setAgent(ag);
-        scanReception(code, ag);
+        scanReception(code, ag, { infecte: infecteSansBac });
       } else {
         scanAgent(code);
       }
     } else {
-      scanReception(code, agent);
+      scanReception(code, agent, { infecte: infecteSansBac });
     }
   };
 
@@ -350,6 +347,17 @@ function ReceptionInner() {
     setTimeout(() => scanInputRef.current?.focus(), 100);
   };
 
+  const handleNouvelleReception = () => {
+    setScanValue("");
+    setLingesAffiches([]);
+    setAfficherPanneau(false);
+    setPanneauType(null);
+    setPanneauCode(null);
+    setInfecteSansBac(false);
+    nouvelleReception();
+    setTimeout(() => scanInputRef.current?.focus(), 100);
+  };
+
   // ─── Logout ────────────────────────────────────────────────────────────
   const handleLogout = () => {
     Swal.fire({
@@ -378,301 +386,74 @@ function ReceptionInner() {
     return "#10b981";
   };
 
-  // ─── Rendu d'un item (linge de bac OU item de sac) ────────────────────
-  const renderItem = (item, index) => {
-    const isSacItem = item.isSacItem || false;
-    const colors = CATEGORIE_COLORS[item.categorie] || CATEGORIE_COLORS.AUTRE;
+  // ─── Rendu ────────────────────────────────────────────────────────────
+  const nomAgent = agent ? agent.nomPrenom || agent.nom || agent.matricule : "";
+  const panneauOuvert = (type) => afficherPanneau && panneauType === type;
+  const estSac = dernierRecu?.type === "SAC_INFECTE";
+  const nbLingesBac = bacEnCours?.lingesAuScan?.length ?? bacEnCours?.linges?.length ?? null;
 
-    return (
-      <div
-        key={item.id || index}
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "10px 14px",
-          borderRadius: "10px",
-          background: isSacItem ? "#fef2f2" : "#f8fafc",
-          border: `1px solid ${isSacItem ? "#fca5a5" : "#e2e8f0"}`,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div
-            style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "8px",
-              background: colors.bg,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "18px",
-              fontWeight: 700,
-              color: colors.color,
-            }}
-          >
-            {colors.emoji}
-          </div>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: "13px", color: "#0f172a" }}>
-              {isSacItem ? item.categorie : item.codeBarre || "N/A"}
-            </div>
-            <div style={{ fontSize: "11px", color: colors.color, fontWeight: 500 }}>
-              {isSacItem
-                ? `${t('reception.quantity')}: ${item.quantiteDeclaree || 0}`
-                : item.categorie || t('reception.non_categorise')}
-            </div>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {isSacItem ? (
-            <>
-              <Badge variant="warning" style={{ fontSize: "10px" }}>
-                {t('reception.declared')}: {item.quantiteDeclaree || 0}
-              </Badge>
-              {item.quantiteComptee !== null && item.quantiteComptee !== undefined && (
-                <Badge variant="secondary" style={{ fontSize: "10px" }}>
-                  {t('reception.counted')}: {item.quantiteComptee}
-                </Badge>
-              )}
-              {item.ecart !== null && item.ecart !== undefined && (
-                <Badge
-                  variant={item.ecart === 0 ? "success" : "destructive"}
-                  style={{ fontSize: "10px" }}
-                >
-                  {t('reception.gap')}: {item.ecart}
-                </Badge>
-              )}
-            </>
-          ) : (
-            <>
-              {item.rfidTag && (
-                <span
-                  style={{
-                    fontSize: "9px",
-                    padding: "2px 8px",
-                    borderRadius: "10px",
-                    background: "#ede9fe",
-                    color: "#7c3aed",
-                    fontFamily: "monospace",
-                  }}
-                >
-                  RFID
-                </span>
-              )}
-              <Badge
-                variant={item.etat === "RECEPTION" ? "success" : "secondary"}
-                style={{ fontSize: "10px" }}
-              >
-                {t(`reception_status.${item.etat}`, item.etat || "N/A")}
-              </Badge>
-              {item.poids && (
-                <span style={{ fontSize: "10px", color: "#94a3b8" }}>
-                  {item.poids} {t('reception.weight')}
-                </span>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    );
-  };
+  // Journal de la session : bacs et sacs, le plus récent en premier
+  const journal = [
+    ...bacsRecus.map((b, i) => ({
+      key: `b-${i}`,
+      type: "BAC",
+      code: b.codeBac || b.code || b.reference,
+      n: b.nombreLinges ?? b.nbLinges ?? b.linges?.length ?? null,
+      ordre: i,
+    })),
+    ...sacsInfectes.map((s, i) => ({
+      key: `s-${i}`,
+      type: "SAC",
+      code: s.numeroSac || s.code,
+      n: s.quantiteDeclaree ?? null,
+      ordre: i,
+    })),
+  ].reverse();
 
   return (
-    <div className="collecte-container">
-      {/* ── Header ── */}
-      <div style={{ marginBottom: "32px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "16px",
-            marginBottom: "8px",
-          }}
-        >
+    <div className="collecte-container rc">
+      {/* ── En-tête ── */}
+      <header className="page-head rc-head">
+        <div className="rc-head__title">
           <PageHeaderIcon size={52} />
           <div>
-            <h1
-              style={{
-                fontSize: "28px",
-                fontWeight: 800,
-                color: "#0f172a",
-                margin: 0,
-              }}
-            >
-              {t('reception.title')}
-            </h1>
-            <p
-              style={{
-                fontSize: "14px",
-                color: "#64748b",
-                margin: "2px 0 0 0",
-              }}
-            >
-              {agent
-                ? t('reception.subtitle', {
-                    agent: agent.nomPrenom || agent.nom || agent.matricule,
-                  })
-                : t('reception.subtitle_no_agent')}
-            </p>
+            <h1>{t("reception.title")}</h1>
+            <p>{agent ? t("reception.ready_barcode") : t("reception.subtitle_no_agent")}</p>
           </div>
         </div>
-      </div>
-
-      <div
-        className="collecte-panel-grand"
-        style={{
-          background: "white",
-          borderRadius: "20px",
-          padding: "32px",
-          border: "1px solid #e2e8f0",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
-          minHeight: "600px",
-        }}
-      >
-        {/* ── Barre supérieure ── */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-            flexWrap: "wrap",
-            gap: "12px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            {agent ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "8px 16px",
-                  background: "#f0fdf4",
-                  borderRadius: "10px",
-                  border: "1px solid #bbf7d0",
-                }}
-              >
-                <CheckCircle color="#22c55e" size={16} />
-                <span
-                  style={{
-                    fontWeight: 700,
-                    color: "#15803d",
-                    fontSize: "14px",
-                  }}
-                >
-                  {agent.nomPrenom || agent.nom || agent.matricule}
-                </span>
-                <Badge variant="outline" style={{ fontSize: "11px" }}>
-                  {agent.codeBarre || agent.matricule}
-                </Badge>
-                <button
-                  onClick={handleLogout}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#94a3b8",
-                    cursor: "pointer",
-                  }}
-                >
-                  <XCircle size={12} />
-                </button>
-              </div>
-            ) : (
-              <div style={{ fontSize: "13px", color: "#94a3b8" }}>
-                {t('reception.no_agent_title')}
-              </div>
-            )}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <Button variant="outline" size="sm" onClick={handleReset}>
-              <RotateCcw size={12} style={{ marginRight: "4px" }} />
-              {t('reception.reset')}
-            </Button>
-          </div>
+        <div className="rc-head__right">
+          {agent && (
+            <div className="rc-agent">
+              <span className="rc-agent__avatar">{initiales(nomAgent)}</span>
+              <span>
+                <span className="rc-agent__name" style={{ display: "block" }}>{nomAgent}</span>
+                <span className="rc-agent__id">{agent.codeBarre || agent.matricule}</span>
+              </span>
+              <button type="button" className="rc-agent__out" onClick={handleLogout} title={t("reception.logout")} aria-label={t("reception.logout")}>
+                <LogOut size={14} />
+              </button>
+            </div>
+          )}
+          {agent && (
+            <button type="button" className="rc-btn rc-btn--primary" onClick={handleNouvelleReception}>
+              <Plus size={15} /> {t("reception.new_reception")}
+            </button>
+          )}
+          <button type="button" className="rc-btn" onClick={handleReset}>
+            <RotateCcw size={14} /> {t("reception.reset")}
+          </button>
         </div>
+      </header>
 
-        {/* ─── Message si agent non connecté ── */}
-        {!agent && (
-          <div
-            style={{
-              padding: "12px 16px",
-              borderRadius: "10px",
-              background: "#fef2f2",
-              border: "1px solid #fca5a5",
-              marginBottom: "16px",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              fontSize: "13px",
-              color: "#dc2626",
-            }}
-          >
-            <XCircle size={16} />
-            <span style={{ fontWeight: 600 }}>
-              {t('reception.no_agent_title')}
-            </span>
-            <span style={{ color: "#64748b" }}>
-              {t('reception.no_agent_message')}
-            </span>
-          </div>
-        )}
-
-        {/* ─── STATS ── */}
-        {agent && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-              gap: "12px",
-              marginBottom: "20px",
-              padding: "16px",
-              background: "#f8fafc",
-              borderRadius: "12px",
-              border: "1px solid #e2e8f0",
-            }}
-          >
-            <StatCard
-              value={bacsRecus.length || 0}
-              label={t('reception.bacs_received')}
-              color="#0ea5e9"
-            />
-            <StatCard
-              value={sacsInfectes.length || 0}
-              label={t('reception.sacs_infectes')}
-              color="#ef4444"
-            />
-            <StatCard
-              value={
-                dernierRecu
-                  ? dernierRecu.type === "BAC"
-                    ? t('reception.bac')
-                    : t('reception.sac_infecte')
-                  : "-"
-              }
-              label={t('reception.last_received')}
-              color="#8b5cf6"
-            />
-          </div>
-        )}
-
-        {/* ─── ZONE DE SCAN ── */}
-        <Card
-          style={{
-            marginBottom: "20px",
-            border: `2px dashed ${getBorderColor()}`,
-          }}
-        >
-          <CardContent className="p-5">
-            {mode === "BARCODE" ? (
+      {/* ── Aucun agent : accueil ── */}
+      {!agent ? (
+        <section className="rc-card rc-welcome">
+          <BadgeScanArt />
+          <div>
+            <span className="rc-eyebrow">{t("reception.no_agent_title")}</span>
+            <h2>{t("reception.welcome_title")}</h2>
+            <p>{t("reception.no_agent_message")}</p>
+            <div className="rc-scan__field" style={{ "--scan": "var(--rc-sac)" }}>
               <ScanInput
                 ref={scanInputRef}
                 placeholder={getPlaceholder()}
@@ -680,724 +461,434 @@ function ReceptionInner() {
                 onChange={setScanValue}
                 onSubmit={handleSubmit}
                 borderColor={getBorderColor()}
-                keepFocus={true}
+                keepFocus={mode === "BARCODE"}
                 autoDebounce={true}
-                disabled={!agent || loading}
+                disabled
               />
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                }}
-              >
-                {!agent ? (
-                  <div style={{ position: "relative" }}>
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: "14px",
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        color: "#9ca3af",
-                      }}
-                    >
-                      <User size={18} />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder={t('reception.scan_placeholder_no_agent')}
-                      value={scanValue}
-                      onChange={(e) => setScanValue(e.target.value)}
-                      ref={scanInputRef}
-                      disabled
-                      style={{
-                        width: "100%",
-                        padding: "16px 16px 16px 48px",
-                        borderRadius: "10px",
-                        border: "2px solid #e2e8f0",
-                        fontSize: "16px",
-                        outline: "none",
-                        boxSizing: "border-box",
-                        background: "#f1f5f9",
-                        cursor: "not-allowed",
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 2fr",
-                      gap: "10px",
-                    }}
-                  >
-                    <div style={{ position: "relative" }}>
-                      <div
-                        style={{
-                          position: "absolute",
-                          left: "12px",
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          color: "#9ca3af",
-                        }}
-                      >
-                        <Package size={16} />
-                      </div>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <div className="rc-layout">
+          {/* ═══ Colonne principale ═══ */}
+          <div className="rc-main">
+            {/* Zone de scan */}
+            <section className="rc-card rc-scan">
+              <div className="rc-scan__top">
+                <ScannerGlyph />
+                <div style={{ minWidth: 0 }}>
+                  <h2>{t("reception.scan_title")}</h2>
+                  <p>{mode === "BARCODE" ? t("reception.ready_barcode") : t("reception.ready_rfid")}</p>
+                </div>
+                <span className="rc-mode">
+                  <i /> {mode === "BARCODE" ? t("reception.mode_barcode") : t("reception.mode_rfid")}
+                </span>
+              </div>
+
+              {mode === "BARCODE" ? (
+                <div className={`rc-scan__field ${infecteSansBac ? "is-infecte" : ""}`}>
+                  <ScanInput
+                    ref={scanInputRef}
+                    placeholder={getPlaceholder()}
+                    value={scanValue}
+                    onChange={setScanValue}
+                    onSubmit={handleSubmit}
+                    borderColor={infecteSansBac ? "#e03131" : getBorderColor()}
+                    keepFocus={true}
+                    autoDebounce={true}
+                    disabled={loading}
+                  />
+                </div>
+              ) : (
+                <div className="rc-scan__field">
+                  <div className="rc-rfid">
+                    <label className="rc-input">
+                      <Package size={16} />
                       <input
                         type="text"
-                        placeholder={t('reception.rfid_bac_code')}
+                        placeholder={t("reception.rfid_bac_code")}
                         value={rfidCodeBac}
                         onChange={(e) => setRfidCodeBac(e.target.value)}
                         ref={rfidBacRef}
-                        style={{
-                          width: "100%",
-                          padding: "16px 16px 16px 40px",
-                          borderRadius: "10px",
-                          border: "2px solid #e2e8f0",
-                          fontSize: "14px",
-                          outline: "none",
-                          boxSizing: "border-box",
-                        }}
                       />
-                    </div>
-                    <div style={{ position: "relative" }}>
-                      <div
-                        style={{
-                          position: "absolute",
-                          left: "12px",
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          color: "#9ca3af",
-                        }}
-                      >
-                        <Wifi size={16} />
-                      </div>
+                    </label>
+                    <label className="rc-input">
+                      <Wifi size={16} />
                       <input
                         type="text"
-                        placeholder={t('reception.rfid_tags')}
+                        placeholder={t("reception.rfid_tags")}
                         value={rfidTags}
                         onChange={(e) => setRfidTags(e.target.value)}
                         ref={rfidTagsRef}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") handlePortique();
                         }}
-                        style={{
-                          width: "100%",
-                          padding: "16px 16px 16px 40px",
-                          borderRadius: "10px",
-                          border: "2px solid #e2e8f0",
-                          fontSize: "14px",
-                          outline: "none",
-                          boxSizing: "border-box",
-                        }}
                       />
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    className="rc-btn rc-btn--primary"
+                    style={{ width: "100%", justifyContent: "center", marginTop: 10, height: 44 }}
+                    onClick={handlePortique}
+                    disabled={rfidLoading || !rfidCodeBac.trim() || !rfidTags.trim()}
+                  >
+                    {rfidLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                    {rfidLoading ? t("reception.rfid_loading") : t("reception.rfid_validate")}
+                  </button>
+                </div>
+              )}
+
+              {mode === "BARCODE" && circuitInfecte && (
+                <div className="rc-scan__opts">
+                  <label className={`rc-toggle ${infecteSansBac ? "is-on" : ""}`} title={t("reception.infected_hint")}>
+                    <input type="checkbox" checked={infecteSansBac} onChange={(e) => setInfecteSansBac(e.target.checked)} />
+                    <span className="rc-toggle__track" />
+                    <ShieldAlert size={15} />
+                    {t("reception.infected")}
+                    <small>{t("reception.infected_scope")}</small>
+                  </label>
+                </div>
+              )}
+            </section>
+
+            {/* Dernier reçu */}
+            <AnimatePresence mode="popLayout">
+              {dernierRecu && dernierRecu.type !== "LINGE" && (
+                <motion.section
+                  key={dernierRecu.code}
+                  className={`rc-card rc-spot ${estSac ? "is-sac" : ""}`}
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <div className="rc-spot__art">
+                    {estSac ? <SacGlyph size={46} /> : <BacGlyph size={46} />}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <span className="rc-spot__type">
+                      <CheckCircle size={12} />
+                      {estSac ? t("reception.sac_infecte") : t("reception.bac")} · {t("reception.last_received")}
+                    </span>
+                    <code className="rc-spot__code">{dernierRecu.code}</code>
+                    <div className="rc-spot__meta">
+                      {estSac ? (
+                        <>
+                          <span><b>{dernierRecu.data?.quantiteDeclaree ?? 0}</b> {t("reception.items")}</span>
+                          {dernierRecu.data?.agentCollecteNom && (
+                            <span><User size={12} /> {dernierRecu.data.agentCollecteNom}</span>
+                          )}
+                        </>
+                      ) : (
+                        nbLingesBac != null && <span><b>{nbLingesBac}</b> {t("reception.linges_count")}</span>
+                      )}
+                      <span><Clock size={12} /> {heure(new Date())}</span>
                     </div>
                   </div>
-                )}
-                {agent && (
-                  <button
-                    onClick={handlePortique}
-                    disabled={
-                      rfidLoading || !rfidCodeBac.trim() || !rfidTags.trim()
-                    }
-                    style={{
-                      padding: "12px 24px",
-                      borderRadius: "10px",
-                      border: "none",
-                      background:
-                        rfidLoading || !rfidCodeBac.trim() || !rfidTags.trim()
-                          ? "#e2e8f0"
-                          : "linear-gradient(135deg, #7c3aed, #6d28d9)",
-                      color:
-                        rfidLoading || !rfidCodeBac.trim() || !rfidTags.trim()
-                          ? "#94a3b8"
-                          : "white",
-                      fontWeight: 600,
-                      fontSize: "14px",
-                      cursor:
-                        rfidLoading || !rfidCodeBac.trim() || !rfidTags.trim()
-                          ? "not-allowed"
-                          : "pointer",
-                      transition: "all 0.2s",
-                      width: "100%",
-                    }}
-                  >
-                    {rfidLoading
-                      ? t('reception.rfid_loading')
-                      : t('reception.rfid_validate')}
-                  </button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* ─── INFO AGENT ── */}
-        {agent && (
-          <Card
-            style={{
-              background: "#f0fdf4",
-              border: "1px solid #bbf7d0",
-              marginBottom: "16px",
-            }}
-          >
-            <CardContent className="p-4">
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  fontSize: "13px",
-                }}
-              >
-                <Package color="#22c55e" size={16} />
-                <span style={{ fontWeight: 600, color: "#15803d" }}>
-                  {t('reception.ready')}
-                </span>
-                <span style={{ color: "#64748b" }}>
-                  {mode === "BARCODE"
-                    ? t('reception.ready_barcode')
-                    : t('reception.ready_rfid')}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ─── DERNIER REÇU ── */}
-        {dernierRecu && agent && (
-          <div
-            style={{
-              background:
-                dernierRecu.type === "BAC"
-                  ? "linear-gradient(135deg, #dbeafe, #eff6ff)"
-                  : "linear-gradient(135deg, #fee2e2, #fef2f2)",
-              borderRadius: "12px",
-              padding: "16px",
-              border: `2px solid ${
-                dernierRecu.type === "BAC" ? "#3b82f6" : "#dc2626"
-              }`,
-              marginBottom: "16px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                flexWrap: "wrap",
-              }}
-            >
-              {dernierRecu.type === "BAC" ? (
-                <Package size={20} color="#2563eb" />
-              ) : (
-                <ShieldAlert size={20} color="#dc2626" />
-              )}
-              <span
-                style={{
-                  padding: "4px 12px",
-                  borderRadius: "20px",
-                  background:
-                    dernierRecu.type === "BAC" ? "#2563eb" : "#dc2626",
-                  color: "white",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                }}
-              >
-                {dernierRecu.type === "BAC"
-                  ? t('reception.bac')
-                  : t('reception.sac_infecte')}
-              </span>
-              <code
-                style={{
-                  padding: "4px 12px",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  background:
-                    dernierRecu.type === "BAC" ? "#dbeafe" : "#fee2e2",
-                  color: dernierRecu.type === "BAC" ? "#1d4ed8" : "#dc2626",
-                }}
-              >
-                {dernierRecu.code}
-              </code>
-
-              {/* ✅ Bouton pour BAC */}
-              {dernierRecu.type === "BAC" && bacEnCours && (
-                <>
-                  <button
-                    onClick={handleVoirLingesBac}
-                    style={{
-                      padding: "4px 16px",
-                      borderRadius: "8px",
-                      border: "1px solid #e2e8f0",
-                      background:
-                        afficherPanneau && panneauType === "BAC"
-                          ? "#2563eb"
-                          : "white",
-                      color:
-                        afficherPanneau && panneauType === "BAC"
-                          ? "white"
-                          : "#64748b",
-                      cursor: "pointer",
-                      fontSize: "12px",
-                      fontWeight: 500,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <Eye size={14} />
-                    {afficherPanneau && panneauType === "BAC"
-                      ? t('reception.hide_linges')
-                      : t('reception.see_linges')}
-                  </button>
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: "#64748b",
-                      background: "#f1f5f9",
-                      padding: "2px 10px",
-                      borderRadius: "12px",
-                    }}
-                  >
-                    {afficherPanneau && panneauType === "BAC"
-                      ? lingesAffiches.length
-                      : 0}{" "}
-                    {t('reception.linges_count')}
-                  </span>
-                </>
-              )}
-
-              {/* ✅ Bouton pour SAC INFECTÉ */}
-              {dernierRecu.type === "SAC_INFECTE" && (
-                <>
-                  <button
-                    onClick={handleVoirItemsSac}
-                    style={{
-                      padding: "4px 16px",
-                      borderRadius: "8px",
-                      border: "1px solid #e2e8f0",
-                      background:
-                        afficherPanneau && panneauType === "SAC"
-                          ? "#dc2626"
-                          : "white",
-                      color:
-                        afficherPanneau && panneauType === "SAC"
-                          ? "white"
-                          : "#64748b",
-                      cursor: "pointer",
-                      fontSize: "12px",
-                      fontWeight: 500,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <Eye size={14} />
-                    {afficherPanneau && panneauType === "SAC"
-                      ? t('reception.hide_items')
-                      : t('reception.see_items')}
-                  </button>
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: "#64748b",
-                      background: "#f1f5f9",
-                      padding: "2px 10px",
-                      borderRadius: "12px",
-                    }}
-                  >
-                    {afficherPanneau && panneauType === "SAC"
-                      ? lingesAffiches.length
-                      : dernierRecu.data?.quantiteDeclaree || 0}{" "}
-                    {t('reception.items')}
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ─── PANNEAU LINGES / ITEMS ── */}
-        {afficherPanneau && agent && (
-          <div
-            style={{
-              background: panneauType === "SAC" ? "#fef2f2" : "#f0f9ff",
-              borderRadius: "12px",
-              padding: "16px",
-              border: `2px solid ${
-                panneauType === "SAC" ? "#dc2626" : "#0ea5e9"
-              }`,
-              marginBottom: "16px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "12px",
-              }}
-            >
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: "14px",
-                  color: panneauType === "SAC" ? "#7f1d1d" : "#0c4a6e",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                {panneauType === "SAC" ? (
-                  <ShieldAlert size={18} />
-                ) : (
-                  <Package size={18} />
-                )}
-                {panneauType === "SAC"
-                  ? `${t('reception.sac_items')} ${panneauCode || ""}`
-                  : t('reception.bac_linges', {
-                      code: panneauCode || "",
-                    })}
-                <Badge
-                  style={{
-                    background: panneauType === "SAC" ? "#fee2e2" : "#bae6fd",
-                    color: panneauType === "SAC" ? "#dc2626" : "#0369a1",
-                  }}
-                >
-                  {lingesAffiches.length}{" "}
-                  {panneauType === "SAC"
-                    ? t('reception.items')
-                    : t('reception.linges_count')}
-                </Badge>
-              </div>
-              <div style={{ display: "flex", gap: "8px" }}>
-                {loadingPanneau && (
-                  <span style={{ fontSize: "12px", color: "#64748b" }}>
-                    <svg
-                      className="animate-spin w-4 h-4 inline"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  {(estSac || bacEnCours) && (
+                    <button
+                      type="button"
+                      className={`rc-btn ${panneauOuvert(estSac ? "SAC" : "BAC") ? "is-on" : ""}`}
+                      onClick={estSac ? handleVoirItemsSac : handleVoirLingesBac}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                      />
-                    </svg>
-                    {t('reception.loading_linges')}
-                  </span>
+                      {panneauOuvert(estSac ? "SAC" : "BAC") ? <EyeOff size={15} /> : <Eye size={15} />}
+                      {estSac
+                        ? panneauOuvert("SAC") ? t("reception.hide_items") : t("reception.see_items")
+                        : panneauOuvert("BAC") ? t("reception.hide_linges") : t("reception.see_linges")}
+                    </button>
+                  )}
+                </motion.section>
+              )}
+            </AnimatePresence>
+
+            {/* Articles réceptionnés */}
+            {afficherPanneau && (
+              <ArticlesPanel
+                key={`${panneauType}-${panneauCode}`}
+                type={panneauType}
+                code={panneauCode}
+                items={lingesAffiches}
+                loading={loadingPanneau}
+                onClose={handleFermerPanneau}
+              />
+            )}
+
+            <LingesSansBac
+              linges={lingesSansBac}
+              dernierCode={dernierRecu?.type === "LINGE" ? dernierRecu.code : null}
+            />
+          </div>
+
+          {/* ═══ Colonne de droite ═══ */}
+          <aside className="rc-side">
+            <div className="rc-kpis">
+              <Kpi color="var(--rc-bac)" icon={<BacGlyph size={22} c="currentColor" />} value={bacsRecus.length} label={t("reception.bacs_received")} />
+              {circuitInfecte && (
+                <Kpi color="var(--rc-sac)" icon={<SacGlyph size={22} c="currentColor" />} value={sacsInfectes.length} label={t("reception.sacs_infectes")} />
+              )}
+              <Kpi color="var(--rc-ok)" icon={<LingeGlyph size={22} c="currentColor" />} value={lingesSansBac.length} label={t("reception.linges_sans_bac")} />
+              <Kpi
+                color="var(--rc)"
+                icon={<Clock size={17} />}
+                text
+                value={
+                  dernierRecu
+                    ? dernierRecu.type === "BAC"
+                      ? t("reception.bac")
+                      : dernierRecu.type === "LINGE"
+                        ? t("reception.linge")
+                        : t("reception.sac_infecte")
+                    : "—"
+                }
+                label={t("reception.last_received")}
+              />
+            </div>
+
+            <section className="rc-card">
+              <div className="rc-card__head">
+                <h3 className="rc-card__title"><ListChecks size={16} /> {t("reception.session_title")}</h3>
+                <span className="rc-count" style={{ marginLeft: "auto" }}>{journal.length}</span>
+              </div>
+              <div className="rc-card__body">
+                {journal.length === 0 ? (
+                  <div className="rc-empty">
+                    <EmptyBasketArt size={84} />
+                    <strong>{t("reception.session_empty")}</strong>
+                    <span>{t("reception.session_empty_hint")}</span>
+                  </div>
+                ) : (
+                  <div className="rc-log">
+                    {journal.map((j, i) => (
+                      <motion.div
+                        key={j.key}
+                        layout
+                        initial={{ opacity: 0, x: 12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className={`rc-log__item ${j.type === "SAC" ? "is-sac" : ""} ${i === 0 ? "is-last" : ""}`}
+                      >
+                        <span className="rc-log__glyph">
+                          {j.type === "SAC" ? <SacGlyph size={24} /> : <BacGlyph size={24} />}
+                        </span>
+                        <span className="rc-log__main">
+                          <code>{j.code}</code>
+                          <small>{j.type === "SAC" ? t("reception.sac_infecte") : t("reception.bac")}</small>
+                        </span>
+                        {j.n != null && (
+                          <span className="rc-log__n">
+                            {j.n} {j.type === "SAC" ? t("reception.items") : t("reception.linges_count")}
+                          </span>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
                 )}
-                <button
-                  onClick={handleFermerPanneau}
-                  style={{
-                    padding: "4px 12px",
-                    borderRadius: "8px",
-                    border: "1px solid #e2e8f0",
-                    background: "white",
-                    color: "#64748b",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                  }}
-                >
-                  ✕ {t('common.close')}
-                </button>
               </div>
-            </div>
+            </section>
 
-            {loadingPanneau ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "20px",
-                  color: "#94a3b8",
-                }}
-              >
-                <svg
-                  className="animate-spin w-6 h-6 mx-auto"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                <p style={{ marginTop: "8px" }}>
-                  {t('reception.loading_linges')}
-                </p>
-              </div>
-            ) : lingesAffiches.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "30px",
-                  color: "#94a3b8",
-                  background: "#f8fafc",
-                  borderRadius: "10px",
-                }}
-              >
-                <Package
-                  size={32}
-                  style={{ margin: "0 auto 8px", opacity: 0.3 }}
-                />
-                <p style={{ fontWeight: 600 }}>
-                  {panneauType === "SAC"
-                    ? t('reception.no_items')
-                    : t('reception.no_linge')}
-                </p>
-                <p style={{ fontSize: "13px" }}>
-                  {panneauType === "SAC"
-                    ? t('reception.empty_sac')
-                    : t('reception.empty_bac')}
-                </p>
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "8px",
-                  maxHeight: "300px",
-                  overflowY: "auto",
-                }}
-              >
-                {lingesAffiches.map((item, index) => renderItem(item, index))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── RÉSUMÉ ── */}
-        {agent && (bacsRecus.length > 0 || sacsInfectes.length > 0) && (
-          <div
-            style={{
-              background: "#f8fafc",
-              borderRadius: "12px",
-              padding: "16px",
-              border: "1px solid #e2e8f0",
-              marginTop: "16px",
-            }}
-          >
-            <div
-              style={{
-                fontWeight: 600,
-                fontSize: "14px",
-                color: "#1e293b",
-                marginBottom: "12px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <Package size={16} />
-              {t('reception.summary')}
+            <div className="rc-foot">
+              <span>{t("reception.agent")} : <b style={{ color: "var(--rc-text)" }}>{nomAgent}</b></span>
+              <span>{new Date().toLocaleDateString("fr-FR")}</span>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-              {bacsRecus.length > 0 && (
-                <div>
-                  <div
-                    style={{
-                      fontSize: "11px",
-                      color: "#94a3b8",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {t('reception.bacs_received')}
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "6px",
-                      marginTop: "4px",
-                    }}
-                  >
-                    {bacsRecus.map((bac, i) => (
-                      <span
-                        key={i}
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: "12px",
-                          background: "#dbeafe",
-                          color: "#1d4ed8",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {bac.codeBac || bac.code || bac.reference}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {sacsInfectes.length > 0 && (
-                <div>
-                  <div
-                    style={{
-                      fontSize: "11px",
-                      color: "#94a3b8",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {t('reception.sacs_infectes')}
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "6px",
-                      marginTop: "4px",
-                    }}
-                  >
-                    {sacsInfectes.map((sac, i) => (
-                      <span
-                        key={i}
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: "12px",
-                          background: "#fee2e2",
-                          color: "#dc2626",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {sac.numeroSac || sac.code}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ─── FOOTER ── */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: "16px",
-            paddingTop: "16px",
-            borderTop: "1px solid #e2e8f0",
-            flexWrap: "wrap",
-            gap: "8px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              gap: "16px",
-              fontSize: "12px",
-              color: "#64748b",
-            }}
-          >
-            {agent && (
-              <>
-                <span>
-                  {t('reception.agent')}:{" "}
-                  <strong style={{ color: "#0f172a" }}>
-                    {agent.nomPrenom || agent.nom || agent.matricule}
-                  </strong>
-                </span>
-                <span>
-                  {t('reception.matricule')}:{" "}
-                  <strong style={{ color: "#0f172a" }}>
-                    {agent.codeBarre || agent.matricule}
-                  </strong>
-                </span>
-              </>
-            )}
-            {!agent && (
-              <span style={{ color: "#dc2626" }}>
-                ⚠️ {t('reception.no_agent_title')}
-              </span>
-            )}
-            {bacsRecus.length > 0 && (
-              <span>
-                {t('reception.bacs')}:{" "}
-                <strong style={{ color: "#3b82f6" }}>
-                  {bacsRecus.length}
-                </strong>
-              </span>
-            )}
-            {sacsInfectes.length > 0 && (
-              <span>
-                {t('reception.sacs')}:{" "}
-                <strong style={{ color: "#dc2626" }}>
-                  {sacsInfectes.length}
-                </strong>
-              </span>
-            )}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              fontSize: "12px",
-              color: "#94a3b8",
-            }}
-          >
-            <span>{new Date().toLocaleDateString("fr-FR")}</span>
-            <span>•</span>
-            <span>
-              {new Date().toLocaleTimeString("fr-FR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          </div>
+          </aside>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// ── Composant StatCard ──
-function StatCard({ value, label, color }) {
+/* ── Aides ─────────────────────────────────────────────────────────────── */
+
+const initiales = (nom = "") =>
+  nom.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase() || "?";
+
+const heure = (d) => d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+function Kpi({ color, icon, value, label, text = false }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "12px",
-        borderRadius: "10px",
-        background: "white",
-        border: `1px solid ${color}33`,
-        textAlign: "center",
-      }}
-    >
-      <span
-        style={{
-          fontSize: "24px",
-          fontWeight: 800,
-          color: color,
-          lineHeight: 1.2,
-        }}
-      >
-        {value}
-      </span>
-      <span
-        style={{
-          fontSize: "12px",
-          color: "#64748b",
-          fontWeight: 500,
-        }}
-      >
-        {label}
-      </span>
+    <div className="rc-kpi" style={{ "--k": color }}>
+      <span className="rc-kpi__icon">{icon}</span>
+      <span className={`rc-kpi__value ${text ? "rc-kpi__value--text" : ""}`}>{value}</span>
+      <span className="rc-kpi__label">{label}</span>
     </div>
+  );
+}
+
+/** Article d'un bac : catégorie, code, état, RFID, poids. */
+function ArticleCard({ item, index }) {
+  const { t } = useTranslation();
+  const { Icon, accent } = getCategorieMeta(item.categorie);
+  const recu = item.etat === "RECEPTION";
+  return (
+    <motion.div
+      className="rc-item"
+      style={{ "--c": accent }}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: Math.min(index, 12) * 0.025 }}
+    >
+      <span className="rc-item__icon"><Icon size={20} strokeWidth={1.9} /></span>
+      <span className="rc-item__body">
+        <span className="rc-item__code">{item.codeBarre || "N/A"}</span>
+        <span className="rc-item__cat">
+          {item.categorie ? t(`categories.${item.categorie}`, item.categorie) : t("reception.non_categorise")}
+        </span>
+        {item.designation && <span className="rc-item__desc">{item.designation}</span>}
+        <span className="rc-item__foot">
+          <span className={`rc-pill ${recu ? "rc-pill--ok" : "rc-pill--warn"}`}>
+            <i /> {t(`reception_status.${item.etat}`, item.etat || "N/A")}
+          </span>
+          {item.rfidTag && <span className="rc-pill rc-pill--rfid">RFID</span>}
+          {item.poids && <span className="rc-pill">{item.poids} {t("reception.weight")}</span>}
+        </span>
+      </span>
+    </motion.div>
+  );
+}
+
+/** Ligne d'un sac infecté : déclaré / compté / écart par catégorie. */
+function SacItemCard({ item, index }) {
+  const { t } = useTranslation();
+  const { Icon, accent } = getCategorieMeta(item.categorie);
+  const declare = Number(item.quantiteDeclaree) || 0;
+  const compte = item.quantiteComptee;
+  const aCompte = compte !== null && compte !== undefined;
+  const ecart = item.ecart;
+  const pct = declare > 0 && aCompte ? Math.min(100, (Number(compte) / declare) * 100) : 0;
+  return (
+    <motion.div
+      className="rc-item"
+      style={{ "--c": accent }}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: Math.min(index, 12) * 0.03 }}
+    >
+      <span className="rc-item__icon"><Icon size={20} strokeWidth={1.9} /></span>
+      <span className="rc-item__body">
+        <span className="rc-item__cat" style={{ fontSize: 13.5 }}>{t(`categories.${item.categorie}`, item.categorie)}</span>
+        <span className="rc-qty">
+          <span>
+            <small>{t("reception.declared")}</small>
+            <b>{declare}</b>
+          </span>
+          <span>
+            <small>{t("reception.counted")}</small>
+            <b>{aCompte ? compte : "—"}</b>
+          </span>
+        </span>
+        {aCompte && <span className="rc-meter" style={{ display: "block" }}><span style={{ width: `${pct}%` }} /></span>}
+        {ecart !== null && ecart !== undefined && (
+          <span className="rc-item__foot">
+            <span className={`rc-pill ${ecart === 0 ? "rc-pill--ok" : "rc-pill--ko"}`}>
+              <i /> {t("reception.gap")} : {ecart}
+            </span>
+          </span>
+        )}
+      </span>
+    </motion.div>
+  );
+}
+
+/** Panneau des articles réceptionnés (linges d'un bac ou items d'un sac). */
+function ArticlesPanel({ type, code, items, loading, onClose }) {
+  const { t } = useTranslation();
+  const [filtre, setFiltre] = useState("");
+  const [categorie, setCategorie] = useState(null);
+  const isSac = type === "SAC";
+
+  // Répartition par catégorie (quantité déclarée pour un sac)
+  const parCategorie = items.reduce((acc, it) => {
+    const cat = it.categorie || "AUTRE";
+    acc[cat] = (acc[cat] || 0) + (isSac ? Number(it.quantiteDeclaree) || 0 : 1);
+    return acc;
+  }, {});
+  const total = Object.values(parCategorie).reduce((s, n) => s + n, 0);
+
+  const q = filtre.trim().toLowerCase();
+  const visibles = items.filter(
+    (it) =>
+      (!categorie || (it.categorie || "AUTRE") === categorie) &&
+      (!q || [it.codeBarre, it.designation, it.categorie].some((v) => String(v || "").toLowerCase().includes(q)))
+  );
+
+  return (
+    <motion.section
+      className={`rc-card rc-articles ${isSac ? "is-sac" : ""}`}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <div className="rc-card__head">
+        <h3 className="rc-card__title">
+          {isSac ? <SacGlyph size={22} /> : <BacGlyph size={22} />}
+          {t("reception.articles_title")}
+        </h3>
+        {code && <code className="rc-articles__code">{code}</code>}
+        <span className="rc-count">{total}</span>
+        <div className="rc-articles__tools">
+          {!isSac && items.length > 6 && (
+            <label className="rc-search">
+              <Search size={13} />
+              <input value={filtre} onChange={(e) => setFiltre(e.target.value)} placeholder={t("reception.search_article")} />
+            </label>
+          )}
+          <button type="button" className="rc-btn rc-btn--sm" onClick={onClose}>
+            <X size={13} /> {t("common.close")}
+          </button>
+        </div>
+      </div>
+
+      <div className="rc-card__body">
+        {loading ? (
+          <div className="rc-loading">
+            <Loader2 size={18} className="animate-spin" /> {t("reception.loading_linges")}
+          </div>
+        ) : items.length === 0 ? (
+          <div className="rc-empty">
+            <EmptyBasketArt />
+            <strong>{isSac ? t("reception.no_items") : t("reception.no_linge")}</strong>
+            <span>{isSac ? t("reception.empty_sac") : t("reception.empty_bac")}</span>
+          </div>
+        ) : (
+          <>
+            <div className="rc-dist">
+              <div className="rc-dist__bar" aria-hidden="true">
+                {Object.entries(parCategorie).map(([cat, n]) => (
+                  <span key={cat} style={{ flexGrow: n, background: getCategorieMeta(cat).accent }} />
+                ))}
+              </div>
+              <div className="rc-chips">
+                {Object.entries(parCategorie).map(([cat, n]) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={`rc-chip ${categorie === cat ? "is-active" : ""}`}
+                    style={{ "--c": getCategorieMeta(cat).accent }}
+                    onClick={() => setCategorie((c) => (c === cat ? null : cat))}
+                  >
+                    <i /> {t(`categories.${cat}`, cat)} <b>{n}</b>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {visibles.length === 0 ? (
+              <div className="rc-empty"><strong>{t("reception.no_match")}</strong></div>
+            ) : (
+              <div className="rc-grid">
+                {visibles.map((it, i) =>
+                  it.isSacItem ? (
+                    <SacItemCard key={it.id || i} item={it} index={i} />
+                  ) : (
+                    <ArticleCard key={it.id || it.lingeId || it.codeBarre || i} item={it} index={i} />
+                  )
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </motion.section>
   );
 }
 

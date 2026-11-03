@@ -777,7 +777,7 @@ export default function AgentList() {
                         {/* HEADER */}
                         {/* ================================================= */}
 
-                        <div
+                        <div className="page-head"
                             style={{
                                 marginBottom: "32px"
                             }}

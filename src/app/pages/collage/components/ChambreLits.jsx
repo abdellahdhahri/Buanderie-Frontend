@@ -3,6 +3,7 @@ import {
   Biohazard, Check, CheckCheck, TriangleAlert, Sparkles, X, ScanLine, SquareCheckBig, Square,
 } from "lucide-react";
 import { getCategorieMeta } from "../../../constants/categoriesLinge";
+import { useCircuitInfecte } from "../../../hooks/useEstablishment";
 import "./ChambreLits.css";
 
 // ─── États visuels d'un lit ───────────────────────────────────────────────
@@ -16,7 +17,8 @@ export const LIT_TONES = {
 };
 
 export function getLitTone(lit) {
-  if (!lit.linges?.length) return LIT_TONES.VIDE;
+  // Lit sans linge : reste signalé s'il est infecté (liste Cubix)
+  if (!lit.linges?.length) return lit.estInfecte ? LIT_TONES.INFECTE : LIT_TONES.VIDE;
   if (lit.statut === "BLANC") return LIT_TONES.BLANC;
   if (lit.statut === "INFECTE") return LIT_TONES.INFECTE_OK;
   if (lit.statut === "TRAITE") return LIT_TONES.TRAITE;
@@ -179,6 +181,7 @@ const vibrer = () => { try { navigator.vibrate?.(12); } catch {} };
 
 /** Carte tactile d'un linge : toute la carte coche / décoche. */
 function LingeTile({ linge, selectable, checked, onToggle, onPropre, onManquant, onInfecte, t }) {
+  const circuitInfecte = useCircuitInfecte();
   const st = LINGE_STATUTS[linge.statut];
   const label = t(`categories.${linge.categorie}`, linge.categorie || "—");
 
@@ -214,9 +217,11 @@ function LingeTile({ linge, selectable, checked, onToggle, onPropre, onManquant,
             <button type="button" className="act act--manquant" title="Déclarer manquant" onMouseDown={keepScanFocus} onClick={() => onManquant(linge)}>
               <TriangleAlert size={15} strokeWidth={2.4} />
             </button>
-            <button type="button" className="act act--infecte" title="Déclarer infecté" onMouseDown={keepScanFocus} onClick={() => onInfecte(linge)}>
-              <Biohazard size={15} strokeWidth={2.4} />
-            </button>
+            {circuitInfecte && (
+              <button type="button" className="act act--infecte" title="Déclarer infecté" onMouseDown={keepScanFocus} onClick={() => onInfecte(linge)}>
+                <Biohazard size={15} strokeWidth={2.4} />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -336,9 +341,12 @@ export function LitDialog({
 const LEGENDE_COLLECTE = [LIT_TONES.A_FAIRE, LIT_TONES.INFECTE, LIT_TONES.BLANC, LIT_TONES.INFECTE_OK, LIT_TONES.VIDE];
 
 export function LegendeLits({ items = LEGENDE_COLLECTE }) {
+  // Hôtel : pas de lits infectés dans la légende
+  const circuitInfecte = useCircuitInfecte();
+  const visibles = circuitInfecte ? items : items.filter((tone) => tone.main !== LIT_TONES.INFECTE.main && tone.main !== LIT_TONES.INFECTE_OK.main);
   return (
     <div className="lits-legend">
-      {items.map((tone) => (
+      {visibles.map((tone) => (
         <span key={tone.label} className="lits-legend__item">
           <span className="lits-legend__dot" style={{ background: tone.main }} />
           {tone.label}

@@ -1,9 +1,8 @@
 
 import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
 import { useModal } from "./ModalContext";
-import Swal from 'sweetalert2';
-
-export { CATEGORIES_LINGE as CATEGORIES } from "../constants/categoriesLinge";
+import { lireErreur } from "../services/integrationService";
+import { CATEGORIES_LINGE } from "../constants/categoriesLinge";
 
 export const LingeContext = createContext();
 
@@ -23,17 +22,7 @@ export const LingeProvider = ({ children }) => {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
-  const [lingesToImport, setLingesToImport] = useState([]);
-  const [selectedImportLinges, setSelectedImportLinges] = useState([]);
-  const [isImportLoading, setIsImportLoading] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [importType, setImportType] = useState('LINGE');
-  const [importPagination, setImportPagination] = useState({
-    currentPage: 0,
-    itemsPerPage: 50,
-    totalPages: 0,
-    totalElements: 0,
-  });
+  const [categories, setCategories] = useState(CATEGORIES_LINGE);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
 
@@ -48,6 +37,11 @@ export const LingeProvider = ({ children }) => {
       .then(res => res.json())
       .then(data => setLinges(Array.isArray(data) ? data : []))
       .catch(err => console.error("Erreur chargement linges:", err));
+
+    fetch(`${API_BASE_URL}/api/linges/categories`)
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then(data => Array.isArray(data) && data.length && setCategories(data))
+      .catch(err => console.error("Erreur chargement catégories:", err));
   }, [API_BASE_URL]);
 
   // ════════════════════════════════════════════════════════════════════════
@@ -62,10 +56,10 @@ export const LingeProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(linge),
       });
-      const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || "Erreur lors de l'ajout du linge");
+        throw new Error(await lireErreur(res, "Erreur lors de l'ajout du linge"));
       }
+      const data = await res.json();
       setLinges(prev => [...prev, data]);
       return data;
     } catch (err) {
@@ -111,8 +105,7 @@ export const LingeProvider = ({ children }) => {
         body: JSON.stringify(updatedLinge),
       });
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Erreur lors de la modification");
+        throw new Error(await lireErreur(res, "Erreur lors de la modification"));
       }
       const data = await res.json();
       setLinges(prev => prev.map(l => (l.id === id ? data : l)));
@@ -284,7 +277,7 @@ const fetchPersonnel = async (personnelId) => {
   if (!personnelId) return null;
   try {
     const res = await fetch(
-      `${API_BASE_URL}/api/sqlserver/personnel/${personnelId}`,
+      `${API_BASE_URL}/api/personnel/${personnelId}`,
       { headers: { accept: "*/*" } }
     );
     if (!res.ok) {
@@ -445,136 +438,6 @@ const fetchPersonnel = async (personnelId) => {
 
 
 
-  const loadLingesToImport = useCallback(async (page = 0, size = 50) => {
-    setIsImportLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/linges/a-importer?page=${page}&size=${size}`);
-      if (!response.ok) throw new Error('Erreur lors du chargement des linges à importer');
-      const data = await response.json();
-      
-      setLingesToImport(data.content || []);
-      setImportPagination({
-        currentPage: data.number || 0,
-        itemsPerPage: data.size || 50,
-        totalPages: data.totalPages || 0,
-        totalElements: data.totalElements || 0,
-      });
-      return data;
-    } catch (error) {
-      console.error('❌ Erreur chargement linges à importer:', error);
-      Swal.fire({
-        title: '❌ Erreur',
-        text: error.message || 'Impossible de charger les linges à importer',
-        icon: 'error',
-      });
-      return null;
-    } finally {
-      setIsImportLoading(false);
-    }
-  }, [API_BASE_URL]);
-
-  // ─── Importer les linges sélectionnés ──────────────────────────────────
-  const importLinges = useCallback(async (payload) => {
-    if (!payload || payload.length === 0) {
-      Swal.fire({
-        title: '⚠️ Aucune sélection',
-        text: 'Veuillez sélectionner au moins un linge à importer',
-        icon: 'warning',
-      });
-      return null;
-    }
-
-    setIsImportLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/linges/import`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Erreur lors de l\'import');
-      }
-
-      const result = await response.json();
-      
-      Swal.fire({
-        title: '✅ Import réussi',
-        text: `${result.length || payload.length} linge(s) importé(s) avec succès`,
-        icon: 'success',
-        timer: 2000,
-        showConfirmButton: false,
-      });
-
-      // Fermer le modal et recharger la liste
-      setIsImportModalOpen(false);
-      setSelectedImportLinges([]);
-      await fetchLingesPaged(0, 10, {});
-      
-      return result;
-    } catch (error) {
-      console.error('❌ Erreur import:', error);
-      Swal.fire({
-        title: '❌ Erreur d\'import',
-        text: error.message || 'Une erreur est survenue lors de l\'import',
-        icon: 'error',
-      });
-      throw error;
-    } finally {
-      setIsImportLoading(false);
-    }
-  }, [API_BASE_URL, fetchLingesPaged]);
-
-  // ─── Sélectionner/désélectionner un linge pour l'import ──────────────
-  const toggleImportSelection = useCallback((id) => {
-    setSelectedImportLinges(prev => {
-      const exists = prev.some(item => item.id === id);
-      if (exists) {
-        return prev.filter(item => item.id !== id);
-      } else {
-        // Récupérer les infos du linge depuis la liste
-        const linge = lingesToImport.find(l => l.id === id);
-        return [...prev, { 
-          id: id, 
-          categorie: linge?.categorie || 'AUTRE' 
-        }];
-      }
-    });
-  }, [lingesToImport]);
-
-  // ─── Sélectionner tous les linges pour l'import ───────────────────────
-  const selectAllImportLinges = useCallback(() => {
-    if (selectedImportLinges.length === lingesToImport.length) {
-      setSelectedImportLinges([]);
-    } else {
-      const all = lingesToImport.map(l => ({
-        id: l.id,
-        categorie: l.categorie || 'AUTRE',
-      }));
-      setSelectedImportLinges(all);
-    }
-  }, [lingesToImport, selectedImportLinges]);
-
-  // ─── Réinitialiser la sélection d'import ──────────────────────────────
-  const resetImportSelection = useCallback(() => {
-    setSelectedImportLinges([]);
-  }, []);
-
-  // ─── Réinitialiser tout l'état d'import ───────────────────────────────
-  const resetImportState = useCallback(() => {
-    setLingesToImport([]);
-    setSelectedImportLinges([]);
-    setIsImportLoading(false);
-    setIsImportModalOpen(false);
-    setImportPagination({
-      currentPage: 0,
-      itemsPerPage: 50,
-      totalPages: 0,
-      totalElements: 0,
-    });
-  }, []);
-
   // ════════════════════════════════════════════════════════════════════════
   // ─── VALEUR DU CONTEXTE ─────────────────────────────────────────────
   // ════════════════════════════════════════════════════════════════════════
@@ -615,22 +478,9 @@ const fetchPersonnel = async (personnelId) => {
     // Pagination
     fetchLingesPaged,
     
-    // IMPORT
     fetchPersonnel,
-    lingesToImport,
-    selectedImportLinges,
-    isImportLoading,
-    isImportModalOpen,
-    setIsImportModalOpen,
-    importType,
-    setImportType,
-    importPagination,
-    loadLingesToImport,
-    importLinges,
-    toggleImportSelection,
-    selectAllImportLinges,
-    resetImportSelection,
-    resetImportState,
+
+    categories,
   };
 
   return (

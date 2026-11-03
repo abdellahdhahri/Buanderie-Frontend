@@ -42,8 +42,8 @@ function extractPersonnelName(personnel) {
   if (personnel.fullName) return personnel.fullName;
 
   // Combiner nom + prénom
-  const nom = personnel.nom || personnel.Nom || personnel.lastName || "";
-  const prenom = personnel.prenom || personnel.Prenom || personnel.firstName || "";
+  const nom = personnel.nom || personnel.lastName || "";
+  const prenom = personnel.prenom || personnel.firstName || "";
 
   if (nom || prenom) {
     return `${nom} ${prenom}`.trim();
@@ -133,7 +133,7 @@ export default function HistoriqueGlobal() {
           // ✅ Normaliser le cache : { id: "Nom Prénom" }
           const normalizedCache = {};
           personnels.forEach((p) => {
-            const id = p.id || p.Id || p.personnelId;
+            const id = p.id || p.personnelId;
             const name = extractPersonnelName(p);
             if (id != null) {
               normalizedCache[id] = name || `ID: ${id}`;
@@ -421,7 +421,7 @@ export default function HistoriqueGlobal() {
       {/* ═══════════════════════════════════════════════════════════
           HEADER PREMIUM — Identique aux autres écrans
           ═══════════════════════════════════════════════════════════ */}
-      <div style={{ marginBottom: "32px" }}>
+      <div className="page-head" style={{ marginBottom: "32px" }}>
         <div
           style={{
             display: "flex",

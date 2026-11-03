@@ -332,7 +332,7 @@ function SechageInner() {
       <LotInfoDialogSechage />
 
       {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: "32px" }}>
+      <div className="page-head" style={{ marginBottom: "32px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
           <PageHeaderIcon size={52} />
           <div>

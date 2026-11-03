@@ -5,11 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useModal } from "../../contextes/ModalContext";
 import { useAuth } from "../../contextes/Authentication/AuthContext";
 import { useEstablishment } from "../../hooks/useEstablishment";
-import { DEFAULT_LOGO, DEFAULT_LOGO_FALLBACK } from "../../services/establishmentService";
+import { DEFAULT_LOGO } from "../../services/establishmentService";
 
 
 
-// Nom et logo : Paramètres › Établissement (valeurs par défaut : Ibn Khaldoun)
+// Nom, logo et pied de page : Paramètres › Établissement (identité serveur)
 
 
 
@@ -383,12 +383,10 @@ function BrandLogo({ height = 44, variant = "glass" }) {
       )}
       <img
         src={establishment.logo}
-        alt={[establishment.name, establishment.city].filter(Boolean).join(" ")}
+        alt={establishment.nomApplication}
         onError={(e) => {
-          // Logo par défaut indisponible → image de secours
-          if (establishment.logo === DEFAULT_LOGO && e.currentTarget.src !== DEFAULT_LOGO_FALLBACK) {
-            e.currentTarget.src = DEFAULT_LOGO_FALLBACK;
-          }
+          // Logo serveur indisponible → logo du produit
+          if (!e.currentTarget.src.endsWith(DEFAULT_LOGO)) e.currentTarget.src = DEFAULT_LOGO;
         }}
         style={{
           height: `${height}px`,
@@ -779,8 +777,9 @@ function AuthentificationInner() {
           <BrandLogo height={42} variant="glass" />
           <div>
             <div style={{ color: "white", fontWeight: 800, fontSize: "15px", letterSpacing: "-0.3px", lineHeight: 1.2 }}>
-              Système de Gestion
+              {establishment.nomApplication}
             </div>
+            {establishment.raisonSociale && (
             <div
               style={{
                 color: "#5eead4",
@@ -791,8 +790,9 @@ function AuthentificationInner() {
                 marginTop: "2px",
               }}
             >
-              du Linge Hospitalier
+              {establishment.raisonSociale}
             </div>
+            )}
           </div>
         </div>
 
@@ -886,6 +886,16 @@ function AuthentificationInner() {
           {/* Logo — toujours visible (desktop + mobile) */}
           <div style={{ display: "flex", justifyContent: "center", marginBottom: "28px" }}>
             <BrandLogo height={44} variant="card" />
+          </div>
+          <div style={{ textAlign: "center", marginTop: "-16px", marginBottom: "24px" }}>
+            <div style={{ fontSize: "16px", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.3px" }}>
+              {establishment.nomApplication}
+            </div>
+            {establishment.raisonSociale && (
+              <div style={{ fontSize: "12.5px", fontWeight: 600, color: "#64748b", marginTop: "2px" }}>
+                {establishment.raisonSociale}
+              </div>
+            )}
           </div>
 
           {/* Header */}
@@ -1180,13 +1190,7 @@ function AuthentificationInner() {
               fontWeight: 500,
             }}
           >
-            <span>{establishment.name}</span>
-            {establishment.city && (
-              <>
-                <span style={{ color: "#cbd5e1" }}>•</span>
-                <span>{establishment.city}</span>
-              </>
-            )}
+            <span>{establishment.piedDePage || establishment.raisonSociale || establishment.nomApplication}</span>
           </motion.div>
 
           {/* ─── Redirection message ────────────────────────────────────── */}

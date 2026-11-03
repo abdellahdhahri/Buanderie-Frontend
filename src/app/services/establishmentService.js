@@ -1,73 +1,162 @@
+import logoProduit from "../../assets/logo_SoftSys.png";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+const BASE = `${API_URL}/api/parametres`;
 
-const STORAGE_KEY = "establishment";
-const EVENT = "establishmentchange";
+// Valeurs du produit, utilisées tant que l'identité n'est pas chargée (ou si l'appel échoue)
+export const DEFAULT_APP_NAME = "Buanderie";
+export const DEFAULT_LOGO = logoProduit;
+const DEFAULT_FAVICON = "/CubixLogo.png";
 
-export const DEFAULT_LOGO =
-  "https://cdn.polyclinique-ibnkhaldoun.com.tn/wp-content/uploads/bfi_thumb/logo-ibnkhaldoun-sfax-moyen-34qusv5ms48ltafwigpog0.png";
-export const DEFAULT_LOGO_FALLBACK =
-  "https://cdn.polyclinique-ibnkhaldoun.com.tn/wp-content/uploads/2019/01/LOGO-ibnkhaldoun.jpg";
+export const TYPES_ETABLISSEMENT = ["HOPITAL", "CLINIQUE", "HOTEL", "AUTRE"];
+export const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+export const LOGO_MAX_OCTETS = 500 * 1024;
 
-export const DEFAULT_ESTABLISHMENT = {
-  name: "Polyclinique Ibn Khaldoun",
-  city: "Sfax",
-  logo: DEFAULT_LOGO,
+export const DEFAULT_IDENTITE = {
+  raisonSociale: null,
+  nomApplication: DEFAULT_APP_NAME,
+  typeEtablissement: null,
+  couleurPrimaire: null,
+  adresse: null,
+  telephone: null,
+  email: null,
+  piedDePage: null,
+  logoUrl: null,
+  logoVersion: null,
+  dateModification: null,
 };
 
-export function getEstablishment() {
+// ─── Appels HTTP ─────────────────────────────────────────────────────────
+function enTeteAuth() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    return { ...DEFAULT_ESTABLISHMENT, ...(saved || {}) };
+    const token = JSON.parse(localStorage.getItem("auth") || "null")?.token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
   } catch {
-    return { ...DEFAULT_ESTABLISHMENT };
+    return {};
   }
 }
 
-export function saveEstablishment(data) {
-  const value = {
-    name: (data.name || "").trim() || DEFAULT_ESTABLISHMENT.name,
-    city: (data.city || "").trim(),
-    logo: data.logo || DEFAULT_ESTABLISHMENT.logo,
-  };
-  // Peut échouer si le logo importé est trop lourd pour le stockage du navigateur
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-  window.dispatchEvent(new CustomEvent(EVENT, { detail: value }));
-  return value;
-}
-
-export function resetEstablishment() {
-  try { localStorage.removeItem(STORAGE_KEY); } catch { /* stockage indisponible */ }
-  const value = { ...DEFAULT_ESTABLISHMENT };
-  window.dispatchEvent(new CustomEvent(EVENT, { detail: value }));
-  return value;
-}
-
-export function onEstablishmentChange(callback) {
-  const handler = (e) => callback(e.detail);
-  window.addEventListener(EVENT, handler);
-  return () => window.removeEventListener(EVENT, handler);
-}
-
-// Réduit une image importée (max 480×200) et la renvoie en data URL PNG
-export function resizeLogo(file, maxWidth = 480, maxHeight = 200) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Lecture du fichier impossible"));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("Image invalide"));
-      img.onload = () => {
-        // SVG : conservé tel quel (vectoriel, déjà léger)
-        if (file.type === "image/svg+xml") return resolve(reader.result);
-        const ratio = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * ratio);
-        canvas.height = Math.round(img.height * ratio);
-        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/png"));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
+async function requete(chemin, options = {}, fallback) {
+  const response = await fetch(`${BASE}${chemin}`, {
+    ...options,
+    headers: { ...enTeteAuth(), ...(options.headers || {}) },
   });
+  if (!response.ok) {
+    const texte = await response.text().catch(() => "");
+    let message;
+    try { message = JSON.parse(texte)?.message || fallback; } catch { message = texte || fallback; }
+    throw new Error(message);
+  }
+  return response.json();
+}
+
+export const identiteService = {
+  get: () => requete("/identite", {}, "Erreur chargement de l'identité"),
+
+  modifier: (payload) =>
+    requete("/identite", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }, "Erreur enregistrement de l'identité"),
+
+  envoyerLogo: (fichier) => {
+    const form = new FormData();
+    form.append("fichier", fichier);
+    return requete("/logo", { method: "PUT", body: form }, "Erreur envoi du logo");
+  },
+
+  supprimerLogo: () => requete("/logo", { method: "DELETE" }, "Erreur suppression du logo"),
+};
+
+// ─── Dérivés ─────────────────────────────────────────────────────────────
+// URL complète du logo serveur (le paramètre ?v= est conservé), ou null
+export function urlLogo(identite) {
+  const chemin = identite?.logoUrl;
+  if (!chemin) return null;
+  if (/^https?:\/\//i.test(chemin)) return chemin;
+  return `${API_URL}${chemin.startsWith("/") ? "" : "/"}${chemin}`;
+}
+
+// Un hôtel n'a pas de circuit infecté
+export const aCircuitInfecte = (identite) => identite?.typeEtablissement !== "HOTEL";
+
+// ─── Partage de l'état entre écrans ──────────────────────────────────────
+let identiteCourante = { ...DEFAULT_IDENTITE };
+let chargement = null;
+const abonnes = new Set();
+
+export const getEstablishment = () => identiteCourante;
+
+export function onEstablishmentChange(fn) {
+  abonnes.add(fn);
+  return () => abonnes.delete(fn);
+}
+
+export function setEstablishment(valeur) {
+  identiteCourante = {
+    ...DEFAULT_IDENTITE,
+    ...(valeur || {}),
+    nomApplication: valeur?.nomApplication || DEFAULT_APP_NAME,
+  };
+  appliquerIdentite(identiteCourante);
+  abonnes.forEach((fn) => fn(identiteCourante));
+  return identiteCourante;
+}
+
+// Chargement au démarrage ; en cas d'échec, l'application garde les valeurs par défaut
+export function chargerEstablishment({ forcer = false } = {}) {
+  if (!forcer && chargement) return chargement;
+  chargement = identiteService
+    .get()
+    .then(setEstablishment)
+    .catch((err) => {
+      console.warn("Identité de l'établissement indisponible :", err.message);
+      chargement = null;
+      return identiteCourante;
+    });
+  return chargement;
+}
+
+// ─── Application au document : titre, favicon, couleur du thème ─────────
+// Nuances Tailwind « teal » recalculées depuis la couleur principale
+const NUANCES = {
+  50: "color-mix(in oklab, var(--primary) 8%, white)",
+  100: "color-mix(in oklab, var(--primary) 16%, white)",
+  200: "color-mix(in oklab, var(--primary) 32%, white)",
+  300: "color-mix(in oklab, var(--primary) 52%, white)",
+  400: "color-mix(in oklab, var(--primary) 74%, white)",
+  500: "color-mix(in oklab, var(--primary) 88%, white)",
+  600: "var(--primary)",
+  700: "color-mix(in oklab, var(--primary) 82%, black)",
+  800: "color-mix(in oklab, var(--primary) 66%, black)",
+  900: "color-mix(in oklab, var(--primary) 52%, black)",
+};
+const VARIABLES_COULEUR = ["--primary", "--sidebar-primary", "--ring", "--sidebar-ring", "--chart-1"];
+
+function appliquerCouleur(couleur) {
+  const style = document.documentElement.style;
+  const valide = /^#[0-9a-f]{6}$/i.test(couleur || "");
+  VARIABLES_COULEUR.forEach((v) => (valide ? style.setProperty(v, couleur) : style.removeProperty(v)));
+  Object.entries(NUANCES).forEach(([n, valeur]) =>
+    valide ? style.setProperty(`--color-teal-${n}`, valeur) : style.removeProperty(`--color-teal-${n}`)
+  );
+}
+
+function appliquerFavicon(href) {
+  let link = document.querySelector("link[rel~='icon']");
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "icon";
+    document.head.appendChild(link);
+  }
+  link.removeAttribute("type");
+  link.href = href;
+}
+
+function appliquerIdentite(identite) {
+  if (typeof document === "undefined") return;
+  document.title = identite.nomApplication;
+  appliquerFavicon(urlLogo(identite) || DEFAULT_FAVICON);
+  appliquerCouleur(identite.couleurPrimaire);
 }
