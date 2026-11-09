@@ -211,7 +211,7 @@ html, body {
     font-family: Arial, sans-serif;
 }
 
-.badge-info { text-align: center; width: 100%; margin-bottom: 2mm; }
+.badge-card-info { text-align: center; width: 100%; margin-bottom: 2mm; }
 .badge-name { margin: 0 0 1mm 0; font-size: 4mm; color: #000; font-weight: 700; font-family: Arial, sans-serif; }
 .badge-role { margin: 0; font-size: 2.5mm; font-weight: 700; letter-spacing: 1mm; text-transform: uppercase; color: ${colors.primary}; font-family: Arial, sans-serif; }
 .badge-divider { width: 70%; height: 0.5mm; margin: 1.5mm auto; background: ${colors.tertiary}; }
@@ -396,7 +396,7 @@ ${clone.innerHTML}
                                     )}
                                 </div>
 
-                                <div className="badge-info">
+                                <div className="badge-card-info">
                                     <h2 className="badge-name">{employee.nom} {employee.prenom}</h2>
                                     <p className="badge-role" style={{color: colors.primary}}>{employee.fonction}</p>
                                     <div className="badge-divider" style={{background: colors.tertiary}}></div>

@@ -2,7 +2,9 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from "re
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { RefreshCw, Pencil, Trash2, Eye, RotateCcw, Play, CheckCheck, Ban, Copy, Check, Printer, History } from "lucide-react";
+import { toast } from "sonner";
+import { lireErreur } from "../../../services/integrationService";
+import { RefreshCw, Pencil, Trash2, Eye, RotateCcw, Play, CheckCheck, Ban, Copy, Check, Printer, History, ArrowRight, Flag } from "lucide-react";
 import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import { ServiceContext } from "../../../contextes/ServiceContext";
 import { useAuth } from "../../../constants/AuthContext";
@@ -10,7 +12,7 @@ import { getSetting, formatDateTime } from "../../../utils/appSettings";
 import { getCategorieMeta } from "../../../constants/categoriesLinge";
 import { C, Glyph, tint, dot, useRelativeTime } from "../../ui/history-kit";
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, PageHeader, ActionBar, ActionButton, ActionMenu,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterDateRange, FilterActions,
   ListSection, DataTable, Pagination, PersonName, PersonBlock,
   Modal, Button, FormField, TextArea, ConfirmDialog,
@@ -93,6 +95,7 @@ export default function ReclamationList() {
   const [selected, setSelected] = useState(null);
   const [viewMode, setViewMode] = useState("list");
   const [statusBusy, setStatusBusy] = useState(false);
+  const [changement, setChangement] = useState(null);
   const [form, setForm] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -243,20 +246,44 @@ export default function ReclamationList() {
     }
   };
 
-  const updateStatus = async (id, newStatus) => {
+  const appliquerStatut = async () => {
+    if (!changement) return;
+    const { cibles, to } = changement;
     setStatusBusy(true);
-    try {
-      const response = await fetch(`${API_URL}/api/reclamations/${id}/status?status=${newStatus}`, { method: "PUT" });
-      if (!response.ok) throw new Error(await response.text());
-      const data = await response.json();
-      setReclamations((prev) => prev.map((r) => (r.id === data.id ? data : r)));
-      Swal.fire({ title: "✅", text: t("reclamations.status_updated", { status: statusLabel(newStatus) }), icon: "success", timer: 1500, showConfirmButton: false });
-    } catch (err) {
-      console.error("Erreur mise à jour statut:", err);
-      Swal.fire({ title: "❌", text: t("reclamations.error_text"), icon: "error" });
-    } finally {
-      setStatusBusy(false);
+    const echecs = [];
+    const misesAJour = [];
+    for (const r of cibles) {
+      try {
+        const response = await fetch(`${API_URL}/api/reclamations/${r.id}/status?status=${to}`, { method: "PUT" });
+        if (!response.ok) throw new Error(await lireErreur(response, t("reclamations.error_text")));
+        misesAJour.push(await response.json());
+      } catch (err) {
+        echecs.push({ id: r.id, message: err.message });
+      }
     }
+    if (misesAJour.length) {
+      const parId = new Map(misesAJour.map((d) => [d.id, d]));
+      setReclamations((prev) => prev.map((r) => parId.get(r.id) || r));
+      setSelected((cur) => (cur && parId.has(cur.id) ? parId.get(cur.id) : cur));
+      toast.success(
+        misesAJour.length > 1
+          ? t("reclamations.status_updated_many", "{{count}} réclamations passées à « {{status}} »", { count: misesAJour.length, status: statusLabel(to) })
+          : t("reclamations.status_updated", { status: statusLabel(to) })
+      );
+    }
+    echecs.forEach((e) => toast.error(`#${e.id}`, { description: e.message }));
+    setStatusBusy(false);
+    setChangement(null);
+    if (misesAJour.length) sel.clear?.();
+  };
+
+  const demanderStatut = (cibles, to) => {
+    const liste = (Array.isArray(cibles) ? cibles : [cibles]).filter((r) => r && actionsStatut(r).some((a) => a.to === to));
+    if (!liste.length) {
+      toast.info(t("reclamations.no_transition", "Aucune réclamation sélectionnée ne peut passer à « {{status}} »", { status: statusLabel(to) }));
+      return;
+    }
+    setChangement({ cibles: liste, to });
   };
 
   const imprimerFiche = (rec) => {
@@ -363,6 +390,9 @@ export default function ReclamationList() {
       render: (r) => (
         <RowActions>
           <RowButton icon={Eye} title={t("common.details")} onClick={() => openDetails(r)} />
+          {actionsStatut(r).slice(0, 1).map((a) => (
+            <RowButton key={a.to} icon={a.Icon} title={a.label} onClick={() => demanderStatut(r, a.to)} />
+          ))}
           <RowButton icon={Printer} title={t("reclamations.print_sheet", "Imprimer la fiche")} onClick={() => imprimerFiche(r)} />
           <RowButton icon={Pencil} title={t("common.edit")} onClick={() => openForm(r)} />
           <RowButton icon={Trash2} tone="danger" title={t("common.delete")} onClick={() => setDeleteTarget(r)} />
@@ -402,6 +432,13 @@ export default function ReclamationList() {
             <ActionButton icon={IconDetails} label={t("common.details")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
             <ActionButton icon={IconModifier} label={t("common.edit")} variant="modifier" disabled={!selected} onClick={() => openForm(selected)} />
             <ActionButton icon={IconSupprimer} label={t("common.delete")} variant="supprimer" disabled={!selected} onClick={() => setDeleteTarget(selected)} />
+            <ActionMenu
+              icon={Flag}
+              label={t("reclamations.change_status", "Changer le statut")}
+              variant="etat-accepter"
+              disabled={!selected || !actionsStatut(selected).length}
+              items={actionsStatut(selected).map((a) => ({ icon: a.Icon, label: a.label, onClick: () => demanderStatut(selected, a.to) }))}
+            />
             <ActionButton icon={Printer} label={t("reclamations.print_sheet", "Imprimer la fiche")} variant="imprimer" disabled={!selected} onClick={() => imprimerFiche(selected)} />
             <ActionButton icon={<RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />} label={t("common.refresh")} variant="details" onClick={fetchReclamations} />
           </ActionBar>
@@ -450,7 +487,12 @@ export default function ReclamationList() {
             </FilterRow>
           </FilterPanel>
 
-          <ListSection selection={sel} unit="réclamation" units="réclamations" bulkActions={[{ label: tk("exportExcel", "Exporter Excel"), onClick: (l) => handleExportExcel(l) }]}>
+          <ListSection selection={sel} unit="réclamation" units="réclamations" bulkActions={[
+            { label: `${t("reclamations.take")} / ${t("reclamations.reopen_btn")}`, onClick: (l) => demanderStatut(l, "EN_COURS") },
+            { label: t("reclamations.resolve_btn"), onClick: (l) => demanderStatut(l, "RESOLUE") },
+            { label: t("reclamations.close_btn"), onClick: (l) => demanderStatut(l, "FERMEE") },
+            { label: tk("exportExcel", "Exporter Excel"), onClick: (l) => handleExportExcel(l) },
+          ]}>
             <DataTable
               columns={TABLE_COLUMNS}
               visible={list.visibleColumns}
@@ -507,7 +549,7 @@ export default function ReclamationList() {
               {actionsStatut(courant).length > 0 && (
                 <ActionBar>
                   {actionsStatut(courant).map((a) => (
-                    <ActionButton key={a.to} icon={a.Icon} label={a.label} variant={a.variant} disabled={statusBusy} onClick={() => updateStatus(courant.id, a.to)} />
+                    <ActionButton key={a.to} icon={a.Icon} label={a.label} variant={a.variant} disabled={statusBusy} onClick={() => demanderStatut(courant, a.to)} />
                   ))}
                 </ActionBar>
               )}
@@ -602,6 +644,34 @@ export default function ReclamationList() {
         </Modal>
       )}
 
+      {changement && (
+        <ConfirmDialog
+          tone={changement.to === "RESOLUE" ? "success" : changement.to === "FERMEE" ? "danger" : "default"}
+          title={t("reclamations.change_status", "Changer le statut")}
+          message={changement.cibles.length > 1
+            ? t("reclamations.change_status_many", "{{count}} réclamations vont passer au statut « {{status}} ».", { count: changement.cibles.length, status: statusLabel(changement.to) })
+            : t("reclamations.change_status_one", "La réclamation #{{id}} va passer au statut « {{status}} ».", { id: changement.cibles[0].id, status: statusLabel(changement.to) })}
+          details={(
+            <div className="rcl-transitions">
+              {changement.cibles.slice(0, 6).map((r) => (
+                <div key={r.id} className="rcl-transition">
+                  <span className="rcl-transition__id">#{r.id} · {typeLabel(r.type)}</span>
+                  <StatutPill status={r.status} label={statusLabel(r.status)} />
+                  <ArrowRight size={14} />
+                  <StatutPill status={changement.to} label={statusLabel(changement.to)} />
+                </div>
+              ))}
+              {changement.cibles.length > 6 && <small className="kit-muted">+ {changement.cibles.length - 6}</small>}
+            </div>
+          )}
+          confirmLabel={t("reclamations.change_status_confirm", "Passer à « {{status}} »", { status: statusLabel(changement.to) })}
+          cancelLabel={t("common.cancel")}
+          busy={statusBusy}
+          onConfirm={appliquerStatut}
+          onClose={() => setChangement(null)}
+        />
+      )}
+
       {deleteTarget && (
         <ConfirmDialog
           title={t("common.delete_confirm")}
@@ -629,7 +699,7 @@ export default function ReclamationList() {
             { title: t("reclamations.details_title"), items: TYPE_KEYS.map((k) => ({ label: typeLabel(k), value: list.sorted.filter((r) => r.type === k).length, color: getType(k).color })) },
           ]}
           classements={[{
-            title: t("reclamations.agent"),
+            title: t("reclamations.agent"), personnel: true,
             items: Object.entries(list.sorted.reduce((acc, r) => { const k = agentFullName(r.agent); if (k) acc[k] = (acc[k] || 0) + 1; return acc; }, {}))
               .map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value),
           }]}

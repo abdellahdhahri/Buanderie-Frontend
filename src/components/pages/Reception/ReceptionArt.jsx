@@ -92,50 +92,56 @@ export function ScannerGlyph({ size = 52, c = "#e67700" }) {
   );
 }
 
-/** Accueil : badge agent présenté à un lecteur. */
-export function BadgeScanArt({ c = "#e67700", width = 220 }) {
+export function BadgeScanArt({ c = "#0794a4", c2 = "#0aa8ba", width = 220 }) {
   const uid = useId().replace(/:/g, "");
   return (
-    <svg width={width} viewBox="0 0 220 170" fill="none" aria-hidden="true" style={{ display: "block", maxWidth: "100%" }}>
+    <svg width={width} viewBox="0 0 240 180" fill="none" aria-hidden="true" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
       <defs>
         <linearGradient id={`card-${uid}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#fd9a2b" />
+          <stop offset="0%" stopColor={c2} />
           <stop offset="100%" stopColor={c} />
         </linearGradient>
-        <linearGradient id={`beam-${uid}`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor={c} stopOpacity="0" />
-          <stop offset="50%" stopColor={c} stopOpacity="0.9" />
-          <stop offset="100%" stopColor={c} stopOpacity="0" />
+        <linearGradient id={`reader-${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor={c} stopOpacity="0.14" />
         </linearGradient>
+        <filter id={`shadow-${uid}`} x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor={c} floodOpacity="0.25" />
+        </filter>
       </defs>
-      {/* Sol */}
-      <ellipse cx="110" cy="156" rx="88" ry="8" fill={c} opacity="0.08" />
-      {/* Lecteur */}
-      <rect x="128" y="62" width="62" height="90" rx="14" fill={c} opacity="0.14" />
-      <rect x="136" y="72" width="46" height="30" rx="7" fill={c} opacity="0.3" />
-      <rect x="141" y="80" width="36" height="3" rx="1.5" fill={c} opacity="0.55" />
-      <rect x="141" y="87" width="24" height="3" rx="1.5" fill={c} opacity="0.35" />
-      <circle cx="159" cy="124" r="10" fill={c} opacity="0.22" />
-      <circle cx="159" cy="124" r="4.5" fill={c} />
-      {/* Faisceau */}
-      <rect className="rc-beam" x="96" y="70" width="40" height="3" rx="1.5" fill={`url(#beam-${uid})`} />
-      {/* Badge */}
-      <g transform="rotate(-8 70 90)">
-        <rect x="28" y="40" width="88" height="110" rx="14" fill={`url(#card-${uid})`} />
-        <rect x="62" y="32" width="20" height="14" rx="5" fill={c} opacity="0.6" />
-        <rect x="66" y="36" width="12" height="4" rx="2" fill="#fff" opacity="0.8" />
-        <circle cx="72" cy="78" r="16" fill="#fff" opacity="0.92" />
-        <circle cx="72" cy="74" r="6" fill={c} opacity="0.75" />
-        <path d="M61 88c2-6 7-8 11-8s9 2 11 8" fill={c} opacity="0.75" />
-        <rect x="46" y="102" width="52" height="5" rx="2.5" fill="#fff" opacity="0.85" />
-        <rect x="54" y="112" width="36" height="4" rx="2" fill="#fff" opacity="0.55" />
-        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
-          <rect key={i} x={47 + i * 5.2} y="124" width={i % 3 === 0 ? 2.6 : 1.6} height="14" rx="0.6" fill="#fff" opacity="0.8" />
+      <ellipse cx="120" cy="166" rx="96" ry="7" fill={c} opacity="0.1" />
+      <g>
+        <rect x="156" y="50" width="62" height="112" rx="16" fill={`url(#reader-${uid})`} stroke={c} strokeOpacity="0.28" strokeWidth="1.5" />
+        <rect x="165" y="62" width="44" height="28" rx="7" fill={c} opacity="0.16" />
+        <rect x="171" y="70" width="30" height="3" rx="1.5" fill={c} opacity="0.55" />
+        <rect x="171" y="77" width="20" height="3" rx="1.5" fill={c} opacity="0.35" />
+        <circle cx="187" cy="124" r="15" fill={c} opacity="0.12" />
+        <path d="M181 118.5a8 8 0 0 1 0 11M185.5 115a13 13 0 0 1 0 18M190 111.5a18 18 0 0 1 0 25" stroke={c} strokeWidth="2" strokeLinecap="round" opacity="0.7" transform="translate(-2 0)" />
+        <circle cx="187" cy="150" r="2.5" fill={c2} className="rc-led" />
+      </g>
+      <g stroke={c} strokeWidth="2.4" strokeLinecap="round" fill="none">
+        <path className="rc-wave rc-wave--1" d="M128 92a12 12 0 0 1 0 18" />
+        <path className="rc-wave rc-wave--2" d="M135 86a20 20 0 0 1 0 30" />
+        <path className="rc-wave rc-wave--3" d="M142 80a28 28 0 0 1 0 42" />
+      </g>
+      <g transform="rotate(-6 70 100)" filter={`url(#shadow-${uid})`}>
+        <path d="M70 18v22" stroke={c} strokeOpacity="0.35" strokeWidth="3" strokeLinecap="round" />
+        <rect x="24" y="40" width="92" height="118" rx="14" fill={`url(#card-${uid})`} />
+        <rect x="58" y="34" width="24" height="14" rx="5" fill="#fff" stroke={c} strokeOpacity="0.4" />
+        <rect x="63" y="39" width="14" height="4" rx="2" fill={c} opacity="0.5" />
+        <circle cx="70" cy="80" r="17" fill="#fff" opacity="0.95" />
+        <circle cx="70" cy="76" r="6" fill={c} opacity="0.8" />
+        <path d="M59 91c2-6 6.5-8.5 11-8.5s9 2.5 11 8.5" fill={c} opacity="0.8" />
+        <rect x="42" y="106" width="56" height="5.5" rx="2.75" fill="#fff" opacity="0.9" />
+        <rect x="50" y="116" width="40" height="4" rx="2" fill="#fff" opacity="0.6" />
+        <rect x="40" y="128" width="60" height="18" rx="4" fill="#fff" opacity="0.18" />
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+          <rect key={i} x={44 + i * 5} y="131" width={i % 3 === 0 ? 2.6 : 1.5} height="12" rx="0.6" fill="#fff" opacity="0.9" />
         ))}
       </g>
-      {/* Étincelles */}
-      <path d="M196 40l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill={c} opacity="0.5" />
-      <circle cx="24" cy="34" r="3" fill={c} opacity="0.3" />
+      <path d="M214 30l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill={c2} opacity="0.55" />
+      <circle cx="22" cy="40" r="3" fill={c} opacity="0.3" />
+      <circle cx="226" cy="60" r="2" fill={c} opacity="0.3" />
     </svg>
   );
 }

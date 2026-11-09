@@ -116,6 +116,7 @@ function useDashboard() {
         dist,
         collectes: Array.isArray(collectesRes) ? collectesRes.slice(0, 5) : [],
         parcours: Array.isArray(completRes?.parcours) ? completRes.parcours : [],
+        circuitInfecteActif: (completRes?.indicateurs?.circuitInfecteActif ?? completRes?.circuitInfecteActif) !== false,
       });
       setLastUpdate(new Date());
       setError(null);
@@ -605,12 +606,12 @@ function RepartitionMachines({ machines }) {
   );
 }
 
-function AlertesWidget({ alertes }) {
+function AlertesWidget({ alertes, circuitInfecte = true }) {
   const { t } = useTranslation();
 
   const all = [
     ...(alertes?.stockCritique || []),
-    ...(alertes?.sacsEnAttente || []),
+    ...(circuitInfecte ? alertes?.sacsEnAttente || [] : []),
     ...(alertes?.lingesBloqués || []).slice(0, 3),
     ...(alertes?.finDeVie || []).slice(0, 3),
   ];
@@ -768,7 +769,7 @@ export default function BuanderieStats() {
   const navigate = useNavigate();
   const { data, loading, error, lastUpdate, refresh } = useDashboard();
   const hiddenKpis = useSetting("dashboard.hiddenKpis") || [];
-  const circuitInfecte = useCircuitInfecte();
+  const circuitEtablissement = useCircuitInfecte();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const kpiLayout = usePersistentOrder("stats.layout.kpis", KPI_IDS);
   const widgetLayout = usePersistentOrder("stats.layout.widgets", WIDGET_IDS);
@@ -781,6 +782,7 @@ export default function BuanderieStats() {
   };
 
   const kpis = data?.kpis || {};
+  const circuitInfecte = circuitEtablissement && data?.circuitInfecteActif !== false;
   const dist = data?.dist || {};
   const machines = data?.machines || [];
 
@@ -829,7 +831,7 @@ export default function BuanderieStats() {
     { id: "stock",          node: <StockServices services={data?.stock || []} /> },
     { id: "etatMachines",   node: <EtatMachines machines={machines} /> },
     { id: "repartMachines", node: <RepartitionMachines machines={machines} /> },
-    { id: "alertes",        node: <AlertesWidget alertes={data?.alertes || {}} /> },
+    { id: "alertes",        node: <AlertesWidget alertes={data?.alertes || {}} circuitInfecte={circuitInfecte} /> },
     { id: "collectes",      node: <CollectesRecentes collectes={data?.collectes || []} /> },
     { id: "agents",         node: <AgentsActifs agents={data?.agents || []} /> },
   ];

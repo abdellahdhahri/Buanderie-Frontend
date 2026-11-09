@@ -2,9 +2,6 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useModal } from "../../../contextes/ModalContext";
 
-import { Card, CardContent } from "../../ui/card";
-import { Badge } from "../../ui/badge";
-import { Button } from "../../ui/button";
 import ScanInput from "../../utils/shared/ScanInput";
 import MuteButton from "../../utils/MuteButton";
 
@@ -31,8 +28,14 @@ import {
 import { getAgent, isAgentConnected } from "../../../services/agentService";
 
 import "../Linge/WorkflowList.css";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import { LitTile, LitDialog, LegendeLits } from "./components/ChambreLits";
+import { useRattachementChambre, useCircuitInfecte } from "../../../hooks/useEstablishment";
+import { CollecteHeader } from "./shared/CollecteHeader";
+import { InfoBar, InfoChip, ChipBadge } from "./shared/InfoBar";
+import { MessageEtape } from "./shared/MessageEtape";
+import { StatutCard as StatutCardRh } from "./shared/StatutCard";
+import { ScanStatus as ScanStatusRh } from "./shared/ScanStatus";
+import CollageListService from "./collecteService/CollageListService";
 
 
 const Icons = {
@@ -211,103 +214,6 @@ const calculerStatutLit = (linges) => {
   if (linges.some((lg) => lg.statut === "BLANC")) return "BLANC";
   return "TRAITE";
 };
-
-
-function ScanStatus({ loading, success, error, code }) {
-  if (loading) {
-    return (
-      <div style={{
-        padding: "14px 18px", borderRadius: 12,
-        background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
-        border: "1px solid #93c5fd",
-        display: "flex", alignItems: "center", gap: 14, marginTop: 12,
-        boxShadow: "0 4px 12px rgba(59,130,246,0.08)",
-        animation: "fadeIn 0.3s ease-out",
-      }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: "50%",
-          background: "white", display: "flex",
-          alignItems: "center", justifyContent: "center",
-          boxShadow: "0 2px 8px rgba(59,130,246,0.15)",
-        }}>
-          <div className="animate-spin">
-            <Icons.Loader size={18} color="#3b82f6" strokeWidth={2.5} />
-          </div>
-        </div>
-        <div>
-          <p style={{ fontWeight: 700, color: "#1d4ed8", fontSize: 13, margin: 0 }}>
-            Scan en cours...
-          </p>
-          <p style={{ fontSize: 11, color: "#64748b", margin: "2px 0 0 0" }}>
-            {code}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (success) {
-    return (
-      <div style={{
-        padding: "14px 18px", borderRadius: 12,
-        background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
-        border: "1px solid #86efac",
-        display: "flex", alignItems: "center", gap: 14, marginTop: 12,
-        boxShadow: "0 4px 12px rgba(34,197,94,0.08)",
-        animation: "fadeIn 0.3s ease-out",
-      }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: "50%",
-          background: "white", display: "flex",
-          alignItems: "center", justifyContent: "center",
-          boxShadow: "0 2px 8px rgba(34,197,94,0.15)",
-        }}>
-          <Icons.CheckCircle size={18} color="#22c55e" strokeWidth={2.5} />
-        </div>
-        <div>
-          <p style={{ fontWeight: 700, color: "#15803d", fontSize: 13, margin: 0 }}>
-            {success.message}
-          </p>
-          <p style={{ fontSize: 11, color: "#64748b", margin: "2px 0 0 0" }}>
-            {success.detail}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{
-        padding: "14px 18px", borderRadius: 12,
-        background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
-        border: "1px solid #fca5a5",
-        display: "flex", alignItems: "center", gap: 14, marginTop: 12,
-        boxShadow: "0 4px 12px rgba(239,68,68,0.08)",
-        animation: "fadeIn 0.3s ease-out",
-      }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: "50%",
-          background: "white", display: "flex",
-          alignItems: "center", justifyContent: "center",
-          boxShadow: "0 2px 8px rgba(239,68,68,0.15)",
-        }}>
-          <Icons.AlertTriangle size={18} color="#ef4444" strokeWidth={2.5} />
-        </div>
-        <div>
-          <p style={{ fontWeight: 700, color: "#dc2626", fontSize: 13, margin: 0 }}>
-            Erreur
-          </p>
-          <p style={{ fontSize: 11, color: "#64748b", margin: "2px 0 0 0" }}>
-            {error}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-}
 
 
 function DialogueManquant({ linge, onConfirmer, onFermer }) {
@@ -574,59 +480,8 @@ function DialogueInfecte({ linge, onFermer, onScanner }) {
 }
 
 
-function StatutCard({ label, value, icon, color, bg }) {
-  return (
-    <div
-      style={{
-        padding: "16px 18px", borderRadius: 16, background: bg,
-        border: `1.5px solid ${color}25`,
-        flex: 1, minWidth: 120, position: "relative", overflow: "hidden",
-        transition: "all 0.25s",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-3px)";
-        e.currentTarget.style.boxShadow = `0 10px 24px ${color}22`;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "none";
-      }}
-    >
-      <div style={{
-        position: "absolute", top: -20, right: -20,
-        width: 70, height: 70, borderRadius: "50%",
-        background: `${color}12`, filter: "blur(20px)",
-      }} />
-
-      <div style={{ display: "flex", alignItems: "center", gap: 12, position: "relative" }}>
-        <div style={{
-          width: 42, height: 42, borderRadius: 12,
-          background: `${color}15`, display: "flex",
-          alignItems: "center", justifyContent: "center",
-          border: `1px solid ${color}25`,
-        }}>
-          {icon}
-        </div>
-
-        <div>
-          <p style={{
-            fontSize: 9.5, fontWeight: 800, color: "#94a3b8",
-            textTransform: "uppercase", letterSpacing: "0.7px",
-            margin: 0,
-          }}>
-            {label}
-          </p>
-          <p style={{ fontSize: 24, fontWeight: 800, color, margin: 0, lineHeight: 1.1, letterSpacing: "-0.02em" }}>
-            {value}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
 function ColageListInner() {
+  const circuitInfecte = useCircuitInfecte();
   const { t } = useTranslation();
   const { showAlert, showConfirm } = useModal();
 
@@ -1170,7 +1025,7 @@ function ColageListInner() {
     : "#7c3aed";
 
   return (
-    <div className="collecte-container">
+    <div className="collecte-container cr-page">
 
       <DialogueManquant
         linge={dlgManq}
@@ -1184,37 +1039,14 @@ function ColageListInner() {
         onScanner={handleScannerSacPourInfecte}
       />
 
-      <div className="page-head" style={{ marginBottom: 28 }}>
-        <div style={{
-          display: "flex", alignItems: "center",
-          justifyContent: "space-between", flexWrap: "wrap", gap: 12,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <PageHeaderIcon size={60} />
-            <div>
-              <h1 style={{
-                fontSize: 28, fontWeight: 800, color: "#0f172a",
-                margin: 0, letterSpacing: "-0.025em",
-              }}>
-                Collecte Chambre
-              </h1>
-              <p style={{
-                fontSize: 13.5, color: "#64748b",
-                margin: "4px 0 0 0", fontWeight: 500,
-                display: "flex", alignItems: "center", gap: 7,
-              }}>
-                {agent ? (
-                  <>
-                    <Icons.User size={13} color="#7c3aed" strokeWidth={2.2} />
-                    {agent.nomPrenom || agent.nom}
-                  </>
-                ) : (
-                  "Aucun agent connecté"
-                )}
-              </p>
-            </div>
-          </div>
-
+      <CollecteHeader
+        icon={<Icons.Bed size={24} color="white" strokeWidth={2.2} />}
+        title="Collecte Chambre"
+        agent={agent}
+        agentLabel="Agent"
+        noAgentLabel="Aucun agent connecté"
+        badge={collecte ? `Chambre ${collecte.codeChambre}` : undefined}
+        right={(
           <MuteButton
             muted={voice.muted}
             onToggle={voice.toggleMute}
@@ -1222,130 +1054,58 @@ function ColageListInner() {
             lang={voiceLang}
             onLangChange={setVoiceLang}
           />
-        </div>
-      </div>
+        )}
+      />
 
-      <div style={{
-        background: "white", borderRadius: 24, padding: 30,
-        border: "1px solid #e2e8f0",
-        boxShadow: "0 12px 40px rgba(15,23,42,0.06)",
-      }}>
-
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          marginBottom: 20, flexWrap: "wrap", gap: 10,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div className="cr-shell">
+        {(agent || collecte) && (
+          <InfoBar onReset={etape !== "CHAMBRE" ? reset : undefined}>
             {agent && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 16px", background: "#faf5ff",
-                border: "1px solid #e9d5ff", borderRadius: 12,
-              }}>
-                <Icons.User size={15} color="#7c3aed" strokeWidth={2.2} />
-                <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: 13 }}>
-                  {agent.nomPrenom || agent.nom}
-                </span>
-                <Badge style={{
-                  background: "#ede9fe", color: "#7c3aed",
-                  fontSize: 10, padding: "2px 10px", borderRadius: 20,
-                  fontWeight: 700,
-                }}>
-                  {agent.codeBarre || agent.matricule}
-                </Badge>
-              </div>
+              <InfoChip icon={<Icons.User size={13} color="#6366f1" strokeWidth={2.2} />} text={agent.nomPrenom || agent.nom} color="#4f46e5">
+                <ChipBadge>{agent.codeBarre || agent.matricule}</ChipBadge>
+              </InfoChip>
             )}
-
             {collecte && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 16px", background: "#f0f9ff",
-                border: "1px solid #bae6fd", borderRadius: 12,
-              }}>
-                <Icons.Building size={15} color="#0284c7" strokeWidth={2.2} />
-                <span style={{ fontWeight: 700, color: "#0284c7", fontSize: 13 }}>
-                  {collecte.codeChambre}
-                </span>
-                <Badge style={{
-                  background: "#e0f2fe", color: "#0284c7",
-                  fontSize: 10, padding: "2px 10px", borderRadius: 20,
-                  fontWeight: 700,
-                }}>
-                  {totalLits} lits
-                </Badge>
-              </div>
+              <InfoChip icon={<Icons.Building size={13} color="#0794a4" strokeWidth={2.2} />} text={collecte.codeChambre} color="#067a87" delay={0.05}>
+                <ChipBadge>{totalLits} lits</ChipBadge>
+              </InfoChip>
             )}
-          </div>
+          </InfoBar>
+        )}
 
-          {etape !== "CHAMBRE" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={reset}
-              style={{
-                fontSize: 12, borderColor: "#fca5a5", color: "#dc2626",
-                borderRadius: 10, padding: "7px 15px", fontWeight: 700,
-                display: "flex", alignItems: "center", gap: 6,
-              }}
-            >
-              <Icons.Refresh size={12} strokeWidth={2.5} />
-              Reset
-            </Button>
-          )}
-        </div>
+        <section className="cr-scan">
+          <ScanInput
+            ref={scanInputRef}
+            placeholder={getPlaceholder()}
+            value={scanVal}
+            onChange={setScanVal}
+            onSubmit={handleScan}
+            borderColor={borderColor}
+            keepFocus
+            autoDebounce
+            disabled={loading || !agent}
+          />
 
-        <Card style={{
-          marginBottom: 20,
-          border: `2px dashed ${borderColor}`,
-          borderRadius: 16,
-          background: "linear-gradient(135deg, #ffffff, #fafbfc)",
-        }}>
-          <CardContent className="p-5">
-
-            <ScanInput
-              ref={scanInputRef}
-              placeholder={getPlaceholder()}
-              value={scanVal}
-              onChange={setScanVal}
-              onSubmit={handleScan}
-              borderColor={borderColor}
-              keepFocus
-              autoDebounce
-              disabled={loading || !agent}
+          {lingeInfecteEnCours && (
+            <MessageEtape
+              tone="red"
+              icon={<Icons.Biohazard size={16} color="#dc2626" strokeWidth={2.4} />}
+              title={`Scannez le sac infecté pour le linge ${lingeInfecteEnCours.codeBarre}`}
+              animated
             />
+          )}
 
-            {lingeInfecteEnCours && (
-              <div style={{
-                marginTop: 12, padding: "11px 15px", borderRadius: 10,
-                background: "linear-gradient(135deg, #fee2e2, #fecaca)",
-                border: "1px solid #fca5a5",
-                fontSize: 12, color: "#991b1b",
-                display: "flex", alignItems: "center", gap: 9,
-                fontWeight: 700, animation: "fadeIn 0.3s ease-out",
-              }}>
-                <Icons.Biohazard size={14} color="#991b1b" strokeWidth={2.5} />
-                Scannez le sac infecté pour le linge {lingeInfecteEnCours.codeBarre}
-              </div>
-            )}
+          {etape === "SCAN" && collecte && !lingeInfecteEnCours && !litEnCours && (
+            <MessageEtape
+              tone="blue"
+              icon={<Icons.Info size={16} color="#0794a4" strokeWidth={2.2} />}
+              title="Cliquez sur un lit pour voir ses linges"
+              subtitle="Scannez votre badge pour clôturer la collecte"
+            />
+          )}
 
-            {etape === "SCAN" && collecte && !lingeInfecteEnCours && !litEnCours && (
-              <div style={{
-                marginTop: 10, padding: "10px 15px", borderRadius: 10,
-                background: "linear-gradient(135deg, #fef3c7, #fde68a)",
-                border: "1px solid #fcd34d",
-                fontSize: 12, color: "#92400e",
-                display: "flex", alignItems: "center", gap: 9,
-                fontWeight: 600,
-              }}>
-                <Icons.Info size={14} color="#92400e" strokeWidth={2.2} />
-                Cliquez sur un lit pour voir ses linges · scannez votre badge pour clôturer la collecte
-              </div>
-            )}
-
-            {scanStatus && <ScanStatus {...scanStatus} />}
-
-          </CardContent>
-        </Card>
+          <ScanStatusRh status={scanStatus} />
+        </section>
 
         {litOuvert && etape === "SCAN" && (
           <LitDialog
@@ -1368,146 +1128,48 @@ function ColageListInner() {
         )}
 
         {!agent && (
-          <Card style={{
-            background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
-            border: "1.5px solid #fca5a5", marginBottom: 16, borderRadius: 14,
-          }}>
-            <CardContent className="p-5">
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{
-                  width: 42, height: 42, borderRadius: 12,
-                  background: "white", display: "flex",
-                  alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(220,38,38,0.15)",
-                }}>
-                  <Icons.AlertTriangle size={18} color="#dc2626" strokeWidth={2.2} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, color: "#dc2626", fontSize: 13.5 }}>
-                    Aucun agent connecté
-                  </div>
-                  <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
-                    Connectez-vous pour démarrer la collecte
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <MessageEtape
+            tone="red"
+            icon={<Icons.AlertTriangle size={16} color="#dc2626" strokeWidth={2.2} />}
+            title="Aucun agent connecté"
+            subtitle="Connectez-vous pour démarrer la collecte"
+          />
         )}
 
         {agent && !collecte && (
-          <Card style={{
-            background: "linear-gradient(135deg, #faf5ff, #f3e8ff)",
-            border: "1.5px solid #e9d5ff", marginBottom: 16, borderRadius: 14,
-          }}>
-            <CardContent className="p-5">
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{
-                  width: 42, height: 42, borderRadius: 12,
-                  background: "white", display: "flex",
-                  alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(124,58,237,0.15)",
-                }}>
-                  <Icons.Building size={18} color="#7c3aed" strokeWidth={2.2} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, color: "#7c3aed", fontSize: 13.5 }}>
-                    Scannez le code de la chambre
-                  </div>
-                  <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
-                    après être sorti de la chambre avec le linge
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <MessageEtape
+            tone="blue"
+            icon={<Icons.Building size={16} color="#0794a4" strokeWidth={2.2} />}
+            title="Scannez le code de la chambre"
+            subtitle="après être sorti de la chambre avec le linge"
+          />
         )}
 
         {etape === "SCAN" && collecte && (
           <>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-              gap: 12, marginBottom: 24,
-            }}>
-              <StatutCard
-                label="Total"
-                value={totalLits}
-                icon={<Icons.Layers size={19} color="#0ea5e9" strokeWidth={2.2} />}
-                color="#0ea5e9"
-                bg="linear-gradient(135deg, #f0f9ff, #e0f2fe)"
-              />
-              <StatutCard
-                label="Blancs"
-                value={nbBlancs}
-                icon={<Icons.CheckCheck size={19} color="#15803d" strokeWidth={2.5} />}
-                color="#15803d"
-                bg="linear-gradient(135deg, #f0fdf4, #dcfce7)"
-              />
-              <StatutCard
-                label="Infectés"
-                value={nbInfectes}
-                icon={<Icons.Biohazard size={19} color="#dc2626" strokeWidth={2.2} />}
-                color="#dc2626"
-                bg="linear-gradient(135deg, #fef2f2, #fee2e2)"
-              />
-              <StatutCard
-                label="Restants"
-                value={nonTraites}
-                icon={<Icons.Activity size={19} color="#f59e0b" strokeWidth={2.2} />}
-                color="#f59e0b"
-                bg="linear-gradient(135deg, #fffbeb, #fef3c7)"
-              />
+            <div className="cr-kpis">
+              <StatutCardRh label="Total" value={totalLits} icon={<Icons.Layers size={18} color="#0284c7" strokeWidth={2.2} />} color="#0284c7" />
+              <StatutCardRh label="Blancs" value={nbBlancs} icon={<Icons.CheckCheck size={18} color="#10b981" strokeWidth={2.5} />} color="#10b981" />
+              {circuitInfecte && (
+                <StatutCardRh label="Infectés" value={nbInfectes} icon={<Icons.Biohazard size={18} color="#dc2626" strokeWidth={2.2} />} color="#dc2626" />
+              )}
+              <StatutCardRh label="Restants" value={nonTraites} icon={<Icons.Activity size={18} color="#f59e0b" strokeWidth={2.2} />} color="#f59e0b" />
             </div>
 
-            <div style={{ paddingTop: 20, borderTop: "1.5px solid #e2e8f0" }}>
-              <div style={{
-                display: "flex", justifyContent: "space-between",
-                alignItems: "center", marginBottom: 18,
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{
-                    width: 42, height: 42, borderRadius: 12,
-                    background: "linear-gradient(135deg, #ede9fe, #ddd6fe)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    border: "1px solid #c4b5fd",
-                  }}>
-                    <Icons.Bed size={18} color="#7c3aed" strokeWidth={2.2} />
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 15.5, color: "#0f172a", letterSpacing: "-0.01em" }}>
-                      Lits de la chambre
-                    </div>
-                    <div style={{ fontSize: 11.5, color: "#64748b", fontWeight: 500, marginTop: 2 }}>
-                      {totalLits} lit{totalLits > 1 ? "s" : ""} · {traites} traité{traites > 1 ? "s" : ""}
-                    </div>
-                  </div>
+            <section className="cr-panel">
+              <header className="cr-panel__head">
+                <div>
+                  <h3><Icons.Bed size={16} color="currentColor" strokeWidth={2.2} /> Lits de la chambre</h3>
+                  <small>{totalLits} lit{totalLits > 1 ? "s" : ""} · {traites} traité{traites > 1 ? "s" : ""}</small>
                 </div>
-
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 11,
-                  padding: "9px 15px", borderRadius: 11,
-                  background: "#f8fafc", border: "1px solid #e2e8f0",
-                }}>
-                  <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>
-                    Progression
+                <div className="cr-progress">
+                  <span>Progression</span>
+                  <div className="cr-progress__bar">
+                    <i style={{ width: `${litsAvecLinge > 0 ? (traites / litsAvecLinge) * 100 : 0}%` }} />
                   </div>
-                  <div style={{
-                    width: 90, height: 6, borderRadius: 3,
-                    background: "#e2e8f0", overflow: "hidden",
-                  }}>
-                    <div style={{
-                      height: "100%",
-                      width: `${litsAvecLinge > 0 ? (traites / litsAvecLinge) * 100 : 0}%`,
-                      background: "linear-gradient(90deg, #7c3aed, #6d28d9)",
-                      transition: "width 0.4s ease",
-                    }} />
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "#7c3aed", fontWeight: 800, minWidth: 32, textAlign: "right" }}>
-                    {litsAvecLinge > 0 ? Math.round((traites / litsAvecLinge) * 100) : 0}%
-                  </div>
+                  <strong>{litsAvecLinge > 0 ? Math.round((traites / litsAvecLinge) * 100) : 0}%</strong>
                 </div>
-              </div>
+              </header>
 
               <LegendeLits />
               <div className="lits-grid" style={{ maxHeight: 620, overflowY: "auto", padding: 4 }}>
@@ -1520,7 +1182,7 @@ function ColageListInner() {
                   />
                 ))}
               </div>
-            </div>
+            </section>
           </>
         )}
       </div>
@@ -1549,5 +1211,7 @@ function ColageListInner() {
 }
 
 export default function ColageList() {
+  const modeChambre = useRattachementChambre();
+  if (modeChambre) return <CollageListService modeChambre />;
   return <ColageListInner />;
 }

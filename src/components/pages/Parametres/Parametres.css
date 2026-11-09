@@ -852,3 +852,4 @@
 .dark .pc-state { background: rgba(59, 130, 246, .12); border-color: rgba(59, 130, 246, .3); color: #93c5fd; }
 .dark .pc-produit { background: rgba(16, 185, 129, .12); border-color: rgba(16, 185, 129, .3); color: #6ee7b7; }
 .dark .pc-step__body { border-top-color: var(--dk-border); }
+.param-switch:disabled { opacity: .55; cursor: not-allowed; }

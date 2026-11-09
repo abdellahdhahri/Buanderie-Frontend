@@ -72,6 +72,8 @@
 .dark .badge-warning   { background: rgba(245, 158, 11, .16); color: #fcd34d; }
 .dark .badge-danger    { background: rgba(239, 68, 68, .16);  color: #fca5a5; }
 .dark .badge-info      { background: rgba(56, 189, 248, .16); color: #7dd3fc; }
+.dark .badge-primary   { background: rgba(45, 212, 191, .16); color: #5eead4; }
+.dark .badge-outline   { color: var(--dk-text-2); box-shadow: inset 0 0 0 1px var(--dk-border); }
 .dark .badge-secondary,
 .dark td .badge.badge-secondary { background: var(--dk-surface-3) !important; color: var(--dk-text-2); }
 .dark .badge-default   { background: var(--dk-surface-3); color: var(--dk-text-2); }
@@ -193,3 +195,15 @@
 .dark .kit-parcours__name { color: var(--dk-text-2); }
 .dark .kit-parcours__val { color: var(--dk-text); }
 .dark .kit-parcours__bar { background: var(--dk-surface-3); }
+.dark .kit-codes-head > strong { color: var(--dk-accent); }
+.dark .kit-codes { background: var(--dk-surface-2); border-color: var(--dk-border); }
+.dark .kit-code-chip { background: var(--dk-surface); border-color: var(--dk-border); }
+.dark .kit-code-chip code { color: var(--dk-text); }
+.dark .kit-code-chip button { background: var(--dk-surface-3); color: var(--dk-muted); }
+.dark .kit-codes-empty { border-color: var(--dk-border); color: var(--dk-muted); }
+.dark .kit-codes-clear:hover { background: rgba(239, 68, 68, .12); color: #fca5a5; }
+.dark .lsa-filters { background: var(--dk-surface-2); border-color: var(--dk-border); }
+.dark .lsa-result__hero { background: var(--dk-surface-2); border-color: var(--dk-border); }
+.dark .lsa-result__hero strong { color: var(--dk-text); }
+.dark .lsa-progress small { color: var(--dk-accent); }
+.dark .rcl-transition__id { color: var(--dk-text); }

@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Building2, ImageUp, Trash2, Palette, Loader2, RotateCcw } from "lucide-react";
+import { Building2, ImageUp, Trash2, Palette, Loader2, RotateCcw, ShieldAlert, BedDouble, DoorOpen, Check } from "lucide-react";
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
 import {
   identiteService, chargerEstablishment, getEstablishment, setEstablishment, urlLogo,
   DEFAULT_APP_NAME, DEFAULT_LOGO, TYPES_ETABLISSEMENT, LOGO_TYPES, LOGO_MAX_OCTETS,
 } from "../../../../services/establishmentService";
-import { SettingsCard } from "./SettingsUI";
+import { SettingsCard, SettingRow, Toggle, ChoiceCard } from "./SettingsUI";
 
 const COULEUR_DEFAUT = "#0d9488";
 const CHAMPS = ["raisonSociale", "nomApplication", "typeEtablissement", "couleurPrimaire", "adresse", "telephone", "email", "piedDePage"];
@@ -55,6 +55,8 @@ export function EstablishmentSection() {
   const [chargement, setChargement] = useState(true);
   const [saving, setSaving] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
+  const [circuitBusy, setCircuitBusy] = useState(false);
+  const [rattachementBusy, setRattachementBusy] = useState(false);
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -131,7 +133,41 @@ export function EstablishmentSection() {
     }
   };
 
+  const basculerCircuit = async (actif) => {
+    setCircuitBusy(true);
+    try {
+      await identiteService.modifier({ circuitInfecteActif: actif });
+      const valeur = await chargerEstablishment({ forcer: true });
+      setIdentite(valeur);
+      toast.success(actif
+        ? t("settings.establishment.infected_on", "Circuit infecté activé.")
+        : t("settings.establishment.infected_off", "Circuit infecté désactivé : les écrans et indicateurs d'infection sont masqués."));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCircuitBusy(false);
+    }
+  };
+
+  const changerRattachement = async (niveau) => {
+    if (niveau === identite?.niveauRattachement || rattachementBusy) return;
+    setRattachementBusy(true);
+    try {
+      await identiteService.modifier({ niveauRattachement: niveau });
+      const valeur = await chargerEstablishment({ forcer: true });
+      setIdentite(valeur);
+      toast.success(niveau === "CHAMBRE"
+        ? t("settings.establishment.attach_room_saved", "Le linge est désormais rattaché à la chambre.")
+        : t("settings.establishment.attach_bed_saved", "Le linge est désormais rattaché au lit."));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setRattachementBusy(false);
+    }
+  };
+
   const logo = urlLogo(identite);
+  const circuitActif = identite?.circuitInfecteActif !== false;
   const couleurApercu = couleurValide(form.couleurPrimaire) ? form.couleurPrimaire : COULEUR_DEFAUT;
 
   return (
@@ -180,11 +216,6 @@ export function EstablishmentSection() {
                     }[type])}</option>
                   ))}
                 </select>
-                {form.typeEtablissement === "HOTEL" && (
-                  <p className="m-0 text-[11.5px] text-slate-500 dark:text-muted-foreground">
-                    {t("settings.establishment.hotel_hint", "Les écrans et indicateurs d'infection seront masqués.")}
-                  </p>
-                )}
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -305,6 +336,58 @@ export function EstablishmentSection() {
               color={couleurApercu}
             />
           </div>
+        </div>
+      </SettingsCard>
+
+      <SettingsCard
+        icon={<ShieldAlert className="h-[17px] w-[17px]" />}
+        title={t("settings.establishment.infected_title", "Circuit infecté")}
+        description={t("settings.establishment.infected_desc", "Désactivez-le pour un établissement sans linge infecté, un hôtel par exemple.")}
+      >
+        <SettingRow
+          label={t("settings.establishment.infected_label", "Circuit infecté")}
+          hint={circuitActif
+            ? t("settings.establishment.infected_hint_on", "Sacs infectés, choix « infecté » en collecte et réception, lits infectés et indicateurs d'infection sont affichés.")
+            : t("settings.establishment.infected_hint_off", "Les écrans et indicateurs d'infection sont masqués.")}
+        >
+          <span className="inline-flex items-center gap-2">
+            {circuitBusy && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+            <Toggle
+              checked={circuitActif}
+              onChange={basculerCircuit}
+              disabled={circuitBusy || chargement}
+              label={t("settings.establishment.infected_label", "Circuit infecté")}
+            />
+          </span>
+        </SettingRow>
+      </SettingsCard>
+
+      <SettingsCard
+        icon={<BedDouble className="h-[17px] w-[17px]" />}
+        title={t("settings.establishment.attach_title", "Rattachement du linge")}
+        description={t("settings.establishment.attach_desc", "Le linge distribué et collecté est suivi au lit (hôpital, clinique) ou à la chambre (hôtel).")}
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            { id: "LIT", Icon: BedDouble, label: t("settings.establishment.attach_bed", "Lit"), hint: t("settings.establishment.attach_bed_hint", "Distribution et collecte lit par lit.") },
+            { id: "CHAMBRE", Icon: DoorOpen, label: t("settings.establishment.attach_room", "Chambre"), hint: t("settings.establishment.attach_room_hint", "Le linge est déposé et collecté à la chambre, sans passer par les lits.") },
+          ].map(({ id, Icon, label, hint }) => {
+            const actif = (identite?.niveauRattachement || "LIT") === id;
+            return (
+              <ChoiceCard key={id} selected={actif} onClick={() => changerRattachement(id)}>
+                <div className="flex items-start gap-3 p-1 text-left">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-white/5 dark:text-teal-300">
+                    {rattachementBusy && !actif ? <Loader2 className="h-5 w-5 animate-spin" /> : <Icon className="h-5 w-5" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="m-0 text-[13.5px] font-semibold text-slate-800 dark:text-foreground">{label}</p>
+                    <p className="m-0 text-[12px] text-slate-500 dark:text-muted-foreground">{hint}</p>
+                  </div>
+                  {actif && <Check className="h-4 w-4 text-teal-600" />}
+                </div>
+              </ChoiceCard>
+            );
+          })}
         </div>
       </SettingsCard>
     </div>

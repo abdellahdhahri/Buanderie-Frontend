@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Icons } from "../../shared/icons";
 import { StatutCard } from "../../shared/StatutCard";
+import { useCircuitInfecte } from "../../../../../hooks/useEstablishment";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STATISTIQUES — cartes cliquables qui filtrent la liste
@@ -11,6 +12,7 @@ export function StatistiquesCollecte({
   nbAttendus, totalAttendu, nbSacs, filter, onFilter,
 }) {
   const { t } = useTranslation();
+  const circuitInfecte = useCircuitInfecte();
   const resteColor = nbNonTr > 0 ? "#f59e0b" : "#10b981";
 
   return (
@@ -29,14 +31,14 @@ export function StatistiquesCollecte({
         onClick={() => onFilter("blanc")}
         active={filter === "blanc"}
       />
-      <StatutCard
+      {circuitInfecte && <StatutCard
         label={t('collecte.infected')}
         value={nbInfectes}
         icon={<Icons.Biohazard size={19} color="#dc2626" strokeWidth={2.2} />}
         color="#dc2626"
         bg="linear-gradient(135deg, #fef2f2, #fee2e2)"
         subValue={`${nbSacs} ${t('collecte.sacs')}`}
-      />
+      />}
       <StatutCard
         label={t('collecte.propre')}
         value={nbPropres}

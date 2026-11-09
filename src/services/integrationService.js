@@ -100,3 +100,37 @@ export function lancerSynchronisation(referentiel) {
   notifier();
   return promesse;
 }
+
+const CAUSES_HTTP = {
+  400: "requête refusée par le système externe",
+  401: "authentification refusée : vérifiez les identifiants",
+  403: "accès interdit : vérifiez les droits du compte utilisé",
+  404: "l'adresse appelée n'existe pas : vérifiez l'URL de base et le chemin",
+  405: "méthode non autorisée sur cette adresse",
+  500: "erreur interne du système externe",
+  502: "passerelle injoignable",
+  503: "système externe indisponible",
+  504: "délai dépassé côté système externe",
+};
+
+export function messageLisible(message, url) {
+  const texte = String(message ?? "");
+  if (!/<!doctype|<html|<body|<EOL>/i.test(texte)) return texte;
+  const propre = texte.replace(/<EOL>/gi, " ");
+  const entete = propre.match(/^\s*(\d{3})\s+([^:"<]+)/);
+  const code = Number(entete?.[1] || propre.match(/Error code:\s*(\d{3})/i)?.[1] || 0) || null;
+  const raison = (entete?.[2] || propre.match(/Message:\s*([^<]+)</i)?.[1] || propre.match(/<title>([^<]+)<\/title>/i)?.[1] || "").trim().replace(/\.$/, "");
+  const cause = code && CAUSES_HTTP[code];
+  return [
+    `Le système externe a répondu ${code || "par une erreur"}${raison ? ` (${raison})` : ""}`,
+    cause ? ` : ${cause}.` : ".",
+    url ? ` Adresse appelée : ${url}` : "",
+  ].join("");
+}
+
+export const urlAppelee = (urlBase, chemin) => {
+  const c = String(chemin || "").trim();
+  if (!c) return "";
+  if (/^https?:\/\//i.test(c)) return c;
+  return `${String(urlBase || "").replace(/\/+$/, "")}/${c.replace(/^\/+/, "")}`;
+};

@@ -5,7 +5,6 @@ import { formatDate } from "../../../services/remiseLingeService";
 import { useServiceName } from "../../../hooks/useServiceName";
 import { CategoryBar, CategoryChips } from "../StockageArsenal/arsenalUi";
 
-/** Liste des collectes (de la plus ancienne à la plus récente). */
 export function CollectesConcernees({ collectes, title }) {
   const { t } = useTranslation();
   return (
@@ -41,15 +40,10 @@ export function CollectesConcernees({ collectes, title }) {
   );
 }
 
-/**
- * Aperçu avant création : total à remettre par catégorie, collectes concernées,
- * choix du service si l'agent a des collectes ouvertes sur plusieurs services.
- */
 export default function ApercuRemise({ apercu, agentCollecte, serviceChoisi, onChoisirService, onCreer, onChangerAgent, loading }) {
   const { t } = useTranslation();
   const serviceName = useServiceName();
 
-  // Aucune collecte : message clair, pas de remise
   if (!apercu.nbCollectes) {
     return (
       <div className="sa-banner is-warning" style={{ alignItems: "flex-start" }}>
@@ -73,7 +67,6 @@ export default function ApercuRemise({ apercu, agentCollecte, serviceChoisi, onC
 
   return (
     <div>
-      {/* Choix du service (une remise = un service) */}
       {plusieurs && (
         <div style={{ marginBottom: 18 }}>
           <div className="sa-subhead" style={{ marginTop: 0 }}>{t("remise.choose_service")}</div>
@@ -95,7 +88,6 @@ export default function ApercuRemise({ apercu, agentCollecte, serviceChoisi, onC
         </div>
       )}
 
-      {/* Total à remettre par catégorie */}
       {service ? (
         <div className="rl-total">
           <div className="rl-total__head">

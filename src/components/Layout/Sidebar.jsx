@@ -49,6 +49,23 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
     if (terme) setOpenSubmenu(visibleNavItems.find((i) => i.children)?.id ?? null);
   }, [terme]);
 
+  useEffect(() => {
+    const ouvert = activePopup ?? openSubmenu;
+    if (!ouvert) return;
+    const fermer = (e) => {
+      if (e.target.closest?.(`[data-nav="${ouvert}"]`)) return;
+      setActivePopup(null);
+      setOpenSubmenu(null);
+    };
+    const echap = (e) => { if (e.key === "Escape") fermer(e); };
+    document.addEventListener("pointerdown", fermer);
+    document.addEventListener("keydown", echap);
+    return () => {
+      document.removeEventListener("pointerdown", fermer);
+      document.removeEventListener("keydown", echap);
+    };
+  }, [activePopup, openSubmenu]);
+
   const handleLogout = () => {
     logout();
     navigate("/process");
@@ -118,7 +135,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
           );
 
           return (
-            <div key={item.id} className="nav-item-wrap">
+            <div key={item.id} className="nav-item-wrap" data-nav={item.id}>
               {sidebarOpen && !item.children ? (
                 <Link to={item.path || "/"} className={classes} onClick={() => { setOpenSubmenu(null); fermerSurMobile(); }}>
                   {contenu}

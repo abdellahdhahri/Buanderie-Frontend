@@ -7,7 +7,7 @@ import { MessageEtape } from "../../shared/MessageEtape";
 /* ═══════════════════════════════════════════════════════════════════════════
    MESSAGES D'ÉTAT — indique à l'agent la prochaine action
    ═══════════════════════════════════════════════════════════════════════════ */
-export function MessagesEtape({ agent, collecte, bacBlanc, resume }) {
+export function MessagesEtape({ agent, collecte, bacBlanc, resume, modeChambre = false }) {
   const { t } = useTranslation();
 
   return (
@@ -25,7 +25,7 @@ export function MessagesEtape({ agent, collecte, bacBlanc, resume }) {
         <MessageEtape
           tone="blue"
           icon={<Icons.Building size={16} color="#3b82f6" strokeWidth={2.2} />}
-          title={t('collecte.scan_service_code')}
+          title={modeChambre ? t('collecte.scan_room_code', 'Scannez le code-barres de la chambre') : t('collecte.scan_service_code')}
           subtitle={t('collecte.to_start_collection')}
         />
       )}

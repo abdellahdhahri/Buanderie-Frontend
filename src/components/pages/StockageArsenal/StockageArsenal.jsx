@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Boxes, ChevronRight, MapPin, PackageCheck, RefreshCw, Warehouse } from "lucide-react";
+import { Boxes, ChevronRight, MapPin, PackageCheck, RefreshCw, Warehouse, ArrowLeftRight } from "lucide-react";
 import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
+import { Page, PageHeader, ActionBar, ActionButton, Tabs, DataTable, VueSwitch, useVue, RowActions, RowButton } from "../../kit";
 import { fetchArsenaux, fetchEmplacements } from "../../../services/receptionArsenalService";
 import { EmptyState } from "./arsenalUi";
 import { Illustration } from "./illustrations";
@@ -19,9 +20,9 @@ const TABS = [
   { id: "localiser", Icon: MapPin, needsArsenal: false },
 ];
 
-/** Choix de l'arsenal : liste compacte, touches 1…9 comme raccourcis. */
-function ArsenalPicker({ arsenaux, loading, onReload, onSelect }) {
+function ArsenalPicker({ arsenaux, loading, onSelect }) {
   const { t } = useTranslation();
+  const [vue, setVue] = useVue("stockage.arsenaux");
 
   useEffect(() => {
     const onKey = (e) => {
@@ -41,9 +42,7 @@ function ArsenalPicker({ arsenaux, loading, onReload, onSelect }) {
           <h2 className="sa-stage__title">{t("stockageArsenal.choose_arsenal")}</h2>
           <p className="sa-stage__text">{t("stockageArsenal.choose_arsenal_hint")}</p>
         </div>
-        <button type="button" className="sa-btn sa-btn--sm" onClick={onReload} disabled={loading}>
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> {t("common.refresh")}
-        </button>
+        <VueSwitch value={vue} onChange={setVue} />
         <div className="sa-stage__art">
           <Illustration kind="arsenal" />
         </div>
@@ -55,6 +54,23 @@ function ArsenalPicker({ arsenaux, loading, onReload, onSelect }) {
         </div>
       ) : arsenaux.length === 0 ? (
         <EmptyState title={t("stockageArsenal.no_arsenals")} />
+      ) : vue === "tableau" ? (
+        <DataTable
+          columns={{
+            rang: { label: "#", render: (a) => arsenaux.indexOf(a) + 1 },
+            designation: { label: t("stockageArsenal.arsenal"), render: (a) => <strong>{a.designation}</strong> },
+            actions: {
+              label: t("common.actions", "Actions"),
+              render: (a) => (
+                <RowActions>
+                  <RowButton icon={ChevronRight} title={t("stockageArsenal.choose_arsenal")} onClick={() => onSelect(a)} />
+                </RowActions>
+              ),
+            },
+          }}
+          rows={arsenaux}
+          onRowDoubleClick={onSelect}
+        />
       ) : (
         <div className="sa-picks">
           {arsenaux.map((a, i) => (
@@ -103,7 +119,6 @@ export default function StockageArsenal() {
       .finally(() => setLoadingArsenaux(false));
   }, []);
 
-  // Choix / changement d'arsenal : on recharge ses étagères
   const setArsenal = (a) => {
     setArsenalState(a);
     setEmplacements([]);
@@ -116,48 +131,44 @@ export default function StockageArsenal() {
   const currentTab = TABS.find((x) => x.id === tab);
 
   return (
-    <div className="collecte-container sa-page">
-      {/* En-tête : titre + arsenal courant + onglets */}
-      <header className="page-head sa-topbar">
-        <div className="sa-header">
-          <PageHeaderIcon size={44} radius={14} />
-          <div style={{ minWidth: 0 }}>
-            <h1>{t("stockageArsenal.title")}</h1>
-            <p>
-              {arsenal ? (
-                <>
-                  <Warehouse size={13} style={{ verticalAlign: "-2px", marginInlineEnd: 6 }} />
-                  {arsenal.designation}
-                  <button type="button" className="sa-link" style={{ marginInlineStart: 10 }} onClick={() => setArsenal(null)}>
-                    {t("stockageArsenal.change_arsenal")}
-                  </button>
-                </>
-              ) : (
-                t("stockageArsenal.subtitle")
-              )}
-            </p>
-          </div>
-        </div>
+    <Page className="sa-page">
+      <PageHeader
+        icon={<PageHeaderIcon size={40} />}
+        title={t("stockageArsenal.title")}
+        subtitle={arsenal ? `${t("stockageArsenal.arsenal")} : ${arsenal.designation}` : t("stockageArsenal.subtitle")}
+        total={arsenal ? emplacements.length : undefined}
+        totalLabel={t("stockageArsenal.shelves", "ÉTAGÈRES")}
+      />
 
-        <nav role="tablist" className="sa-tabs">
-          {TABS.map(({ id, Icon }) => {
-            const active = id === tab;
-            return (
-              <button key={id} role="tab" aria-selected={active} type="button" className={`sa-tab ${active ? "is-active" : ""}`} onClick={() => setTab(id)}>
-                <Icon size={16} />
-                <span>{t(`stockageArsenal.tabs.${id}`)}</span>
-                {active && <motion.span layoutId="sa-tab-line" className="sa-tab__line" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
-              </button>
-            );
-          })}
-        </nav>
-      </header>
+      <ActionBar>
+        <ActionButton
+          icon={<RefreshCw size={18} className={loadingArsenaux ? "animate-spin" : ""} />}
+          label={t("common.refresh")}
+          variant="details"
+          disabled={loadingArsenaux}
+          onClick={loadArsenaux}
+        />
+        <ActionButton
+          icon={<ArrowLeftRight size={18} />}
+          label={t("stockageArsenal.change_arsenal")}
+          variant="modifier"
+          disabled={!arsenal}
+          onClick={() => setArsenal(null)}
+        />
+      </ActionBar>
+
+      <div className="kit-toolbar" style={{ marginBottom: 16 }}>
+        <Tabs
+          items={TABS.map(({ id, Icon }) => ({ value: id, label: t(`stockageArsenal.tabs.${id}`), icon: <Icon size={16} /> }))}
+          value={tab}
+          onChange={setTab}
+        />
+      </div>
 
       {currentTab.needsArsenal && !arsenal && (
-        <ArsenalPicker arsenaux={arsenaux} loading={loadingArsenaux} onReload={loadArsenaux} onSelect={setArsenal} />
+        <ArsenalPicker arsenaux={arsenaux} loading={loadingArsenaux} onSelect={setArsenal} />
       )}
 
-      {/* Rangement reste monté (masqué) pour ne pas perdre un rangement en cours en changeant d'onglet */}
       {arsenal && (
         <div style={{ display: tab === "rangement" ? "block" : "none" }}>
           <RangementArsenal key={arsenal.id} arsenal={arsenal} emplacements={emplacements} />
@@ -165,6 +176,6 @@ export default function StockageArsenal() {
       )}
       {arsenal && tab === "stock" && <StockArsenalView key={arsenal.id} arsenal={arsenal} />}
       {tab === "localiser" && <LocaliserLinge />}
-    </div>
+    </Page>
   );
 }

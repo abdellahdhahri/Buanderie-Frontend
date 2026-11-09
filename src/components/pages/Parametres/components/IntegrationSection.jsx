@@ -7,7 +7,7 @@ import {
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
 import {
-  integrationService, lancerSynchronisation, setIntegrationCourante,
+  integrationService, lancerSynchronisation, setIntegrationCourante, messageLisible, urlAppelee,
 } from "../../../../services/integrationService";
 import { useIntegration } from "../../../../hooks/useIntegration";
 import { afficherJournal } from "../../../../utils/journalSynchro";
@@ -24,7 +24,8 @@ const REFERENTIEL_INFOS = {
   LIT_INFECTE: ["integration.info.LIT_INFECTE", "L'état d'infection est mis à jour à chaque synchronisation ; la fréquence automatique minimale est de 5 minutes."],
 };
 const rang = (r) => (REFERENTIELS.includes(r) ? REFERENTIELS.indexOf(r) : REFERENTIELS.length);
-const TYPES_CONNECTEUR = ["STANDARD", "PERSONNALISE"];
+const TYPES_CONNECTEUR = ["STANDARD", "CUBIX", "PERSONNALISE"];
+const CONNECTEUR_LABELS = { STANDARD: "Standard", CUBIX: "Cubix", PERSONNALISE: "Personnalisé" };
 const TYPES_AUTH = ["AUCUNE", "BASIC", "BEARER", "CLE_API"];
 const AUTH_LABELS = { AUCUNE: "Aucune", BASIC: "Utilisateur et mot de passe", BEARER: "Jeton (Bearer)", CLE_API: "Clé API" };
 
@@ -164,7 +165,7 @@ function ModeChoix({ value, onChange }) {
   );
 }
 
-function EndpointRow({ endpoint, champs, dirty, ouvert, onToggle, onChange }) {
+function EndpointRow({ endpoint, champs, dirty, ouvert, onToggle, onChange, urlBase }) {
   const { t } = useTranslation();
   const { enCours } = useIntegration();
   const [testing, setTesting] = useState(false);
@@ -177,15 +178,18 @@ function EndpointRow({ endpoint, champs, dirty, ouvert, onToggle, onChange }) {
   const info = REFERENTIEL_INFOS[ref];
   const nom = t(`integration.referentiel.${ref}`, REFERENTIEL_LABELS[ref] || ref);
 
+  const url = urlAppelee(urlBase, endpoint.chemin);
+  const lisible = (m) => messageLisible(m, url);
+
   const tester = async () => {
     setTesting(true);
     try {
       const res = await integrationService.tester(ref);
       const ok = (res.succes ?? res.success ?? res.ok) !== false;
       const message = res.message || t("integration.test_ok", "Connexion réussie.");
-      (ok ? toast.success : toast.error)(`${REFERENTIEL_LABELS[ref] || ref} : ${message}`);
+      (ok ? toast.success : toast.error)(`${nom} : ${lisible(message)}`);
     } catch (err) {
-      toast.error(err.message);
+      toast.error(`${nom} : ${lisible(err.message)}`);
     } finally {
       setTesting(false);
     }
@@ -193,9 +197,10 @@ function EndpointRow({ endpoint, champs, dirty, ouvert, onToggle, onChange }) {
 
   const synchroniser = async () => {
     try {
-      afficherJournal(await lancerSynchronisation(ref), t);
+      const journal = await lancerSynchronisation(ref);
+      afficherJournal({ ...journal, message: lisible(journal?.message) }, t);
     } catch (err) {
-      toast.error(err.message);
+      toast.error(`${nom} : ${lisible(err.message)}`);
     }
   };
 
@@ -252,7 +257,7 @@ function EndpointRow({ endpoint, champs, dirty, ouvert, onToggle, onChange }) {
           )}
           {endpoint.dernierMessage && (
             <p className="m-0 mb-4 text-[12.5px] text-slate-500 dark:text-muted-foreground">
-              {t("integration.message", "Message")} : {endpoint.dernierMessage}
+              {t("integration.message", "Message")} : {lisible(endpoint.dernierMessage)}
             </p>
           )}
 
@@ -405,6 +410,7 @@ export function IntegrationSection() {
   const [champs, setChamps] = useState({});
   const [saving, setSaving] = useState(false);
   const [ouvert, setOuvert] = useState(null);
+  const [modeleBusy, setModeleBusy] = useState(false);
 
   if (integration && integration !== source) {
     const f = toForm(integration);
@@ -462,14 +468,35 @@ export function IntegrationSection() {
     }
   };
 
-  const appliquerModele = async () => {
+  const appliquerModele = async (type = c.typeConnecteur) => {
+    if (!type || type === "PERSONNALISE") return;
+    setModeleBusy(true);
     try {
-      await integrationService.appliquerModele(c.typeConnecteur);
-      appliquer(await integrationService.get());
-      toast.success(t("integration.model_applied", "Modèle appliqué : chemins et champs mis à jour."));
+      await integrationService.appliquerModele(type);
+      const data = await integrationService.get();
+      const serveur = toForm(data);
+      const local = form;
+      setSource(data);
+      setBase(serveur);
+      setIntegrationCourante(data);
+      setForm({
+        configuration: { ...local.configuration, typeConnecteur: type },
+        endpoints: serveur.endpoints.map((e) => {
+          const avant = local.endpoints.find((x) => x.referentiel === e.referentiel);
+          return avant ? { ...e, actif: avant.actif } : e;
+        }),
+      });
+      toast.success(t("integration.model_applied_type", "Modèle {{type}} appliqué : chemins et champs remplis pour tous les référentiels.", { type: CONNECTEUR_LABELS[type] || type }));
     } catch (err) {
       toast.error(err.message);
+    } finally {
+      setModeleBusy(false);
     }
+  };
+
+  const choisirConnecteur = (type) => {
+    setConfig({ typeConnecteur: type });
+    if (type !== "PERSONNALISE") appliquerModele(type);
   };
 
   const typesConnecteur = [...new Set([...TYPES_CONNECTEUR, c.typeConnecteur].filter(Boolean))];
@@ -514,20 +541,25 @@ export function IntegrationSection() {
           <label className="flex flex-col gap-1.5">
             <span className="text-[12.5px] font-medium text-slate-600 dark:text-muted-foreground">{t("integration.connector", "Type de connecteur")}</span>
             <div className="flex gap-2">
-              <select value={c.typeConnecteur || ""} onChange={(e) => setConfig({ typeConnecteur: e.target.value })} className={selectCls}>
-                {typesConnecteur.map((v) => <option key={v} value={v}>{v}</option>)}
+              <select value={c.typeConnecteur || ""} onChange={(e) => choisirConnecteur(e.target.value)} disabled={modeleBusy} className={selectCls}>
+                {typesConnecteur.map((v) => <option key={v} value={v}>{t(`integration.connector_type.${v}`, CONNECTEUR_LABELS[v] || v)}</option>)}
               </select>
               <Button
                 type="button"
                 variant="outline"
-                onClick={appliquerModele}
-                disabled={dirty || !c.typeConnecteur || c.typeConnecteur === "PERSONNALISE"}
+                onClick={() => appliquerModele()}
+                disabled={modeleBusy || !c.typeConnecteur || c.typeConnecteur === "PERSONNALISE"}
                 title={t("integration.apply_model_hint", "Remplit automatiquement les chemins et les champs de tous les référentiels")}
               >
-                <Wand2 className="h-4 w-4" />
+                {modeleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
                 <span className="hidden sm:inline">{t("integration.apply_model", "Appliquer le modèle")}</span>
               </Button>
             </div>
+            <small className="text-[11.5px] text-slate-500 dark:text-muted-foreground">
+              {c.typeConnecteur === "PERSONNALISE"
+                ? t("integration.connector_custom_hint", "Personnalisé : renseignez vous-même les chemins et les champs de chaque référentiel.")
+                : t("integration.connector_model_hint", "Le modèle remplit les chemins et les champs des référentiels. L'URL de base et les identifiants restent à saisir.")}
+            </small>
           </label>
           {auth === "BASIC" && (
             <>
@@ -603,6 +635,7 @@ export function IntegrationSection() {
             ouvert={ouvert === e.referentiel}
             onToggle={() => setOuvert((o) => (o === e.referentiel ? null : e.referentiel))}
             onChange={setEndpoint}
+            urlBase={c.urlBase}
           />
         ))}
       </section>

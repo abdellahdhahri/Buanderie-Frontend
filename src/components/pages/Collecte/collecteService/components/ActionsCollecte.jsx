@@ -3,12 +3,14 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Icons } from "../../shared/icons";
 import { ActionButton } from "../../shared/ActionButton";
+import { useCircuitInfecte } from "../../../../../hooks/useEstablishment";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    BOUTONS D'ACTION — déclarer un sac infecté / clôturer
    ═══════════════════════════════════════════════════════════════════════════ */
 export function ActionsCollecte({ nbNonTr, loading, canClose, onDeclarerSac, onCloturer }) {
   const { t } = useTranslation();
+  const circuitInfecte = useCircuitInfecte();
 
   return (
     <div style={{
@@ -16,12 +18,12 @@ export function ActionsCollecte({ nbNonTr, loading, canClose, onDeclarerSac, onC
       alignItems: "center", justifyContent: "flex-start",
       paddingTop: 16, borderTop: "1px solid #f1f5f9",
     }}>
-      <ActionButton
+      {circuitInfecte && <ActionButton
         onClick={onDeclarerSac}
         icon={<Icons.Biohazard size={15} color="white" strokeWidth={2.5} />}
         label={t('collecte.declare_infected')}
         type="danger"
-      />
+      />}
 
       {nbNonTr > 0 && (
         <motion.div

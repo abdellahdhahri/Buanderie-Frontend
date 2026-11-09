@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshCcw, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
-import { lancerSynchronisation } from "../../services/integrationService";
+import { lancerSynchronisation, messageLisible } from "../../services/integrationService";
 import { useIntegration } from "../../hooks/useIntegration";
 import { afficherJournal } from "../../utils/journalSynchro";
 
@@ -15,9 +15,9 @@ export function SynchroniserButton({ referentiel, label, onTermine, variant }) {
     try {
       const journal = await lancerSynchronisation(referentiel);
       await onTermine?.(journal);
-      afficherJournal(journal, t);
+      afficherJournal({ ...journal, message: messageLisible(journal?.message) }, t);
     } catch (err) {
-      Swal.fire({ title: `❌ ${t("integration.sync_error", "Synchronisation impossible")}`, text: err.message, icon: "error" });
+      Swal.fire({ title: `❌ ${t("integration.sync_error", "Synchronisation impossible")}`, text: messageLisible(err.message), icon: "error" });
     }
   };
 
