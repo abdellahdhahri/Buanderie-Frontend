@@ -1,11 +1,13 @@
 import { createRoot } from "react-dom/client";
-import App from "./app/App.jsx";
-import "./styles/index.css";
-import { applySavedTheme } from "./app/utils/theme";
+import App from "./App.jsx";
+import "./index.css";
+import { applySavedTheme } from "./utils/theme";
 
-// Réapplique le thème clair/sombre choisi avant le premier rendu
+import { chargerEstablishment } from "./services/establishmentService";
+
 applySavedTheme();
-import { NotificationProvider } from "./app/contextes/NotificationContext.jsx";
+chargerEstablishment();
+import { NotificationProvider } from "./contextes/NotificationContext.jsx";
 
 const rootElement = document.getElementById("root");
 if (rootElement) {
