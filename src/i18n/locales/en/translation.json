@@ -74,7 +74,8 @@
     "clear": "Clear",
     "delete_confirm": "Confirm deletion?",
     "delete_confirm_text": "This action cannot be undone.",
-    "delete_confirm_yes": "Yes, delete"
+    "delete_confirm_yes": "Yes, delete",
+    "back_home": "Back to dashboard"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -128,7 +129,9 @@
     "Workflow": "Laundry workflow",
     "Stockage Arsenal": "Arsenal storage",
     "Suivi du stock": "Stock tracking",
-    "Services": "Services"
+    "Services": "Services",
+    "main_menu": "Main menu",
+    "Chargement (pesée)": "Loading (weighing)"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -711,7 +714,8 @@
     "selected": "selected",
     "barcode": "Barcode",
     "import_type_info": "Selected machines will be imported as {{type}}",
-    "importing": "Importing..."
+    "importing": "Importing...",
+    "status": "Status"
   },
   "machine_status": {
     "FONCTIONNEL": "Functional",
@@ -724,9 +728,9 @@
     "IMMOBILISE": "Immobilized"
   },
   "machine_type": {
-    "LAVEUR": "🧺 Washer",
-    "SECHEUR": "🌬️ Dryer",
-    "LAVEUR_SECHEUR": "🧺🌬️ Washer/Dryer",
+    "LAVEUR": "Washer",
+    "SECHEUR": "Dryer",
+    "LAVEUR_SECHEUR": "Washer/Dryer",
     "AUTRE": "Other"
   },
   "machine_category": {
@@ -984,7 +988,8 @@
     "status_drying": "Drying in progress",
     "dryer_cycle_hint": "Detailed tracking in the Drying screen.",
     "btn_start_dry": "Start drying",
-    "new_dry": "New drying"
+    "new_dry": "New drying",
+    "finish": "Finish"
   },
   "inventaire": {
     "title": "Inventory",
@@ -1151,7 +1156,8 @@
     "n_linges_one": "{{count}} item",
     "n_linges_other": "{{count}} items",
     "linge": "Item",
-    "new_reception": "New reception"
+    "new_reception": "New reception",
+    "designation": "Designation"
   },
   "reception_status": {
     "RECEPTION": "Received",
@@ -1240,7 +1246,11 @@
     "type": "Type",
     "category": "Category",
     "state": "State",
-    "status": "Status"
+    "status": "Status",
+    "tri_success_weight": "{{code}} assigned to lot {{lotCode}}\nDeclared lot weight: {{poids}} kg\nCategory: {{categorie}}\nType: {{typeCollecte}}",
+    "lot": "Lot",
+    "code": "Code",
+    "time": "Time"
   },
   "tri_status": {
     "EN_TRI": "Sorting",
@@ -1313,7 +1323,12 @@
     "scan_infected_bags": "Scan infected bags",
     "bag_in_wash": "bag in wash",
     "stop_infected_cycle": "Stop the infected cycle?",
-    "agent_not_connected": "👤 Agent not connected — please log in again"
+    "agent_not_connected": "👤 Agent not connected — please log in again",
+    "waiting_lots": "Lots waiting for washing",
+    "waiting_lots_hint": "Lots validated after weighing, ready to be washed.",
+    "no_waiting_lots": "No lot waiting for washing.",
+    "scan_machine_for_lot": "Scan the machine to wash lot {{code}}",
+    "add_lot": "Add to load"
   },
   "lot_dialog": {
     "suggested_program": "Suggested program",
@@ -1638,7 +1653,11 @@
     "incomplete_linens_hint": "View incomplete linen",
     "drag_hint": "Drag the cards to rearrange them",
     "reset_layout": "Reset layout",
-    "drag_card": "Drag to move"
+    "drag_card": "Drag to move",
+    "available_short": "Available",
+    "available_hint": "Includes folded or dried linen when storage or folding is disabled",
+    "from_disabled_steps": "including {{n}} from disabled steps",
+    "linens_by_step": "Linens by step"
   },
   "historique": {
     "title": "Activity Log",
@@ -2495,7 +2514,9 @@
       "voice": "Voice assistant",
       "voice_hint": "Language, speed, repetition",
       "preferences": "Preferences",
-      "preferences_hint": "Display, thresholds, categories"
+      "preferences_hint": "Display, thresholds, categories",
+      "workflow": "Linen workflow",
+      "workflow_hint": "Active steps and sequences"
     },
     "scan": {
       "title": "Linen identification mode",
@@ -2642,7 +2663,11 @@
       "service": "Service",
       "position": "Position",
       "contact_admin": "To change this information, contact your administrator.",
-      "privileges": "{{count}} access rights"
+      "privileges": "{{count}} access rights",
+      "access_title": "Access",
+      "role": "Role",
+      "rights": "Access rights",
+      "all_rights": "All rights"
     },
     "security": {
       "not_connected": "Form is valid. Saving will be connected to the server soon.",
@@ -2659,7 +2684,10 @@
       "session_desc": "Device currently signed in to your account.",
       "this_device": "This device",
       "logout": "Log out"
-    }
+    },
+    "open_all": "Expand all",
+    "close_all": "Collapse all",
+    "autosave": "Settings are saved automatically."
   },
   "modal": {
     "fields_count": "{{count}} fields",
@@ -2900,5 +2928,120 @@
     "manual": "Manual",
     "manual_hint": "This service is added manually: it stays editable here and is not replaced by synchronisation. Use a code that does not exist in the external system.",
     "duplicate": "Code {{code}} is already in use."
+  },
+  "kit": {
+    "total": "TOTAL",
+    "columnSettings": "Column settings",
+    "back": "Back",
+    "all": "All",
+    "period": "Period",
+    "column": "Column",
+    "allFields": "All fields",
+    "print": "Print",
+    "resetFilters": "Reset filters",
+    "reset": "Reset",
+    "results": "{{count}} result(s)",
+    "exportExcel": "Export to Excel",
+    "stats": "Statistics",
+    "empty": "No data",
+    "loading": "Loading…",
+    "clickToSort": "Click to sort",
+    "rows": "row(s)",
+    "shown": "shown",
+    "page": "Page",
+    "prevPage": "Previous page",
+    "nextPage": "Next page",
+    "close": "Close",
+    "confirmation": "Confirmation",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "reason": "Reason",
+    "saving": "Saving…",
+    "backToList": "Back to list",
+    "noInfo": "No information.",
+    "printStats": "Print statistics",
+    "noResult": "No result",
+    "select": "Select…",
+    "clear": "Clear",
+    "unselectAll": "Unselect all",
+    "selectAllRows": "Select all {{total}} rows",
+    "selectRow": "Select row",
+    "row": "row",
+    "selected": "selected",
+    "selectAll": "Select all",
+    "unselect": "Unselect",
+    "manageColumns": "Manage columns",
+    "done": "Done",
+    "field": "Field",
+    "display": "Display",
+    "search": "Search",
+    "viewInteractive": "Interactive",
+    "viewTable": "Table",
+    "viewMode": "Display type"
+  },
+  "chargement": {
+    "title": "Loading (weighing)",
+    "subtitle": "Fill a lot on the scale, then validate it for washing.",
+    "step_lot": "Lot on the scale",
+    "step_linens": "Linens",
+    "step_weigh": "Weighing",
+    "step_validate": "Validation",
+    "scan_lot": "Scan the lot placed on the scale",
+    "scan_linen": "Scan linens one by one",
+    "lot_validated": "Lot validated",
+    "lot_not_open": "Lot {{code}} is not open (status: {{etat}}).",
+    "lot_ready": "Lot {{code}} ready: scan the linens",
+    "weight_required": "Enter the weight shown on the scale.",
+    "weight_saved": "Weight saved",
+    "validated": "Lot {{code}} ready for washing",
+    "removed": "{{code}} removed from the lot",
+    "waiting_wash": "Lot {{code}} waiting for washing",
+    "change_lot": "Change lot",
+    "scanned_linens": "Scanned linens",
+    "no_lot": "No lot selected",
+    "empty": "No linen in this lot",
+    "empty_hint": "Scanned linens will appear here.",
+    "remove": "Remove from lot",
+    "remove_confirm": "Remove linen {{code}} from lot {{lot}}?",
+    "target": "Target {{kg}} kg (indicative)",
+    "linens": "Linens",
+    "declared_weight": "Declared weight",
+    "scale": "Scale",
+    "gap": "Gap",
+    "scale_weight": "Scale weight (kg)",
+    "scale_weight_hint": "Optional: leave empty to keep the last weighing.",
+    "save_weight": "Weigh",
+    "validate_loading": "Validate loading",
+    "validate_lot": "Validate lot",
+    "start_wash": "Start washing",
+    "start_wash_now": "Start washing now?",
+    "start_wash_text": "Lot {{code}} is ready. Without immediate washing, it stays waiting for washing.",
+    "later": "Later",
+    "next_lot": "Next lot",
+    "ready_short": "Ready"
+  },
+  "parcours": {
+    "title": "Linen workflow",
+    "desc": "Enable the steps used by the facility and define the possible next steps.",
+    "step_disabled_title": "{{nom}} step disabled",
+    "step_disabled": "The {{nom}} step is disabled for this facility.",
+    "screen_unavailable": "Screen unavailable",
+    "only_when_inactive": "This screen is only used when the {{nom}} step is disabled.",
+    "disabled_ok": "{{nom}} step disabled",
+    "enabled_ok": "{{nom}} step enabled",
+    "next_saved": "Next steps of {{nom}} saved",
+    "custom_locked": "Custom step: outside the workflow",
+    "mandatory_locked": "Mandatory step: it cannot be disabled",
+    "custom": "Custom",
+    "mandatory": "Mandatory",
+    "inactive_step": "Inactive step",
+    "entry_point": "Entry point",
+    "legend_mandatory": "Collection, Reception, Washing and Distribution are mandatory",
+    "empty": "No step configured.",
+    "step": "Step",
+    "zone": "Zone",
+    "active": "Active",
+    "next": "Possible next steps",
+    "accepts": "Accepts"
   }
 }

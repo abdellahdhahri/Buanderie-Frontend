@@ -120,21 +120,15 @@
 
 .dark [class*="nav-item__chevron--"] { color: currentColor; }
 
-.dark .nav-item__count {
-  background: rgba(255, 255, 255, .08);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
-}
-
-/* Sous-menus : couleurs d'accent éclaircies pour rester lisibles */
-.dark .submenu--rh        { --accent-strong: #b4c3ff; }
-.dark .submenu--presences { --accent-strong: #fdc58a; }
-.dark .submenu--paie      { --accent-strong: #8ce8c9; }
-.dark .submenu--conges    { --accent-strong: #fca5a5; }
-.dark .submenu--params    { --accent-strong: #d0bcff; }
-.dark .submenu--suivi     { --accent-strong: #9bdcfb; }
-
-.dark .submenu__link { color: var(--dk-text-2); }
-.dark .submenu__link:hover .submenu__link-icon { background: var(--dk-surface-3); }
+.dark [class*="submenu__link--"] { color: var(--dk-text-2); }
+.dark [class*="submenu__link--"]:hover { background: var(--dk-surface-3); }
+.dark .submenu__link--rh.submenu__link--active        { background: rgba(92, 124, 250, .13); color: #b4c3ff; }
+.dark .submenu__link--presences.submenu__link--active { background: rgba(253, 154, 43, .12); color: #fdc58a; }
+.dark .submenu__link--paie.submenu__link--active      { background: rgba(32, 201, 151, .12); color: #8ce8c9; }
+.dark .submenu__link--conges.submenu__link--active    { background: rgba(242, 85, 85, .12); color: #fca5a5; }
+.dark .submenu__link--params.submenu__link--active    { background: rgba(139, 92, 246, .14); color: #d0bcff; }
+.dark .submenu__link--suivi.submenu__link--active     { background: rgba(56, 189, 248, .12); color: #9bdcfb; }
+.dark .sidebar__search input { color: var(--dk-text); }
 
 .dark .nav-popup__card:hover,
 .dark .navbar__icon-btn:hover,
@@ -192,25 +186,25 @@
 }
 
 /* ── 6. Tableaux, champs, alertes ─────────────────────────────────────────── */
-.dark .main-content table th,
+.dark .main-content table:not(.modern-table) th,
 .dark .param-table th {
   color: #5eead4;
   background: rgba(45, 212, 191, .07);
   border-bottom-color: rgba(45, 212, 191, .25);
 }
 
-.dark .main-content table td,
+.dark .main-content table:not(.modern-table) td,
 .dark .param-table td {
   color: var(--dk-text-2);
   border-bottom-color: var(--dk-border-soft);
 }
 
-.dark .main-content table tr:hover td,
+.dark .main-content table:not(.modern-table) tr:hover td,
 .dark .param-table tr:hover td {
   background: rgba(45, 212, 191, .05);
 }
 
-.dark .main-content table tr.selected-row td,
+.dark .main-content table:not(.modern-table) tr.selected-row td,
 .dark .param-table tr.selected-row td,
 .dark .param-table tr.expanded td {
   background: rgba(45, 212, 191, .1) !important;

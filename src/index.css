@@ -1,0 +1,7 @@
+@import './styles/fonts.css';
+@import "tailwindcss";
+@import './styles/theme.css';
+@import './components/Layout/Layout.css';
+@import './styles/tables.css';
+@import './styles/modal-kit.css';
+@import './styles/dark.css';

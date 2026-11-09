@@ -74,7 +74,8 @@
     "clear": "Effacer",
     "delete_confirm": "Confirmer la suppression ?",
     "delete_confirm_text": "Cette action est irréversible.",
-    "delete_confirm_yes": "Oui, supprimer"
+    "delete_confirm_yes": "Oui, supprimer",
+    "back_home": "Retour au tableau de bord"
   },
   "navigation": {
     "dashboard": "Tableau de bord",
@@ -128,7 +129,9 @@
     "Workflow": "Processus buanderie",
     "Stockage Arsenal": "Stockage Arsenal",
     "Suivi du stock": "Suivi du stock",
-    "Services": "Services"
+    "Services": "Services",
+    "main_menu": "Menu principal",
+    "Chargement (pesée)": "Chargement (pesée)"
   },
   "nav": {
     "dashboard": "Tableau de bord",
@@ -711,7 +714,8 @@
     "selected": "sélectionné(s)",
     "barcode": "Code-barres",
     "import_type_info": "Les machines sélectionnées seront importées en tant que {{type}}",
-    "importing": "Importation..."
+    "importing": "Importation...",
+    "status": "État"
   },
   "machine_status": {
     "FONCTIONNEL": "Fonctionnel",
@@ -724,9 +728,9 @@
     "IMMOBILISE": "Immobilisé"
   },
   "machine_type": {
-    "LAVEUR": "🧺 Laveur",
-    "SECHEUR": "🌬️ Sécheur",
-    "LAVEUR_SECHEUR": "🧺🌬️ Laveur/Sécheur",
+    "LAVEUR": "Laveur",
+    "SECHEUR": "Sécheur",
+    "LAVEUR_SECHEUR": "Laveur/Sécheur",
     "AUTRE": "Autre"
   },
   "machine_category": {
@@ -984,7 +988,8 @@
     "status_drying": "Séchage en cours",
     "dryer_cycle_hint": "Suivi détaillé dans l'écran Séchage.",
     "btn_start_dry": "Démarrer un séchage",
-    "new_dry": "Nouveau séchage"
+    "new_dry": "Nouveau séchage",
+    "finish": "Terminer"
   },
   "inventaire": {
     "title": "Inventaire",
@@ -1151,7 +1156,8 @@
     "n_linges_one": "{{count}} linge",
     "n_linges_other": "{{count}} linges",
     "linge": "Linge",
-    "new_reception": "Nouvelle réception"
+    "new_reception": "Nouvelle réception",
+    "designation": "Désignation"
   },
   "reception_status": {
     "RECEPTION": "Réceptionné",
@@ -1240,7 +1246,11 @@
     "type": "Type",
     "category": "Catégorie",
     "state": "État",
-    "status": "Statut"
+    "status": "Statut",
+    "tri_success_weight": "{{code}} affecté au lot {{lotCode}}\nPoids déclaré du lot : {{poids}} kg\nCatégorie : {{categorie}}\nType : {{typeCollecte}}",
+    "lot": "Lot",
+    "code": "Code",
+    "time": "Heure"
   },
   "tri_status": {
     "EN_TRI": "En tri",
@@ -1313,7 +1323,12 @@
     "scan_infected_bags": "Scanner les sacs infectés",
     "bag_in_wash": "sac en lavage",
     "stop_infected_cycle": "Arrêter le cycle infecté ?",
-    "agent_not_connected": "👤 Agent non connecté — veuillez vous reconnecter"
+    "agent_not_connected": "👤 Agent non connecté — veuillez vous reconnecter",
+    "waiting_lots": "Lots en attente de lavage",
+    "waiting_lots_hint": "Lots validés après pesée, prêts à être lavés.",
+    "no_waiting_lots": "Aucun lot en attente de lavage.",
+    "scan_machine_for_lot": "Scannez la machine pour laver le lot {{code}}",
+    "add_lot": "Ajouter au chargement"
   },
   "lot_dialog": {
     "suggested_program": "Programme suggéré",
@@ -1638,7 +1653,11 @@
     "incomplete_linens_hint": "Voir les linges incomplets",
     "drag_hint": "Glissez les cartes pour les réorganiser",
     "reset_layout": "Réinitialiser la disposition",
-    "drag_card": "Glisser pour déplacer"
+    "drag_card": "Glisser pour déplacer",
+    "available_short": "Disponibles",
+    "available_hint": "Inclut le linge plié ou séché quand le stockage ou le pliage est désactivé",
+    "from_disabled_steps": "dont {{n}} venant d'étapes désactivées",
+    "linens_by_step": "Linges par étape"
   },
   "historique": {
     "title": "Journal des Activités",
@@ -2495,7 +2514,9 @@
       "voice": "Assistant vocal",
       "voice_hint": "Langue, vitesse, répétition",
       "preferences": "Préférences",
-      "preferences_hint": "Affichage, seuils, catégories"
+      "preferences_hint": "Affichage, seuils, catégories",
+      "workflow": "Parcours du linge",
+      "workflow_hint": "Étapes actives et enchaînements"
     },
     "scan": {
       "title": "Mode d'identification des linges",
@@ -2642,7 +2663,11 @@
       "service": "Service",
       "position": "Poste",
       "contact_admin": "Pour modifier ces informations, contactez votre administrateur.",
-      "privileges": "{{count}} droits d'accès"
+      "privileges": "{{count}} droits d'accès",
+      "access_title": "Accès",
+      "role": "Rôle",
+      "rights": "Droits d'accès",
+      "all_rights": "Tous les droits"
     },
     "security": {
       "not_connected": "Formulaire valide. L'enregistrement sera relié au serveur prochainement.",
@@ -2659,7 +2684,10 @@
       "session_desc": "Appareil actuellement connecté à votre compte.",
       "this_device": "Cet appareil",
       "logout": "Se déconnecter"
-    }
+    },
+    "open_all": "Tout ouvrir",
+    "close_all": "Tout fermer",
+    "autosave": "Les réglages sont enregistrés automatiquement."
   },
   "modal": {
     "fields_count": "{{count}} champs",
@@ -2900,5 +2928,120 @@
     "manual": "Manuel",
     "manual_hint": "Ce service est ajouté manuellement : il reste modifiable ici et n'est pas remplacé par la synchronisation. Utilisez un code qui n'existe pas dans le système externe.",
     "duplicate": "Le code {{code}} est déjà utilisé."
+  },
+  "kit": {
+    "total": "TOTAL",
+    "columnSettings": "Paramètres des colonnes",
+    "back": "Retour",
+    "all": "Tous",
+    "period": "Période",
+    "column": "Colonne",
+    "allFields": "Tous les champs",
+    "print": "Imprimer",
+    "resetFilters": "Réinitialiser les filtres",
+    "reset": "Réinitialiser",
+    "results": "{{count}} résultat(s)",
+    "exportExcel": "Exporter Excel",
+    "stats": "Statistiques",
+    "empty": "Aucune donnée",
+    "loading": "Chargement…",
+    "clickToSort": "Cliquer pour trier",
+    "rows": "ligne(s)",
+    "shown": "affichée(s)",
+    "page": "Page",
+    "prevPage": "Page précédente",
+    "nextPage": "Page suivante",
+    "close": "Fermer",
+    "confirmation": "Confirmation",
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "reason": "Motif",
+    "saving": "Enregistrement…",
+    "backToList": "Retour à la liste",
+    "noInfo": "Aucune information.",
+    "printStats": "Imprimer les statistiques",
+    "noResult": "Aucun résultat",
+    "select": "Sélectionner…",
+    "clear": "Effacer",
+    "unselectAll": "Tout désélectionner",
+    "selectAllRows": "Sélectionner les {{total}} lignes",
+    "selectRow": "Sélectionner la ligne",
+    "row": "ligne",
+    "selected": "sélectionné(s)",
+    "selectAll": "Sélectionner tout",
+    "unselect": "Désélectionner",
+    "manageColumns": "Gestion des colonnes",
+    "done": "Terminer",
+    "field": "Champ",
+    "display": "Affichage",
+    "search": "Recherche",
+    "viewInteractive": "Interactif",
+    "viewTable": "Tableau",
+    "viewMode": "Type d'affichage"
+  },
+  "chargement": {
+    "title": "Chargement (pesée)",
+    "subtitle": "Remplissez un lot sur la balance puis validez-le pour le lavage.",
+    "step_lot": "Lot sur la balance",
+    "step_linens": "Linges",
+    "step_weigh": "Pesée",
+    "step_validate": "Validation",
+    "scan_lot": "Scannez le lot posé sur la balance",
+    "scan_linen": "Scannez les linges un par un",
+    "lot_validated": "Lot validé",
+    "lot_not_open": "Le lot {{code}} n'est pas ouvert (état : {{etat}}).",
+    "lot_ready": "Lot {{code}} prêt : scannez les linges",
+    "weight_required": "Saisissez le poids indiqué par la balance.",
+    "weight_saved": "Pesée enregistrée",
+    "validated": "Lot {{code}} prêt pour le lavage",
+    "removed": "{{code}} retiré du lot",
+    "waiting_wash": "Lot {{code}} en attente de lavage",
+    "change_lot": "Changer de lot",
+    "scanned_linens": "Linges scannés",
+    "no_lot": "Aucun lot sélectionné",
+    "empty": "Aucun linge dans ce lot",
+    "empty_hint": "Les linges scannés apparaîtront ici.",
+    "remove": "Retirer du lot",
+    "remove_confirm": "Retirer le linge {{code}} du lot {{lot}} ?",
+    "target": "Repère {{kg}} kg (indicatif)",
+    "linens": "Linges",
+    "declared_weight": "Poids déclaré",
+    "scale": "Balance",
+    "gap": "Écart",
+    "scale_weight": "Poids de la balance (kg)",
+    "scale_weight_hint": "Facultatif : laissez vide pour conserver la dernière pesée.",
+    "save_weight": "Peser",
+    "validate_loading": "Valider le chargement",
+    "validate_lot": "Valider le lot",
+    "start_wash": "Lancer le lavage",
+    "start_wash_now": "Lancer le lavage maintenant ?",
+    "start_wash_text": "Le lot {{code}} est prêt. Sans lavage immédiat, il reste en attente de lavage.",
+    "later": "Plus tard",
+    "next_lot": "Lot suivant",
+    "ready_short": "Prêt"
+  },
+  "parcours": {
+    "title": "Parcours du linge",
+    "desc": "Activez les étapes utilisées par l'établissement et définissez les étapes suivantes possibles.",
+    "step_disabled_title": "Étape {{nom}} désactivée",
+    "step_disabled": "L'étape {{nom}} est désactivée pour cet établissement.",
+    "screen_unavailable": "Écran indisponible",
+    "only_when_inactive": "Cet écran n'est utilisé que lorsque l'étape {{nom}} est désactivée.",
+    "disabled_ok": "Étape {{nom}} désactivée",
+    "enabled_ok": "Étape {{nom}} activée",
+    "next_saved": "Suivantes de {{nom}} enregistrées",
+    "custom_locked": "Étape personnalisée : hors parcours",
+    "mandatory_locked": "Étape obligatoire : elle ne peut pas être désactivée",
+    "custom": "Personnalisée",
+    "mandatory": "Obligatoire",
+    "inactive_step": "Étape inactive",
+    "entry_point": "Point d'entrée",
+    "legend_mandatory": "Collecte, Réception, Lavage et Distribution sont obligatoires",
+    "empty": "Aucune étape configurée.",
+    "step": "Étape",
+    "zone": "Zone",
+    "active": "Active",
+    "next": "Suivantes possibles",
+    "accepts": "Accepte"
   }
 }

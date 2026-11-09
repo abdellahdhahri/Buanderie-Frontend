@@ -368,14 +368,14 @@
 }
 
 /* Table Refined Styling */
-.main-content table,
+.main-content table:not(.modern-table),
 .param-table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
 }
 
-.main-content table th,
+.main-content table:not(.modern-table) th,
 .param-table th {
     padding: 16px 24px;
     text-align: left;
@@ -388,7 +388,7 @@
     border-bottom: 2px solid rgba(13, 148, 136, 0.3);
 }
 
-.main-content table td,
+.main-content table:not(.modern-table) td,
 .param-table td {
     padding: 18px 24px;
     font-size: 0.95rem;
@@ -397,12 +397,12 @@
     transition: background 0.2s;
 }
 
-.main-content table tr:hover td,
+.main-content table:not(.modern-table) tr:hover td,
 .param-table tr:hover td {
     background: rgba(20, 184, 166, 0.05);
 }
 
-.main-content table tr.selected-row td,
+.main-content table:not(.modern-table) tr.selected-row td,
 .param-table tr.selected-row td {
     background: rgba(13, 148, 136, 0.09) !important;
     border-bottom: 1px solid rgba(13, 148, 136, 0.25);

@@ -74,7 +74,8 @@
     "clear": "مسح",
     "delete_confirm": "تأكيد الحذف؟",
     "delete_confirm_text": "هذا الإجراء غير قابل للتراجع.",
-    "delete_confirm_yes": "نعم، احذف"
+    "delete_confirm_yes": "نعم، احذف",
+    "back_home": "العودة إلى لوحة القيادة"
   },
   "navigation": {
     "dashboard": "لوحة التحكم",
@@ -128,7 +129,9 @@
     "Workflow": "مسار المغسلة",
     "Stockage Arsenal": "تخزين المستودع",
     "Suivi du stock": "متابعة المخزون",
-    "Services": "الأقسام"
+    "Services": "الأقسام",
+    "main_menu": "القائمة الرئيسية",
+    "Chargement (pesée)": "التحميل (الوزن)"
   },
   "nav": {
     "dashboard": "لوحة التحكم",
@@ -715,7 +718,8 @@
     "selected": "محدد(ة)",
     "barcode": "الرمز الشريطي",
     "import_type_info": "سيتم استيراد الآلات المحددة كـ {{type}}",
-    "importing": "جاري الاستيراد..."
+    "importing": "جاري الاستيراد...",
+    "status": "الحالة"
   },
   "machine_status": {
     "FONCTIONNEL": "يعمل",
@@ -728,9 +732,9 @@
     "IMMOBILISE": "مجمّد"
   },
   "machine_type": {
-    "LAVEUR": "🧺 غسالة",
-    "SECHEUR": "🌬️ مجفف",
-    "LAVEUR_SECHEUR": "🧺🌬️ غسالة/مجفف",
+    "LAVEUR": "غسالة",
+    "SECHEUR": "مجفف",
+    "LAVEUR_SECHEUR": "غسالة/مجفف",
     "AUTRE": "أخرى"
   },
   "machine_category": {
@@ -988,7 +992,8 @@
     "status_drying": "التجفيف جارٍ",
     "dryer_cycle_hint": "المتابعة المفصلة في شاشة التجفيف.",
     "btn_start_dry": "بدء التجفيف",
-    "new_dry": "تجفيف جديد"
+    "new_dry": "تجفيف جديد",
+    "finish": "إنهاء"
   },
   "inventaire": {
     "title": "المخزون",
@@ -1155,7 +1160,8 @@
     "n_linges_one": "{{count}} قطعة",
     "n_linges_other": "{{count}} قطع",
     "linge": "قطعة",
-    "new_reception": "استلام جديد"
+    "new_reception": "استلام جديد",
+    "designation": "التسمية"
   },
   "reception_status": {
     "RECEPTION": "مستلم",
@@ -1244,7 +1250,11 @@
     "type": "النوع",
     "category": "الفئة",
     "state": "الحالة",
-    "status": "الحالة"
+    "status": "الحالة",
+    "tri_success_weight": "تم تعيين {{code}} إلى الدفعة {{lotCode}}\nالوزن المصرح به للدفعة: {{poids}} كغ\nالفئة: {{categorie}}\nالنوع: {{typeCollecte}}",
+    "lot": "الدفعة",
+    "code": "الرمز",
+    "time": "الوقت"
   },
   "tri_status": {
     "EN_TRI": "في الفرز",
@@ -1317,7 +1327,12 @@
     "scan_infected_bags": "امسح أكياساً ملوثة",
     "bag_in_wash": "كيس قيد الغسيل",
     "stop_infected_cycle": "إيقاف الدورة الملوثة؟",
-    "agent_not_connected": "👤 العون غير متصل — يرجى إعادة تسجيل الدخول"
+    "agent_not_connected": "👤 العون غير متصل — يرجى إعادة تسجيل الدخول",
+    "waiting_lots": "دفعات في انتظار الغسيل",
+    "waiting_lots_hint": "دفعات تمت المصادقة عليها بعد الوزن وجاهزة للغسيل.",
+    "no_waiting_lots": "لا توجد دفعات في انتظار الغسيل.",
+    "scan_machine_for_lot": "امسح الآلة لغسل الدفعة {{code}}",
+    "add_lot": "إضافة إلى الحمولة"
   },
   "lot_dialog": {
     "suggested_program": "البرنامج المقترح",
@@ -1642,7 +1657,11 @@
     "incomplete_linens_hint": "عرض القطع غير المكتملة",
     "drag_hint": "اسحب البطاقات لإعادة ترتيبها",
     "reset_layout": "إعادة تعيين التخطيط",
-    "drag_card": "اسحب للتحريك"
+    "drag_card": "اسحب للتحريك",
+    "available_short": "متاحة",
+    "available_hint": "يشمل البياضات المطوية أو المجففة عند تعطيل التخزين أو الطي",
+    "from_disabled_steps": "منها {{n}} من مراحل معطلة",
+    "linens_by_step": "البياضات حسب المرحلة"
   },
   "historique": {
     "title": "سجل النشاطات",
@@ -2499,7 +2518,9 @@
       "voice": "المساعد الصوتي",
       "voice_hint": "اللغة، السرعة، التكرار",
       "preferences": "التفضيلات",
-      "preferences_hint": "العرض، العتبات، الفئات"
+      "preferences_hint": "العرض، العتبات، الفئات",
+      "workflow": "مسار البياضات",
+      "workflow_hint": "المراحل النشطة وتسلسلها"
     },
     "scan": {
       "title": "طريقة تعريف قطع الغسيل",
@@ -2646,7 +2667,11 @@
       "service": "القسم",
       "position": "المنصب",
       "contact_admin": "لتعديل هذه المعلومات، تواصل مع المسؤول.",
-      "privileges": "{{count}} صلاحيات وصول"
+      "privileges": "{{count}} صلاحيات وصول",
+      "access_title": "الوصول",
+      "role": "الدور",
+      "rights": "صلاحيات الوصول",
+      "all_rights": "جميع الصلاحيات"
     },
     "security": {
       "not_connected": "النموذج صالح. سيتم ربط الحفظ بالخادم قريبًا.",
@@ -2663,7 +2688,10 @@
       "session_desc": "الجهاز المتصل حاليًا بحسابك.",
       "this_device": "هذا الجهاز",
       "logout": "تسجيل الخروج"
-    }
+    },
+    "open_all": "فتح الكل",
+    "close_all": "إغلاق الكل",
+    "autosave": "يتم حفظ الإعدادات تلقائيًا."
   },
   "modal": {
     "fields_count": "{{count}} حقول",
@@ -2908,5 +2936,120 @@
     "manual": "يدوي",
     "manual_hint": "هذا القسم مُضاف يدويًا: يبقى قابلًا للتعديل هنا ولا تستبدله المزامنة. استخدم رمزًا غير موجود في النظام الخارجي.",
     "duplicate": "الرمز {{code}} مستخدم بالفعل."
+  },
+  "kit": {
+    "total": "المجموع",
+    "columnSettings": "إعدادات الأعمدة",
+    "back": "رجوع",
+    "all": "الكل",
+    "period": "الفترة",
+    "column": "العمود",
+    "allFields": "كل الحقول",
+    "print": "طباعة",
+    "resetFilters": "إعادة تعيين المرشحات",
+    "reset": "إعادة تعيين",
+    "results": "{{count}} نتيجة",
+    "exportExcel": "تصدير إلى Excel",
+    "stats": "إحصائيات",
+    "empty": "لا توجد بيانات",
+    "loading": "جارٍ التحميل…",
+    "clickToSort": "انقر للترتيب",
+    "rows": "سطر",
+    "shown": "معروضة",
+    "page": "صفحة",
+    "prevPage": "الصفحة السابقة",
+    "nextPage": "الصفحة التالية",
+    "close": "إغلاق",
+    "confirmation": "تأكيد",
+    "confirm": "تأكيد",
+    "cancel": "إلغاء",
+    "reason": "السبب",
+    "saving": "جارٍ الحفظ…",
+    "backToList": "العودة إلى القائمة",
+    "noInfo": "لا توجد معلومات.",
+    "printStats": "طباعة الإحصائيات",
+    "noResult": "لا توجد نتيجة",
+    "select": "اختر…",
+    "clear": "مسح",
+    "unselectAll": "إلغاء تحديد الكل",
+    "selectAllRows": "تحديد كل الأسطر ({{total}})",
+    "selectRow": "تحديد السطر",
+    "row": "سطر",
+    "selected": "محدد",
+    "selectAll": "تحديد الكل",
+    "unselect": "إلغاء التحديد",
+    "manageColumns": "إدارة الأعمدة",
+    "done": "إنهاء",
+    "field": "الحقل",
+    "display": "العرض",
+    "search": "بحث",
+    "viewInteractive": "تفاعلي",
+    "viewTable": "جدول",
+    "viewMode": "نوع العرض"
+  },
+  "chargement": {
+    "title": "التحميل (الوزن)",
+    "subtitle": "املأ دفعة على الميزان ثم صادق عليها للغسيل.",
+    "step_lot": "الدفعة على الميزان",
+    "step_linens": "البياضات",
+    "step_weigh": "الوزن",
+    "step_validate": "المصادقة",
+    "scan_lot": "امسح الدفعة الموضوعة على الميزان",
+    "scan_linen": "امسح البياضات واحدة تلو الأخرى",
+    "lot_validated": "تمت المصادقة على الدفعة",
+    "lot_not_open": "الدفعة {{code}} غير مفتوحة (الحالة: {{etat}}).",
+    "lot_ready": "الدفعة {{code}} جاهزة: امسح البياضات",
+    "weight_required": "أدخل الوزن الظاهر على الميزان.",
+    "weight_saved": "تم تسجيل الوزن",
+    "validated": "الدفعة {{code}} جاهزة للغسيل",
+    "removed": "تمت إزالة {{code}} من الدفعة",
+    "waiting_wash": "الدفعة {{code}} في انتظار الغسيل",
+    "change_lot": "تغيير الدفعة",
+    "scanned_linens": "البياضات الممسوحة",
+    "no_lot": "لم يتم اختيار دفعة",
+    "empty": "لا توجد بياضات في هذه الدفعة",
+    "empty_hint": "ستظهر البياضات الممسوحة هنا.",
+    "remove": "إزالة من الدفعة",
+    "remove_confirm": "إزالة القطعة {{code}} من الدفعة {{lot}}؟",
+    "target": "مرجع {{kg}} كغ (إرشادي)",
+    "linens": "البياضات",
+    "declared_weight": "الوزن المصرح به",
+    "scale": "الميزان",
+    "gap": "الفارق",
+    "scale_weight": "وزن الميزان (كغ)",
+    "scale_weight_hint": "اختياري: اتركه فارغًا للاحتفاظ بآخر وزن.",
+    "save_weight": "وزن",
+    "validate_loading": "المصادقة على التحميل",
+    "validate_lot": "المصادقة على الدفعة",
+    "start_wash": "بدء الغسيل",
+    "start_wash_now": "بدء الغسيل الآن؟",
+    "start_wash_text": "الدفعة {{code}} جاهزة. بدون غسيل فوري تبقى في انتظار الغسيل.",
+    "later": "لاحقًا",
+    "next_lot": "الدفعة التالية",
+    "ready_short": "جاهز"
+  },
+  "parcours": {
+    "title": "مسار البياضات",
+    "desc": "فعّل المراحل المستخدمة في المؤسسة وحدد المراحل التالية الممكنة.",
+    "step_disabled_title": "المرحلة {{nom}} معطلة",
+    "step_disabled": "المرحلة {{nom}} معطلة في هذه المؤسسة.",
+    "screen_unavailable": "الشاشة غير متاحة",
+    "only_when_inactive": "تُستخدم هذه الشاشة فقط عند تعطيل المرحلة {{nom}}.",
+    "disabled_ok": "تم تعطيل المرحلة {{nom}}",
+    "enabled_ok": "تم تفعيل المرحلة {{nom}}",
+    "next_saved": "تم حفظ المراحل التالية لـ {{nom}}",
+    "custom_locked": "مرحلة مخصصة: خارج المسار",
+    "mandatory_locked": "مرحلة إلزامية: لا يمكن تعطيلها",
+    "custom": "مخصصة",
+    "mandatory": "إلزامية",
+    "inactive_step": "مرحلة غير نشطة",
+    "entry_point": "نقطة الدخول",
+    "legend_mandatory": "الجمع والاستلام والغسيل والتوزيع مراحل إلزامية",
+    "empty": "لا توجد مراحل مهيأة.",
+    "step": "المرحلة",
+    "zone": "المنطقة",
+    "active": "نشطة",
+    "next": "المراحل التالية الممكنة",
+    "accepts": "تقبل"
   }
 }

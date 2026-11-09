@@ -1,0 +1,825 @@
+import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { LingeContext } from "../../../contextes/LingeContext";
+import { ServiceContext } from "../../../contextes/ServiceContext";
+import { getSetting, formatDateTime as formatDateTimeReglage } from "../../../utils/appSettings";
+import { localiserLinge } from "../../../services/receptionArsenalService";
+import { useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
+import {
+  Page, PageHeader, ActionBar, ActionButton, Button, Modal, InfoList, DetailCard, DetailAlert, DataTable,
+} from "../../kit";
+import { IconDetails } from "../../kit/ActionIcons";
+import { useOperations, AVEC_OBSERVATIONS } from "../../../hooks/useOperations";
+
+const FONTS_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');`;
+
+const palette = {
+  bg: "#EEF2F7",
+  bgGrad: "radial-gradient(circle at 15% 10%, #FDF2F4 0%, transparent 45%), radial-gradient(circle at 85% 90%, #EEFBF6 0%, transparent 45%), linear-gradient(160deg, #F7F9FC 0%, #EEF2F7 100%)",
+  surface: "rgba(255, 255, 255, 0.86)",
+  surfaceSolid: "#FFFFFF",
+  surfaceRaised: "#F3F6FA",
+  border: "rgba(30, 41, 59, 0.08)",
+  borderStrong: "rgba(30, 41, 59, 0.14)",
+  textPrimary: "#1B2536",
+  textMuted: "#64748B",
+  textFaint: "#98A4B8",
+  teal: "#0D9488",
+  tealSoft: "rgba(13, 148, 136, 0.10)",
+  rose: "#E11D48",
+  roseSoft: "rgba(225, 29, 72, 0.10)",
+  amber: "#D97706",
+  amberSoft: "rgba(217, 119, 6, 0.10)",
+  sky: "#0284C7",
+  skySoft: "rgba(2, 132, 199, 0.10)",
+  violet: "#7C3AED",
+  violetSoft: "rgba(124, 58, 237, 0.10)",
+};
+
+const Icons = {
+  Search: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+  ),
+  Rfid: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 8.5a6.5 6.5 0 0 0 0 7" /><path d="M9 6a10 10 0 0 0 0 12" /><path d="M3 11a3 3 0 0 0 0 2" /><circle cx="17" cy="12" r="3" /><path d="M17 9V7" /><path d="M17 17v-2" /></svg>
+  ),
+  QrCode: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3z" /><path d="M18 18h3v3h-3z" /><path d="M14 21h3" /><path d="M21 14v3" /></svg>
+  ),
+  Refresh: ({ size = 18, color = "currentColor", className }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M3 21v-5h5" /></svg>
+  ),
+  Trash: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+  ),
+  Tshirt: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" /></svg>
+  ),
+  Alert: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+  ),
+  CheckCircle: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+  ),
+  Info: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+  ),
+  Truck: ({ size = 24, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M10 17h4V5H2v12h3" /><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" /><circle cx="7.5" cy="17.5" r="2.5" /><circle cx="17.5" cy="17.5" r="2.5" /></svg>
+  ),
+  Inbox: ({ size = 24, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>
+  ),
+  Sort: ({ size = 24, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M7 12h10" /><path d="M10 18h4" /></svg>
+  ),
+  Wash: ({ size = 24, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><circle cx="12" cy="14" r="4" /><path d="M7 6h.01" /><path d="M11 6h.01" /></svg>
+  ),
+  Wind: ({ size = 24, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2" /><path d="M17.73 7.73A2.5 2.5 0 1 1 19.5 12H2" /><path d="M12.59 19.41A2 2 0 1 0 14 16H2" /></svg>
+  ),
+  Fold: ({ size = 24, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18" /><path d="m8 7 4-4 4 4" /><path d="m8 17 4 4 4-4" /><path d="M3 12h18" /></svg>
+  ),
+  Warehouse: ({ size = 24, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z" /><path d="M6 18h12" /><path d="M6 14h12" /><path d="M6 10h12" /></svg>
+  ),
+  Package: ({ size = 24, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 9.4 7.55 4.24" /><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.29 7 12 12 20.71 7" /><line x1="12" y1="22" x2="12" y2="12" /></svg>
+  ),
+  ChevronLeft: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+  ),
+  ChevronRight: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+  ),
+  Activity: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+  ),
+  Zap: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+  ),
+  X: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+  ),
+  Hash: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /><line x1="10" y1="3" x2="8" y2="21" /><line x1="16" y1="3" x2="14" y2="21" /></svg>
+  ),
+  User: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+  ),
+  Clock: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+  ),
+  Weight: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2" /><path d="M5 22 8 9h8l3 13z" /></svg>
+  ),
+  Tag: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.42 0l7.29-7.29a1 1 0 0 0 0-1.42z" /><circle cx="7" cy="7" r="1" /></svg>
+  ),
+  Building: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="1" /><line x1="9" y1="7" x2="9" y2="7.01" /><line x1="15" y1="7" x2="15" y2="7.01" /><line x1="9" y1="12" x2="9" y2="12.01" /><line x1="15" y1="12" x2="15" y2="12.01" /><line x1="9" y1="17" x2="9" y2="17.01" /><line x1="15" y1="17" x2="15" y2="17.01" /></svg>
+  ),
+  ArrowUpRight: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
+  ),
+  Compass: ({ size = 22, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={color} strokeWidth="1.4" /><polygon points="12,4 14,12 12,11 10,12" fill={color} /><polygon points="12,20 10,12 12,13 14,12" fill="#CBD5E1" /></svg>
+  ),
+  MapPin: ({ size = 18, color = "currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+  ),
+};
+
+const STATIONS = [
+  { id: "COLLECTE", label: { fr: "Collecte", ar: "الجمع", en: "Collection" }, Icon: Icons.Truck, x: 12, y: 18, zone: "SALE", color: palette.rose },
+  { id: "RECEPTION", label: { fr: "Réception", ar: "الاستلام", en: "Reception" }, Icon: Icons.Inbox, x: 33, y: 18, zone: "SALE", color: palette.rose },
+  { id: "TRI", label: { fr: "Tri", ar: "الفرز", en: "Sorting" }, Icon: Icons.Sort, x: 54, y: 18, zone: "SALE", color: palette.amber },
+  { id: "LAVAGE", label: { fr: "Lavage", ar: "الغسيل", en: "Washing" }, Icon: Icons.Wash, x: 75, y: 18, zone: "SALE", color: palette.sky },
+  { id: "SECHAGE", label: { fr: "Séchage", ar: "التجفيف", en: "Drying" }, Icon: Icons.Wind, x: 25, y: 82, zone: "PROPRE", color: palette.violet },
+  { id: "PLIAGE", label: { fr: "Pliage", ar: "الطي", en: "Folding" }, Icon: Icons.Fold, x: 47, y: 82, zone: "PROPRE", color: palette.violet },
+  { id: "STOCKAGE", label: { fr: "Stockage", ar: "التخزين", en: "Storage" }, Icon: Icons.Warehouse, x: 69, y: 82, zone: "PROPRE", color: palette.teal },
+  { id: "LIVRAISON", label: { fr: "Livraison", ar: "التسليم", en: "Delivery" }, Icon: Icons.Package, x: 90, y: 82, zone: "PROPRE", color: palette.teal },
+];
+
+const ETAT_TO_STATION = {
+  COLLECTE: "COLLECTE", RECEPTION: "RECEPTION", RECEPTIONNE: "RECEPTION",
+  EN_TRI: "TRI", EN_LAVAGE: "LAVAGE", LAVE: "LAVAGE",
+  EN_SECHAGE: "SECHAGE", EN_SECHAGE_REPASSAGE: "SECHAGE", SECHE: "SECHAGE",
+  PLIE: "PLIAGE", STOCKE: "STOCKAGE", PROPRE_PRET: "STOCKAGE",
+  PRET_LIVRAISON: "LIVRAISON", LIVRE: "LIVRAISON",
+  SALE: "COLLECTE", PROPRE: "STOCKAGE", MANQUANT: null,
+};
+
+const ETAT_STYLES = {
+  RECEPTION: { color: palette.violet, bg: palette.violetSoft, Icon: Icons.Inbox },
+  COLLECTE: { color: palette.rose, bg: palette.roseSoft, Icon: Icons.Truck },
+  EN_TRI: { color: palette.amber, bg: palette.amberSoft, Icon: Icons.Sort },
+  EN_LAVAGE: { color: palette.sky, bg: palette.skySoft, Icon: Icons.Wash },
+  LAVE: { color: palette.sky, bg: palette.skySoft, Icon: Icons.Wash },
+  EN_SECHAGE: { color: palette.violet, bg: palette.violetSoft, Icon: Icons.Wind },
+  SECHE: { color: palette.violet, bg: palette.violetSoft, Icon: Icons.Wind },
+  PLIE: { color: palette.violet, bg: palette.violetSoft, Icon: Icons.Fold },
+  STOCKE: { color: palette.teal, bg: palette.tealSoft, Icon: Icons.Warehouse },
+  LIVRE: { color: palette.teal, bg: palette.tealSoft, Icon: Icons.Package },
+  PROPRE: { color: palette.teal, bg: palette.tealSoft, Icon: Icons.CheckCircle },
+  MANQUANT: { color: palette.rose, bg: palette.roseSoft, Icon: Icons.Alert },
+};
+
+function getEtatStyle(etat) {
+  return ETAT_STYLES[etat] || { color: palette.textMuted, bg: palette.surfaceRaised, Icon: Icons.Info };
+}
+
+function formatDateTime(value) {
+  if (!value) return null;
+  const s = formatDateTimeReglage(value);
+  return s === "—" ? null : s;
+}
+
+const DETAIL_FIELDS = [
+  { key: "typeLinge", label: "Type de linge", Icon: Icons.Tag },
+  { key: "poids", label: "Poids", Icon: Icons.Weight, suffix: " kg" },
+  { key: "client", label: "Client", Icon: Icons.Building },
+  { key: "numeroLot", label: "Lot", Icon: Icons.Hash },
+  { key: "rfidTag", label: "Tag RFID", Icon: Icons.Rfid },
+  { key: "chariot", label: "Chariot", Icon: Icons.Package },
+  { key: "agentResponsable", label: "Agent en charge", Icon: Icons.User },
+  { key: "dateCollecte", label: "Date de collecte", Icon: Icons.Clock, isDate: true },
+  { key: "dateLivraisonPrevue", label: "Livraison prévue", Icon: Icons.Clock, isDate: true },
+];
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+
+function pickValue(obj, keys) {
+  if (!obj) return null;
+  for (const k of keys) {
+    const v = obj[k];
+    if (v !== undefined && v !== null && v !== "") return v;
+  }
+  return null;
+}
+
+function resolveChambre(item, chambres) {
+  const raw = item?.chambre ?? item?.Chambre;
+  if (raw && typeof raw === "object") {
+    return {
+      code: pickValue(raw, ["code", "Code", "codeChambre", "numero", "nom"]),
+      serviceId: pickValue(raw, ["serviceId", "ServiceId"]),
+    };
+  }
+  const code = (typeof raw === "string" || typeof raw === "number") ? raw : pickValue(item, ["codeChambre", "chambreCode", "CodeChambre", "chambreNom", "numeroChambre"]);
+  const id = pickValue(item, ["chambreIdSqlServer", "chambreId", "ChambreId", "idChambre"]);
+  const found = id != null ? chambres.find((c) => String(c.id) === String(id)) : code != null ? chambres.find((c) => String(c.code) === String(code)) : null;
+  if (!code && !found) return null;
+  return { code: code ?? found?.code ?? `CH-${id}`, serviceId: found?.serviceId ?? null };
+}
+
+function resolveService(item, services, chambre) {
+  const raw = item?.service ?? item?.Service;
+  if (raw && typeof raw === "object") return pickValue(raw, ["code", "Code", "nom", "libelle", "designation"]);
+  if (typeof raw === "string") return raw;
+  const name = pickValue(item, ["serviceCode", "serviceNom", "serviceName", "nomService", "codeService"]);
+  if (name) return name;
+  const id = pickValue(item, ["serviceId", "ServiceId", "ServiceID", "idService"]) ?? chambre?.serviceId;
+  if (id == null) return null;
+  const s = (services || []).find((x) => String(x.id) === String(id));
+  return s ? (s.code || s.nom || s.libelle) : null;
+}
+
+function MovingLinge({ fromStation, toStation, fromLabel, toLabel }) {
+  const [phase, setPhase] = useState("idle");
+  const [showLabel, setShowLabel] = useState(true);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase("charge"), 50);
+    const t2 = setTimeout(() => setPhase("travel"), 400);
+    const t3 = setTimeout(() => setPhase("arrival"), 2400);
+    const t4 = setTimeout(() => setPhase("done"), 3200);
+    const tLabel = setTimeout(() => setShowLabel(false), 2800);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(tLabel); };
+  }, []);
+
+  const particles = useMemo(() => Array.from({ length: 10 }).map((_, i) => ({
+    id: i, angle: (i / 10) * Math.PI * 2, radius: 18 + Math.random() * 18, delay: Math.random() * 0.4, size: 2 + Math.random() * 2.4,
+  })), []);
+
+  if (!fromStation || !toStation) return null;
+
+  const fromX = fromStation.x, fromY = fromStation.y, toX = toStation.x, toY = toStation.y;
+  const dx = toX - fromX, dy = toY - fromY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  const travelDuration = Math.min(Math.max(distance / 25, 2.0), 3.0);
+  const midX = (fromX + toX) / 2;
+  const arcHeight = Math.max(10, Math.abs(dx) * 0.2);
+  const midY = Math.min(fromY, toY) - arcHeight;
+  const fromColor = fromStation.color, toColor = toStation.color;
+
+  return (
+    <>
+      <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 22, overflow: "visible" }} viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="trailMain" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={fromColor} stopOpacity="0" />
+            <stop offset="30%" stopColor={fromColor} stopOpacity="0.55" />
+            <stop offset="70%" stopColor={toColor} stopOpacity="0.9" />
+            <stop offset="100%" stopColor={toColor} stopOpacity="0" />
+          </linearGradient>
+          <filter id="glowFilter" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="0.6" result="coloredBlur" />
+            <feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+
+        <motion.path d={`M ${fromX} ${fromY} Q ${midX} ${midY} ${toX} ${toY}`} stroke={toColor} strokeWidth="0.18" fill="none" strokeLinecap="round" strokeDasharray="1.4 2"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: phase === "travel" || phase === "arrival" || phase === "done" ? 1 : 0, opacity: phase === "travel" ? 0.45 : 0.25 }}
+          transition={{ duration: travelDuration, ease: "easeInOut" }} />
+
+        <motion.path d={`M ${fromX} ${fromY} Q ${midX} ${midY} ${toX} ${toY}`} stroke="url(#trailMain)" strokeWidth="1" fill="none" strokeLinecap="round" filter="url(#glowFilter)"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: phase === "travel" || phase === "arrival" || phase === "done" ? 1 : 0, opacity: phase === "travel" ? 0.95 : phase === "arrival" ? 0.4 : 0 }}
+          transition={{ duration: travelDuration, ease: "easeInOut" }} />
+      </svg>
+
+      <motion.div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 24 }} initial={{ opacity: 0 }} animate={{ opacity: phase === "travel" ? 1 : 0 }} transition={{ duration: 0.3 }}>
+        {particles.map((p) => (
+          <motion.div key={p.id} style={{ position: "absolute", left: `${midX}%`, top: `${midY}%`, width: p.size, height: p.size, borderRadius: "50%", background: toColor, boxShadow: `0 0 6px ${toColor}` }}
+            animate={{ x: [0, Math.cos(p.angle) * p.radius, 0], y: [0, Math.sin(p.angle) * p.radius, 0], opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
+            transition={{ duration: 1.8, repeat: Infinity, delay: p.delay, ease: "easeInOut" }} />
+        ))}
+      </motion.div>
+
+      {(phase === "arrival" || phase === "done") && (
+        <>
+          <motion.div initial={{ scale: 0, opacity: 0.7 }} animate={{ scale: 8, opacity: 0 }} transition={{ duration: 1.2, ease: "easeOut" }}
+            style={{ position: "absolute", left: `${toX}%`, top: `${toY}%`, width: "30px", height: "30px", marginLeft: "-15px", marginTop: "-15px", borderRadius: "50%", border: `3px solid ${toColor}`, pointerEvents: "none", zIndex: 26 }} />
+          <motion.div initial={{ scale: 0, opacity: 0.6 }} animate={{ scale: 4, opacity: 0 }} transition={{ duration: 0.7, ease: "easeOut" }}
+            style={{ position: "absolute", left: `${toX}%`, top: `${toY}%`, width: "40px", height: "40px", marginLeft: "-20px", marginTop: "-20px", borderRadius: "50%", background: `radial-gradient(circle, #ffffff 0%, ${toColor} 45%, transparent 75%)`, pointerEvents: "none", zIndex: 25 }} />
+        </>
+      )}
+
+      <AnimatePresence>
+        {phase !== "done" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0 }} transition={{ duration: 0.3 }}
+            style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 28 }}>
+            <motion.div
+              initial={{ left: `${fromX}%`, top: `${fromY}%`, opacity: 0, scale: 0.2 }}
+              animate={{
+                left: phase === "charge" ? `${fromX}%` : [`${fromX}%`, `${midX}%`, `${toX}%`],
+                top: phase === "charge" ? `${fromY}%` : [`${fromY}%`, `${midY}%`, `${toY}%`],
+                opacity: phase === "charge" ? [0, 1] : [1, 1, 1, 1, 0.8, 1],
+                scale: phase === "charge" ? [0.2, 1.5] : phase === "travel" ? [1.5, 1.4, 1.3, 1.2, 1.1, 1.0] : phase === "arrival" ? [0.6, 1.4, 1.0] : 0,
+              }}
+              transition={{
+                left: { duration: travelDuration, ease: [0.34, 1.56, 0.64, 1] },
+                top: { duration: travelDuration, ease: [0.34, 1.56, 0.64, 1] },
+                opacity: { duration: phase === "charge" ? 0.3 : travelDuration, times: [0, 0.1, 0.5, 0.85, 0.95, 1] },
+                scale: { duration: phase === "charge" ? 0.3 : travelDuration, times: [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1] },
+              }}
+              style={{ position: "absolute", transform: "translate(-50%, -50%)" }}
+            >
+              <motion.div
+                animate={{ rotate: phase === "travel" ? [0, 15, -15, 10, -10, 0] : phase === "arrival" ? [0, -8, 4, 0] : [0, 0, 0] }}
+                transition={{ duration: phase === "travel" ? travelDuration : 0.6, ease: "easeInOut" }}
+                style={{ position: "relative" }}
+              >
+                <motion.div
+                  animate={{ scale: phase === "charge" ? [1, 2, 1] : [1, 1.8, 1], opacity: phase === "charge" ? [0.3, 0.6, 0.3] : [0.4, 0.1, 0.4] }}
+                  transition={{ duration: phase === "charge" ? 0.8 : 1.2, repeat: Infinity, ease: "easeInOut" }}
+                  style={{ position: "absolute", inset: "-30px", borderRadius: "50%", background: `radial-gradient(circle, ${toColor}45 0%, transparent 70%)`, pointerEvents: "none" }} />
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: phase === "charge" ? 1.5 : 2, repeat: Infinity, ease: "linear" }}
+                  style={{ position: "absolute", inset: "-22px", borderRadius: "50%", border: `1.5px dashed ${toColor}70`, pointerEvents: "none" }} />
+                <motion.div
+                  animate={{ y: phase === "travel" ? [-4, 4, -4] : [0, -3, 0], scale: phase === "charge" ? [1, 1.15, 1] : phase === "arrival" ? [1, 1.2, 1] : [1, 1.05, 1] }}
+                  transition={{ y: { duration: 1.2, repeat: Infinity, ease: "easeInOut" }, scale: { duration: phase === "arrival" ? 0.6 : 1, repeat: phase === "charge" ? Infinity : 0 } }}
+                  style={{
+                    position: "relative", padding: "15px", borderRadius: "20px",
+                    background: "linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)",
+                    boxShadow: phase === "charge"
+                      ? `0 0 0 4px ${toColor}35, 0 16px 40px ${toColor}35, 0 6px 14px rgba(15,23,42,0.12)`
+                      : phase === "arrival"
+                      ? `0 0 0 6px ${toColor}45, 0 20px 48px ${toColor}45`
+                      : `0 0 0 3px ${toColor}25, 0 14px 32px ${toColor}30, 0 6px 14px rgba(15,23,42,0.1)`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  <Icons.Tshirt size={34} color={toColor} />
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLabel && (
+          <motion.div
+            initial={{ opacity: 0, y: -30, scale: 0.7 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.8 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            style={{
+              position: "absolute", top: "20px", left: "50%", transform: "translateX(-50%)", padding: "9px 20px", borderRadius: "24px",
+              background: "#FFFFFF", border: `1.5px solid ${toColor}35`, color: toColor, fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: "12px", fontWeight: 600, letterSpacing: "0.2px", display: "flex", alignItems: "center", gap: "10px", zIndex: 32,
+              boxShadow: `0 16px 36px rgba(15,23,42,0.14), 0 0 0 1px ${toColor}12`,
+            }}
+          >
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              style={{ width: "14px", height: "14px", borderRadius: "50%", border: `2px solid ${toColor}25`, borderTopColor: toColor }} />
+            <span style={{ color: fromColor }}>{fromLabel || fromStation.label?.fr}</span>
+            <motion.div animate={{ x: [0, 4, 0] }} transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }} style={{ display: "flex" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke={toColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </motion.div>
+            <span>{toLabel || toStation.label?.fr}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function StationMap({ currentStation, history, isAnimating, t, i18n, onStationClick }) {
+  const [hoveredStation, setHoveredStation] = useState(null);
+  const lang = i18n.language || "fr";
+
+  const lastStation = React.useMemo(() => {
+    if (!history || history.length < 2) return null;
+    const previous = history[history.length - 2];
+    return ETAT_TO_STATION[previous?.etatapres || previous?.etat] || null;
+  }, [history]);
+
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%", borderRadius: "28px", overflow: "hidden", background: palette.bgGrad, border: `1px solid ${palette.border}`, boxShadow: "0 24px 60px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.9)" }}>
+      <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }} viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="saleZone" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="rgba(225, 29, 72, 0.05)" />
+            <stop offset="100%" stopColor="transparent" />
+          </linearGradient>
+          <linearGradient id="propreZone" x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor="rgba(13, 148, 136, 0.06)" />
+            <stop offset="100%" stopColor="transparent" />
+          </linearGradient>
+          <pattern id="gridPattern" width="18" height="18" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="0.5" fill="rgba(100,116,139,0.14)" />
+          </pattern>
+          <linearGradient id="lineTop" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={palette.rose} />
+            <stop offset="45%" stopColor={palette.amber} />
+            <stop offset="100%" stopColor={palette.sky} />
+          </linearGradient>
+          <linearGradient id="lineMid" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={palette.sky} />
+            <stop offset="100%" stopColor={palette.violet} />
+          </linearGradient>
+          <linearGradient id="lineBottom" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={palette.violet} />
+            <stop offset="100%" stopColor={palette.teal} />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="100" height="50" fill="url(#saleZone)" />
+        <rect x="0" y="50" width="100" height="50" fill="url(#propreZone)" />
+        <rect width="100" height="100" fill="url(#gridPattern)" />
+        <path d="M 0 50 Q 25 46 50 50 Q 75 54 100 50" stroke="rgba(100,116,139,0.10)" strokeWidth="0.4" fill="none" strokeDasharray="0.6 1.6" />
+
+        <path d="M 8 18 Q 20 18 33 18 Q 45 18 54 18 Q 65 18 75 18 Q 83 18 92 18" stroke="#FFFFFF" strokeWidth="3.4" fill="none" strokeLinecap="round" />
+        <path d="M 8 18 Q 20 18 33 18 Q 45 18 54 18 Q 65 18 75 18 Q 83 18 92 18" stroke="url(#lineTop)" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.85" />
+
+        <path d="M 75 18 Q 75 50 50 50 Q 25 50 25 82" stroke="#FFFFFF" strokeWidth="3.4" fill="none" strokeLinecap="round" />
+        <path d="M 75 18 Q 75 50 50 50 Q 25 50 25 82" stroke="url(#lineMid)" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.85" />
+
+        <path d="M 25 82 Q 36 82 47 82 Q 58 82 69 82 Q 80 82 90 82" stroke="#FFFFFF" strokeWidth="3.4" fill="none" strokeLinecap="round" />
+        <path d="M 25 82 Q 36 82 47 82 Q 58 82 69 82 Q 80 82 90 82" stroke="url(#lineBottom)" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.85" />
+      </svg>
+
+      <div style={{ position: "absolute", top: "24px", left: "24px", display: "flex", alignItems: "center", gap: "9px", padding: "9px 18px 9px 13px", borderRadius: "24px", background: palette.surface, backdropFilter: "blur(16px)", border: `1px solid ${palette.rose}25`, color: palette.rose, fontFamily: "'Space Grotesk', sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.3px", zIndex: 10, boxShadow: "0 8px 20px rgba(15,23,42,0.06)" }}>
+        <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: palette.rose }} />
+        {t('tracking.zone_sale') || "Zone sale"}
+      </div>
+
+      <div style={{ position: "absolute", bottom: "24px", left: "24px", display: "flex", alignItems: "center", gap: "9px", padding: "9px 18px 9px 13px", borderRadius: "24px", background: palette.surface, backdropFilter: "blur(16px)", border: `1px solid ${palette.teal}25`, color: palette.teal, fontFamily: "'Space Grotesk', sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.3px", zIndex: 10, boxShadow: "0 8px 20px rgba(15,23,42,0.06)" }}>
+        <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: palette.teal }} />
+        {t('tracking.zone_propre') || "Zone propre"}
+      </div>
+
+      <div style={{ position: "absolute", top: "24px", right: "24px", width: "44px", height: "44px", borderRadius: "50%", background: palette.surface, backdropFilter: "blur(16px)", border: `1px solid ${palette.border}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 20px rgba(15,23,42,0.06)", zIndex: 10 }}>
+        <Icons.Compass size={22} color={palette.textMuted} />
+      </div>
+
+      {STATIONS.map((station) => {
+        const active = currentStation === station.id;
+        const hovered = hoveredStation === station.id;
+        const StationIcon = station.Icon;
+
+        return (
+          <motion.div
+            key={station.id}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: STATIONS.indexOf(station) * 0.06, type: "spring", stiffness: 200 }}
+            onMouseEnter={() => setHoveredStation(station.id)}
+            onMouseLeave={() => setHoveredStation(null)}
+            onClick={() => active && onStationClick && onStationClick()}
+            style={{ position: "absolute", left: `${station.x}%`, top: `${station.y}%`, transform: "translate(-50%, -50%)", zIndex: active ? 20 : 10, cursor: active ? "pointer" : "default" }}
+          >
+            {active && <motion.div animate={{ scale: [1, 1.7, 1], opacity: [0.35, 0, 0.35] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} style={{ position: "absolute", inset: "-24px", borderRadius: "50%", background: `radial-gradient(circle, ${station.color}30 0%, transparent 70%)`, pointerEvents: "none" }} />}
+
+            <motion.div animate={active ? { y: [-9, -5, -9] } : {}} transition={{ duration: 2, repeat: active ? Infinity : 0, ease: "easeInOut" }} style={{ position: "relative" }}>
+              <div style={{ position: "absolute", bottom: "-9px", left: "50%", transform: "translateX(-50%)", width: active ? "34px" : "26px", height: "7px", borderRadius: "50%", background: "rgba(15,23,42,0.14)", filter: "blur(3px)" }} />
+
+              <motion.div
+                animate={active ? { scale: [1, 1.04, 1] } : {}}
+                transition={{ duration: 1.5, repeat: active ? Infinity : 0, ease: "easeInOut" }}
+                style={{
+                  position: "relative", width: active ? "72px" : "60px", height: active ? "72px" : "60px", borderRadius: "22px",
+                  background: active ? `linear-gradient(145deg, ${station.color} 0%, ${station.color}CC 100%)` : "#FFFFFF",
+                  border: active ? "2.5px solid #FFFFFF" : `1.5px solid ${palette.border}`,
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  boxShadow: active ? `0 18px 36px ${station.color}45, 0 0 0 4px ${station.color}18` : "0 10px 24px rgba(15,23,42,0.08)",
+                  transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)", transform: hovered ? "scale(1.08)" : "scale(1)",
+                }}
+              >
+                <StationIcon size={active ? 26 : 22} color={active ? "#FFFFFF" : station.color} />
+                <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: active ? "8px" : "7.5px", fontWeight: 700, color: active ? "#FFFFFF" : palette.textMuted, marginTop: "3px", letterSpacing: "0.2px" }}>
+                  {station.label[lang] || station.label.fr}
+                </span>
+              </motion.div>
+
+              <div style={{
+                position: "absolute", bottom: "-8px", left: "50%", transform: "translateX(-50%) rotate(45deg)",
+                width: active ? "14px" : "11px", height: active ? "14px" : "11px", borderRadius: "3px",
+                background: active ? station.color : "#FFFFFF",
+                border: active ? "none" : `1.5px solid ${palette.border}`,
+                boxShadow: active ? `0 6px 12px ${station.color}40` : "0 4px 10px rgba(15,23,42,0.06)",
+              }} />
+
+              <div style={{ position: "absolute", bottom: "-4px", left: "50%", transform: "translateX(-50%)", width: "9px", height: "9px", borderRadius: "50%", background: station.color, border: "2px solid #FFFFFF", boxShadow: "0 2px 6px rgba(15,23,42,0.2)" }} />
+            </motion.div>
+
+            {active && (
+              <motion.div initial={{ scale: 0, y: -8 }} animate={{ scale: 1, y: 0 }} style={{ position: "absolute", top: "-46px", left: "50%", transform: "translateX(-50%)", padding: "5px 13px", borderRadius: "20px", background: station.color, color: "#FFFFFF", fontFamily: "'Space Grotesk', sans-serif", fontSize: "9px", fontWeight: 700, whiteSpace: "nowrap", letterSpacing: "0.3px", boxShadow: `0 10px 22px ${station.color}45`, display: "flex", alignItems: "center", gap: "5px" }}>
+                <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#FFFFFF" }} />
+                {t('tracking.current') || "En cours"}
+              </motion.div>
+            )}
+
+            <AnimatePresence>
+              {hovered && !active && (
+                <motion.div initial={{ opacity: 0, y: -4, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                  style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: "14px", padding: "7px 13px", borderRadius: "10px", background: "#1B2536", color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 500, whiteSpace: "nowrap", zIndex: 30, pointerEvents: "none", boxShadow: "0 14px 30px rgba(15,23,42,0.2)" }}>
+                  {station.label[lang] || station.label.fr}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
+
+      <AnimatePresence>
+        {isAnimating && lastStation && currentStation && lastStation !== currentStation && (
+          <MovingLinge
+            key={`${lastStation}-${currentStation}`}
+            fromStation={STATIONS.find((s) => s.id === lastStation)}
+            toStation={STATIONS.find((s) => s.id === currentStation)}
+            fromLabel={STATIONS.find((s) => s.id === lastStation)?.label[lang]}
+            toLabel={STATIONS.find((s) => s.id === currentStation)?.label[lang]}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function EtatPill({ etat, t }) {
+  const cfg = getEtatStyle(etat);
+  const Icon = cfg.Icon;
+  return (
+    <span className="kit-chip" style={{ background: cfg.bg, color: cfg.color, borderColor: `${cfg.color}40` }}>
+      <Icon size={13} color={cfg.color} /> {t(`tracking.etat.${etat}`, etat)}
+    </span>
+  );
+}
+
+function ItemDetailModal({ item, chambre, serviceName, localisation, onClose, onOpenJournal, t }) {
+  if (!item) return null;
+  const champs = DETAIL_FIELDS
+    .map((f) => {
+      const raw = item[f.key];
+      if (raw === undefined || raw === null || raw === "") return null;
+      const value = f.isDate ? formatDateTime(raw) : `${raw}${f.suffix || ""}`;
+      return value ? { label: f.label, value } : null;
+    })
+    .filter(Boolean);
+
+  const arsenal = !localisation
+    ? [{ label: t("tracking.arsenal", "Arsenal"), value: "…" }]
+    : localisation.data?.localise
+      ? [
+        { label: t("tracking.arsenal", "Arsenal"), value: localisation.data.arsenal || "—" },
+        { label: t("tracking.emplacement", "Emplacement"), value: localisation.data.emplacement || "—" },
+      ]
+      : localisation.data
+        ? [{ label: t("tracking.arsenal", "Arsenal"), value: localisation.data.message || t("tracking.not_in_arsenal", "Non rangé dans un arsenal") }]
+        : [];
+
+  return (
+    <Modal
+      size="md"
+      icon={<Icons.Tshirt size={20} />}
+      title={item.codeBarre || "N/A"}
+      subtitle={`${t("tracking.category") || "Catégorie"} · ${item.categorie || "—"}`}
+      onClose={onClose}
+      footer={(
+        <>
+          <Button variant="secondary" onClick={onClose}>{t("common.close")}</Button>
+          <Button icon={<Icons.Activity size={16} />} onClick={() => { onClose(); onOpenJournal(); }}>{t("tracking.view_full_journal") || "Voir tout l'historique"}</Button>
+        </>
+      )}
+    >
+      <div style={{ marginBottom: 14 }}><EtatPill etat={item.etat} t={t} /></div>
+      <InfoList items={[
+        { label: "Identifiant", value: `#${item.id}` },
+        { label: t("tracking.service", "Service"), value: serviceName || "—" },
+        { label: t("tracking.room", "Chambre"), value: chambre?.code || "—" },
+        ...arsenal,
+        ...champs,
+      ]} />
+    </Modal>
+  );
+}
+
+export default function TrackingPage() {
+  const { t, i18n } = useTranslation();
+  const [searchValue, setSearchValue] = useState("");
+  const [item, setItem] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [selectedHistoryId, setSelectedHistoryId] = useState(null);
+  const [showJournal, setShowJournal] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+  const [localisation, setLocalisation] = useState(null);
+  const { getLingeByCode, getHistorique, isRfidMode } = useContext(LingeContext);
+  const scanInputRef = useRef(null);
+  const [isFocused, setIsFocused] = useState(true);
+  const location = useLocation();
+
+  const { services } = useContext(ServiceContext);
+  const [chambres, setChambres] = useState([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${API_URL}/api/chambres?tous=true`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        setChambres(Array.isArray(data) ? data.map((c) => ({ id: c.cle ?? c.id, code: c.code, serviceId: c.serviceId })) : []);
+      })
+      .catch((err) => { if (err.name !== "AbortError") console.error("Erreur chargement chambres:", err); });
+    return () => controller.abort();
+  }, []);
+
+  const itemChambre = useMemo(() => (item ? resolveChambre(item, chambres) : null), [item, chambres]);
+  const itemServiceName = useMemo(() => (item ? resolveService(item, services, itemChambre) : null), [item, services, itemChambre]);
+
+  const currentStation = item ? ETAT_TO_STATION[item.etat] : null;
+
+  const performSearch = useCallback(async (code, silent = false) => {
+    if (!silent) { setLoading(true); setError(""); setItem(null); setHistory([]); setLocalisation(null); }
+    try {
+      const foundItem = await getLingeByCode(code);
+      if (foundItem) {
+        setItem(foundItem);
+        const codeLinge = foundItem.codeBarre || code;
+        localiserLinge(codeLinge)
+          .then((data) => setLocalisation({ code: codeLinge, data }))
+          .catch(() => setLocalisation({ code: codeLinge, data: null }));
+        const hist = await getHistorique(code);
+        setHistory(hist || []);
+        setIsAnimating(true);
+        setTimeout(() => setIsAnimating(false), 4000);
+      } else if (!silent) {
+        setError(isRfidMode ? t('tracking.error_not_found_rfid') : t('tracking.error_not_found_barcode'));
+      }
+    } catch (err) {
+      if (!silent) setError(t('tracking.error_connection'));
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [getHistorique, getLingeByCode, isRfidMode, t]);
+
+  useEffect(() => {
+    if (!autoRefresh || !item) return;
+    const interval = setInterval(() => performSearch(item.codeBarre, true), (Number(getSetting("refresh.trackingSeconds")) || 10) * 1000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, item, performSearch]);
+
+  const handleReset = () => {
+    setSearchValue(""); setItem(null); setHistory([]); setError(""); setLocalisation(null);
+    setLoading(false); setIsAnimating(false); setSelectedHistoryId(null); setShowDetail(false);
+    if (scanInputRef.current) scanInputRef.current.focus();
+  };
+
+  useEffect(() => {
+    const focusInput = () => {
+      if (scanInputRef.current && document.activeElement !== scanInputRef.current) {
+        scanInputRef.current.focus(); setIsFocused(true);
+      }
+    };
+    focusInput();
+    const handleBodyClick = (e) => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0) return;
+      if (e.target.closest("button, input, select, a, [data-no-refocus]")) return;
+      focusInput();
+    };
+    document.addEventListener("click", handleBodyClick);
+    return () => document.removeEventListener("click", handleBodyClick);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const code = params.get("code");
+    if (code) {
+      const cleanCode = code.trim().replace(/\s/g, "").toUpperCase();
+      setSearchValue(cleanCode);
+      performSearch(cleanCode);
+    }
+  }, [location.search, performSearch]);
+
+  useEffect(() => {
+    if (searchValue.trim().length >= (Number(getSetting("scan.minLength")) || 3)) {
+      const timer = setTimeout(() => performSearch(searchValue.trim()), Number(getSetting("scan.delayMs")) || 400);
+      return () => clearTimeout(timer);
+    }
+  }, [searchValue, performSearch]);
+
+  const { libelle: libelleOperation } = useOperations();
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const cleanCode = searchValue.trim().replace(/\s/g, "").toUpperCase();
+    if (!cleanCode) return;
+    performSearch(cleanCode);
+  };
+
+  const JOURNAL_COLUMNS = {
+    operation: {
+      label: t("historique.operation", "Opération"),
+      render: (s) => (s.typeOperation ? (
+        <span className="kit-op-wrap">
+          <span className="kit-op-pill" style={{ "--op": "#0794a4" }}><i />{libelleOperation(s.typeOperation, t(`historique.type.${s.typeOperation}`, s.typeOperation))}</span>
+          {s.typeOperation === AVEC_OBSERVATIONS && s.observations && <small className="kit-op-note">{s.observations}</small>}
+        </span>
+      ) : "—"),
+    },
+    etat: { label: t("tracking.etat_label", "État"), render: (s) => <EtatPill etat={s.etatapres || s.etat || "UNKNOWN"} t={t} /> },
+    date: { label: t("common.date", "Date"), render: (s) => formatDateTime(s.dateOperation) || "—" },
+    agent: { label: t("tracking.agent", "Agent"), render: (s) => s.agentNom || "—" },
+  };
+  const journal = [...history].reverse();
+
+  return (
+    <Page>
+      <PageHeader
+        icon={<PageHeaderIcon size={40} />}
+        title={t("tracking.title_3d") || "Suivi du linge"}
+        subtitle={isRfidMode ? t("tracking.subtitle_rfid") : t("tracking.subtitle_barcode")}
+        badge={autoRefresh ? "LIVE" : "OFF"}
+      />
+
+      <ActionBar>
+        <ActionButton icon={IconDetails} label={t("common.details")} variant="details" disabled={!item} onClick={() => setShowDetail(true)} />
+        <ActionButton
+          icon={<Icons.Activity size={18} />}
+          label={`${t("tracking.journal")} (${history.length})`}
+          variant="imprimer"
+          disabled={!item}
+          onClick={() => setShowJournal((v) => !v)}
+        />
+        <ActionButton
+          icon={<Icons.Zap size={18} />}
+          label={autoRefresh ? "LIVE" : "OFF"}
+          variant={autoRefresh ? "etat-accepter" : "modifier"}
+          onClick={() => setAutoRefresh(!autoRefresh)}
+        />
+        <ActionButton icon={<Icons.Refresh size={18} />} label={t("common.reset", "Réinitialiser")} variant="details" onClick={handleReset} />
+      </ActionBar>
+
+      <form onSubmit={handleSearch} style={{ margin: 0 }}>
+        <div className={`kit-scan ${isFocused ? "is-ready" : ""}`}>
+          {isRfidMode ? <Icons.Rfid size={22} className="kit-scan__icon" /> : <Icons.QrCode size={22} className="kit-scan__icon" />}
+          <input
+            ref={scanInputRef}
+            value={searchValue}
+            placeholder={isRfidMode ? t("tracking.search_placeholder_rfid") : t("tracking.search_placeholder_barcode")}
+            onChange={(e) => setSearchValue(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            autoComplete="off"
+            autoFocus
+          />
+          <span className="kit-scan__status">
+            {loading ? t("tracking.searching") : isFocused ? t("tracking.scan_ready") : t("tracking.waiting")}
+          </span>
+          <Button type="submit" disabled={loading || !searchValue.trim()} icon={<Icons.Search size={14} />}>{t("tracking.search_button")}</Button>
+        </div>
+      </form>
+
+      {error && <div style={{ marginTop: 14 }}><DetailAlert icon={<Icons.Alert size={18} />} title={error} /></div>}
+
+      {item && (
+        <div className="kit-toolbar" style={{ marginTop: 16 }}>
+          <div className="kit-chips">
+            <span className="kit-chip kit-chip--teal"><Icons.Tshirt size={14} /> <strong>{item.codeBarre || "N/A"}</strong> · #{item.id} · {item.categorie || t("tracking.category")}</span>
+            <EtatPill etat={item.etat} t={t} />
+            {itemServiceName && <span className="kit-chip">{itemServiceName}</span>}
+            {itemChambre?.code && <span className="kit-chip">{t("tracking.room", "Chambre")} {itemChambre.code}</span>}
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: showJournal && item ? "minmax(0, 1fr) 380px" : "minmax(0, 1fr)", gap: 16, marginTop: 16 }}>
+        <div className="employee-list-section" style={{ position: "relative", height: 560, overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, padding: 16 }}>
+            <StationMap currentStation={currentStation} history={history} isAnimating={isAnimating} t={t} i18n={i18n} onStationClick={() => item && setShowDetail(true)} />
+          </div>
+          {!item && !loading && !error && (
+            <div className="kit-tracking-empty">
+              {isRfidMode ? <Icons.Rfid size={30} /> : <Icons.QrCode size={30} />}
+              <strong>{isRfidMode ? t("tracking.subtitle_rfid") : t("tracking.subtitle_barcode")}</strong>
+              <span>{isRfidMode ? t("tracking.empty_rfid") : t("tracking.empty_barcode")}</span>
+            </div>
+          )}
+        </div>
+        {showJournal && item && (
+          <DetailCard title={`${t("tracking.journal")} · ${history.length} ${t("tracking.steps")}`}>
+            <DataTable
+              columns={JOURNAL_COLUMNS}
+              rows={journal}
+              rowKey={(s) => s.id ?? `${s.dateOperation}-${s.etatapres}`}
+              activeId={selectedHistoryId}
+              onRowClick={(s) => setSelectedHistoryId(s.id === selectedHistoryId ? null : s.id)}
+              emptyText={t("tracking.no_history")}
+            />
+          </DetailCard>
+        )}
+      </div>
+
+      {showDetail && item && (
+        <ItemDetailModal
+          item={item}
+          chambre={itemChambre}
+          serviceName={itemServiceName}
+          localisation={localisation?.code === item.codeBarre ? localisation : null}
+          onClose={() => setShowDetail(false)}
+          onOpenJournal={() => setShowJournal(true)}
+          t={t}
+        />
+      )}
+    </Page>
+  );
+}
