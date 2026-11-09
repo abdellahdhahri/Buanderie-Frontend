@@ -459,7 +459,7 @@ export default function HistoriqueGlobal() {
             items: typesOperations.map((op) => ({ label: operationLabel(op), value: list.sorted.filter((e) => e.typeOperation === op).length, color: couleurOperation(op) })).filter((i) => i.value > 0),
           }]}
           classements={[
-            { title: t("historique.agent"), items: compter((e) => (e.personnelId ? agentDe(e) : null)) },
+            { title: t("historique.agent"), personnel: true, items: compter((e) => (e.personnelId ? agentDe(e) : null)) },
             { title: t("common.service"), items: compter(serviceDe) },
           ]}
         />

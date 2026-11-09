@@ -330,3 +330,10 @@ button.rc-chip.is-active i { background: #fff; }
 @keyframes rc-beam { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(22px); } }
 .rc-beam { animation: rc-beam 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .rc-beam { animation: none; } }
+@keyframes rc-wave { 0%, 100% { opacity: .15; } 40% { opacity: .9; } }
+.rc-wave { opacity: .15; animation: rc-wave 1.8s ease-in-out infinite; }
+.rc-wave--2 { animation-delay: .25s; }
+.rc-wave--3 { animation-delay: .5s; }
+@keyframes rc-led { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+.rc-led { animation: rc-led 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .rc-wave, .rc-led { animation: none; opacity: .8; } }

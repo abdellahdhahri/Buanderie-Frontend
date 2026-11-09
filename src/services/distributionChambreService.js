@@ -165,6 +165,31 @@ export const poserLinge = async (chambreId, litId, codeOuTag) => {
   return response.json();
 };
 
+export const poserLingeChambre = async (chambreId, codeOuTag) => {
+  const token = getTokenFromStorage();
+  const agent = getAgentFromStorage();
+  if (!agent) {
+    throw new Error("Aucun agent connecté");
+  }
+  const url = `${API_URL}/api/distribution/chambre/linge?chambreId=${chambreId}&codeOuTag=${encodeURIComponent(codeOuTag)}&matriculeAgent=${encodeURIComponent(agent.matricule)}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    }
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = errorText;
+    try {
+      const json = JSON.parse(errorText);
+      errorMessage = json.message || json.error || errorText;
+    } catch {}
+    throw new Error(errorMessage);
+  }
+  return response.json();
+};
+
 /**
  * ✅ Vérifie si un code est un matricule agent en appelant la bonne API
  */
@@ -194,4 +219,29 @@ export const CATEGORIES = {
 
 export const getCategorie = (id) => {
   return CATEGORIES[id] || { label: id, emoji: "📦", color: "#64748b", bg: "#f1f5f9", border: "#e2e8f0" };
+};
+export const retirerLingeDistribue = async (codeOuTag) => {
+  const token = getTokenFromStorage();
+  const agent = getAgentFromStorage();
+  if (!agent) {
+    throw new Error("Aucun agent connecté");
+  }
+  const url = `${API_URL}/api/distribution/retirer?codeOuTag=${encodeURIComponent(codeOuTag)}&matriculeAgent=${encodeURIComponent(agent.matricule || agent.codeBarre)}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    }
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = errorText;
+    try {
+      const json = JSON.parse(errorText);
+      errorMessage = json.message || json.error || errorText;
+    } catch { errorMessage = errorText; }
+    throw new Error(errorMessage || "Retrait impossible");
+  }
+  const texte = await response.text();
+  try { return texte ? JSON.parse(texte) : {}; } catch { return { message: texte }; }
 };

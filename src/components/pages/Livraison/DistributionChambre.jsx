@@ -1,582 +1,171 @@
-// pages/Distribution/DistributionChambre.js
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, CardContent } from "../../ui/card";
-import { Badge } from "../../ui/badge";
-import ScanInput from "../../utils/shared/ScanInput";
-import {
-  getAgentFromStorage,
-  isAgentConnected,
-  fetchChambre,
-  poserLinge,
-  fetchAgentByCode,
-  getCategorie
-} from "../../../services/distributionChambreService";
-import Swal from "sweetalert2";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import "../Linge/WorkflowList.css";
+import { DoorOpen, BedDouble, ScanLine, CheckCircle2, AlertTriangle, Loader2, Shirt, User, RotateCcw, Flag, Plus, LogOut, Info, Undo2, X } from "lucide-react";
+import ScanInput from "../../utils/shared/ScanInput";
+import { getAgentFromStorage, fetchChambre, poserLinge, poserLingeChambre, retirerLingeDistribue } from "../../../services/distributionChambreService";
 import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import MuteButton from "../../utils/MuteButton";
 import { useVoiceGuide } from "../../../hooks/useVoiceGuide";
 import { getSetting } from "../../../utils/appSettings";
 import { BedTile, BedGraphic, LegendeLits } from "../Collecte/components/ChambreLits";
+import { useRattachementChambre } from "../../../hooks/useEstablishment";
+import {
+  Page, PageHeader, ActionBar, ActionButton, ConfirmDialog, Button, DataTable, Code, Badge,
+  VueSwitch, useVue, RowActions, RowButton,
+} from "../../kit";
+import "../Linge/WorkflowList.css";
+import "./DistributionChambre.css";
 
-
-
-
-const Icons = {
-  /* ─── Utilisateur / Agent ─── */
-  User: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  ),
-
-  /* ─── Lit ─── */
-  Bed: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 4v16" />
-      <path d="M2 8h18a2 2 0 0 1 2 2v10" />
-      <path d="M2 17h20" />
-      <path d="M6 8v9" />
-    </svg>
-  ),
-
-  /* ─── Porte / Chambre ─── */
-  DoorOpen: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M13 4h3a2 2 0 0 1 2 2v14" />
-      <path d="M2 20h3" />
-      <path d="M13 20h9" />
-      <path d="M10 12v.01" />
-      <path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.562Z" />
-    </svg>
-  ),
-
-  /* ─── Check ─── */
-  Check: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  ),
-
-  /* ─── Check double ─── */
-  CheckCheck: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 6 7 17l-5-5" />
-      <path d="m22 10-7.5 7.5L13 16" />
-    </svg>
-  ),
-
-  /* ─── Check circle ─── */
-  CheckCircle: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  ),
-
-  /* ─── Alert triangle ─── */
-  AlertTriangle: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-      <path d="M12 9v4" />
-      <path d="M12 17h.01" />
-    </svg>
-  ),
-
-  /* ─── X ─── */
-  X: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
-  ),
-
-  /* ─── Refresh / Reset ─── */
-  Refresh: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-      <path d="M21 3v5h-5" />
-      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-      <path d="M3 21v-5h5" />
-    </svg>
-  ),
-
-  /* ─── Loader ─── */
-  Loader: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-    </svg>
-  ),
-
-  /* ─── Package ─── */
-  Package: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16.5 9.4 7.55 4.24" />
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-      <path d="m3.3 7 8.7 5 8.7-5" />
-      <path d="M12 22V12" />
-    </svg>
-  ),
-
-  /* ─── Layers ─── */
-  Layers: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
-      <path d="m22 12.18-9.17 4.16a2 2 0 0 1-1.66 0L2 12.18" />
-      <path d="m22 17.18-9.17 4.16a2 2 0 0 1-1.66 0L2 17.18" />
-    </svg>
-  ),
-
-  /* ─── Activity ─── */
-  Activity: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
-    </svg>
-  ),
-
-  /* ─── Plus ─── */
-  Plus: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg>
-  ),
-
-  /* ─── Minus ─── */
-  Minus: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14" />
-    </svg>
-  ),
-
-  /* ─── Trash ─── */
-  Trash: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6h18" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      <path d="M10 11v6M14 11v6" />
-    </svg>
-  ),
-
-  /* ─── Clock ─── */
-  Clock: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  ),
-
-  /* ─── Circle (empty) ─── */
-  Circle: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-    </svg>
-  ),
-
-  /* ─── Circle filled ─── */
-  CircleDot: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <circle cx="12" cy="12" r="4" fill={color} />
-    </svg>
-  ),
-
-  /* ─── Info ─── */
-  Info: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 16v-4" />
-      <path d="M12 8h.01" />
-    </svg>
-  ),
-
-  /* ─── Sparkles ─── */
-  Sparkles: ({ size = 20, color = "currentColor", strokeWidth = 2 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
-    </svg>
-  ),
-};
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   ScanStatus — Barre de statut premium
-   ═══════════════════════════════════════════════════════════════════════════ */
-function ScanStatus({ loading, success, error, code }) {
-  const { t } = useTranslation();
-
-  if (loading) {
-    return (
-      <div style={{
-        padding: "14px 18px", borderRadius: 12,
-        background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
-        border: "1px solid #93c5fd",
-        display: "flex", alignItems: "center", gap: 14, marginTop: 12,
-        boxShadow: "0 4px 12px rgba(59,130,246,0.08)",
-        animation: "fadeIn 0.3s ease-out",
-      }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: "50%",
-          background: "white", display: "flex",
-          alignItems: "center", justifyContent: "center",
-          boxShadow: "0 2px 8px rgba(59,130,246,0.15)",
-        }}>
-          <div className="animate-spin">
-            <Icons.Loader size={20} color="#3b82f6" strokeWidth={2.5} />
-          </div>
-        </div>
-        <div>
-          <p style={{ fontWeight: 700, color: "#1d4ed8", fontSize: 14, margin: 0 }}>
-            {t('distribution_chambre.scanning')}
-          </p>
-          <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0 0" }}>{code}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (success) {
-    return (
-      <div style={{
-        padding: "14px 18px", borderRadius: 12,
-        background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
-        border: "1px solid #86efac",
-        display: "flex", alignItems: "center", gap: 14, marginTop: 12,
-        boxShadow: "0 4px 12px rgba(34,197,94,0.08)",
-        animation: "fadeIn 0.3s ease-out",
-      }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: "50%",
-          background: "white", display: "flex",
-          alignItems: "center", justifyContent: "center",
-          boxShadow: "0 2px 8px rgba(34,197,94,0.15)",
-        }}>
-          <Icons.CheckCircle size={20} color="#22c55e" strokeWidth={2.5} />
-        </div>
-        <div>
-          <p style={{ fontWeight: 700, color: "#15803d", fontSize: 14, margin: 0 }}>
-            {success.message || t('common.success')}
-          </p>
-          <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0 0" }}>{success.detail}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{
-        padding: "14px 18px", borderRadius: 12,
-        background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
-        border: "1px solid #fca5a5",
-        display: "flex", alignItems: "center", gap: 14, marginTop: 12,
-        boxShadow: "0 4px 12px rgba(239,68,68,0.08)",
-        animation: "fadeIn 0.3s ease-out",
-      }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: "50%",
-          background: "white", display: "flex",
-          alignItems: "center", justifyContent: "center",
-          boxShadow: "0 2px 8px rgba(239,68,68,0.15)",
-        }}>
-          <Icons.AlertTriangle size={20} color="#ef4444" strokeWidth={2.5} />
-        </div>
-        <div>
-          <p style={{ fontWeight: 700, color: "#dc2626", fontSize: 14, margin: 0 }}>
-            {t('common.error')}
-          </p>
-          <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0 0" }}>{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   StatutCard — Carte statistique premium avec SVG
-   ═══════════════════════════════════════════════════════════════════════════ */
-function StatutCard({ label, value, icon, color, bg, subValue }) {
-  return (
-    <div
-      style={{
-        padding: "16px 18px", borderRadius: 16, background: bg,
-        border: `1.5px solid ${color}25`,
-        flex: 1, minWidth: 120, position: "relative", overflow: "hidden",
-        transition: "all 0.25s",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-3px)";
-        e.currentTarget.style.boxShadow = `0 10px 24px ${color}22`;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "none";
-      }}
-    >
-      <div style={{
-        position: "absolute", top: -20, right: -20,
-        width: 70, height: 70, borderRadius: "50%",
-        background: `${color}12`, filter: "blur(20px)",
-      }} />
-
-      <div style={{ display: "flex", alignItems: "center", gap: 12, position: "relative" }}>
-        <div style={{
-          width: 42, height: 42, borderRadius: 12,
-          background: `${color}15`, display: "flex",
-          alignItems: "center", justifyContent: "center",
-          border: `1px solid ${color}25`,
-        }}>
-          {icon}
-        </div>
-
-        <div>
-          <p style={{
-            fontSize: 9.5, fontWeight: 800, color: "#94a3b8",
-            textTransform: "uppercase", letterSpacing: "0.7px",
-            margin: 0,
-          }}>
-            {label}
-          </p>
-          <p style={{
-            fontSize: 24, fontWeight: 800, color,
-            margin: 0, lineHeight: 1.1, letterSpacing: "-0.02em",
-          }}>
-            {value}
-          </p>
-          {subValue && (
-            <p style={{ fontSize: 10, color: "#94a3b8", margin: 0, fontWeight: 600 }}>
-              {subValue}
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   CarteLit — lit en SVG, même rendu que la collecte chambre
-   ═══════════════════════════════════════════════════════════════════════════ */
 const TONS_DISTRIBUTION = {
-  EQUIPE:  { main: "#15803D", soft: "#DCFCE7" },
+  EQUIPE: { main: "#15803D", soft: "#DCFCE7" },
   INFECTE: { main: "#DC2626", soft: "#FEE2E2" },
-  A_EQUIPER: { main: "#0D9488", soft: "#F0FDFA" },
+  A_EQUIPER: { main: "#0794A4", soft: "#E9F8FA" },
 };
 
 function CarteLit({ lit, actif, onClick }) {
   const { t } = useTranslation();
-
   const complet = !lit.litVide;
   const infecte = lit.estInfecte;
   const nb = lit.lingesPoses?.length || 0;
-
   const tone = complet
-    ? { ...TONS_DISTRIBUTION.EQUIPE, label: t('distribution_chambre.completed') }
+    ? { ...TONS_DISTRIBUTION.EQUIPE, label: t("distribution_chambre.completed") }
     : infecte
-      ? { ...TONS_DISTRIBUTION.INFECTE, label: t('distribution_chambre.infected') }
-      : { ...TONS_DISTRIBUTION.A_EQUIPER, label: t('distribution_chambre.empty') };
+      ? { ...TONS_DISTRIBUTION.INFECTE, label: t("distribution_chambre.infected") }
+      : { ...TONS_DISTRIBUTION.A_EQUIPER, label: t("distribution_chambre.empty") };
 
   return (
     <BedTile
       tone={tone}
       code={lit.codeLit}
       meta={nb > 0
-        ? `${nb} ${t('distribution_chambre.linen')}${nb > 1 ? 's' : ''} ${t('distribution_chambre.distributed').toLowerCase()}`
-        : t('distribution_chambre.no_linen_placed')}
-      pill={actif ? t('distribution_chambre.in_progress') : tone.label}
+        ? `${nb} ${t("distribution_chambre.linen")}${nb > 1 ? "s" : ""} ${t("distribution_chambre.distributed").toLowerCase()}`
+        : t("distribution_chambre.no_linen_placed")}
+      pill={actif ? t("distribution_chambre.in_progress") : tone.label}
       active={actif}
       flag={infecte && !complet}
       onClick={onClick}
     >
-      <BedGraphic
-        tone={tone}
-        filled={complet}
-        center={nb > 0 ? "count" : complet ? "check" : "dash"}
-        count={nb}
-        active={actif}
-      />
+      <BedGraphic tone={tone} filled={complet} center={nb > 0 ? "count" : complet ? "check" : "dash"} count={nb} active={actif} />
     </BedTile>
   );
 }
 
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   Resume — Écran de fin premium avec SVG
-   ═══════════════════════════════════════════════════════════════════════════ */
-function Resume({ res, onNouvelle, onTerminer }) {
+function Etapes({ etape, modeChambre }) {
   const { t } = useTranslation();
-
+  const liste = [
+    { id: "CHAMBRE", label: t("distribution_chambre.step_room", "Chambre"), Icon: DoorOpen },
+    { id: "DISTRIBUER", label: modeChambre ? t("distribution_chambre.step_drop", "Dépôt des linges") : t("distribution_chambre.step_beds", "Équipement des lits"), Icon: modeChambre ? Shirt : BedDouble },
+    { id: "RESUME", label: t("distribution_chambre.step_summary", "Récapitulatif"), Icon: Flag },
+  ];
+  const courant = liste.findIndex((e) => e.id === etape);
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
-      style={{
-        background: "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
-        borderRadius: 24, padding: 40,
-        border: "2px solid #86efac",
-        boxShadow: "0 12px 40px rgba(16, 185, 129, 0.15)",
-      }}
-    >
-      <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <motion.div
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
-          style={{
-            width: 72, height: 72, borderRadius: "50%",
-            background: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 16px",
-            boxShadow: "0 8px 24px rgba(16,185,129,0.2)",
-            border: "2px solid #86efac",
-          }}
-        >
-          <Icons.CheckCheck size={34} color="#15803d" strokeWidth={2.5} />
-        </motion.div>
-        <h2 style={{
-          fontSize: 26, fontWeight: 800, color: "#15803d",
-          margin: 0, letterSpacing: "-0.02em",
-        }}>
-          {t('distribution_chambre.room_equipped', { code: res.codeChambre })}
-        </h2>
-        <p style={{ fontSize: 14, color: "#64748b", marginTop: 6, fontWeight: 500 }}>
-          {res.nbLinges} {t('distribution_chambre.linen')}{res.nbLinges > 1 ? 's' : ''} {t('distribution_chambre.distributed_on')} {res.nbLits} {t('distribution_chambre.bed')}{res.nbLits > 1 ? 's' : ''}
-        </p>
-      </div>
+    <ol className="dc-steps">
+      {liste.map((e, i) => (
+        <li key={e.id} className={i < courant ? "is-done" : i === courant ? "is-current" : ""}>
+          <span className="dc-steps__dot">{i < courant ? <CheckCircle2 size={15} /> : <e.Icon size={15} />}</span>
+          <span className="dc-steps__label">{e.label}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-        gap: 12, marginBottom: 28,
-      }}>
-        {res.litsEquipes?.map((l, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + i * 0.05 }}
-            style={{
-              background: "white", borderRadius: 14,
-              padding: "14px 16px",
-              border: "1px solid #bbf7d0",
-              display: "flex", alignItems: "center", gap: 12,
-              boxShadow: "0 2px 8px rgba(16,185,129,0.08)",
-            }}
-          >
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#15803d", border: "1px solid #86efac",
-            }}>
-              <Icons.Bed size={16} color="#15803d" strokeWidth={2.2} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 13, color: "#0f172a", letterSpacing: "-0.01em" }}>
-                {t('distribution_chambre.bed')} {l.codeLit}
-              </div>
-              <div style={{ fontSize: 11, color: "#64748b", fontWeight: 500 }}>
-                {l.nb} {t('distribution_chambre.linen')}{l.nb > 1 ? 's' : ''}
-              </div>
-            </div>
-          </motion.div>
-        ))}
+function EtatScan({ status }) {
+  if (!status) return null;
+  if (status.loading) {
+    return <div className="dc-status is-loading"><Loader2 size={15} className="animate-spin" /><span>{status.code}</span></div>;
+  }
+  if (status.error) {
+    return <div className="dc-status is-error"><AlertTriangle size={15} /><span>{status.error}</span></div>;
+  }
+  if (status.success) {
+    return (
+      <div className="dc-status is-ok">
+        <CheckCircle2 size={15} />
+        <span><strong>{status.success.message}</strong>{status.success.detail ? ` · ${status.success.detail}` : ""}</span>
       </div>
+    );
+  }
+  return null;
+}
 
-      <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-        <button
-          onClick={onNouvelle}
-          style={{
-            padding: "13px 30px", borderRadius: 12, border: "none",
-            background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-            color: "white", fontWeight: 800, fontSize: 14, cursor: "pointer",
-            transition: "all 0.2s", boxShadow: "0 6px 20px rgba(124, 58, 237, 0.3)",
-            display: "inline-flex", alignItems: "center", gap: 8,
+function Kpi({ icon, label, value, tone }) {
+  return (
+    <div className="dc-kpi" style={{ "--k": tone }}>
+      <span className="dc-kpi__icon">{icon}</span>
+      <div>
+        <small>{label}</small>
+        <strong>{value}</strong>
+      </div>
+    </div>
+  );
+}
+
+function Resume({ res, modeChambre, onNouvelle, onTerminer }) {
+  const { t } = useTranslation();
+  return (
+    <motion.div className="dc-resume" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+      <div className="dc-resume__hero">
+        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 220, damping: 14 }}>
+          <CheckCircle2 size={30} />
+        </motion.span>
+        <div>
+          <small>{t("distribution_chambre.step_summary", "Récapitulatif")}</small>
+          <h2>{t("distribution_chambre.room_equipped", { code: res.codeChambre })}</h2>
+          <p>
+            {modeChambre
+              ? t("distribution_chambre.summary_room", "{{count}} linge(s) déposé(s) dans la chambre", { count: res.nbLinges })
+              : `${res.nbLinges} ${t("distribution_chambre.linen")}${res.nbLinges > 1 ? "s" : ""} ${t("distribution_chambre.distributed_on")} ${res.nbLits} ${t("distribution_chambre.bed")}${res.nbLits > 1 ? "s" : ""}`}
+          </p>
+        </div>
+      </div>
+      {!modeChambre && res.litsEquipes?.length > 0 && (
+        <DataTable
+          columns={{
+            lit: { label: t("distribution_chambre.bed"), render: (l) => <span className="dc-inline"><BedDouble size={15} /> <strong>{l.codeLit}</strong></span> },
+            nb: { label: t("distribution_chambre.distributed"), align: "right", render: (l) => <Badge variant="success">{l.nb}</Badge> },
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-2px)";
-            e.currentTarget.style.boxShadow = "0 10px 28px rgba(124, 58, 237, 0.4)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 6px 20px rgba(124, 58, 237, 0.3)";
-          }}
-        >
-          <Icons.Plus size={15} color="white" strokeWidth={2.5} />
-          {t('distribution_chambre.another_room')}
-        </button>
-        <button
-          onClick={onTerminer}
-          style={{
-            padding: "13px 30px", borderRadius: 12,
-            border: "1px solid #e2e8f0", background: "white",
-            color: "#64748b", fontWeight: 700, fontSize: 14, cursor: "pointer",
-            transition: "all 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#f8fafc";
-            e.currentTarget.style.borderColor = "#cbd5e1";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "white";
-            e.currentTarget.style.borderColor = "#e2e8f0";
-          }}
-        >
-          {t('common.finish')}
-        </button>
+          rows={res.litsEquipes}
+          rowKey={(l) => l.litId}
+        />
+      )}
+      <div className="dc-resume__actions">
+        <Button variant="secondary" onClick={onTerminer}>{t("common.finish")}</Button>
+        <Button icon={<Plus size={16} />} onClick={onNouvelle}>{t("distribution_chambre.another_room")}</Button>
       </div>
     </motion.div>
   );
 }
 
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   COMPOSANT PRINCIPAL — Logique 100% préservée
-   ═══════════════════════════════════════════════════════════════════════════ */
 export default function DistributionChambre() {
   const { t } = useTranslation();
+  const modeChambre = useRattachementChambre();
+  const modeChambreRef = useRef(modeChambre);
+  useEffect(() => { modeChambreRef.current = modeChambre; }, [modeChambre]);
 
   const [etape, setEtape] = useState("CHAMBRE");
-  const [agent, setAgent] = useState(null);
+  const [agent] = useState(() => getAgentFromStorage());
   const [chambre, setChambre] = useState(null);
   const [litActif, setLitActif] = useState(null);
   const [scanVal, setScanVal] = useState("");
   const [loading, setLoading] = useState(false);
   const [resume, setResume] = useState(null);
   const [poses, setPoses] = useState([]);
-  const [scanStatus, setScanStatus] = useState(null);
+  const [scanStatus, setScanStatus] = useState(() => {
+    const a = getAgentFromStorage();
+    return a
+      ? { success: { message: `${t("distribution_chambre.agent")} ${a.nom}`, detail: `${t("distribution_chambre.connected")} · ${a.codeBarre || a.matricule}` } }
+      : { error: t("distribution_chambre.no_agent_connected") };
+  });
+  const [confirmerFin, setConfirmerFin] = useState(false);
+  const [confirmerReset, setConfirmerReset] = useState(false);
+  const [modeRetrait, setModeRetrait] = useState(false);
+  const [aRetirer, setARetirer] = useState(null);
+  const [vueLits, setVueLits] = useVue("distribution.lits");
+  const [vueChambre, setVueChambre] = useVue("distribution.chambre");
 
-  // Assistant vocal (même fonctionnement que la collecte chambre)
   const [voiceLang, setVoiceLang] = useState(() => getSetting("voice.lang"));
   const voice = useVoiceGuide(voiceLang);
   const voiceRef = useRef(voice);
@@ -594,151 +183,114 @@ export default function DistributionChambre() {
 
   useEffect(() => {
     const agentData = getAgentFromStorage();
-    if (agentData) {
-      setAgent(agentData);
-      setEtape("CHAMBRE");
-      setScanStatus({
-        loading: false,
-        success: {
-          message: `${t('distribution_chambre.agent')} ${agentData.nom}`,
-          detail: `${t('distribution_chambre.connected')} · ${agentData.codeBarre || agentData.matricule}`
-        },
-        error: null
-      });
-      setTimeout(() => setScanStatus(null), 2000);
-      setTimeout(() => voiceRef.current.sayBienvenueDistribution(agentData.nomPrenom || agentData.nom || ""), 600);
-    } else {
-      setEtape("CHAMBRE");
-      setScanStatus({
-        loading: false,
-        success: null,
-        error: t('distribution_chambre.no_agent_connected')
-      });
-    }
-  }, [t]);
+    if (!agentData) return undefined;
+    const effacer = setTimeout(() => setScanStatus(null), 2000);
+    const accueil = setTimeout(() => voiceRef.current.sayBienvenueDistribution(agentData.nomPrenom || agentData.nom || ""), 600);
+    return () => { clearTimeout(effacer); clearTimeout(accueil); };
+  }, []);
 
   useEffect(() => {
     const keepFocus = () => {
-      if (scanInputRef.current && !document.querySelector('[data-modal="true"]')) {
-        scanInputRef.current.focus();
-      }
+      if (scanInputRef.current && !document.querySelector('[data-modal="true"], .modal-overlay')) scanInputRef.current.focus();
     };
     const id = setInterval(keepFocus, 500);
     keepFocus();
     return () => clearInterval(id);
   }, []);
 
-  const cloturerDistribution = useCallback(async () => {
+  const nbPoses = poses.reduce((s, p) => s + p.nb, 0);
+
+  const demanderFin = useCallback(() => {
     if (poses.length === 0) {
       voice.sayAucunLingeDistribue();
-      await Swal.fire({
-        icon: 'warning',
-        title: t('distribution_chambre.no_linen_distributed_title'),
-        text: t('distribution_chambre.no_linen_distributed_text'),
-        timer: 1500,
-        showConfirmButton: false
-      });
-      return false;
+      toast.warning(t("distribution_chambre.no_linen_distributed_title"), { description: t("distribution_chambre.no_linen_distributed_text") });
+      return;
     }
+    setConfirmerFin(true);
+  }, [poses, t, voice]);
 
-    const result = await Swal.fire({
-      icon: 'question',
-      title: t('distribution_chambre.finish_distribution_title'),
-      text: t('distribution_chambre.finish_distribution_text', {
-        count: poses.reduce((s, p) => s + p.nb, 0),
-        beds: poses.length
-      }),
-      showCancelButton: true,
-      confirmButtonColor: '#0d9488',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: t('distribution_chambre.yes_finish'),
-      cancelButtonText: t('common.cancel')
-    });
-
-    if (!result.isConfirmed) return false;
-
-    const nbTotal = poses.reduce((s, p) => s + p.nb, 0);
-    setResume({
-      codeChambre: chambre.codeChambre,
-      nbLinges: nbTotal,
-      nbLits: poses.length,
-      litsEquipes: poses
-    });
+  const terminer = useCallback(() => {
+    setConfirmerFin(false);
+    setResume({ codeChambre: chambre.codeChambre, nbLinges: nbPoses, nbLits: poses.length, litsEquipes: poses });
     setEtape("RESUME");
     setLitActif(null);
-    voice.sayDistributionTerminee(chambre.codeChambre, nbTotal, poses.length);
-    return true;
-  }, [poses, chambre, t, voice]);
+    voice.sayDistributionTerminee(chambre.codeChambre, nbPoses, poses.length);
+  }, [chambre, nbPoses, poses, voice]);
 
-  const handleChambre = useCallback(async code => {
+  const handleChambre = useCallback(async (code) => {
     if (!agent) {
-      await Swal.fire({
-        icon: 'warning',
-        title: t('distribution_chambre.agent_not_connected_title'),
-        text: t('distribution_chambre.agent_not_connected_text'),
-        timer: 1500,
-        showConfirmButton: false
-      });
+      toast.warning(t("distribution_chambre.agent_not_connected_title"), { description: t("distribution_chambre.agent_not_connected_text") });
       return;
     }
     setLoading(true);
     setScanStatus({ loading: true, code });
     try {
       const res = await fetchChambre(code);
-
       setChambre({
         chambreId: res.chambreId,
         codeChambre: res.codeChambre,
         lits: res.lits || [],
-        disponibles: (res.disponibles || []).map(l => ({ ...l, lingeId: l.lingeId || l.id })),
+        disponibles: (res.disponibles || []).map((l) => ({ ...l, lingeId: l.lingeId || l.id })),
+        dansChambre: (res.lingesDansChambre || []).map((l) => ({ ...l, lingeId: l.lingeId || l.id })),
+        recents: [],
+        session: [],
       });
       setLitActif(null);
       setPoses([]);
       setEtape("DISTRIBUER");
-      setScanStatus({
-        loading: false,
-        success: {
-          message: `${t('distribution_chambre.room')} ${res.codeChambre}`,
-          detail: `${res.lits?.length} ${t('distribution_chambre.bed')}s · ${res.disponibles?.length || 0} ${t('distribution_chambre.linen')}s`
-        },
-        error: null
-      });
+      const detail = modeChambreRef.current
+        ? `${res.lingesDansChambre?.length || 0} ${t("distribution_chambre.in_room", "déjà dans la chambre")}`
+        : `${res.lits?.length || 0} ${t("distribution_chambre.bed")}s`;
+      setScanStatus({ success: { message: `${t("distribution_chambre.room")} ${res.codeChambre}`, detail } });
       setTimeout(() => setScanStatus(null), 2000);
+      toast.success(`${t("distribution_chambre.room")} ${res.codeChambre}`, { description: detail });
       const nbDisponibles = res.disponibles?.length || 0;
       if (nbDisponibles === 0) voice.sayChambreDistributionVide(res.codeChambre);
       else voice.sayChambreDistribution(res.codeChambre, res.lits?.length || 0, nbDisponibles);
-      await Swal.fire({
-        icon: 'success',
-        title: `${t('distribution_chambre.room')} ${res.codeChambre}`,
-        text: `${res.lits?.length} ${t('distribution_chambre.bed')}s · ${res.disponibles?.length || 0} ${t('distribution_chambre.linen')}s ${t('distribution_chambre.available')}`,
-        timer: 1500,
-        showConfirmButton: false
-      });
     } catch (e) {
-      setScanStatus({ loading: false, success: null, error: e.message });
+      setScanStatus({ error: e.message });
       if (/réseau|network|fetch/i.test(e.message || "")) voice.sayErreurReseau();
       else voice.sayChambreErreur();
-      await Swal.fire({
-        icon: 'error',
-        title: t('common.error'),
-        text: e.message
-      });
+      toast.error(e.message);
     } finally {
       setLoading(false);
     }
   }, [agent, t, voice]);
 
-  const handleScanLinge = useCallback(async code => {
+  const handleScanLingeChambre = useCallback(async (code) => {
+    const c = chambreRef.current;
+    if (!c) return;
+    setLoading(true);
+    setScanStatus({ loading: true, code });
+    try {
+      const res = await poserLingeChambre(c.chambreId, code);
+      const linge = c.disponibles.find((l) => l.codeBarre === code || l.lingeId === res.lingeId)
+        || { lingeId: res.lingeId, codeBarre: res.codeBarre, categorie: res.categorie };
+      setChambre((p) => (p ? {
+        ...p,
+        disponibles: p.disponibles.filter((l) => l.lingeId !== linge.lingeId),
+        dansChambre: [{ ...linge, codeBarre: res.codeBarre || linge.codeBarre, categorie: res.categorie || linge.categorie }, ...(p.dansChambre || []).filter((l) => l.lingeId !== linge.lingeId)],
+        recents: [linge.lingeId, ...(p.recents || [])].slice(0, 3),
+        session: [...(p.session || []), linge.lingeId],
+      } : p));
+      setPoses((p) => (p.length ? p.map((x) => ({ ...x, nb: x.nb + 1 })) : [{ litId: "CHAMBRE", codeLit: c.codeChambre, nb: 1 }]));
+      setScanStatus({ success: { message: t("distribution_chambre.linen_in_room", "Linge déposé dans la chambre"), detail: res.codeBarre || code } });
+      setTimeout(() => setScanStatus(null), 1500);
+      if (c.disponibles.filter((l) => l.lingeId !== linge.lingeId).length === 0) voice.sayTousLingesPoses();
+    } catch (e) {
+      setScanStatus({ error: e.message });
+      voice.sayErreurGenerique(e.message);
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [t, voice]);
+
+  const handleScanLinge = useCallback(async (code) => {
     const lit = litRef.current;
     if (!lit) {
       voice.sayChoisirLit();
-      await Swal.fire({
-        icon: 'warning',
-        title: t('distribution_chambre.select_bed_first_title'),
-        text: t('distribution_chambre.select_bed_first_text'),
-        timer: 1500,
-        showConfirmButton: false
-      });
+      toast.warning(t("distribution_chambre.select_bed_first_title"), { description: t("distribution_chambre.select_bed_first_text") });
       return;
     }
     setLoading(true);
@@ -746,89 +298,100 @@ export default function DistributionChambre() {
     try {
       const c = chambreRef.current;
       const res = await poserLinge(c.chambreId, lit.litId, code);
-
-      const linge = c.disponibles.find(l => l.codeBarre === code || l.lingeId === res.lingeId)
+      const linge = c.disponibles.find((l) => l.codeBarre === code || l.lingeId === res.lingeId)
         || { lingeId: res.lingeId, codeBarre: res.codeBarre, categorie: res.categorie };
-
-      setChambre(p => p ? {
+      setChambre((p) => (p ? {
         ...p,
-        disponibles: p.disponibles.filter(l => l.lingeId !== linge.lingeId),
-        lits: p.lits.map(l => l.litId !== lit.litId ? l : {
-          ...l,
-          litVide: false,
-          lingesPoses: [...(l.lingesPoses || []), { ...linge }]
-        })
-      } : p);
-
-      setPoses(p => {
-        const ex = p.find(x => x.litId === lit.litId);
-        if (ex) return p.map(x => x.litId === lit.litId ? { ...x, nb: x.nb + 1 } : x);
+        disponibles: p.disponibles.filter((l) => l.lingeId !== linge.lingeId),
+        lits: p.lits.map((l) => (l.litId !== lit.litId ? l : { ...l, litVide: false, lingesPoses: [...(l.lingesPoses || []), { ...linge }] })),
+        session: [...(p.session || []), linge.lingeId],
+      } : p));
+      setPoses((p) => {
+        const ex = p.find((x) => x.litId === lit.litId);
+        if (ex) return p.map((x) => (x.litId === lit.litId ? { ...x, nb: x.nb + 1 } : x));
         return [...p, { litId: lit.litId, codeLit: lit.codeLit, nb: 1 }];
       });
-
-      setScanStatus({
-        loading: false,
-        success: {
-          message: t('distribution_chambre.linen_placed'),
-          detail: `${t('distribution_chambre.bed')} ${lit.codeLit}`
-        },
-        error: null
-      });
+      setScanStatus({ success: { message: t("distribution_chambre.linen_placed"), detail: `${t("distribution_chambre.bed")} ${lit.codeLit}` } });
       setTimeout(() => setScanStatus(null), 1500);
-
-      const restants = c.disponibles.filter(l => l.lingeId !== linge.lingeId).length;
-      const nbSurLit = (c.lits.find(l => l.litId === lit.litId)?.lingesPoses?.length || 0) + 1;
+      const restants = c.disponibles.filter((l) => l.lingeId !== linge.lingeId).length;
+      const nbSurLit = (c.lits.find((l) => l.litId === lit.litId)?.lingesPoses?.length || 0) + 1;
       if (restants === 0) voice.sayTousLingesPoses();
       else voice.sayLingePose(lit.codeLit, nbSurLit);
     } catch (e) {
-      setScanStatus({ loading: false, success: null, error: e.message });
+      setScanStatus({ error: e.message });
       voice.sayErreurGenerique(e.message);
-      await Swal.fire({
-        icon: 'error',
-        title: t('common.error'),
-        text: e.message,
-        timer: 1500,
-        showConfirmButton: false
-      });
+      toast.error(e.message);
     } finally {
       setLoading(false);
     }
   }, [t, voice]);
 
-  const handleScan = useCallback(async code => {
+  const retirer = useCallback(async (code) => {
+    const c = chambreRef.current;
+    if (!c || !code) return;
+    setARetirer(null);
+    setLoading(true);
+    setScanStatus({ loading: true, code });
+    try {
+      const res = await retirerLingeDistribue(code);
+      const correspond = (l) => l && (l.codeBarre === code || l.rfidTag === code
+        || (res?.lingeId != null && l.lingeId === res.lingeId)
+        || (res?.codeBarre && l.codeBarre === res.codeBarre));
+      const dansLit = c.lits.find((l) => (l.lingesPoses || []).some(correspond));
+      const linge = (c.dansChambre || []).find(correspond)
+        || dansLit?.lingesPoses.find(correspond)
+        || { lingeId: res?.lingeId, codeBarre: res?.codeBarre || code, categorie: res?.categorie };
+      const deCetteSession = (c.session || []).includes(linge.lingeId);
+      setChambre((p) => (p ? {
+        ...p,
+        dansChambre: (p.dansChambre || []).filter((l) => !correspond(l)),
+        lits: p.lits.map((l) => {
+          const restants = (l.lingesPoses || []).filter((x) => !correspond(x));
+          return restants.length === (l.lingesPoses || []).length ? l : { ...l, lingesPoses: restants, litVide: restants.length === 0 };
+        }),
+        disponibles: [{ ...linge }, ...p.disponibles.filter((l) => !correspond(l))],
+        recents: (p.recents || []).filter((id) => id !== linge.lingeId),
+        session: (p.session || []).filter((id) => id !== linge.lingeId),
+      } : p));
+      if (deCetteSession) {
+        const cle = dansLit ? dansLit.litId : "CHAMBRE";
+        setPoses((p) => p.map((x) => (x.litId === cle ? { ...x, nb: x.nb - 1 } : x)).filter((x) => x.nb > 0));
+      }
+      const ou = dansLit ? `${t("distribution_chambre.bed")} ${dansLit.codeLit}` : `${t("distribution_chambre.room")} ${c.codeChambre}`;
+      setScanStatus({ success: { message: t("distribution_chambre.linen_removed", "Linge retiré"), detail: `${linge.codeBarre || code} · ${ou}` } });
+      setTimeout(() => setScanStatus(null), 1800);
+      toast.success(res?.message || t("distribution_chambre.linen_removed", "Linge retiré"), { description: `${linge.codeBarre || code} · ${ou}` });
+    } catch (e) {
+      setScanStatus({ error: e.message });
+      voice.sayErreurGenerique(e.message);
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [t, voice]);
+
+  const handleScan = useCallback(async (code) => {
     if (!code || loading) return;
     setScanVal("");
-
     if (etape === "CHAMBRE") {
       await handleChambre(code);
       return;
     }
-
     if (etape === "DISTRIBUER") {
       const ag = agentRef.current;
       const c = code.trim();
       if (ag && (c === ag.codeBarre || c === ag.matricule)) {
-        await cloturerDistribution();
+        demanderFin();
         return;
       }
-      await handleScanLinge(c);
+      if (modeRetrait) await retirer(c);
+      else if (modeChambre) await handleScanLingeChambre(c);
+      else await handleScanLinge(c);
     }
-  }, [etape, loading, handleChambre, handleScanLinge, cloturerDistribution]);
+  }, [etape, loading, modeChambre, modeRetrait, handleChambre, handleScanLinge, handleScanLingeChambre, demanderFin, retirer]);
 
-  const reset = useCallback(async () => {
-    if (etape !== "CHAMBRE" && etape !== "RESUME") {
-      const result = await Swal.fire({
-        icon: 'warning',
-        title: t('distribution_chambre.reset_title'),
-        text: t('distribution_chambre.reset_text'),
-        showCancelButton: true,
-        confirmButtonColor: '#ef4444',
-        cancelButtonColor: '#64748b',
-        confirmButtonText: t('distribution_chambre.yes_reset'),
-        cancelButtonText: t('common.cancel')
-      });
-      if (!result.isConfirmed) return;
-    }
+  const viderSession = useCallback(() => {
+    setConfirmerReset(false);
     setChambre(null);
     setLitActif(null);
     setPoses([]);
@@ -836,383 +399,291 @@ export default function DistributionChambre() {
     setEtape("CHAMBRE");
     setScanVal("");
     setScanStatus(null);
-  }, [etape, t]);
+    setModeRetrait(false);
+    setTimeout(() => scanInputRef.current?.focus(), 200);
+  }, []);
+
+  const demanderReset = () => (etape === "DISTRIBUER" && nbPoses > 0 ? setConfirmerReset(true) : viderSession());
+
+  const choisirLit = (lit) => {
+    const dejaActif = litActif?.litId === lit.litId;
+    setLitActif(dejaActif ? null : lit);
+    if (!dejaActif) voice.sayLitDistribution(lit.codeLit, lit.estInfecte);
+  };
 
   const getPlaceholder = () => {
-    if (!agent) return t('distribution_chambre.agent_not_connected_placeholder');
-    if (etape === "CHAMBRE") return t('distribution_chambre.scan_room_code');
-    if (etape === "RESUME") return t('distribution_chambre.distribution_completed');
-    if (litActif) return t('distribution_chambre.scan_linen_to_bed', { code: litActif.codeLit });
-    return t('distribution_chambre.select_bed_hint');
+    if (!agent) return t("distribution_chambre.agent_not_connected_placeholder");
+    if (etape === "CHAMBRE") return t("distribution_chambre.scan_room_code");
+    if (etape === "RESUME") return t("distribution_chambre.distribution_completed");
+    if (modeRetrait) return t("distribution_chambre.scan_to_remove", "Scannez le linge à retirer");
+    if (modeChambre) return t("distribution_chambre.scan_linen_to_room", { code: chambre?.codeChambre || "" });
+    if (litActif) return t("distribution_chambre.scan_linen_to_bed", { code: litActif.codeLit });
+    return t("distribution_chambre.select_bed_hint");
   };
 
-  const getBorderColor = () => {
-    if (!agent) return "#dc2626";
-    if (litActif) return litActif.estInfecte ? "#dc2626" : "#7c3aed";
-    if (etape === "CHAMBRE") return "#0d9488";
-    if (etape === "DISTRIBUER") return "#7c3aed";
-    return "#e2e8f0";
-  };
-
-  const nbPoses = poses.reduce((s, p) => s + p.nb, 0);
-  const nbDispo = chambre?.disponibles?.length || 0;
-  const litsVides = chambre?.lits?.filter(l => l.litVide).length || 0;
-  const nbTotal = nbPoses + nbDispo;
-  const pctAvancement = nbTotal > 0 ? Math.round((nbPoses / nbTotal) * 100) : 0;
+  const lits = chambre?.lits || [];
+  const litsEquipes = lits.filter((l) => !l.litVide).length;
   const isCloturee = etape === "RESUME";
+  const pret = !!agent && !isCloturee && (etape === "CHAMBRE" || modeChambre || modeRetrait || !!litActif);
+  const litCourant = litActif ? lits.find((l) => l.litId === litActif.litId) : null;
+
+  const libelleLit = (l) => (!l.litVide
+    ? <Badge variant="success">{t("distribution_chambre.completed")}</Badge>
+    : l.estInfecte
+      ? <Badge variant="danger">{t("distribution_chambre.infected")}</Badge>
+      : <Badge variant="info">{t("distribution_chambre.empty")}</Badge>);
 
   return (
-    <div className="collecte-container">
-      {/* ═══ Header premium ═══ */}
-      <div className="page-head" style={{
-        marginBottom: 32, display: "flex", alignItems: "center",
-        justifyContent: "space-between", flexWrap: "wrap", gap: 12,
-      }}>
-        <div style={{
-          display: "flex", alignItems: "center",
-          gap: 16,
-        }}>
-          <PageHeaderIcon size={60} />
-          <div>
-            <h1 style={{
-              fontSize: 28, fontWeight: 800, color: "#0f172a",
-              margin: 0, letterSpacing: "-0.025em",
-            }}>
-              {t('distribution_chambre.title')}
-            </h1>
-            <p style={{
-              fontSize: 13.5, color: "#64748b",
-              margin: "4px 0 0 0", fontWeight: 500,
-              display: "flex", alignItems: "center", gap: 7,
-            }}>
-              {agent ? (
-                <>
-                  <Icons.User size={13} color="#0d9488" strokeWidth={2.2} />
-                  {`${t('distribution_chambre.agent')}: ${agent.nom}`}
-                </>
-              ) : (
-                t('distribution_chambre.no_agent_connected')
-              )}
-            </p>
-          </div>
-        </div>
+    <Page className="dc-page">
+      <PageHeader
+        icon={<PageHeaderIcon size={40} />}
+        title={t("distribution_chambre.title")}
+        subtitle={agent ? `${t("distribution_chambre.agent")} : ${agent.nomPrenom || agent.nom}` : t("distribution_chambre.no_agent_connected")}
+        badge={chambre ? `${t("distribution_chambre.room")} ${chambre.codeChambre}` : undefined}
+        right={<MuteButton muted={voice.muted} onToggle={voice.toggleMute} speaking={voice.speaking} lang={voiceLang} onLangChange={setVoiceLang} />}
+      />
 
-        <MuteButton
-          muted={voice.muted}
-          onToggle={voice.toggleMute}
-          speaking={voice.speaking}
-          lang={voiceLang}
-          onLangChange={setVoiceLang}
-        />
-      </div>
+      <ActionBar>
+        {etape === "DISTRIBUER" && (
+          <ActionButton icon={<Flag size={18} />} label={t("distribution_chambre.finish_distribution_title")} variant="etat-accepter" disabled={!nbPoses} onClick={demanderFin} />
+        )}
+        {etape === "DISTRIBUER" && (
+          <ActionButton
+            icon={<Undo2 size={18} />}
+            label={modeRetrait ? t("distribution_chambre.stop_removing", "Terminer le retrait") : t("distribution_chambre.remove_linen", "Retirer un linge")}
+            variant={modeRetrait ? "etat-refuser" : "modifier"}
+            onClick={() => setModeRetrait((m) => !m)}
+          />
+        )}
+        {etape !== "CHAMBRE" && (
+          <ActionButton icon={<DoorOpen size={18} />} label={t("distribution_chambre.another_room")} variant="details" onClick={demanderReset} />
+        )}
+        <ActionButton icon={<RotateCcw size={18} />} label={t("common.reset")} variant="supprimer" disabled={etape === "CHAMBRE"} onClick={demanderReset} />
+      </ActionBar>
 
-      <div style={{
-        background: "white", borderRadius: 24, padding: 32,
-        border: "1px solid #e2e8f0",
-        boxShadow: "0 12px 40px rgba(15,23,42,0.06)",
-      }}>
-
-        {/* ═══ Barre agent + chambre ═══ */}
-        <div style={{
-          display: "flex", justifyContent: "space-between",
-          alignItems: "center", marginBottom: 20,
-          flexWrap: "wrap", gap: 12,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            {agent && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 18px", background: "#faf5ff",
-                borderRadius: 12, border: "1px solid #e9d5ff",
-              }}>
-                <Icons.User size={15} color="#7c3aed" strokeWidth={2.2} />
-                <span style={{ fontWeight: 700, color: "#7c3aed", fontSize: 14 }}>
-                  {agent.nom}
-                </span>
-                <Badge style={{
-                  background: "#ede9fe", color: "#7c3aed",
-                  fontSize: 10, padding: "2px 10px", borderRadius: 12,
-                  fontWeight: 700,
-                }}>
-                  {agent.codeBarre || agent.matricule}
-                </Badge>
-              </div>
-            )}
-            {chambre && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 18px", background: "#f0fdfa",
-                borderRadius: 12, border: "1px solid #99f6e4",
-              }}>
-                <Icons.DoorOpen size={15} color="#0d9488" strokeWidth={2.2} />
-                <span style={{ fontWeight: 700, color: "#0d9488", fontSize: 14 }}>
-                  {t('distribution_chambre.room')} {chambre.codeChambre}
-                </span>
-                <Badge style={{
-                  background: "#ccfbf1", color: "#0d9488",
-                  fontSize: 10, padding: "2px 10px", borderRadius: 12,
-                  fontWeight: 700,
-                }}>
-                  {chambre.lits?.length || 0} {t('distribution_chambre.bed')}s
-                </Badge>
-              </div>
-            )}
-            {etape === "DISTRIBUER" && litActif && (
-              <Badge style={{
-                background: "#ede9fe", color: "#7c3aed",
-                fontSize: 11, padding: "5px 15px", borderRadius: 12,
-                display: "inline-flex", alignItems: "center", gap: 6,
-                fontWeight: 700,
-              }}>
-                <Icons.Bed size={12} color="#7c3aed" strokeWidth={2.5} />
-                {t('distribution_chambre.bed')} {litActif.codeLit}
-              </Badge>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            {etape !== "CHAMBRE" && etape !== "RESUME" && (
-              <button
-                onClick={reset}
-                style={{
-                  padding: "7px 15px", borderRadius: 10,
-                  border: "1px solid #fca5a5", background: "#fff5f5",
-                  color: "#dc2626", cursor: "pointer", fontSize: 12,
-                  fontWeight: 700, display: "flex",
-                  alignItems: "center", gap: 6,
-                }}
-              >
-                <Icons.Refresh size={12} color="#dc2626" strokeWidth={2.5} />
-                {t('common.reset')}
-              </button>
-            )}
-          </div>
-        </div>
+      <div className="dc-shell">
+        <Etapes etape={etape} modeChambre={modeChambre} />
 
         {!agent && (
-          <div style={{
-            padding: "13px 17px", borderRadius: 12,
-            background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
-            border: "1px solid #fca5a5", marginBottom: 16,
-            display: "flex", alignItems: "center", gap: 11,
-            fontSize: 13, color: "#dc2626",
-          }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: "white", display: "flex",
-              alignItems: "center", justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(220,38,38,0.15)",
-            }}>
-              <Icons.AlertTriangle size={16} color="#dc2626" strokeWidth={2.2} />
-            </div>
+          <div className="dc-alert">
+            <AlertTriangle size={18} />
             <div>
-              <div style={{ fontWeight: 800, color: "#dc2626", fontSize: 13.5 }}>
-                {t('distribution_chambre.no_agent_connected')}
-              </div>
-              <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
-                {t('distribution_chambre.no_agent_connect_text')}
-              </div>
+              <strong>{t("distribution_chambre.no_agent_connected")}</strong>
+              <span>{t("distribution_chambre.no_agent_connect_text")}</span>
             </div>
           </div>
         )}
 
-        {/* ═══ Zone scan ═══ */}
-        <Card style={{
-          marginBottom: 20,
-          border: `2px dashed ${isCloturee ? "#e2e8f0" : getBorderColor()}`,
-          background: isCloturee ? "#f8fafc" : "white",
-          borderRadius: 16,
-        }}>
-          <CardContent className="p-5">
+        {!isCloturee && (
+          <section className={`dc-scan ${pret ? "is-ready" : ""} ${modeRetrait ? "is-retrait" : ""}`}>
+            <div className="dc-scan__head">
+              <span className="dc-scan__icon">{modeRetrait ? <Undo2 size={20} /> : <ScanLine size={20} />}</span>
+              <div className="dc-scan__text">
+                <strong>{getPlaceholder()}</strong>
+                <small>
+                  {modeRetrait
+                    ? t("distribution_chambre.remove_hint", "Mode retrait : chaque linge scanné est retiré de son lit ou de la chambre.")
+                    : etape === "DISTRIBUER"
+                      ? t("distribution_chambre.scan_agent_to_close")
+                      : t("distribution_chambre.to_load_beds")}
+                </small>
+              </div>
+              {chambre && (
+                <div className="dc-context">
+                  <span className="kit-chip kit-chip--teal"><DoorOpen size={13} /> {chambre.codeChambre}</span>
+                  {!modeChambre && litActif && <span className="kit-chip kit-chip--info"><BedDouble size={13} /> {litActif.codeLit}</span>}
+                </div>
+              )}
+            </div>
             <ScanInput
               ref={scanInputRef}
               placeholder={getPlaceholder()}
               value={scanVal}
               onChange={setScanVal}
               onSubmit={handleScan}
-              borderColor={isCloturee ? "#e2e8f0" : getBorderColor()}
-              keepFocus={true}
-              autoDebounce={true}
+              borderColor={modeRetrait ? "#dc2626" : pret ? "#0794a4" : "#cbd5e1"}
+              keepFocus
+              autoDebounce
               disabled={isCloturee || loading || !agent}
             />
-            {scanStatus && <ScanStatus {...scanStatus} />}
-          </CardContent>
-        </Card>
+            <EtatScan status={scanStatus} />
+          </section>
+        )}
 
-        {etape === "DISTRIBUER" && chambre && !isCloturee && (
-          <div style={{
-            padding: "11px 17px", borderRadius: 12,
-            background: "linear-gradient(135deg, #fef3c7, #fde68a)",
-            border: "1px solid #fcd34d", marginBottom: 16,
-            display: "flex", alignItems: "center", gap: 10,
-            fontSize: 12, color: "#92400e", fontWeight: 600,
-          }}>
-            <Icons.Info size={15} color="#92400e" strokeWidth={2.2} />
-            <span>{t('distribution_chambre.scan_agent_to_close')}</span>
+        {etape === "CHAMBRE" && agent && (
+          <div className="dc-empty">
+            <span className="dc-empty__art"><DoorOpen size={34} /></span>
+            <strong>{t("distribution_chambre.scan_room_to_load")}</strong>
+            <span>{modeChambre ? t("distribution_chambre.room_mode_hint", "Les linges scannés seront déposés dans la chambre.") : t("distribution_chambre.to_load_beds")}</span>
           </div>
         )}
 
-        {agent && etape === "CHAMBRE" && (
-          <Card style={{
-            background: "linear-gradient(135deg, #f0fdfa, #ccfbf1)",
-            border: "1.5px solid #99f6e4",
-            marginBottom: 16, borderRadius: 14,
-          }}>
-            <CardContent className="p-5">
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{
-                  width: 42, height: 42, borderRadius: 12,
-                  background: "white", display: "flex",
-                  alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(13,148,136,0.15)",
-                  border: "1px solid #99f6e4",
-                }}>
-                  <Icons.DoorOpen size={18} color="#0d9488" strokeWidth={2.2} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, color: "#0d9488", fontSize: 13.5 }}>
-                    {t('distribution_chambre.scan_room_to_load')}
-                  </div>
-                  <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
-                    {t('distribution_chambre.to_load_beds')}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {etape === "DISTRIBUER" && chambre && !isCloturee && (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-            gap: 12, marginBottom: 22,
-          }}>
-            <StatutCard
-              label={t('distribution_chambre.distributed')}
-              value={nbPoses}
-              icon={<Icons.CheckCheck size={19} color="#15803d" strokeWidth={2.5} />}
-              color="#15803d"
-              bg="linear-gradient(135deg, #f0fdf4, #dcfce7)"
-            />
-            <StatutCard
-              label={t('distribution_chambre.available')}
-              value={nbDispo}
-              icon={<Icons.Package size={19} color="#0ea5e9" strokeWidth={2.2} />}
-              color="#0ea5e9"
-              bg="linear-gradient(135deg, #f0f9ff, #e0f2fe)"
-            />
-            <StatutCard
-              label={t('distribution_chambre.empty_beds')}
-              value={litsVides}
-              icon={<Icons.Bed size={19} color="#d97706" strokeWidth={2.2} />}
-              color="#d97706"
-              bg="linear-gradient(135deg, #fef3c7, #fde68a)"
-            />
-            <StatutCard
-              label={t('distribution_chambre.progress')}
-              value={`${pctAvancement}%`}
-              icon={<Icons.Activity size={19} color="#7c3aed" strokeWidth={2.2} />}
-              color="#7c3aed"
-              bg="linear-gradient(135deg, #faf5ff, #ede9fe)"
-              subValue={pctAvancement === 100 ? `${t('distribution_chambre.complete')}` : ""}
-            />
-          </div>
-        )}
-
-        {etape === "DISTRIBUER" && chambre && !isCloturee && (
+        {etape === "DISTRIBUER" && chambre && (
           <>
-          <LegendeLits items={[
-            { ...TONS_DISTRIBUTION.A_EQUIPER, label: t('distribution_chambre.empty') },
-            { ...TONS_DISTRIBUTION.INFECTE, label: t('distribution_chambre.infected') },
-            { ...TONS_DISTRIBUTION.EQUIPE, label: t('distribution_chambre.completed') },
-          ]} />
-          <div className="lits-grid">
-            {chambre.lits.map(lit => (
-              <CarteLit
-                key={lit.litId}
-                lit={lit}
-                actif={litActif?.litId === lit.litId}
-                onClick={() => {
-                  const dejaActif = litActif?.litId === lit.litId;
-                  setLitActif(dejaActif ? null : lit);
-                  if (!dejaActif) voice.sayLitDistribution(lit.codeLit, lit.estInfecte);
-                }}
-              />
-            ))}
-          </div>
+            <div className="dc-kpis">
+              <Kpi icon={<CheckCircle2 size={18} />} label={t("distribution_chambre.distributed")} value={nbPoses} tone="#10b981" />
+              {modeChambre ? (
+                <Kpi icon={<DoorOpen size={18} />} label={t("distribution_chambre.in_room_title", "Déjà dans la chambre")} value={chambre.dansChambre?.length || 0} tone="#0794a4" />
+              ) : (
+                <>
+                  <Kpi icon={<BedDouble size={18} />} label={t("distribution_chambre.beds_done", "Lits équipés")} value={`${litsEquipes} / ${lits.length}`} tone="#0794a4" />
+                  <Kpi icon={<BedDouble size={18} />} label={t("distribution_chambre.empty_beds")} value={lits.length - litsEquipes} tone="#f59e0b" />
+                </>
+              )}
+              <Kpi icon={<User size={18} />} label={t("distribution_chambre.agent")} value={agent?.nom || "—"} tone="#6366f1" />
+            </div>
+
+            {modeChambre ? (
+              <section className="dc-panel">
+                <header className="dc-panel__head">
+                  <h3><DoorOpen size={16} /> {t("distribution_chambre.in_room_title", "Déjà dans la chambre")}</h3>
+                  <VueSwitch value={vueChambre} onChange={setVueChambre} compact />
+                </header>
+                {(chambre.dansChambre || []).length === 0 ? (
+                  <div className="dc-panel__empty"><Shirt size={22} /> {t("distribution_chambre.room_empty", "Aucun linge dans la chambre pour le moment.")}</div>
+                ) : vueChambre === "tableau" ? (
+                  <DataTable
+                    columns={{
+                      code: { label: t("common.code"), render: (l) => <Code>{l.codeBarre}</Code> },
+                      categorie: { label: t("linge.category"), render: (l) => t(`categories.${l.categorie}`, l.categorie || "—") },
+                      statut: { label: t("linge.status"), render: (l) => ((chambre.recents || []).includes(l.lingeId) ? <Badge variant="success">{t("distribution_chambre.just_placed", "Vient d'être déposé")}</Badge> : <Badge variant="secondary">{t("distribution_chambre.in_room_title", "Déjà dans la chambre")}</Badge>) },
+                      actions: {
+                        label: t("common.actions"),
+                        align: "center",
+                        render: (l) => (
+                          <RowActions>
+                            <RowButton icon={Undo2} tone="danger" title={t("distribution_chambre.remove_linen", "Retirer un linge")} disabled={loading} onClick={() => setARetirer(l)} />
+                          </RowActions>
+                        ),
+                      },
+                    }}
+                    rows={chambre.dansChambre}
+                    rowKey={(l) => l.lingeId ?? l.codeBarre}
+                  />
+                ) : (
+                  <div className="dc-chips">
+                    <AnimatePresence initial={false}>
+                      {chambre.dansChambre.map((l) => (
+                        <motion.span
+                          key={l.lingeId ?? l.codeBarre}
+                          layout
+                          className={`dc-chip ${(chambre.recents || []).includes(l.lingeId) ? "is-new" : ""}`}
+                          initial={{ opacity: 0, scale: 0.85 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.85 }}
+                        >
+                          <code>{l.codeBarre}</code>
+                          {l.categorie && <small>{t(`categories.${l.categorie}`, l.categorie)}</small>}
+                          <button type="button" className="dc-chip__remove" title={t("distribution_chambre.remove_linen", "Retirer un linge")} disabled={loading} onClick={() => setARetirer(l)}>
+                            <X size={12} />
+                          </button>
+                        </motion.span>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </section>
+            ) : (
+              <section className="dc-panel">
+                <header className="dc-panel__head">
+                  <h3><BedDouble size={16} /> {t("distribution_chambre.beds_title", "Lits de la chambre")}</h3>
+                  <VueSwitch value={vueLits} onChange={setVueLits} compact />
+                </header>
+                {!litActif && (
+                  <div className="dc-hint"><Info size={15} /> {t("distribution_chambre.select_bed_hint")}</div>
+                )}
+                {litCourant && (litCourant.lingesPoses || []).length > 0 && (
+                  <div className="dc-litlinges">
+                    <span className="dc-litlinges__title"><BedDouble size={14} /> {t("distribution_chambre.on_bed", "Sur le lit {{code}}", { code: litCourant.codeLit })}</span>
+                    <div className="dc-chips">
+                      {litCourant.lingesPoses.map((l) => (
+                        <span key={l.lingeId ?? l.codeBarre} className="dc-chip">
+                          <code>{l.codeBarre}</code>
+                          {l.categorie && <small>{t(`categories.${l.categorie}`, l.categorie)}</small>}
+                          <button type="button" className="dc-chip__remove" title={t("distribution_chambre.remove_linen", "Retirer un linge")} disabled={loading} onClick={() => setARetirer(l)}>
+                            <X size={12} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {vueLits === "tableau" ? (
+                  <DataTable
+                    columns={{
+                      lit: { label: t("distribution_chambre.bed"), render: (l) => <span className="dc-inline"><BedDouble size={15} /> <strong>{l.codeLit}</strong></span> },
+                      etat: { label: t("linge.status"), render: libelleLit },
+                      nb: { label: t("distribution_chambre.distributed"), align: "right", render: (l) => l.lingesPoses?.length || 0 },
+                      actions: {
+                        label: t("common.actions"),
+                        align: "center",
+                        render: (l) => (
+                          <RowActions>
+                            <RowButton icon={litActif?.litId === l.litId ? LogOut : ScanLine} title={litActif?.litId === l.litId ? t("common.cancel") : t("distribution_chambre.select_bed_hint")} onClick={() => choisirLit(l)} />
+                          </RowActions>
+                        ),
+                      },
+                    }}
+                    rows={lits}
+                    rowKey={(l) => l.litId}
+                    activeId={litActif?.litId}
+                    onRowClick={choisirLit}
+                  />
+                ) : (
+                  <>
+                    <LegendeLits items={[
+                      { ...TONS_DISTRIBUTION.A_EQUIPER, label: t("distribution_chambre.empty") },
+                      { ...TONS_DISTRIBUTION.INFECTE, label: t("distribution_chambre.infected") },
+                      { ...TONS_DISTRIBUTION.EQUIPE, label: t("distribution_chambre.completed") },
+                    ]} />
+                    <div className="lits-grid">
+                      {lits.map((lit) => (
+                        <CarteLit key={lit.litId} lit={lit} actif={litActif?.litId === lit.litId} onClick={() => choisirLit(lit)} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
           </>
         )}
 
-        {etape === "RESUME" && resume && (
-          <Resume
-            res={resume}
-            onNouvelle={() => {
-              setChambre(null);
-              setLitActif(null);
-              setPoses([]);
-              setResume(null);
-              setEtape("CHAMBRE");
-              setScanStatus(null);
-              setTimeout(() => scanInputRef.current?.focus(), 300);
-            }}
-            onTerminer={reset}
-          />
+        {isCloturee && resume && (
+          <Resume res={resume} modeChambre={modeChambre} onNouvelle={viderSession} onTerminer={viderSession} />
         )}
-
-        {/* ═══ Footer ═══ */}
-        <div style={{
-          display: "flex", justifyContent: "space-between",
-          alignItems: "center", paddingTop: 18,
-          borderTop: "1px solid #e2e8f0", fontSize: 12,
-          color: "#64748b", flexWrap: "wrap", gap: 8, marginTop: 20,
-        }}>
-          <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
-            {agent && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                <Icons.User size={12} color="#94a3b8" strokeWidth={2.2} />
-                {t('distribution_chambre.agent')}: <strong style={{ color: "#0f172a" }}>{agent.nom}</strong>
-              </span>
-            )}
-            {chambre && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                <Icons.DoorOpen size={12} color="#0d9488" strokeWidth={2.2} />
-                {t('distribution_chambre.room')}: <strong style={{ color: "#0d9488" }}>{chambre.codeChambre}</strong>
-              </span>
-            )}
-            {litActif && (
-              <span style={{ color: "#7c3aed", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                <Icons.Bed size={12} color="#7c3aed" strokeWidth={2.2} />
-                {t('distribution_chambre.bed')} {litActif.codeLit}
-              </span>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <Icons.Clock size={12} color="#94a3b8" strokeWidth={2.2} />
-            <span>{new Date().toLocaleDateString("fr-FR")}</span>
-            <span>•</span>
-            <span>{new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
-          </div>
-        </div>
-
       </div>
 
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.92); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-      `}</style>
-    </div>
+      <ConfirmDialog
+        open={confirmerFin}
+        tone="success"
+        title={t("distribution_chambre.finish_distribution_title")}
+        message={modeChambre
+          ? t("distribution_chambre.finish_room_text", { count: nbPoses, code: chambre?.codeChambre })
+          : t("distribution_chambre.finish_distribution_text", { count: nbPoses, beds: poses.length })}
+        confirmLabel={t("distribution_chambre.yes_finish")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={terminer}
+        onClose={() => setConfirmerFin(false)}
+      />
+      <ConfirmDialog
+        open={!!aRetirer}
+        title={t("distribution_chambre.remove_linen", "Retirer un linge")}
+        message={t("distribution_chambre.remove_confirm", "Retirer le linge {{code}} ? Il redevient disponible à la distribution.", { code: aRetirer?.codeBarre || "" })}
+        confirmLabel={t("distribution_chambre.remove_yes", "Retirer")}
+        cancelLabel={t("common.cancel")}
+        busy={loading}
+        onConfirm={() => retirer(aRetirer?.codeBarre)}
+        onClose={() => setARetirer(null)}
+      />
+      <ConfirmDialog
+        open={confirmerReset}
+        title={t("distribution_chambre.reset_title")}
+        message={t("distribution_chambre.reset_text")}
+        confirmLabel={t("distribution_chambre.yes_reset")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={viderSession}
+        onClose={() => setConfirmerReset(false)}
+      />
+    </Page>
   );
 }

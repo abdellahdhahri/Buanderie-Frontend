@@ -1,3 +1,5 @@
+import { lireErreur } from "./integrationService";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 /**
@@ -46,6 +48,23 @@ export const fetchCollecteDetails = async (collecteId) => {
     throw new Error("Erreur lors du chargement des détails");
   }
   return response.json();
+};
+
+export const ajouterLingesCollecte = async (collecteId, codesLinges) => {
+  const token = getTokenFromStorage();
+  const response = await fetch(`${API_URL}/api/collecte/${collecteId}/ajouter-linges`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ codesLinges }),
+  });
+  if (!response.ok) {
+    throw new Error(await lireErreur(response, "Erreur lors de l'ajout des linges"));
+  }
+  const texte = await response.text();
+  try { return texte ? JSON.parse(texte) : {}; } catch { return { message: texte }; }
 };
 
 /**

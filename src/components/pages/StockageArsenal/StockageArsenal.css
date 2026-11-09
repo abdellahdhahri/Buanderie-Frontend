@@ -1,9 +1,9 @@
 /* Stockage Arsenal — style épuré (couleur de la section « Zone propre »).
    Aussi utilisé par Suivi du stock (.ss-page redéfinit l'accent). */
 .sa-page {
-  --sa: #0ca678;
-  --sa-2: #20c997;
-  --sa-deep: #087f5b;
+  --sa: #0794a4;
+  --sa-2: #0aa8ba;
+  --sa-deep: #067a87;
   --sa-soft: color-mix(in srgb, var(--sa) 7%, #ffffff);
   --sa-ring: color-mix(in srgb, var(--sa) 18%, transparent);
   --sa-surface: #ffffff;
@@ -768,11 +768,11 @@
 
 /* ── Mode sombre ─────────────────────────────────────────────────────── */
 .dark .sa-page {
-  --sa: #20c997;
-  --sa-2: #38d9a9;
-  --sa-deep: #63e6be;
-  --sa-soft: rgba(32, 201, 151, 0.1);
-  --sa-ring: rgba(32, 201, 151, 0.2);
+  --sa: #2dd4bf;
+  --sa-2: #5eead4;
+  --sa-deep: #99f6e4;
+  --sa-soft: rgba(45, 212, 191, 0.1);
+  --sa-ring: rgba(45, 212, 191, 0.2);
   --sa-surface: var(--dk-surface, #111a2b);
   --sa-surface-2: var(--dk-surface-2, #16213a);
   --sa-border: var(--dk-border, #243149);

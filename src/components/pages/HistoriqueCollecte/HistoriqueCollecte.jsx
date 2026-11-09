@@ -2,7 +2,8 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from "re
 import { useTranslation } from "react-i18next";
 import Swal from "sweetalert2";
 import { motion } from "framer-motion";
-import { RefreshCw, Eye, Copy, Check, Printer } from "lucide-react";
+import { RefreshCw, Eye, Copy, Check, Printer, PackagePlus } from "lucide-react";
+import AjouterLingesModal from "./AjouterLingesModal";
 import { ServiceContext } from "../../../contextes/ServiceContext";
 import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import { getSetting, formatDateTime } from "../../../utils/appSettings";
@@ -22,7 +23,7 @@ import {
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
   Tabs, RowActions, RowButton, Code, QuickStats, day, tk,
 } from "../../kit";
-import { IconDetails } from "../../kit/ActionIcons";
+import { IconDetails, IconAjouter } from "../../kit/ActionIcons";
 
 const IconRoom = (p) => (
   <Glyph {...p}>
@@ -198,7 +199,7 @@ function ProgressRing({ pct, size = 112, color = C.teal }) {
   );
 }
 
-function DetailCollecte({ collecte, resume, resumeLoading, onBack, agentName, serviceName, t, relative }) {
+function DetailCollecte({ collecte, resume, resumeLoading, onBack, onAddLinges, agentName, serviceName, t, relative }) {
   const [copied, setCopied] = useState(false);
   const circuitInfecte = useCircuitInfecte();
   const source = getSource(collecte);
@@ -268,6 +269,7 @@ function DetailCollecte({ collecte, resume, resumeLoading, onBack, agentName, se
       badge={<EtatPill etat={collecte.etatCollecte} t={t} />}
       actions={(
         <>
+          <DetailsButton icon={PackagePlus} onClick={onAddLinges}>{t("historique_collecte.add_linens", "Ajouter des linges")}</DetailsButton>
           <DetailsButton icon={copied ? Check : Copy} onClick={copy}>{t("common.copy", "Copier")}</DetailsButton>
           <DetailsButton icon={Printer} onClick={printReport}>{t("historique_collecte.print_report", "Imprimer le rapport")}</DetailsButton>
         </>
@@ -406,6 +408,7 @@ export default function HistoriqueCollecte() {
   const [resumeLoading, setResumeLoading] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
+  const [ajoutPour, setAjoutPour] = useState(null);
 
   const loadCollectes = useCallback(async () => {
     setLoading(true);
@@ -413,6 +416,7 @@ export default function HistoriqueCollecte() {
       const data = await fetchCollectes();
       const liste = Array.isArray(data) ? data : [];
       setCollectes(liste);
+      setSelected((s) => (s ? liste.find((c) => c.id === s.id) || s : s));
       const ids = [...new Set(liste.map((c) => c.personnelId).filter((id) => id != null))];
       if (ids.length) {
         const map = await fetchPersonnelsByIds(ids);
@@ -446,6 +450,28 @@ export default function HistoriqueCollecte() {
       setResumeLoading(false);
     }
   }, [resumes]);
+
+  const apresAjout = useCallback(async () => {
+    const c = ajoutPour;
+    setAjoutPour(null);
+    if (!c) return;
+    setResumes((prev) => {
+      const { [c.id]: _ignore, ...reste } = prev;
+      return reste;
+    });
+    loadCollectes();
+    if (viewMode === "details") {
+      setResumeLoading(true);
+      try {
+        const data = await fetchCollecteDetails(c.id);
+        setResumes((prev) => ({ ...prev, [c.id]: data }));
+      } catch (err) {
+        console.error("Erreur chargement détails:", err);
+      } finally {
+        setResumeLoading(false);
+      }
+    }
+  }, [ajoutPour, loadCollectes, viewMode]);
 
   const agentDe = useCallback((id) => (id == null ? t("historique_collecte.unknown_agent", "Agent non renseigné") : personnels[id] || `#${id}`), [personnels, t]);
   const serviceDe = useCallback((serviceId) => {
@@ -551,7 +577,12 @@ export default function HistoriqueCollecte() {
     etat: { label: t("historique_collecte.status", "État"), sortable: true, align: "center", render: (c) => <EtatPill etat={c.etatCollecte} t={t} /> },
     actions: {
       label: t("common.actions"), align: "center",
-      render: (c) => <RowActions><RowButton icon={Eye} title={t("historique_collecte.collection_details", "Détails de la collecte")} onClick={() => openDetails(c)} /></RowActions>,
+      render: (c) => (
+        <RowActions>
+          <RowButton icon={Eye} title={t("historique_collecte.collection_details", "Détails de la collecte")} onClick={() => openDetails(c)} />
+          <RowButton icon={PackagePlus} title={t("historique_collecte.add_linens", "Ajouter des linges")} onClick={() => setAjoutPour(c)} />
+        </RowActions>
+      ),
     },
   };
 
@@ -579,6 +610,7 @@ export default function HistoriqueCollecte() {
 
           <ActionBar>
             <ActionButton icon={IconDetails} label={t("historique_collecte.collection_details", "Détails de la collecte")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
+            <ActionButton icon={IconAjouter} label={t("historique_collecte.add_linens", "Ajouter des linges")} variant="ajouter" disabled={!selected} onClick={() => setAjoutPour(selected)} />
             <ActionButton icon={<RefreshCw size={18} className={loading ? "animate-spin" : ""} />} label={t("common.refresh")} variant="details" onClick={loadCollectes} />
           </ActionBar>
 
@@ -654,6 +686,7 @@ export default function HistoriqueCollecte() {
           resume={resumes[selected.id]}
           resumeLoading={resumeLoading && !resumes[selected.id]}
           onBack={() => setViewMode("list")}
+          onAddLinges={() => setAjoutPour(selected)}
           agentName={agentDe(selected.personnelId)}
           serviceName={serviceDe(selected.service)}
           t={t}
@@ -683,12 +716,14 @@ export default function HistoriqueCollecte() {
             },
           ]}
           classements={[{
-            title: t("historique_collecte.agent", "Agent"),
+            title: t("historique_collecte.agent", "Agent"), personnel: true,
             items: Object.entries(list.sorted.reduce((acc, c) => { const k = agentDe(c.personnelId); acc[k] = (acc[k] || 0) + 1; return acc; }, {}))
               .map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value),
           }]}
         />
       )}
+
+      {ajoutPour && <AjouterLingesModal collecte={ajoutPour} onClose={() => setAjoutPour(null)} onDone={apresAjout} />}
 
       <ColumnSettingsModal
         show={showColumnSettings}

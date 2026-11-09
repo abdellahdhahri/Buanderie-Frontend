@@ -23,12 +23,26 @@ export const arsenalService = {
 
   desactiver: (id) => requete(`/api/Arsenals/${id}`, { method: "DELETE" }, `Erreur désactivation arsenal ${id}`),
 
-  getEmplacements: (arsenalId, tous = false) =>
-    requete(`/api/Arsenals/${arsenalId}/emplacements${tous ? "?tous=true" : ""}`, {}, "Erreur chargement des emplacements"),
+  getEmplacements: (arsenalId, tous = false) => emplacementService.getByArsenal(arsenalId, tous),
+
+  getLinges: (arsenalId) =>
+    requete(`/api/Arsenals/arsenals/${arsenalId}/linges`, {}, "Erreur chargement des linges de l'arsenal"),
 };
 
 export const emplacementService = {
-  create: (data) => requete("/api/emplacements", json("POST", data), "Erreur création emplacement"),
+  getByArsenal: (arsenalId, tous = false) =>
+    requete(`/api/emplacements?arsenalId=${encodeURIComponent(arsenalId)}${tous ? "&tous=true" : ""}`, {}, "Erreur chargement des emplacements"),
+
+  get: (id) => requete(`/api/emplacements/${id}`, {}, `Erreur chargement emplacement ${id}`),
+
+  getByCode: (codeBarre) =>
+    requete(`/api/emplacements/code/${encodeURIComponent(codeBarre)}`, {}, "Emplacement introuvable"),
+
+  getByCle: (cle) =>
+    requete(`/api/emplacements/cle/${encodeURIComponent(cle)}`, {}, "Emplacement introuvable"),
+
+  create: ({ arsenalId, nom, numero, codeBarre }) =>
+    requete("/api/emplacements", json("POST", { arsenalId, nom, numero, codeBarre }), "Erreur création emplacement"),
 
   update: (id, data) => requete(`/api/emplacements/${id}`, json("PUT", data), `Erreur mise à jour emplacement ${id}`),
 

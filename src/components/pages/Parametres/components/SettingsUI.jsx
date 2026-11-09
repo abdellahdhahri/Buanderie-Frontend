@@ -36,13 +36,14 @@ export function InfoField({ label, value, full, mono }) {
   );
 }
 
-export function Toggle({ checked, onChange, label }) {
+export function Toggle({ checked, onChange, label, disabled = false }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`param-switch${checked ? " is-on" : ""}`}
     >

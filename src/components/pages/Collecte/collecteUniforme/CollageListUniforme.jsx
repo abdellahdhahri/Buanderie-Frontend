@@ -326,7 +326,7 @@ function CollageListUniformeInner() {
 
 
   return (
-    <div className="collecte-container">
+    <div className="collecte-container cr-page">
       <DlgManquant
         linge={dlgManq}
         onOk={handleManquant}
@@ -345,11 +345,7 @@ function CollageListUniformeInner() {
         accent="#0284c7"
       />
 
-      <div style={{
-        background: "white", borderRadius: 24, padding: 30,
-        border: "1px solid #e2e8f0",
-        boxShadow: "0 12px 40px rgba(15,23,42,0.06)",
-      }}>
+      <div className="cr-shell">
         <UniformeInfoBar agent={agent} collecte={collecte} onReset={reset} />
 
         {(etape === "SCAN" || etape === "RESUME") && collecte && (

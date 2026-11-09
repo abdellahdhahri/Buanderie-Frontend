@@ -4,8 +4,8 @@ import { LingeContext } from "../../../contextes/LingeContext";
 import { ServiceContext } from "../../../contextes/ServiceContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useModal } from "../../../contextes/ModalContext";
-import { Page } from "../../kit";
-import { printLabel } from "../../../utils/labels";
+import { Page, ListSection, ConfirmDialog, useRowSelection } from "../../kit";
+import { printLabel, printLabels } from "../../../utils/labels";
 import Swal from 'sweetalert2';
 import { EMPTY_LINGE_FORM, EMPTY_FILTERS } from "./lingeConstants";
 import { LingeHeader } from "./components/LingeHeader";
@@ -19,6 +19,7 @@ import { LingeDetailModal } from "./components/LingeDetailModal";
 import { PrintConfirmModal } from "./components/PrintConfirmModal";
 import { LingeIncompletsBanner } from "./components/LingeIncompletsBanner";
 import { LingeStatsModal } from "./components/LingeStatsModal";
+import { AffecterServiceModal } from "./components/AffecterServiceModal";
 import { fetchAllLinges, computeLingeStats, exportLingesXlsx } from "./lingeStats";
 import { fetchLingesIncomplets } from "../../../services/analyseService";
 import { getSetting } from "../../../utils/appSettings";
@@ -80,6 +81,9 @@ export default function LingeList() {
   const [statsError, setStatsError] = useState("");
   const [selection, setSelection] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [affectation, setAffectation] = useState(null);
+  const [aSupprimer, setASupprimer] = useState(null);
+  const [suppressionBusy, setSuppressionBusy] = useState(false);
 
   const [newLinge, setNewLinge] = useState(EMPTY_LINGE_FORM);
 
@@ -444,6 +448,44 @@ export default function LingeList() {
 
   const displayedLinges = pagedData.content || [];
   const selectedLinge = displayedLinges.find((l) => l.id === selectedId);
+  const sel = useRowSelection(displayedLinges);
+
+  const imprimerEtiquettes = (liste) => printLabels("linge", liste, (linge) => ({
+    t,
+    services,
+    porteurName: linge.porteurId ? getPorteurName(linge.porteurId) : "",
+  }));
+
+  const exporterSelection = (liste) => exportLingesXlsx(liste, {
+    t,
+    getServiceName,
+    getPorteurName: (id) => getPorteurName(id),
+    filtersLabel: t("linge.bulk.export_label", "{{count}} linge(s) sélectionné(s)", { count: liste.length }),
+  });
+
+  const supprimerSelection = async () => {
+    const liste = aSupprimer || [];
+    setSuppressionBusy(true);
+    let ok = 0;
+    const echecs = [];
+    for (const l of liste) {
+      try {
+        const res = await fetch(`${API_URL}/api/linges/${l.id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error(await lireErreur(res, t("linge.error_operation")));
+        ok += 1;
+      } catch (err) {
+        echecs.push(`${l.codebarre || `#${l.id}`} : ${err.message}`);
+      }
+    }
+    setSuppressionBusy(false);
+    setASupprimer(null);
+    sel.clear();
+    setSelectedId(null);
+    setSelection(null);
+    loadPage(currentPage);
+    if (ok) showAlert(t("messages.success"), t("linge.bulk.deleted", "{{count}} linge(s) supprimé(s).", { count: ok }), "success");
+    if (echecs.length) showAlert(t("messages.error"), echecs.join(" · "), "error");
+  };
 
   const getServiceName = (serviceId) => {
     if (!serviceId) return t('linge.service_unassigned', 'Non affecté');
@@ -488,6 +530,7 @@ export default function LingeList() {
         onPrintLabel={() => selectedId && imprimerEtiquette(selectedLinge)}
         onHistory={() => selectedId && navigate(`/tracking?code=${selectedLinge?.codebarre}`)}
         onRefresh={() => loadPage(currentPage)}
+        onAssignService={() => setAffectation(selectedLinge ? [selectedLinge] : [])}
       />
 
       {modeIncomplets ? (
@@ -511,7 +554,19 @@ export default function LingeList() {
         />
       )}
 
+      <ListSection
+        selection={sel}
+        unit={t("linge.bulk.unit", "linge")}
+        units={t("linge.bulk.units", "linges")}
+        bulkActions={[
+          { label: t("linge.assign.button", "Affecter à un service"), onClick: (l) => setAffectation(l) },
+          { label: t("linge.bulk.print_labels", "Imprimer les étiquettes"), onClick: imprimerEtiquettes },
+          { label: t("linge.export.button", "Exporter en Excel"), onClick: exporterSelection },
+          { label: t("common.delete"), variant: "danger", onClick: (l) => setASupprimer(l) },
+        ]}
+      >
       <LingeTable
+        selection={sel}
         linges={displayedLinges}
         isLoading={isLoading}
         displayMode={displayMode}
@@ -524,6 +579,7 @@ export default function LingeList() {
         onAssociateRfid={openRfidPopup}
         onAssignService={ouvrirEdition}
       />
+      </ListSection>
 
       <LingePagination
         currentPage={currentPage}
@@ -577,6 +633,35 @@ export default function LingeList() {
           imprimerEtiquette(lingeToPrint);
           setLingeToPrint(null);
         }}
+      />
+
+      <AffecterServiceModal
+        isOpen={!!affectation}
+        onClose={() => setAffectation(null)}
+        onDone={() => { setSelection(null); sel.clear(); loadPage(currentPage); }}
+        services={services}
+        getServiceName={getServiceName}
+        getLingeByCode={getLingeByCode}
+        chargerFiltres={async () => { setSelection(null); const all = await fetchAllLinges(filters); setSelection({ key: filtersKey, linges: all }); return all; }}
+        filterChips={filterChips}
+        initialLinges={affectation || []}
+      />
+
+      <ConfirmDialog
+        open={!!aSupprimer}
+        title={t("linge.bulk.delete_title", "Supprimer les linges sélectionnés")}
+        message={t("linge.bulk.delete_text", "{{count}} linge(s) seront supprimés définitivement.", { count: aSupprimer?.length || 0 })}
+        details={aSupprimer && (
+          <div className="kit-chips">
+            {aSupprimer.slice(0, 12).map((l) => <span key={l.id} className="kit-chip">{l.codebarre || `#${l.id}`}</span>)}
+            {aSupprimer.length > 12 && <span className="kit-chip">+ {aSupprimer.length - 12}</span>}
+          </div>
+        )}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
+        busy={suppressionBusy}
+        onConfirm={supprimerSelection}
+        onClose={() => setASupprimer(null)}
       />
 
       <LingeStatsModal

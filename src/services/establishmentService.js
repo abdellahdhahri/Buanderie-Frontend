@@ -24,6 +24,8 @@ export const DEFAULT_IDENTITE = {
   logoUrl: null,
   logoVersion: null,
   dateModification: null,
+  circuitInfecteActif: true,
+  niveauRattachement: "LIT",
 };
 
 // ─── Appels HTTP ─────────────────────────────────────────────────────────
@@ -78,8 +80,10 @@ export function urlLogo(identite) {
   return `${API_URL}${chemin.startsWith("/") ? "" : "/"}${chemin}`;
 }
 
-// Un hôtel n'a pas de circuit infecté
-export const aCircuitInfecte = (identite) => identite?.typeEtablissement !== "HOTEL";
+export const aCircuitInfecte = (identite) => identite?.circuitInfecteActif !== false;
+
+export const NIVEAUX_RATTACHEMENT = ["LIT", "CHAMBRE"];
+export const niveauRattachementDe = (identite) => (identite?.niveauRattachement === "CHAMBRE" ? "CHAMBRE" : "LIT");
 
 // ─── Partage de l'état entre écrans ──────────────────────────────────────
 let identiteCourante = { ...DEFAULT_IDENTITE };
@@ -98,6 +102,8 @@ export function setEstablishment(valeur) {
     ...DEFAULT_IDENTITE,
     ...(valeur || {}),
     nomApplication: valeur?.nomApplication || DEFAULT_APP_NAME,
+    circuitInfecteActif: valeur?.circuitInfecteActif !== false,
+    niveauRattachement: niveauRattachementDe(valeur),
   };
   appliquerIdentite(identiteCourante);
   abonnes.forEach((fn) => fn(identiteCourante));

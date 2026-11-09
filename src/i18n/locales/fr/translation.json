@@ -1501,7 +1501,33 @@
     "reset_text": "La distribution en cours sera abandonnée.",
     "yes_reset": "Oui, réinitialiser",
     "scan_agent_to_close": "Scanner votre badge agent pour clôturer la distribution",
-    "agent_not_connected_placeholder": "👤 Agent non connecté — veuillez vous reconnecter"
+    "agent_not_connected_placeholder": "👤 Agent non connecté — veuillez vous reconnecter",
+    "in_room": "déjà dans la chambre",
+    "to_distribute": "à distribuer",
+    "in_room_title": "Déjà dans la chambre",
+    "to_distribute_title": "À distribuer",
+    "nothing_to_distribute": "Plus aucun linge à distribuer.",
+    "room_empty": "Aucun linge dans la chambre pour le moment.",
+    "linen_in_room": "Linge déposé dans la chambre",
+    "scan_linen_to_room": "Scannez un linge à déposer dans la chambre {{code}}",
+    "finish_room_text": "{{count}} linge(s) déposé(s) dans la chambre {{code}}. Terminer la distribution ?",
+    "step_room": "Chambre",
+    "step_drop": "Dépôt des linges",
+    "step_beds": "Équipement des lits",
+    "step_summary": "Récapitulatif",
+    "summary_room": "{{count}} linge(s) déposé(s) dans la chambre",
+    "beds_done": "Lits équipés",
+    "beds_title": "Lits de la chambre",
+    "just_placed": "Vient d'être déposé",
+    "room_mode_hint": "Les linges scannés seront déposés dans la chambre.",
+    "remove_linen": "Retirer un linge",
+    "stop_removing": "Terminer le retrait",
+    "scan_to_remove": "Scannez le linge à retirer",
+    "remove_hint": "Mode retrait : chaque linge scanné est retiré de son lit ou de la chambre.",
+    "linen_removed": "Linge retiré",
+    "remove_confirm": "Retirer le linge {{code}} ? Il redevient disponible à la distribution.",
+    "remove_yes": "Retirer",
+    "on_bed": "Sur le lit {{code}}"
   },
   "distribution_uniforme": {
     "title": "Distribution — Uniformes",
@@ -1820,7 +1846,13 @@
       "AGENT_COLLECTE": "Agent de collecte",
       "AGENT_LAVAGE": "Agent de lavage",
       "RESPONSABLE": "Responsable"
-    }
+    },
+    "change_status": "Changer le statut",
+    "change_status_one": "La réclamation #{{id}} va passer au statut « {{status}} ».",
+    "change_status_many": "{{count}} réclamations vont passer au statut « {{status}} ».",
+    "change_status_confirm": "Passer à « {{status}} »",
+    "status_updated_many": "{{count}} réclamations passées à « {{status}} »",
+    "no_transition": "Aucune réclamation sélectionnée ne peut passer à « {{status}} »"
   },
   "historique_collecte": {
     "title": "Historique des Collectes",
@@ -1923,7 +1955,16 @@
     "white_collected": "Blanc",
     "clean_in_place": "Propre en place",
     "missing": "Manquant",
-    "etat_running": "En cours"
+    "etat_running": "En cours",
+    "add_linens": "Ajouter des linges",
+    "add_linens_placeholder": "Scanner ou saisir un code linge",
+    "add_linens_hint": "Entrée pour valider chaque code · un collage de plusieurs codes est découpé automatiquement.",
+    "add_linens_list": "Linges à ajouter",
+    "add_linens_clear": "Tout effacer",
+    "add_linens_empty": "Aucun linge scanné pour le moment.",
+    "add_linens_submit": "Ajouter {{count}} linge(s)",
+    "add_linens_success": "{{count}} linge(s) ajouté(s) à la collecte",
+    "add_linens_duplicate": "Déjà dans la liste"
   },
   "auth": {
     "title": "Authentification",
@@ -2041,7 +2082,10 @@
       "nothing_to_close": "⚠️ Rien à clôturer",
       "scan_at_least_one": "Scannez au moins un linge ou déclarez un sac infecté."
     },
-    "agent_not_connected": "👤 Agent non connecté — veuillez vous reconnecter"
+    "agent_not_connected": "👤 Agent non connecté — veuillez vous reconnecter",
+    "room": "Chambre",
+    "scan_room_code": "Scannez le code-barres de la chambre",
+    "room_collection": "Collecte chambre"
   },
   "collecte_uniforme": {
     "title": "Collecte Uniformes",
@@ -2469,6 +2513,42 @@
       "wearer": "Porteur",
       "bin": "Bac",
       "lot": "Lot"
+    },
+    "assign": {
+      "button": "Affecter à un service",
+      "title": "Affecter des linges à un service",
+      "subtitle": "Choisissez le service puis les linges concernés",
+      "step_service": "Service de destination",
+      "step_service_hint": "Le service qui recevra les linges",
+      "step_linens": "Linges à affecter",
+      "step_linens_hint": "Scannez les linges un par un ou reprenez le résultat des filtres",
+      "by_scan": "Par scan",
+      "by_filters": "Selon les filtres",
+      "scan_placeholder": "Scanner ou saisir un code linge",
+      "enter_hint": "Entrée pour ajouter",
+      "load_filters": "Charger les linges filtrés",
+      "preview": "Aperçu",
+      "already_count": "{{count}} déjà dans ce service",
+      "empty": "Aucun linge sélectionné pour le moment.",
+      "transfer": "Affectation",
+      "already": "Déjà affecté",
+      "submit": "Affecter {{count}} linge(s)",
+      "success": "{{count}} linge(s) affecté(s) à {{service}}",
+      "partial": "{{count}} échec(s)",
+      "not_found": "Linge introuvable",
+      "done": "Affectation terminée",
+      "ok": "Affectés",
+      "failed": "Échecs",
+      "skipped": "Déjà dans ce service"
+    },
+    "bulk": {
+      "unit": "linge",
+      "units": "linges",
+      "print_labels": "Imprimer les étiquettes",
+      "export_label": "{{count}} linge(s) sélectionné(s)",
+      "deleted": "{{count}} linge(s) supprimé(s).",
+      "delete_title": "Supprimer les linges sélectionnés",
+      "delete_text": "{{count}} linge(s) seront supprimés définitivement."
     }
   },
   "chatbot": {
@@ -2632,7 +2712,22 @@
       "logo_saved": "Logo mis à jour.",
       "logo_removed": "Logo supprimé : le logo par défaut est utilisé.",
       "saved": "Identité de l'établissement enregistrée.",
-      "preview": "Aperçu de la page de connexion"
+      "preview": "Aperçu de la page de connexion",
+      "infected_title": "Circuit infecté",
+      "infected_desc": "Désactivez-le pour un établissement sans linge infecté, un hôtel par exemple.",
+      "infected_label": "Circuit infecté",
+      "infected_hint_on": "Sacs infectés, choix « infecté » en collecte et réception, lits infectés et indicateurs d'infection sont affichés.",
+      "infected_hint_off": "Les écrans et indicateurs d'infection sont masqués.",
+      "infected_on": "Circuit infecté activé.",
+      "infected_off": "Circuit infecté désactivé : les écrans et indicateurs d'infection sont masqués.",
+      "attach_title": "Rattachement du linge",
+      "attach_desc": "Le linge distribué et collecté est suivi au lit (hôpital, clinique) ou à la chambre (hôtel).",
+      "attach_bed": "Lit",
+      "attach_bed_hint": "Distribution et collecte lit par lit.",
+      "attach_room": "Chambre",
+      "attach_room_hint": "Le linge est déposé et collecté à la chambre, sans passer par les lits.",
+      "attach_room_saved": "Le linge est désormais rattaché à la chambre.",
+      "attach_bed_saved": "Le linge est désormais rattaché au lit."
     },
     "notifications": {
       "display_title": "Affichage",
@@ -2825,7 +2920,9 @@
     "cancel_storing_title": "Annuler le rangement ?",
     "cancel_storing_confirm": "Le linge {{code}} sera retiré de son étagère et redeviendra « à ranger ».",
     "storing_cancelled": "Rangement annulé",
-    "remove_from_shelf": "Retirer"
+    "remove_from_shelf": "Retirer",
+    "shelves": "ÉTAGÈRES",
+    "shelves_title": "Étagères"
   },
   "dialogue_rangement": {
     "badge": "Plié · contrôle qualité conforme",
@@ -2977,7 +3074,15 @@
     "search": "Recherche",
     "viewInteractive": "Interactif",
     "viewTable": "Tableau",
-    "viewMode": "Type d'affichage"
+    "viewMode": "Type d'affichage",
+    "dominant": "dominant",
+    "leader": "en tête",
+    "breakdownBy": "Répartition",
+    "top": "Top",
+    "ofTotal": "du total",
+    "highlights": "Faits marquants",
+    "printedOn": "Imprimé le",
+    "keyFigures": "Chiffres clés"
   },
   "chargement": {
     "title": "Chargement (pesée)",
@@ -3043,5 +3148,15 @@
     "active": "Active",
     "next": "Suivantes possibles",
     "accepts": "Accepte"
+  },
+  "integration": {
+    "connector_type": {
+      "STANDARD": "Standard",
+      "CUBIX": "Cubix",
+      "PERSONNALISE": "Personnalisé"
+    },
+    "model_applied_type": "Modèle {{type}} appliqué : chemins et champs remplis pour tous les référentiels.",
+    "connector_custom_hint": "Personnalisé : renseignez vous-même les chemins et les champs de chaque référentiel.",
+    "connector_model_hint": "Le modèle remplit les chemins et les champs des référentiels. L'URL de base et les identifiants restent à saisir."
   }
 }

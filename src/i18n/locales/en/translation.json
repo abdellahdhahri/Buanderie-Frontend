@@ -1501,7 +1501,33 @@
     "reset_text": "The current distribution will be abandoned.",
     "yes_reset": "Yes, reset",
     "scan_agent_to_close": "Scan your agent badge to close the distribution",
-    "agent_not_connected_placeholder": "👤 Agent not connected — please log in again"
+    "agent_not_connected_placeholder": "👤 Agent not connected — please log in again",
+    "in_room": "already in the room",
+    "to_distribute": "to distribute",
+    "in_room_title": "Already in the room",
+    "to_distribute_title": "To distribute",
+    "nothing_to_distribute": "No linen left to distribute.",
+    "room_empty": "No linen in the room yet.",
+    "linen_in_room": "Linen placed in the room",
+    "scan_linen_to_room": "Scan a linen to place in room {{code}}",
+    "finish_room_text": "{{count}} linen(s) placed in room {{code}}. Finish the distribution?",
+    "step_room": "Room",
+    "step_drop": "Linen drop-off",
+    "step_beds": "Bed equipment",
+    "step_summary": "Summary",
+    "summary_room": "{{count}} linen(s) placed in the room",
+    "beds_done": "Beds equipped",
+    "beds_title": "Room beds",
+    "just_placed": "Just placed",
+    "room_mode_hint": "Scanned linens will be placed in the room.",
+    "remove_linen": "Remove a linen",
+    "stop_removing": "Stop removing",
+    "scan_to_remove": "Scan the linen to remove",
+    "remove_hint": "Removal mode: each scanned linen is removed from its bed or room.",
+    "linen_removed": "Linen removed",
+    "remove_confirm": "Remove linen {{code}}? It becomes available for distribution again.",
+    "remove_yes": "Remove",
+    "on_bed": "On bed {{code}}"
   },
   "distribution_uniforme": {
     "title": "Distribution — Uniforms",
@@ -1820,7 +1846,13 @@
       "AGENT_COLLECTE": "Collection agent",
       "AGENT_LAVAGE": "Washing agent",
       "RESPONSABLE": "Supervisor"
-    }
+    },
+    "change_status": "Change status",
+    "change_status_one": "Complaint #{{id}} will move to « {{status}} ».",
+    "change_status_many": "{{count}} complaints will move to « {{status}} ».",
+    "change_status_confirm": "Move to « {{status}} »",
+    "status_updated_many": "{{count}} complaints moved to « {{status}} »",
+    "no_transition": "No selected complaint can move to « {{status}} »"
   },
   "historique_collecte": {
     "title": "Collection History",
@@ -1923,7 +1955,16 @@
     "white_collected": "White",
     "clean_in_place": "Clean in place",
     "missing": "Missing",
-    "etat_running": "In progress"
+    "etat_running": "In progress",
+    "add_linens": "Add linens",
+    "add_linens_placeholder": "Scan or type a linen code",
+    "add_linens_hint": "Press Enter after each code · pasting several codes splits them automatically.",
+    "add_linens_list": "Linens to add",
+    "add_linens_clear": "Clear all",
+    "add_linens_empty": "No linen scanned yet.",
+    "add_linens_submit": "Add {{count}} linen(s)",
+    "add_linens_success": "{{count}} linen(s) added to the collection",
+    "add_linens_duplicate": "Already in the list"
   },
   "auth": {
     "title": "Authentication",
@@ -2041,7 +2082,10 @@
       "nothing_to_close": "⚠️ Nothing to close",
       "scan_at_least_one": "Scan at least one linen or declare an infected bag."
     },
-    "agent_not_connected": "👤 Agent not connected — please log in again"
+    "agent_not_connected": "👤 Agent not connected — please log in again",
+    "room": "Room",
+    "scan_room_code": "Scan the room barcode",
+    "room_collection": "Room collection"
   },
   "collecte_uniforme": {
     "title": "Uniform Collection",
@@ -2469,6 +2513,42 @@
       "wearer": "Wearer",
       "bin": "Bin",
       "lot": "Batch"
+    },
+    "assign": {
+      "button": "Assign to a service",
+      "title": "Assign linens to a service",
+      "subtitle": "Choose the service, then the linens",
+      "step_service": "Destination service",
+      "step_service_hint": "The service that will receive the linens",
+      "step_linens": "Linens to assign",
+      "step_linens_hint": "Scan linens one by one or reuse the filter results",
+      "by_scan": "By scan",
+      "by_filters": "From filters",
+      "scan_placeholder": "Scan or type a linen code",
+      "enter_hint": "Enter to add",
+      "load_filters": "Load filtered linens",
+      "preview": "Preview",
+      "already_count": "{{count}} already in this service",
+      "empty": "No linen selected yet.",
+      "transfer": "Assignment",
+      "already": "Already assigned",
+      "submit": "Assign {{count}} linen(s)",
+      "success": "{{count}} linen(s) assigned to {{service}}",
+      "partial": "{{count}} failure(s)",
+      "not_found": "Linen not found",
+      "done": "Assignment complete",
+      "ok": "Assigned",
+      "failed": "Failed",
+      "skipped": "Already in this service"
+    },
+    "bulk": {
+      "unit": "linen",
+      "units": "linens",
+      "print_labels": "Print labels",
+      "export_label": "{{count}} selected linen(s)",
+      "deleted": "{{count}} linen(s) deleted.",
+      "delete_title": "Delete selected linens",
+      "delete_text": "{{count}} linen(s) will be permanently deleted."
     }
   },
   "chatbot": {
@@ -2632,7 +2712,22 @@
       "logo_saved": "Logo updated.",
       "logo_removed": "Logo removed: the default logo is used.",
       "saved": "Facility identity saved.",
-      "preview": "Login page preview"
+      "preview": "Login page preview",
+      "infected_title": "Infected circuit",
+      "infected_desc": "Turn it off for a facility without infected linen, a hotel for example.",
+      "infected_label": "Infected circuit",
+      "infected_hint_on": "Infected bags, the « infected » choice in collection and reception, infected beds and infection indicators are shown.",
+      "infected_hint_off": "Infection screens and indicators are hidden.",
+      "infected_on": "Infected circuit enabled.",
+      "infected_off": "Infected circuit disabled: infection screens and indicators are hidden.",
+      "attach_title": "Linen attachment",
+      "attach_desc": "Distributed and collected linen is tracked per bed (hospital, clinic) or per room (hotel).",
+      "attach_bed": "Bed",
+      "attach_bed_hint": "Distribution and collection bed by bed.",
+      "attach_room": "Room",
+      "attach_room_hint": "Linen is placed and collected per room, without beds.",
+      "attach_room_saved": "Linen is now attached to the room.",
+      "attach_bed_saved": "Linen is now attached to the bed."
     },
     "notifications": {
       "display_title": "Display",
@@ -2825,7 +2920,9 @@
     "cancel_storing_title": "Cancel storing?",
     "cancel_storing_confirm": "Item {{code}} will be removed from its shelf and become “to store” again.",
     "storing_cancelled": "Storing cancelled",
-    "remove_from_shelf": "Remove"
+    "remove_from_shelf": "Remove",
+    "shelves": "SHELVES",
+    "shelves_title": "Shelves"
   },
   "dialogue_rangement": {
     "badge": "Folded · quality check passed",
@@ -2977,7 +3074,15 @@
     "search": "Search",
     "viewInteractive": "Interactive",
     "viewTable": "Table",
-    "viewMode": "Display type"
+    "viewMode": "Display type",
+    "dominant": "dominant",
+    "leader": "leader",
+    "breakdownBy": "Breakdown",
+    "top": "Top",
+    "ofTotal": "of total",
+    "highlights": "Highlights",
+    "printedOn": "Printed on",
+    "keyFigures": "Key figures"
   },
   "chargement": {
     "title": "Loading (weighing)",
@@ -3043,5 +3148,15 @@
     "active": "Active",
     "next": "Possible next steps",
     "accepts": "Accepts"
+  },
+  "integration": {
+    "connector_type": {
+      "STANDARD": "Standard",
+      "CUBIX": "Cubix",
+      "PERSONNALISE": "Custom"
+    },
+    "model_applied_type": "{{type}} model applied: paths and fields filled for all reference data.",
+    "connector_custom_hint": "Custom: fill in the paths and fields of each reference yourself.",
+    "connector_model_hint": "The model fills the paths and fields of each reference. The base URL and credentials still need to be entered."
   }
 }

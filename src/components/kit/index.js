@@ -15,7 +15,7 @@ export {
 export { Tabs, StatChips, RowActions, RowButton, FormGrid, Code, VueSwitch, useVue } from './Extras';
 export { tk } from './i18n';
 export { default as StatsModal } from './StatsModal';
-export { QuickStats, StatsContent } from './QuickStats';
+export { QuickStats, StatsContent, imprimerStats } from './QuickStats';
 export { default as useListPage } from './useListPage';
 export * from './helpers';
 

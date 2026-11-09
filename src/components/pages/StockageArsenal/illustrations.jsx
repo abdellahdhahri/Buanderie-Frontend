@@ -228,7 +228,7 @@ const ARTS = {
 };
 
 /** Illustration complète : halo, ombre au sol et objet. */
-export function Illustration({ kind, color = "#0ca678", className = "sa-art" }) {
+export function Illustration({ kind, color = "#0794a4", className = "sa-art" }) {
   const uid = useId().replace(/:/g, "");
   const Art = ARTS[kind] || EmptyArt;
   return (
@@ -256,7 +256,7 @@ export function ShelfGlyph({ size = 22, filled = 0 }) {
 }
 
 /** Anneau de progression (rangés / total). */
-export function ProgressRing({ value, total, size = 132, color = "#0ca678", label }) {
+export function ProgressRing({ value, total, size = 132, color = "#0794a4", label }) {
   const stroke = 11;
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;

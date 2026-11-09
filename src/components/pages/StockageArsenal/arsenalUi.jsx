@@ -4,7 +4,6 @@ import { Check, LoaderCircle } from "lucide-react";
 import { accentOf } from "./arsenalUtils";
 import { Illustration, ShelfGlyph } from "./illustrations";
 
-/** Carte de contenu ; `title` + `icon` + `right` forment l'en-tête. */
 export function Panel({ title, icon, right, children, className = "" }) {
   return (
     <section className={`sa-panel ${className}`}>
@@ -24,7 +23,6 @@ export function Panel({ title, icon, right, children, className = "" }) {
   );
 }
 
-/** Illustration + consigne de l'étape, puis le contenu (scan, saisie…). */
 export function Hero({ art, eyebrow, title, text, children }) {
   return (
     <div className="sa-hero">
@@ -59,7 +57,6 @@ export function EmptyState({ art = "empty", title, children }) {
   );
 }
 
-/** Pastilles « catégorie : quantité » à partir d'un objet { DRAP: 3, ... }. */
 export function CategoryChips({ counts, size = "md" }) {
   const { t } = useTranslation();
   const entries = Object.entries(counts || {});
@@ -77,7 +74,6 @@ export function CategoryChips({ counts, size = "md" }) {
   );
 }
 
-/** Barre empilée proportionnelle aux quantités par catégorie. */
 export function CategoryBar({ counts }) {
   const entries = Object.entries(counts || {}).filter(([, v]) => v > 0);
   return (
@@ -89,7 +85,6 @@ export function CategoryBar({ counts }) {
   );
 }
 
-/** Grille d'étagères cliquables ; l'étagère active est mise en évidence. */
 export function ShelfGrid({ emplacements, activeId, onSelect, compact = false }) {
   const { t } = useTranslation();
   if (!emplacements.length) {
@@ -123,7 +118,6 @@ export function ShelfGrid({ emplacements, activeId, onSelect, compact = false })
   );
 }
 
-/** Zone de scan encadrée (pointillés + liseré animé) autour de ScanInput. */
 export function ScanZone({ color, children }) {
   return (
     <div className="sa-scan" style={color ? { "--scan": color } : undefined}>

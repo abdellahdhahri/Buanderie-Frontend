@@ -1505,7 +1505,33 @@
     "reset_text": "سيتم إلغاء التوزيع الحالي.",
     "yes_reset": "نعم، أعد التعيين",
     "scan_agent_to_close": "امسح بطاقة الموظف لإغلاق التوزيع",
-    "agent_not_connected_placeholder": "👤 العون غير متصل — يرجى إعادة تسجيل الدخول"
+    "agent_not_connected_placeholder": "👤 العون غير متصل — يرجى إعادة تسجيل الدخول",
+    "in_room": "موجودة في الغرفة",
+    "to_distribute": "للتوزيع",
+    "in_room_title": "موجودة في الغرفة",
+    "to_distribute_title": "للتوزيع",
+    "nothing_to_distribute": "لم يتبق أي مفروشات للتوزيع.",
+    "room_empty": "لا توجد مفروشات في الغرفة حاليًا.",
+    "linen_in_room": "تم وضع المفروشات في الغرفة",
+    "scan_linen_to_room": "امسح قطعة لوضعها في الغرفة {{code}}",
+    "finish_room_text": "تم وضع {{count}} قطعة في الغرفة {{code}}. إنهاء التوزيع؟",
+    "step_room": "الغرفة",
+    "step_drop": "وضع المفروشات",
+    "step_beds": "تجهيز الأسرة",
+    "step_summary": "الملخص",
+    "summary_room": "تم وضع {{count}} قطعة في الغرفة",
+    "beds_done": "الأسرة المجهزة",
+    "beds_title": "أسرة الغرفة",
+    "just_placed": "وُضعت للتو",
+    "room_mode_hint": "ستوضع المفروشات الممسوحة في الغرفة.",
+    "remove_linen": "سحب قطعة",
+    "stop_removing": "إنهاء السحب",
+    "scan_to_remove": "امسح القطعة المراد سحبها",
+    "remove_hint": "وضع السحب: كل قطعة ممسوحة تُسحب من سريرها أو من الغرفة.",
+    "linen_removed": "تم سحب القطعة",
+    "remove_confirm": "سحب القطعة {{code}}؟ ستعود متاحة للتوزيع.",
+    "remove_yes": "سحب",
+    "on_bed": "على السرير {{code}}"
   },
   "distribution_uniforme": {
     "title": "التوزيع — الزي الموحد",
@@ -1824,7 +1850,13 @@
       "AGENT_COLLECTE": "عون الجمع",
       "AGENT_LAVAGE": "عون الغسيل",
       "RESPONSABLE": "مسؤول"
-    }
+    },
+    "change_status": "تغيير الحالة",
+    "change_status_one": "ستنتقل الشكوى #{{id}} إلى الحالة « {{status}} ».",
+    "change_status_many": "ستنتقل {{count}} شكاوى إلى الحالة « {{status}} ».",
+    "change_status_confirm": "الانتقال إلى « {{status}} »",
+    "status_updated_many": "تم نقل {{count}} شكاوى إلى « {{status}} »",
+    "no_transition": "لا يمكن لأي شكوى محددة الانتقال إلى « {{status}} »"
   },
   "historique_collecte": {
     "title": "سجل الجمع",
@@ -1927,7 +1959,16 @@
     "white_collected": "أبيض",
     "clean_in_place": "نظيف في مكانه",
     "missing": "مفقود",
-    "etat_running": "جارٍ"
+    "etat_running": "جارٍ",
+    "add_linens": "إضافة مفروشات",
+    "add_linens_placeholder": "امسح أو أدخل رمز المفروشات",
+    "add_linens_hint": "اضغط Enter بعد كل رمز · لصق عدة رموز يقسمها تلقائيًا.",
+    "add_linens_list": "المفروشات المراد إضافتها",
+    "add_linens_clear": "مسح الكل",
+    "add_linens_empty": "لم يتم مسح أي مفروشات بعد.",
+    "add_linens_submit": "إضافة {{count}} قطعة",
+    "add_linens_success": "تمت إضافة {{count}} قطعة إلى الجمع",
+    "add_linens_duplicate": "موجود بالفعل في القائمة"
   },
   "auth": {
     "title": "تسجيل الدخول",
@@ -2045,7 +2086,10 @@
       "nothing_to_close": "⚠️ لا يوجد شيء للإغلاق",
       "scan_at_least_one": "امسح مفروشات واحدة على الأقل أو بلغ عن كيس مصاب."
     },
-    "agent_not_connected": "👤 العون غير متصل — يرجى إعادة تسجيل الدخول"
+    "agent_not_connected": "👤 العون غير متصل — يرجى إعادة تسجيل الدخول",
+    "room": "غرفة",
+    "scan_room_code": "امسح رمز الغرفة",
+    "room_collection": "جمع الغرفة"
   },
   "collecte_uniforme": {
     "title": "جمع الأزياء الموحدة",
@@ -2473,6 +2517,42 @@
       "wearer": "الحامل",
       "bin": "الصندوق",
       "lot": "الدفعة"
+    },
+    "assign": {
+      "button": "تعيين لمصلحة",
+      "title": "تعيين مفروشات لمصلحة",
+      "subtitle": "اختر المصلحة ثم المفروشات المعنية",
+      "step_service": "المصلحة الوجهة",
+      "step_service_hint": "المصلحة التي ستستلم المفروشات",
+      "step_linens": "المفروشات المراد تعيينها",
+      "step_linens_hint": "امسح المفروشات واحدة تلو الأخرى أو استخدم نتيجة المرشحات",
+      "by_scan": "بالمسح",
+      "by_filters": "حسب المرشحات",
+      "scan_placeholder": "امسح أو أدخل رمز المفروشات",
+      "enter_hint": "Enter للإضافة",
+      "load_filters": "تحميل المفروشات المرشحة",
+      "preview": "معاينة",
+      "already_count": "{{count}} موجودة بالفعل في هذه المصلحة",
+      "empty": "لم يتم اختيار أي مفروشات بعد.",
+      "transfer": "التعيين",
+      "already": "معين بالفعل",
+      "submit": "تعيين {{count}} قطعة",
+      "success": "تم تعيين {{count}} قطعة إلى {{service}}",
+      "partial": "{{count}} فشل",
+      "not_found": "المفروشات غير موجودة",
+      "done": "اكتمل التعيين",
+      "ok": "تم التعيين",
+      "failed": "فشل",
+      "skipped": "موجودة بالفعل في هذه المصلحة"
+    },
+    "bulk": {
+      "unit": "قطعة",
+      "units": "قطع",
+      "print_labels": "طباعة الملصقات",
+      "export_label": "{{count}} قطعة محددة",
+      "deleted": "تم حذف {{count}} قطعة.",
+      "delete_title": "حذف المفروشات المحددة",
+      "delete_text": "سيتم حذف {{count}} قطعة نهائيًا."
     }
   },
   "chatbot": {
@@ -2636,7 +2716,22 @@
       "logo_saved": "تم تحديث الشعار.",
       "logo_removed": "تم حذف الشعار: يُستخدم الشعار الافتراضي.",
       "saved": "تم حفظ هوية المؤسسة.",
-      "preview": "معاينة صفحة الدخول"
+      "preview": "معاينة صفحة الدخول",
+      "infected_title": "الدائرة الملوثة",
+      "infected_desc": "عطّلها لمؤسسة بدون مفروشات ملوثة، فندق مثلاً.",
+      "infected_label": "الدائرة الملوثة",
+      "infected_hint_on": "تُعرض الأكياس الملوثة وخيار « ملوث » في الجمع والاستلام والأسرة الملوثة ومؤشرات العدوى.",
+      "infected_hint_off": "شاشات ومؤشرات العدوى مخفية.",
+      "infected_on": "تم تفعيل الدائرة الملوثة.",
+      "infected_off": "تم تعطيل الدائرة الملوثة: شاشات ومؤشرات العدوى مخفية.",
+      "attach_title": "ربط المفروشات",
+      "attach_desc": "تُتابع المفروشات الموزعة والمجمعة حسب السرير (مستشفى، مصحة) أو حسب الغرفة (فندق).",
+      "attach_bed": "سرير",
+      "attach_bed_hint": "التوزيع والجمع سريرًا بسرير.",
+      "attach_room": "غرفة",
+      "attach_room_hint": "توضع المفروشات وتُجمع حسب الغرفة دون المرور بالأسرة.",
+      "attach_room_saved": "أصبحت المفروشات مرتبطة بالغرفة.",
+      "attach_bed_saved": "أصبحت المفروشات مرتبطة بالسرير."
     },
     "notifications": {
       "display_title": "العرض",
@@ -2833,7 +2928,9 @@
     "cancel_storing_title": "إلغاء الترتيب؟",
     "cancel_storing_confirm": "سيتم سحب القطعة {{code}} من رفها لتصبح «للترتيب» من جديد.",
     "storing_cancelled": "تم إلغاء الترتيب",
-    "remove_from_shelf": "سحب"
+    "remove_from_shelf": "سحب",
+    "shelves": "الرفوف",
+    "shelves_title": "الرفوف"
   },
   "dialogue_rangement": {
     "badge": "مطوي · مراقبة الجودة مطابقة",
@@ -2985,7 +3082,15 @@
     "search": "بحث",
     "viewInteractive": "تفاعلي",
     "viewTable": "جدول",
-    "viewMode": "نوع العرض"
+    "viewMode": "نوع العرض",
+    "dominant": "الغالب",
+    "leader": "في الصدارة",
+    "breakdownBy": "التوزيع",
+    "top": "الأعلى",
+    "ofTotal": "من المجموع",
+    "highlights": "أبرز النقاط",
+    "printedOn": "طُبع في",
+    "keyFigures": "الأرقام الرئيسية"
   },
   "chargement": {
     "title": "التحميل (الوزن)",
@@ -3051,5 +3156,15 @@
     "active": "نشطة",
     "next": "المراحل التالية الممكنة",
     "accepts": "تقبل"
+  },
+  "integration": {
+    "connector_type": {
+      "STANDARD": "قياسي",
+      "CUBIX": "Cubix",
+      "PERSONNALISE": "مخصص"
+    },
+    "model_applied_type": "تم تطبيق نموذج {{type}}: تم ملء المسارات والحقول لجميع المراجع.",
+    "connector_custom_hint": "مخصص: أدخل بنفسك مسارات وحقول كل مرجع.",
+    "connector_model_hint": "يملأ النموذج مسارات وحقول المراجع. يبقى إدخال عنوان URL الأساسي وبيانات الاعتماد."
   }
 }

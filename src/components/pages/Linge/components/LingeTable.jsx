@@ -7,7 +7,7 @@ import { ATTRIBUT_META, useAttributLabel } from "./LingeIncompletsBanner";
 
 export function LingeTable({
   linges, isLoading, displayMode, selectedId, formatEPC, getServiceName,
-  onRowClick, onDetail, onAssociateRfid, onAssignService, showMissing = false,
+  onRowClick, onDetail, onAssociateRfid, onAssignService, showMissing = false, selection,
 }) {
   const { t } = useTranslation();
   const attributLabel = useAttributLabel();
@@ -90,6 +90,7 @@ export function LingeTable({
     <DataTable
       columns={columns}
       rows={linges}
+      selection={selection}
       activeId={selectedId}
       onRowClick={(l) => onRowClick(l.id)}
       onRowDoubleClick={(l) => onDetail(l.id)}

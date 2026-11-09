@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import Swal from "sweetalert2";
-import { FaCheckDouble } from "react-icons/fa";
+import { toast } from "sonner";
 import {
   Check,
   CircleCheck,
@@ -18,7 +17,6 @@ import {
   Truck,
   User,
   Users,
-  ChevronDown,
   ScanBarcode,
   Undo2,
 } from "lucide-react";
@@ -33,220 +31,10 @@ import "../Linge/WorkflowList.css";
 import "../StockageArsenal/StockageArsenal.css";
 import "./RemiseLinge.css";
 
-import lottie from "lottie-web";
 import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
-
-
-function SuccessAnimation({ show, onComplete }) {
-  const { t } = useTranslation();
-  const [visible, setVisible] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
-  const containerRef = useRef(null);
-  const animationRef = useRef(null);
-
-  useEffect(() => {
-    if (show) {
-      setVisible(true);
-      setIsExiting(false);
-
-      const loadAnimation = async () => {
-        try {
-          const response = await fetch(
-            "https://assets2.lottiefiles.com/packages/lf20_usmfx6bp.json"
-          );
-          const animationData = await response.json();
-
-          if (containerRef.current) {
-            animationRef.current = lottie.loadAnimation({
-              container: containerRef.current,
-              renderer: "svg",
-              loop: false,
-              autoplay: true,
-              animationData: animationData,
-              rendererSettings: {
-                preserveAspectRatio: "xMidYMid meet",
-              },
-            });
-
-            animationRef.current.addEventListener("complete", () => {
-              console.log("Animation terminée");
-            });
-          }
-        } catch (err) {
-          console.error("Erreur chargement animation Lottie:", err);
-          if (containerRef.current) {
-            containerRef.current.innerHTML = `
-              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);">
-                <svg viewBox="0 0 100 100" style="width:60%;height:60%;">
-                  <path d="M25 50 L42 67 L75 34" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </div>
-            `;
-          }
-        }
-      };
-
-      loadAnimation();
-
-      const timer = setTimeout(() => {
-        setIsExiting(true);
-        setTimeout(() => {
-          setVisible(false);
-          if (animationRef.current) {
-            animationRef.current.destroy();
-            animationRef.current = null;
-          }
-          if (onComplete) onComplete();
-        }, 600);
-      }, 3000);
-
-      return () => {
-        clearTimeout(timer);
-        if (animationRef.current) {
-          animationRef.current.destroy();
-          animationRef.current = null;
-        }
-      };
-    } else {
-      if (animationRef.current) {
-        animationRef.current.destroy();
-        animationRef.current = null;
-      }
-    }
-  }, [show, onComplete]);
-
-  if (!visible) return null;
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 99999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0, 0, 0, 0.5)",
-        backdropFilter: "blur(8px)",
-        animation: isExiting
-          ? "fadeOut 0.5s ease-in-out forwards"
-          : "fadeIn 0.4s ease-out",
-      }}
-    >
-      <div
-        style={{
-          background: "white",
-          borderRadius: "32px",
-          padding: "48px 56px",
-          maxWidth: "480px",
-          width: "100%",
-          textAlign: "center",
-          boxShadow: "0 40px 80px rgba(0,0,0,0.3)",
-          transform: isExiting ? "scale(0.9)" : "scale(1)",
-          transition: "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
-          animation: isExiting
-            ? "scaleDown 0.5s ease-in-out forwards"
-            : "scaleUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
-        }}
-      >
-        <div
-          ref={containerRef}
-          style={{
-            width: "200px",
-            height: "200px",
-            margin: "0 auto -20px",
-          }}
-        />
-
-        <h2
-          style={{
-            fontSize: "28px",
-            fontWeight: 800,
-            color: "#0f172a",
-            margin: "0 0 8px 0",
-          }}
-        >
-          {t('remise.delivery_success_title')}
-        </h2>
-        <p
-          style={{
-            fontSize: "16px",
-            color: "#64748b",
-            margin: 0,
-          }}
-        >
-          {t('remise.delivery_success_text')}
-        </p>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            marginTop: "16px",
-          }}
-        >
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #10b981, #059669)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              animation: "pulse 1.5s ease-in-out infinite",
-            }}
-          >
-            <FaCheckDouble size={24} color="white" />
-          </div>
-        </div>
-
-        <div
-          style={{
-            marginTop: "12px",
-            display: "inline-block",
-            padding: "4px 16px",
-            borderRadius: "12px",
-            background: "#f0fdf4",
-            border: "1px solid #86efac",
-            color: "#059669",
-            fontSize: "12px",
-            fontWeight: 600,
-          }}
-        >
-          ✨ {t('remise.confirmation_sent')}
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; backdrop-filter: blur(0px); }
-          to { opacity: 1; backdrop-filter: blur(8px); }
-        }
-        @keyframes fadeOut {
-          from { opacity: 1; backdrop-filter: blur(8px); }
-          to { opacity: 0; backdrop-filter: blur(0px); }
-        }
-        @keyframes scaleUp {
-          from { transform: scale(0.8); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-        @keyframes scaleDown {
-          from { transform: scale(1); opacity: 1; }
-          to { transform: scale(0.8); opacity: 0; }
-        }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-
-
-// ─── Éléments visuels (thème global .sa-* + .rl-*) ──────────────────────────
+import {
+  Page, PageHeader, ActionBar, ActionButton, DataTable, Code, Badge, VueSwitch, useVue, RowActions, RowButton, ConfirmDialog,
+} from "../../kit";
 
 function Meter({ value, label }) {
   const pct = Math.min(Math.max(value, 0), 100);
@@ -276,7 +64,6 @@ function Kpi({ label, value, sub, Icon, color }) {
   );
 }
 
-/** remis / à remettre pour une catégorie (quantiteRemise / quantiteCollectee). */
 function CategorieRow({ categorie, collecte, livre, reste }) {
   const { t } = useTranslation();
   const isComplete = reste === 0 && collecte > 0;
@@ -367,8 +154,6 @@ function TrackItem({ icon, label, value, meta, state, action, onAction }) {
   );
 }
 
-// ─── COMPOSANT PRINCIPAL ──────────────────────────────────────────────────
-
 const ORDRE = ["AGENT_REMISE", "AGENT_COLLECTE", "APERCU", "SCAN"];
 
 function RemiseLingeInner() {
@@ -404,30 +189,18 @@ function RemiseLingeInner() {
 
   const [scanValue, setScanValue] = useState("");
   const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
-  // Mode « Annuler un linge » : le scan retire le linge de la remise au lieu de le remettre
   const [modeAnnulation, setModeAnnulation] = useState(false);
-  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [aAnnuler, setAAnnuler] = useState(null);
+  const [vueRemis, setVueRemis] = useVue("livraison.remis");
+  const [vueCategories, setVueCategories] = useVue("livraison.categories");
   const scanInputRef = useRef(null);
 
-  // ─── Alertes ─────────────────────────────────────────────────────────────
-  const showAlert = useCallback(
-    (title, text, icon = "info", timer = null) => {
-      return Swal.fire({
-        title,
-        text,
-        icon,
-        timer,
-        timerProgressBar: true,
-        showConfirmButton: !!timer,
-        confirmButtonColor: "#0ca678",
-        confirmButtonText: t('common.ok'),
-        ...(timer ? { showConfirmButton: false } : {}),
-      });
-    },
-    [t]
-  );
+  const showAlert = useCallback((title, text, icon = "info") => {
+    const notifier = icon === "error" ? toast.error : icon === "success" ? toast.success : icon === "warning" ? toast.warning : toast.info;
+    notifier(title, text ? { description: text } : undefined);
+    return Promise.resolve();
+  }, []);
 
-  // ─── Handlers ────────────────────────────────────────────────────────────
   const handleScan = useCallback(
     async (code) => {
       if (!code?.trim()) return;
@@ -435,7 +208,6 @@ function RemiseLingeInner() {
       setScanValue("");
 
       try {
-        // Étape 1: Scan Agent Remise
         if (etape === "AGENT_REMISE") {
           const agent = await scanAgentRemise(code.trim());
           await showAlert(
@@ -448,13 +220,11 @@ function RemiseLingeInner() {
           return;
         }
 
-        // Étape 2: Scan Agent Collecte → aperçu des collectes (la remise est créée après)
         if (etape === "AGENT_COLLECTE") {
           await scanAgentCollecte(code.trim(), agentRemise);
           return;
         }
 
-        // Étape 3 bis: annulation de la remise d'un linge
         if (etape === "SCAN" && modeAnnulation) {
           await annulerLinge(code.trim());
           setTimeout(() => clearScanStatus(), 2500);
@@ -462,24 +232,11 @@ function RemiseLingeInner() {
           return;
         }
 
-        // Étape 3: Scan Linge
         if (etape === "SCAN") {
           const result = await scanLinge(code.trim());
 
-          if (result && !result.error) {
-            setShowSuccessAnimation(true);
-          }
-
           if (result.isComplete) {
-            await Swal.fire({
-              title: t('remise.delivery_completed_title'),
-              text: t('remise.delivery_completed_text'),
-              icon: "success",
-              timer: 2500,
-              timerProgressBar: true,
-              showConfirmButton: false,
-              confirmButtonColor: "#0ca678",
-            });
+            toast.success(t('remise.delivery_completed_title'), { description: t('remise.delivery_completed_text') });
           }
 
           setTimeout(() => {
@@ -499,18 +256,10 @@ function RemiseLingeInner() {
     [etape, agentRemise, modeAnnulation, scanAgentRemise, scanAgentCollecte, scanLinge, annulerLinge, clearScanStatus, showAlert, t]
   );
 
-  // Annulation depuis la liste « Remis pendant cette séance » (avec confirmation)
-  const handleAnnulerDepuisListe = async (codeBarre) => {
-    const { isConfirmed } = await Swal.fire({
-      title: t('remise.cancel_confirm_title'),
-      text: t('remise.cancel_confirm_text', { code: codeBarre }),
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#e03131",
-      confirmButtonText: t('remise.cancel_linen'),
-      cancelButtonText: t('common.cancel'),
-    });
-    if (!isConfirmed) return;
+  const handleAnnulerDepuisListe = async () => {
+    const codeBarre = aAnnuler;
+    setAAnnuler(null);
+    if (!codeBarre) return;
     try {
       await annulerLinge(codeBarre);
       setTimeout(() => clearScanStatus(), 2500);
@@ -536,7 +285,6 @@ function RemiseLingeInner() {
     setTimeout(() => scanInputRef.current?.focus(), 200);
   };
 
-  // Collectes encore ouvertes pour le service de la remise (rafraîchies après chaque scan)
   const collectesRemise = (apercu?.collectes || []).filter(
     (c) => remise?.service == null || String(c.serviceId) === String(remise.service)
   );
@@ -549,10 +297,8 @@ function RemiseLingeInner() {
     return t('remise.scan_linen_barcode');
   };
 
-  // En mode annulation, le scan reste possible même si la remise est terminée
   const isDisabled = (isCloturee && !modeAnnulation) || loading || !agentRemise || etape === "APERCU";
 
-  // ─── Parcours ───────────────────────────────────────────────────────────
   const at = ORDRE.indexOf(etape);
   const stateOf = (id, termine = false) => {
     const i = ORDRE.indexOf(id);
@@ -576,49 +322,48 @@ function RemiseLingeInner() {
   const stage = STAGES[etape] || STAGES.AGENT_REMISE;
 
   return (
-    <div className="collecte-container sa-page">
-      <SuccessAnimation
-        show={showSuccessAnimation}
-        onComplete={() => {
-          setShowSuccessAnimation(false);
-          setTimeout(() => scanInputRef.current?.focus(), 200);
-        }}
+    <Page className="sa-page">
+      <PageHeader
+        icon={<PageHeaderIcon size={40} />}
+        title={t('remise.title')}
+        subtitle={agentRemise
+          ? `${t('remise.agent')} : ${agentRemise.nomPrenom || agentRemise.nom}`
+          : t('remise.no_agent_connected')}
+        right={remise ? <span className="rl-num"><Truck size={12} /> {remise.numeroLivraison}</span> : null}
+        badge={remise ? getRemiseStatutConfig(remise.etat).label : undefined}
       />
 
-      {/* ─── En-tête ───────────────────────────────────────────────────── */}
-      <header className="page-head sa-topbar">
-        <div className="sa-header">
-          <PageHeaderIcon size={44} radius={14} />
-          <div style={{ minWidth: 0 }}>
-            <h1>{t('remise.title')}</h1>
-            <p>
-              {agentRemise
-                ? `${t('remise.agent')} : ${agentRemise.nomPrenom || agentRemise.nom}`
-                : t('remise.no_agent_connected')}
-              {remise && <span className="rl-num"><Truck size={12} /> {remise.numeroLivraison}</span>}
-            </p>
-          </div>
-        </div>
-
-        <div className="rl-actions">
-          {etape === "SCAN" && (
-            <>
-              <button type="button" className="sa-btn sa-btn--sm" onClick={rafraichir} disabled={loading}>
-                <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> {t('common.refresh')}
-              </button>
-              <button type="button" className="sa-btn sa-btn--sm" onClick={() => { setModeAnnulation(false); nouvelleRemise(); }} disabled={loading}>
-                <PackagePlus size={14} /> {t('remise.new_delivery')}
-              </button>
-            </>
-          )}
-          <button type="button" className="sa-btn sa-btn--sm sa-btn--ghost rl-btn-danger" onClick={() => { setModeAnnulation(false); resetAll(); }}>
-            <RotateCcw size={14} /> {t('common.reset')}
-          </button>
-        </div>
-      </header>
+      <ActionBar>
+        <ActionButton
+          icon={<RefreshCw size={18} className={loading ? "animate-spin" : ""} />}
+          label={t('common.refresh')}
+          variant="details"
+          disabled={loading || etape !== "SCAN"}
+          onClick={rafraichir}
+        />
+        <ActionButton
+          icon={<PackagePlus size={18} />}
+          label={t('remise.new_delivery')}
+          variant="ajouter"
+          disabled={loading || etape !== "SCAN"}
+          onClick={() => { setModeAnnulation(false); nouvelleRemise(); }}
+        />
+        <ActionButton
+          icon={<History size={18} />}
+          label={`${historiqueOuvert ? t('remise.hide_history') : t('remise.show_history')} (${remises.length})`}
+          variant="imprimer"
+          disabled={etape !== "SCAN"}
+          onClick={() => setHistoriqueOuvert((o) => !o)}
+        />
+        <ActionButton
+          icon={<RotateCcw size={18} />}
+          label={t('common.reset')}
+          variant="supprimer"
+          onClick={() => { setModeAnnulation(false); resetAll(); }}
+        />
+      </ActionBar>
 
       <div className="sa-flow">
-        {/* ─── Parcours ────────────────────────────────────────────────── */}
         <aside className="sa-track" aria-label={t('remise.track_title')}>
           <div className="sa-track__title">{t('remise.track_title')}</div>
           <ol>
@@ -655,7 +400,6 @@ function RemiseLingeInner() {
           </ol>
         </aside>
 
-        {/* ─── Étape en cours ──────────────────────────────────────────── */}
         <section className="sa-stage">
           <div className="sa-stage__head">
             <div style={{ minWidth: 0, flex: 1 }}>
@@ -676,7 +420,6 @@ function RemiseLingeInner() {
             </div>
           )}
 
-          {/* Champ de scan (masqué pendant l'aperçu) */}
           {etape !== "APERCU" && (
             <div className="sa-scan" style={{ marginBottom: 16 }}>
               {etape === "SCAN" && (
@@ -695,7 +438,7 @@ function RemiseLingeInner() {
                 value={scanValue}
                 onChange={setScanValue}
                 onSubmit={handleScan}
-                borderColor={etape === "SCAN" && modeAnnulation ? "#e03131" : isCloturee ? "#cbd5e1" : !agentRemise ? "#e03131" : "#0ca678"}
+                borderColor={etape === "SCAN" && modeAnnulation ? "#e03131" : isCloturee ? "#cbd5e1" : !agentRemise ? "#e03131" : "#0794a4"}
                 keepFocus={true}
                 autoDebounce={true}
                 disabled={isDisabled}
@@ -704,7 +447,6 @@ function RemiseLingeInner() {
             </div>
           )}
 
-          {/* Aperçu des collectes non clôturées, avant la création de la remise */}
           {etape === "APERCU" && apercu && (
             <ApercuRemise
               apercu={apercu}
@@ -751,16 +493,34 @@ function RemiseLingeInner() {
 
               <Meter value={totaux.pourcentage} label={t('remise.delivery_progress')} />
 
-              {/* Collectes encore ouvertes : elles disparaissent une fois compensées */}
               <CollectesConcernees collectes={collectesRemise} title={t('remise.collectes_ouvertes')} />
 
-              {/* Linges remis pendant cette séance : annulables d'un clic */}
               {lingesRemis.length > 0 && (
                 <div>
                   <div className="sa-subhead">
                     {t('remise.delivered_this_session')}
                     <span className="sa-count">{lingesRemis.length}</span>
+                    <span style={{ marginInlineStart: "auto" }}><VueSwitch value={vueRemis} onChange={setVueRemis} compact /></span>
                   </div>
+                  {vueRemis === "tableau" ? (
+                    <DataTable
+                      columns={{
+                        code: { label: t('tri.code', 'Code'), render: (l) => <Code>{l.codeBarre}</Code> },
+                        categorie: { label: t('tri.category', 'Catégorie'), render: (l) => t(`categories.${l.categorie}`, l.categorie) },
+                        heure: { label: t('tri.time', 'Heure'), render: (l) => l.date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) },
+                        actions: {
+                          label: t('common.actions', 'Actions'),
+                          render: (l) => (
+                            <RowActions>
+                              <RowButton icon={Undo2} tone="danger" title={t('remise.cancel_linen')} disabled={loading} onClick={() => setAAnnuler(l.codeBarre)} />
+                            </RowActions>
+                          ),
+                        },
+                      }}
+                      rows={lingesRemis}
+                      rowKey={(l) => l.codeBarre}
+                    />
+                  ) : (
                   <div className="rl-cats">
                     {lingesRemis.map((l) => (
                       <div key={l.codeBarre} className="rl-remis" style={{ "--c": accentOf(l.categorie) }}>
@@ -768,12 +528,13 @@ function RemiseLingeInner() {
                         <code>{l.codeBarre}</code>
                         <span>{t(`categories.${l.categorie}`, l.categorie)}</span>
                         <small>{l.date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</small>
-                        <button type="button" className="sa-btn sa-btn--sm rl-btn-danger" onClick={() => handleAnnulerDepuisListe(l.codeBarre)} disabled={loading}>
+                        <button type="button" className="sa-btn sa-btn--sm rl-btn-danger" onClick={() => setAAnnuler(l.codeBarre)} disabled={loading}>
                           <Undo2 size={13} /> {t('remise.cancel_linen')}
                         </button>
                       </div>
                     ))}
                   </div>
+                  )}
                 </div>
               )}
 
@@ -782,9 +543,27 @@ function RemiseLingeInner() {
                   <div className="sa-subhead">
                     {t('remise.category_details')}
                     <span className="sa-count">{items.length}</span>
+                    <span style={{ marginInlineStart: "auto" }}><VueSwitch value={vueCategories} onChange={setVueCategories} compact /></span>
                   </div>
+                  {vueCategories === "tableau" ? (
+                    <DataTable
+                      columns={{
+                        categorie: { label: t('tri.category', 'Catégorie'), render: (it) => <strong>{t(`categories.${it.categorie}`, it.categorie)}</strong> },
+                        collecte: { label: t('remise.total_to_deliver'), render: (it) => it.quantiteCollectee || 0 },
+                        remis: { label: t('remise.total_delivered'), render: (it) => it.quantiteRemise || 0 },
+                        reste: {
+                          label: t('remise.remaining'),
+                          render: (it) => {
+                            const reste = Math.max((it.quantiteCollectee || 0) - (it.quantiteRemise || 0), 0);
+                            return <Badge variant={reste === 0 ? "success" : "warning"}>{reste === 0 ? `✓ ${t("remise.complete")}` : reste}</Badge>;
+                          },
+                        },
+                      }}
+                      rows={items}
+                      rowKey={(it) => it.categorie}
+                    />
+                  ) : (
                   <div className="rl-cats">
-                    {/* remis / à remettre : quantiteRemise / quantiteCollectee (total de la remise) */}
                     {items.map((item) => (
                       <CategorieRow
                         key={item.categorie}
@@ -795,46 +574,47 @@ function RemiseLingeInner() {
                       />
                     ))}
                   </div>
+                  )}
                 </div>
               )}
 
-              {/* Historique des remises */}
-              <button type="button" className="rl-history-toggle" onClick={() => setHistoriqueOuvert(!historiqueOuvert)} aria-expanded={historiqueOuvert}>
-                <History size={15} />
-                {historiqueOuvert ? t('remise.hide_history') : t('remise.show_history')}
-                <span className="sa-count">{remises.length}</span>
-                <ChevronDown size={15} style={{ marginInlineStart: "auto", transform: historiqueOuvert ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-              </button>
-
               {historiqueOuvert && (
-                remises.length === 0 ? (
-                  <p className="sa-hint" style={{ marginTop: 10 }}>{t('remise.no_deliveries')}</p>
-                ) : (
-                  <div className="rl-history">
-                    {remises.map((r, i) => {
-                      const config = getRemiseStatutConfig(r.etat);
-                      return (
-                        <div key={r.id ?? i} className="rl-history__row">
-                          <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <code>{r.numeroLivraison || r.id}</code>
-                            <span className="sa-tag" style={{ color: config.text }}>{config.label}</span>
-                          </span>
-                          <span className="rl-history__meta">
-                            <span>{r.agentRemiseNom || t('remise.agent')}</span>
-                            <span>{formatDate(r.dateRemise)}</span>
-                            <span><b>{r.nbLinges || 0}</b> {t('remise.linens')}</span>
-                          </span>
-                        </div>
-                      );
-                    })}
+                <div>
+                  <div className="sa-subhead">
+                    <History size={15} /> {t('remise.show_history')}
+                    <span className="sa-count">{remises.length}</span>
                   </div>
-                )
+                  <DataTable
+                    columns={{
+                      numero: { label: t('remise.delivery'), render: (r) => <Code>{r.numeroLivraison || r.id}</Code> },
+                      statut: {
+                        label: t('remise.status'),
+                        render: (r) => <span className="sa-tag" style={{ color: getRemiseStatutConfig(r.etat).text }}>{getRemiseStatutConfig(r.etat).label}</span>,
+                      },
+                      agent: { label: t('remise.agent'), render: (r) => r.agentRemiseNom || "—" },
+                      date: { label: t('common.date', 'Date'), render: (r) => formatDate(r.dateRemise) },
+                      linges: { label: t('remise.linens'), render: (r) => <strong>{r.nbLinges || 0}</strong> },
+                    }}
+                    rows={remises}
+                    rowKey={(r) => r.id ?? r.numeroLivraison}
+                    emptyText={t('remise.no_deliveries')}
+                  />
+                </div>
               )}
             </>
           )}
         </section>
       </div>
-    </div>
+
+      <ConfirmDialog
+        open={!!aAnnuler}
+        title={t('remise.cancel_confirm_title')}
+        message={aAnnuler ? t('remise.cancel_confirm_text', { code: aAnnuler }) : ""}
+        confirmLabel={t('remise.cancel_linen')}
+        onConfirm={handleAnnulerDepuisListe}
+        onClose={() => setAAnnuler(null)}
+      />
+    </Page>
   );
 }
 

@@ -279,3 +279,20 @@ export function printLabel(type, item, ctx) {
     documentTitle: `Etiquette_${type}_${code}`,
   });
 }
+
+export function printLabels(type, items, ctxOf) {
+  const liste = (items || []).filter(Boolean);
+  if (!liste.length) return;
+  const settings = getLabelSettings(type);
+  const { w, h } = LABEL_SIZES[settings.size] || LABEL_SIZES["90x60"];
+  printJS({
+    printable: liste.map((item, i) => `<div style="${i < liste.length - 1 ? "page-break-after:always;break-after:page;" : ""}">${buildLabelHtml(type, item, ctxOf(item), settings)}</div>`).join(""),
+    type: "raw-html",
+    style: `
+      * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      @page { size: ${w}mm ${h}mm; margin: 0; }
+      body { margin: 0; width: ${w}mm; }
+    `,
+    documentTitle: `Etiquettes_${type}_${liste.length}`,
+  });
+}

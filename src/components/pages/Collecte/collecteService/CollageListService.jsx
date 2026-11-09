@@ -19,11 +19,13 @@ import { ListeLinges } from "./components/ListeLinges";
 import { ActionsCollecte } from "./components/ActionsCollecte";
 import { ResumeCollecte } from "./components/ResumeCollecte";
 import { CollecteStyles } from "../shared/CollecteStyles";
+import { useCircuitInfecte } from "../../../../hooks/useEstablishment";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
 
 
-function CollageListServiceInner() {
+function CollageListServiceInner({ modeChambre = false }) {
+  const circuitInfecte = useCircuitInfecte();
   const { t } = useTranslation();
   const { showAlert, showConfirm } = useModal();
 
@@ -95,6 +97,41 @@ function CollageListServiceInner() {
     }
     setLoading(true);
     setScanStatus(null);
+    if (modeChambre) {
+      try {
+        const res = await apiCall("/api/collecte/service/chambre/ouvrir", {
+          matriculeAgent: agent.codeBarre || agent.matricule,
+          codeChambre: code,
+        });
+        const libelle = `${t('collecte.room', 'Chambre')} ${res.codeChambre || code}`;
+        setCollecte({
+          id: res.collecteId,
+          numeroCollecte: res.numeroCollecte,
+          codeChambre: res.codeChambre || code,
+          chambreId: res.chambreId,
+          serviceNom: libelle,
+          serviceId: res.serviceId,
+          nbAttendus: res.nbAttendus,
+          attendusParCategorie: res.attendusParCategorie,
+          linges: (res.linges || []).map(l => ({ ...l, lingeId: l.lingeId ?? l.id })),
+        });
+        setSacsDeclares([]);
+        setBacBlanc(null);
+        setScanStatus({
+          loading: false,
+          success: { message: libelle, detail: `${res.nbAttendus} ${t('collecte.linens')}` },
+          error: null,
+        });
+        setTimeout(() => setScanStatus(null), 1500);
+        showAlert(libelle, res.nbAttendus + " " + t('collecte.linens'), "success");
+      } catch (e) {
+        setScanStatus({ loading: false, success: null, error: e.message });
+        showAlert(e.message, "", "error");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     try {
       const svcRes = await fetch(
         `${API_URL}/api/services/ref/${encodeURIComponent(code)}`
@@ -142,7 +179,7 @@ function CollageListServiceInner() {
     } finally {
       setLoading(false);
     }
-  }, [agent, showAlert, t]);
+  }, [agent, modeChambre, showAlert, t]);
 
   const handleBac = useCallback(async code => {
     setLoading(true);
@@ -366,7 +403,7 @@ const handleCloturer = useCallback(async () => {
 
   const getPlaceholder = () => {
     if (!agent) return t('collecte.agent_not_connected');
-    if (!collecte) return t('collecte.scan_service_code');
+    if (!collecte) return modeChambre ? t('collecte.scan_room_code', 'Scannez le code-barres de la chambre') : t('collecte.scan_service_code');
     if (!bacBlanc) return t('collecte.scan_white_bac');
     if (resume) return t('collecte.collection_closed');
     return t('collecte.scan_white_linens');
@@ -382,9 +419,9 @@ const handleCloturer = useCallback(async () => {
   const isDisabled = isCloturee || loading || !agent;
 
   return (
-    <div className="collecte-container">
+    <div className="collecte-container cr-page">
       <DlgSacInfecte
-        visible={dlgSac}
+        visible={dlgSac && circuitInfecte}
         collecteId={collecte?.id}
         onValider={handleSacInfecte}
         onClose={() => setDlgSac(false)}
@@ -400,18 +437,16 @@ const handleCloturer = useCallback(async () => {
 
       <CollecteHeader
         icon={<Icons.Building size={28} color="white" strokeWidth={2.2} />}
-        title={t('collecte.service_collection')}
+        title={modeChambre
+          ? `${t('collecte.room_collection', 'Collecte chambre')}${collecte?.codeChambre ? ` · ${collecte.codeChambre}` : ""}`
+          : t('collecte.service_collection')}
         agent={agent}
         agentLabel={t('collecte.agent')}
         noAgentLabel={t('collecte.no_agent_connected')}
         accent="#0d9488"
       />
 
-      <div style={{
-        background: "white", borderRadius: 24, padding: 30,
-        border: "1px solid #e2e8f0",
-        boxShadow: "0 12px 40px rgba(15,23,42,0.06)",
-      }}>
+      <div className="cr-shell">
         <CollecteInfoBar
           agent={agent}
           collecte={collecte}
@@ -438,6 +473,7 @@ const handleCloturer = useCallback(async () => {
           collecte={collecte}
           bacBlanc={bacBlanc}
           resume={resume}
+          modeChambre={modeChambre}
         />
 
         {collecte && !resume && (
@@ -517,6 +553,6 @@ const handleCloturer = useCallback(async () => {
   );
 }
 
-export default function CollageListService() {
-  return <CollageListServiceInner />;
+export default function CollageListService({ modeChambre = false }) {
+  return <CollageListServiceInner modeChambre={modeChambre} />;
 }

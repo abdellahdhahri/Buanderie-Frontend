@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, TriangleAlert, Undo2, Warehouse } from "lucide-react";
 import { toast } from "sonner";
-import Swal from "sweetalert2";
+import { ConfirmDialog } from "../../kit";
 import ScanInput from "../../utils/shared/ScanInput";
 import { annulerRangement, localiserLinge } from "../../../services/receptionArsenalService";
 import { Hero, Loading, Panel, ScanZone } from "./arsenalUi";
@@ -14,7 +14,7 @@ export default function LocaliserLinge() {
   const { t } = useTranslation();
   const [scanValue, setScanValue] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null); // { data } | { error, code }
+  const [result, setResult] = useState(null);
 
   const handleScan = async (code) => {
     setLoading(true);
@@ -29,19 +29,10 @@ export default function LocaliserLinge() {
 
   const data = result?.data;
 
-  // Annuler le rangement du linge localisé : il redevient « à ranger » pour sa remise
   const [annulation, setAnnulation] = useState(false);
+  const [confirmer, setConfirmer] = useState(false);
   const annulerCeRangement = async () => {
-    const { isConfirmed } = await Swal.fire({
-      title: t("stockageArsenal.cancel_storing_title"),
-      text: t("stockageArsenal.cancel_storing_confirm", { code: data.codeBarre }),
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#e03131",
-      confirmButtonText: t("stockageArsenal.cancel_storing"),
-      cancelButtonText: t("common.cancel"),
-    });
-    if (!isConfirmed) return;
+    setConfirmer(false);
     setAnnulation(true);
     try {
       const res = await annulerRangement(data.codeBarre);
@@ -114,7 +105,7 @@ export default function LocaliserLinge() {
 
             {data.localise && (
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
-                <button type="button" className="sa-btn sa-btn--sm" style={{ color: "var(--sa-danger)" }} onClick={annulerCeRangement} disabled={annulation}>
+                <button type="button" className="sa-btn sa-btn--sm" style={{ color: "var(--sa-danger)" }} onClick={() => setConfirmer(true)} disabled={annulation}>
                   <Undo2 size={14} /> {annulation ? "…" : t("stockageArsenal.cancel_storing")}
                 </button>
               </div>
@@ -132,6 +123,15 @@ export default function LocaliserLinge() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmDialog
+        open={confirmer && !!data}
+        title={t("stockageArsenal.cancel_storing_title")}
+        message={data ? t("stockageArsenal.cancel_storing_confirm", { code: data.codeBarre }) : ""}
+        confirmLabel={t("stockageArsenal.cancel_storing")}
+        onConfirm={annulerCeRangement}
+        onClose={() => setConfirmer(false)}
+      />
     </Panel>
   );
 }

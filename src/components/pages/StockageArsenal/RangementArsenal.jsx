@@ -23,6 +23,7 @@ import {
   Undo2,
 } from "lucide-react";
 import AgentPicker from "./AgentPicker";
+import { DataTable, Code, Badge, VueSwitch, useVue, RowActions, RowButton } from "../../kit";
 import ScanInput from "../../utils/shared/ScanInput";
 import { formatDateTime } from "../../../utils/appSettings";
 import {
@@ -41,7 +42,6 @@ import { Illustration, ShelfGlyph } from "./illustrations";
 
 const ORDER = ["agent", "remises", "quantite", "etagere", "unParUn"];
 
-// Catégories à compter pour une remise (une seule ligne « total » si le backend n'en fournit pas)
 const TOTAL_KEY = "__total__";
 const categoriesOf = (remise) => {
   const cats = Object.keys(remise?.parCategorie || {});
@@ -54,8 +54,6 @@ const fade = {
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.18 },
 };
-
-/* ── Parcours (colonne de gauche) ───────────────────────────────────────── */
 
 function TrackItem({ icon, label, value, meta, state, action, onAction }) {
   const { t } = useTranslation();
@@ -79,8 +77,6 @@ function TrackItem({ icon, label, value, meta, state, action, onAction }) {
     </li>
   );
 }
-
-/* ── En-tête de l'étape (colonne de droite) ─────────────────────────────── */
 
 function StageHead({ eyebrow, title, text, art, right, warn }) {
   return (
@@ -107,20 +103,19 @@ export default function RangementArsenal({ arsenal, emplacements }) {
   const [scanValue, setScanValue] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const [agent, setAgent] = useState(null); // { badge, nom, remises }
-  const [agentMode, setAgentMode] = useState("scan"); // "scan" | "liste"
+  const [agent, setAgent] = useState(null);
+  const [agentMode, setAgentMode] = useState("scan");
   const [remise, setRemise] = useState(null);
-  const [quantites, setQuantites] = useState({}); // { DRAP: "3", ... } saisi par catégorie
+  const [quantites, setQuantites] = useState({});
   const [etagere, setEtagereState] = useState(null);
 
-  // Mode un par un
-  const [aRanger, setARanger] = useState(null); // réponse linges-a-ranger
+  const [aRanger, setARanger] = useState(null);
   const [totalInitial, setTotalInitial] = useState(0);
   const [journal, setJournal] = useState([]);
   const [showShelves, setShowShelves] = useState(false);
+  const [vueRemises, setVueRemises] = useVue("stockage.remises");
+  const [vueSuivi, setVueSuivi] = useVue("stockage.un_par_un");
 
-  // Les scans du mode un par un sont traités en file : chaque appel voit
-  // l'étagère active la plus récente, même si les scans arrivent vite.
   const etagereRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
   const setEtagere = (emp) => {
@@ -128,7 +123,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
     setEtagereState(emp);
   };
 
-  // Parcours horizontal (petits écrans) : garde l'étape en cours visible
   const trackRef = useRef(null);
   useEffect(() => {
     const list = trackRef.current;
@@ -137,8 +131,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
       list.scrollTo({ left: active.offsetLeft - list.offsetLeft - 12, behavior: "smooth" });
     }
   }, [step]);
-
-  /* ── Agent & remises ─────────────────────────────────────────────────── */
 
   const loadRemises = useCallback(async (badge) => {
     setBusy(true);
@@ -177,8 +169,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
     setStep("quantite");
   };
 
-  /* ── Quantité & étagère ──────────────────────────────────────────────── */
-
   const setQuantite = (categorie, value) => setQuantites((qs) => ({ ...qs, [categorie]: value }));
 
   const bumpQuantite = (categorie, delta) =>
@@ -200,7 +190,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
     setStep("etagere");
   };
 
-  // Catégories dont la quantité comptée diffère de la quantité attendue
   const ecartsCategorie = () => {
     const attendu = remise?.parCategorie || {};
     return Object.entries(attendu)
@@ -220,8 +209,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
   const validerTout = async () => {
     if (!etagere) return;
 
-    // Le contrôle se fait catégorie par catégorie : un écart sur l'une d'elles
-    // impose le rangement un par un, même si le total correspond.
     const ecarts = ecartsCategorie();
     if (ecarts.length) {
       toast.warning(t("stockageArsenal.category_mismatch", { categories: ecarts.join(", ") }));
@@ -251,10 +238,7 @@ export default function RangementArsenal({ arsenal, emplacements }) {
     }
   };
 
-  /* ── Mode un par un ──────────────────────────────────────────────────── */
-
   const startUnParUn = async () => {
-    // L'étagère choisie reste active ; l'agent peut en scanner une autre à tout moment
     setJournal([]);
     setStep("unParUn");
     try {
@@ -268,7 +252,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
 
   const addJournal = (entry) => setJournal((j) => [{ id: Date.now() + Math.random(), ...entry }, ...j].slice(0, 30));
 
-  // Annule le rangement d'un linge scanné par erreur : il redevient « à ranger »
   const annulerScan = async (entry) => {
     try {
       const res = await annulerRangement(entry.code, agent?.badge);
@@ -304,7 +287,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
       });
       addJournal({ ok: true, code: res.codeBarre || code, message: res.message });
 
-      // Mise à jour immédiate de la liste et du compteur, puis resynchronisation
       setARanger((prev) => {
         if (!prev) return prev;
         const parCategorie = { ...(prev.parCategorie || {}) };
@@ -331,8 +313,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
     queueRef.current = queueRef.current.then(() => processUnParUn(code));
   };
 
-  /* ── Rendu ───────────────────────────────────────────────────────────── */
-
   const at = ORDER.indexOf(step);
   const stateOf = (id) => {
     const i = ORDER.indexOf(id);
@@ -347,7 +327,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
 
   return (
     <div className="sa-flow">
-      {/* ── Parcours ─────────────────────────────────────────────────── */}
       <aside className="sa-track" aria-label={t("stockageArsenal.steps.label")}>
         <div className="sa-track__title">{t("stockageArsenal.track_title")}</div>
         <ol ref={trackRef}>
@@ -409,10 +388,8 @@ export default function RangementArsenal({ arsenal, emplacements }) {
         </ol>
       </aside>
 
-      {/* ── Étape en cours ───────────────────────────────────────────── */}
       <section className="sa-stage">
         <AnimatePresence mode="popLayout" initial={false}>
-          {/* 1. Agent */}
           {step === "agent" && (
             <motion.div key="agent" {...fade}>
               <StageHead
@@ -430,7 +407,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
                 </button>
               </div>
 
-              {/* Le champ de scan garde le focus en permanence : il n'est monté qu'en mode scan */}
               {agentMode === "scan" ? (
                 <ScanZone>
                   <ScanInput
@@ -438,7 +414,7 @@ export default function RangementArsenal({ arsenal, emplacements }) {
                     value={scanValue}
                     onChange={setScanValue}
                     onSubmit={loadRemises}
-                    borderColor="#0ca678"
+                    borderColor="#0794a4"
                     disabled={busy}
                   />
                 </ScanZone>
@@ -449,7 +425,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
             </motion.div>
           )}
 
-          {/* 2. Remises de l'agent */}
           {step === "remises" && agent && (
             <motion.div key="remises" {...fade}>
               <StageHead
@@ -457,13 +432,36 @@ export default function RangementArsenal({ arsenal, emplacements }) {
                 title={t("stockageArsenal.remises_title")}
                 text={t("stockageArsenal.remises_hint")}
                 right={
-                  <button type="button" className="sa-btn sa-btn--sm" onClick={() => loadRemises(agent.badge)} disabled={busy}>
-                    <RefreshCw size={14} className={busy ? "animate-spin" : ""} /> {t("common.refresh")}
-                  </button>
+                  <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+                    <VueSwitch value={vueRemises} onChange={setVueRemises} compact />
+                    <button type="button" className="sa-btn sa-btn--sm" onClick={() => loadRemises(agent.badge)} disabled={busy}>
+                      <RefreshCw size={14} className={busy ? "animate-spin" : ""} /> {t("common.refresh")}
+                    </button>
+                  </span>
                 }
               />
               {agent.remises.length === 0 ? (
                 <EmptyState art="done" title={t("stockageArsenal.no_remises")}>{t("stockageArsenal.no_remises_hint")}</EmptyState>
+              ) : vueRemises === "tableau" ? (
+                <DataTable
+                  columns={{
+                    numero: { label: t("remise.delivery", "Livraison"), render: (r) => <Code>{r.numeroLivraison}</Code> },
+                    date: { label: t("common.date", "Date"), render: (r) => formatDateTime(r.dateLivraison) || "—" },
+                    categories: { label: t("tri.category", "Catégorie"), render: (r) => <CategoryChips counts={r.parCategorie} size="sm" /> },
+                    total: { label: t("stockageArsenal.to_store"), render: (r) => <Badge variant="info">{r.totalARanger}</Badge> },
+                    actions: {
+                      label: t("common.actions", "Actions"),
+                      render: (r) => (
+                        <RowActions>
+                          <RowButton icon={ChevronRight} title={t("stockageArsenal.remises_title")} onClick={() => selectRemise(r)} />
+                        </RowActions>
+                      ),
+                    },
+                  }}
+                  rows={agent.remises}
+                  rowKey={(r) => r.remiseLingeId}
+                  onRowDoubleClick={selectRemise}
+                />
               ) : (
                 <div className="sa-rows">
                   {agent.remises.map((r) => (
@@ -488,7 +486,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
             </motion.div>
           )}
 
-          {/* 3. Quantité comptée */}
           {step === "quantite" && remise && (
             <motion.div key="quantite" {...fade}>
               <StageHead eyebrow={stepOf(3)} title={t("stockageArsenal.quantity_title")} text={t("stockageArsenal.quantity_hint")} art="count" />
@@ -544,7 +541,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
             </motion.div>
           )}
 
-          {/* 4. Étagère + validation */}
           {step === "etagere" && remise && (
             <motion.div key="etagere" {...fade}>
               <StageHead eyebrow={stepOf(4)} title={t("stockageArsenal.shelf_title")} text={t("stockageArsenal.shelf_hint")} art="shelf" />
@@ -554,7 +550,7 @@ export default function RangementArsenal({ arsenal, emplacements }) {
                   value={scanValue}
                   onChange={setScanValue}
                   onSubmit={handleShelfScan}
-                  borderColor="#0ca678"
+                  borderColor="#0794a4"
                   disabled={busy}
                 />
               </ScanZone>
@@ -578,7 +574,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
             </motion.div>
           )}
 
-          {/* 5. Rangement un par un */}
           {step === "unParUn" && remise && (
             <motion.div key="unParUn" {...fade}>
               <StageHead
@@ -588,7 +583,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
                 text={remiseTerminee ? t("stockageArsenal.remise_done_hint") : t("stockageArsenal.one_by_one_intro")}
               />
 
-              {/* Progression */}
               <div className="sa-meter">
                 <div className="sa-meter__row">
                   <span>{t("stockageArsenal.progress_label", { done: rangesCount, total: totalInitial })}</span>
@@ -599,7 +593,6 @@ export default function RangementArsenal({ arsenal, emplacements }) {
                 </div>
               </div>
 
-              {/* Étagère active */}
               <div className={`sa-active-shelf ${etagere ? "" : "is-empty"}`}>
                 <span className="sa-active-shelf__glyph">
                   <ShelfGlyph size={20} filled={etagere ? 2 : 0} />
@@ -634,16 +627,39 @@ export default function RangementArsenal({ arsenal, emplacements }) {
                     value={scanValue}
                     onChange={setScanValue}
                     onSubmit={handleUnParUnScan}
-                    borderColor={etagere ? "#0ca678" : "#f59f00"}
+                    borderColor={etagere ? "#0794a4" : "#f59f00"}
                     icon={<ScanBarcode size={18} />}
                   />
                 </ScanZone>
               </div>
 
+              <div className="sa-subhead" style={{ justifyContent: "flex-end" }}>
+                <VueSwitch value={vueSuivi} onChange={setVueSuivi} compact />
+              </div>
               <div className="sa-split">
                 <div>
                   <div className="sa-subhead">{t("stockageArsenal.last_scans")}</div>
-                  {journal.length > 0 ? (
+                  {journal.length > 0 && vueSuivi === "tableau" ? (
+                    <DataTable
+                      columns={{
+                        statut: {
+                          label: t("tri.status", "Statut"),
+                          render: (j) => <Badge variant={j.annule ? "secondary" : j.ok ? "success" : "danger"}>{j.annule ? t("stockageArsenal.storing_cancelled") : j.ok ? "OK" : t("common.error")}</Badge>,
+                        },
+                        code: { label: t("tri.code", "Code"), render: (j) => <Code>{j.code}</Code> },
+                        message: { label: t("historique.observations", "Message"), render: (j) => j.message || "—" },
+                        actions: {
+                          label: t("common.actions", "Actions"),
+                          render: (j) => (j.ok && !j.annule ? (
+                            <RowActions>
+                              <RowButton icon={Undo2} tone="danger" title={t("stockageArsenal.cancel_storing")} onClick={() => annulerScan(j)} />
+                            </RowActions>
+                          ) : null),
+                        },
+                      }}
+                      rows={journal}
+                    />
+                  ) : journal.length > 0 ? (
                     <div className="sa-journal">
                       {journal.map((j) => (
                         <div key={j.id} className={`sa-journal__item ${j.annule ? "is-cancelled" : j.ok ? "is-ok" : "is-ko"}`}>
@@ -672,6 +688,16 @@ export default function RangementArsenal({ arsenal, emplacements }) {
                     <Loading />
                   ) : (aRanger.linges || []).length === 0 ? (
                     <EmptyState art="done" title={t("stockageArsenal.nothing_left")} />
+                  ) : vueSuivi === "tableau" ? (
+                    <DataTable
+                      columns={{
+                        code: { label: t("tri.code", "Code"), render: (l) => <Code>{l.codeBarre}</Code> },
+                        designation: { label: t("reception.designation", "Désignation"), render: (l) => l.designation || "—" },
+                        categorie: { label: t("tri.category", "Catégorie"), render: (l) => t(`categories.${l.categorie}`, l.categorie || "—") },
+                      }}
+                      rows={aRanger.linges}
+                      rowKey={(l) => l.lingeId ?? l.codeBarre}
+                    />
                   ) : (
                     <div className="sa-list">
                       {aRanger.linges.map((l) => (

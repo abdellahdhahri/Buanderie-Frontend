@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import Swal from "sweetalert2";
 import { motion } from "framer-motion";
-import { Boxes, RefreshCw } from "lucide-react";
-import { Modal } from "../../ui/modal";
+import { Boxes, RefreshCw, Eye, Undo2, Layers } from "lucide-react";
+import { Modal, ConfirmDialog, DataTable, Code, VueSwitch, useVue, RowActions, RowButton } from "../../kit";
 import { annulerRangement, fetchLingesEmplacement, fetchStockArsenal } from "../../../services/receptionArsenalService";
 import { CategoryBar, CategoryChips, EmptyState, Loading, Panel } from "./arsenalUi";
 import { accentOf } from "./arsenalUtils";
@@ -14,9 +13,12 @@ export default function StockArsenalView({ arsenal }) {
   const { t } = useTranslation();
   const [stock, setStock] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  const [selected, setSelected] = useState(null); // étagère ouverte
+  const [selected, setSelected] = useState(null);
   const [linges, setLinges] = useState(null);
+  const [aRetirer, setARetirer] = useState(null);
+  const [retrait, setRetrait] = useState(null);
+  const [vue, setVue] = useVue("stockage.etageres");
+  const [vueLinges, setVueLinges] = useVue("stockage.linges_etagere", "tableau");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -29,7 +31,6 @@ export default function StockArsenalView({ arsenal }) {
     }
   }, [arsenal.id]);
 
-  // Chargement initial (le parent remonte ce composant à chaque changement d'arsenal)
   useEffect(() => {
     let cancelled = false;
     fetchStockArsenal(arsenal.id)
@@ -52,19 +53,10 @@ export default function StockArsenalView({ arsenal }) {
     }
   };
 
-  // Retirer un linge de l'étagère (annulation de son rangement)
-  const [retrait, setRetrait] = useState(null); // code du linge en cours de retrait
-  const retirerLinge = async (l) => {
-    const { isConfirmed } = await Swal.fire({
-      title: t("stockageArsenal.cancel_storing_title"),
-      text: t("stockageArsenal.cancel_storing_confirm", { code: l.codeBarre }),
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#e03131",
-      confirmButtonText: t("stockageArsenal.remove_from_shelf"),
-      cancelButtonText: t("common.cancel"),
-    });
-    if (!isConfirmed) return;
+  const retirerLinge = async () => {
+    const l = aRetirer;
+    setARetirer(null);
+    if (!l) return;
     setRetrait(l.codeBarre);
     try {
       const res = await annulerRangement(l.codeBarre);
@@ -82,6 +74,7 @@ export default function StockArsenalView({ arsenal }) {
   const emplacements = stock?.emplacements || [];
   const parCategorie = stock?.totalParCategorie || {};
   const maxShelf = Math.max(1, ...emplacements.map((e) => e.total || 0));
+  const libelleCategorie = (c) => t(`categories.${c}`, c || "—");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -111,7 +104,7 @@ export default function StockArsenalView({ arsenal }) {
                   .map(([cat, qte]) => (
                     <div key={cat} className="sa-legend-row" style={{ "--c": accentOf(cat) }}>
                       <i className="sa-dot" />
-                      <span>{t(`categories.${cat}`, cat)}</span>
+                      <span>{libelleCategorie(cat)}</span>
                       <b>{qte}</b>
                       <em>{stock.total ? Math.round((qte / stock.total) * 100) : 0}%</em>
                     </div>
@@ -130,15 +123,41 @@ export default function StockArsenalView({ arsenal }) {
         )}
       </Panel>
 
-      {!stock && (
-        <div className="sa-racks">
-          {[0, 1, 2, 3].map((i) => <div key={i} className="sa-skeleton" />)}
-        </div>
-      )}
-
-      {stock &&
-        (emplacements.length === 0 ? (
+      <Panel
+        title={t("stockageArsenal.shelves_title", "Étagères")}
+        icon={<Layers size={17} />}
+        right={<VueSwitch value={vue} onChange={setVue} />}
+      >
+        {!stock ? (
+          <div className="sa-racks">
+            {[0, 1, 2, 3].map((i) => <div key={i} className="sa-skeleton" />)}
+          </div>
+        ) : emplacements.length === 0 ? (
           <EmptyState title={t("stockageArsenal.no_shelves")} />
+        ) : vue === "tableau" ? (
+          <DataTable
+            columns={{
+              nom: { label: t("stockageArsenal.shelf"), render: (e) => <strong>{e.nom}</strong> },
+              code: { label: t("tri.code", "Code"), render: (e) => <Code>{e.codeBarre}</Code> },
+              categories: {
+                label: t("tri.category", "Catégorie"),
+                render: (e) => (e.total ? <CategoryChips counts={e.quantitesParCategorie} size="sm" /> : <span className="kit-muted">{t("stockageArsenal.empty_shelf")}</span>),
+              },
+              total: { label: t("stockageArsenal.linges_in_stock"), render: (e) => <strong>{e.total || 0}</strong> },
+              actions: {
+                label: t("common.actions", "Actions"),
+                render: (e) => (
+                  <RowActions>
+                    <RowButton icon={Eye} title={t("stockageArsenal.shelf_content", { count: e.total || 0 })} onClick={() => openShelf(e)} />
+                  </RowActions>
+                ),
+              },
+            }}
+            rows={emplacements}
+            rowKey={(e) => e.emplacementID}
+            rowClassName={(e) => (e.total ? "" : "kit-row-inactive")}
+            onRowDoubleClick={openShelf}
+          />
         ) : (
           <div className="sa-racks">
             {emplacements.map((emp, i) => (
@@ -172,21 +191,41 @@ export default function StockArsenalView({ arsenal }) {
               </motion.button>
             ))}
           </div>
-        ))}
+        )}
+      </Panel>
 
       <Modal
-        isOpen={!!selected}
-        onClose={() => setSelected(null)}
-        variant="detail"
+        open={!!selected}
+        size="md"
+        icon={<Layers size={20} />}
         title={selected?.nom}
         subtitle={selected ? t("stockageArsenal.shelf_content", { count: selected.total }) : null}
-        size="md"
+        headerActions={<VueSwitch value={vueLinges} onChange={setVueLinges} compact />}
+        onClose={() => setSelected(null)}
       >
         <div className="sa-page">
           {!linges ? (
             <Loading />
           ) : linges.length === 0 ? (
             <EmptyState title={t("stockageArsenal.empty_shelf")} />
+          ) : vueLinges === "tableau" ? (
+            <DataTable
+              columns={{
+                code: { label: t("tri.code", "Code"), render: (l) => <Code>{l.codeBarre}</Code> },
+                designation: { label: t("reception.designation", "Désignation"), render: (l) => l.designation || "—" },
+                categorie: { label: t("tri.category", "Catégorie"), render: (l) => libelleCategorie(l.categorie) },
+                actions: {
+                  label: t("common.actions", "Actions"),
+                  render: (l) => (
+                    <RowActions>
+                      <RowButton icon={Undo2} tone="danger" title={t("stockageArsenal.remove_from_shelf")} disabled={retrait === l.codeBarre} onClick={() => setARetirer(l)} />
+                    </RowActions>
+                  ),
+                },
+              }}
+              rows={linges}
+              rowKey={(l) => l.lingeId ?? l.codeBarre}
+            />
           ) : (
             <div className="sa-list" style={{ maxHeight: "60vh" }}>
               {linges.map((l) => (
@@ -194,13 +233,8 @@ export default function StockArsenalView({ arsenal }) {
                   <i className="sa-dot" />
                   <code>{l.codeBarre}</code>
                   <span>{l.designation}</span>
-                  <em>{t(`categories.${l.categorie}`, l.categorie)}</em>
-                  <button
-                    type="button"
-                    className="sa-link sa-link--danger"
-                    onClick={() => retirerLinge(l)}
-                    disabled={retrait === l.codeBarre}
-                  >
+                  <em>{libelleCategorie(l.categorie)}</em>
+                  <button type="button" className="sa-link sa-link--danger" onClick={() => setARetirer(l)} disabled={retrait === l.codeBarre}>
                     {retrait === l.codeBarre ? "…" : t("stockageArsenal.remove_from_shelf")}
                   </button>
                 </div>
@@ -209,6 +243,15 @@ export default function StockArsenalView({ arsenal }) {
           )}
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={!!aRetirer}
+        title={t("stockageArsenal.cancel_storing_title")}
+        message={aRetirer ? t("stockageArsenal.cancel_storing_confirm", { code: aRetirer.codeBarre }) : ""}
+        confirmLabel={t("stockageArsenal.remove_from_shelf")}
+        onConfirm={retirerLinge}
+        onClose={() => setARetirer(null)}
+      />
     </div>
   );
 }

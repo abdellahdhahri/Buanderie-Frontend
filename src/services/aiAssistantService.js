@@ -1,9 +1,9 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 /**
- * Envoie une question à l'assistant IA
- * @param {string} question - La question de l'utilisateur
- * @returns {Promise<string>} - La réponse du backend
+
+ * @param {string} question 
+ * @returns {Promise<string>}
  */
 export const askAssistant = async (question) => {
   if (!question || !question.trim()) {
