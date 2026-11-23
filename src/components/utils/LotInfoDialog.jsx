@@ -1,241 +1,253 @@
-import React, { useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  FaTimes, FaLayerGroup, FaThermometerHalf,
-  FaTachometerAlt, FaSoap, FaCheck, FaEdit, FaBoxes
-} from "react-icons/fa";
+import { Boxes, Check, Droplets, Gauge, Layers, Loader2, Sparkles, Star, Tag, Thermometer, Timer, TriangleAlert, Wind } from "lucide-react";
+import { Modal, Button } from "../kit";
 import { useLavage } from "../../contextes/LavageContext";
+import { useSechage } from "../../contextes/SechageContext";
+import { listeQuantites } from "../../services/lavageInfecteService";
+import { ProgrammeContext } from "../../contextes/ProgrammeContext";
+import { programmesCandidats, versScanInfo } from "../pages/Lavage/programmeSuggestion";
+import GroupeLavageBadge, { libelleOrigineProgramme } from "./shared/GroupeLavageBadge";
+import "./LotInfoDialog.css";
 
-export default function LotInfoDialog() {
+function CarteProgramme({ programme, sechage, actif, recommande, defaut, categorieLabel, onChoisir }) {
   const { t } = useTranslation();
-  const { lotDialog, setLotDialog, confirmerAjoutLot } = useLavage();
-  const [modeManuel, setModeManuel] = useState(false);
-  const [prog, setProg] = useState({ nom: "", temperature: "", vitesse: "", duree: "" });
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={actif}
+      className={`lid-prog ${actif ? "is-active" : ""} ${defaut && !recommande ? "is-default" : ""}`}
+      onClick={() => onChoisir(programme.id)}
+    >
+      <span className="lid-prog__radio" aria-hidden="true">{actif && <Check size={12} strokeWidth={3} />}</span>
+      <span className="lid-prog__body">
+        <span className="lid-prog__top">
+          <strong>{programme.nom}</strong>
+          {recommande && <span className="lid-badge is-reco"><Sparkles size={11} /> {t("lot_dialog.recommended", "Recommandé")}</span>}
+          {defaut && <span className="lid-badge is-default"><Star size={11} /> {t("lot_dialog.default_badge", "Par défaut")}</span>}
+          {!recommande && !defaut && <span className="lid-badge"><Tag size={11} /> {categorieLabel}</span>}
+        </span>
+        <span className="lid-prog__specs">
+          <span><Thermometer size={13} /> {programme.temperatureCelsius != null ? `${programme.temperatureCelsius}°C` : "—"}</span>
+          {sechage
+            ? <span><Droplets size={13} /> {programme.niveauHumidite != null ? `${programme.niveauHumidite}%` : "—"}</span>
+            : <span><Gauge size={13} /> {programme.vitesseEssorageRpm != null ? `${programme.vitesseEssorageRpm} rpm` : "—"}</span>}
+          <span><Timer size={13} /> {programme.dureeMinutes != null ? `${programme.dureeMinutes} min` : "—"}</span>
+        </span>
+        {programme.description && <span className="lid-prog__desc">{programme.description}</span>}
+      </span>
+    </button>
+  );
+}
 
-  if (!lotDialog) return null;
-  const { lotInfo, linges, lot } = lotDialog;
+function Contenu({ lotDialog, onFermer, onConfirmer, type = "lavage" }) {
+  const { t } = useTranslation();
+  const sechage = type === "sechage";
+  const ctx = useContext(ProgrammeContext) || {};
+  const programmesLavage = sechage ? ctx.programmesSechage : ctx.programmesLavage;
+  const loadProgrammesLavage = sechage ? ctx.loadProgrammesSechage : ctx.loadProgrammesLavage;
+  const [chargement, setChargement] = useState(!programmesLavage?.length);
+  const [choix, setChoix] = useState(null);
+  const poidsInitial = lotDialog.lot.poidsCharge ?? lotDialog.lot.poidsBalance ?? lotDialog.lotInfo?.poidsBalance ?? null;
+  const [poids, setPoids] = useState(poidsInitial != null ? String(poidsInitial) : "");
+  const { lotInfo, lot } = lotDialog;
+  const linges = lotDialog.linges || [];
+  const quantites = sechage ? (listeQuantites(lot).length ? listeQuantites(lot) : listeQuantites(lotInfo)) : [];
+  const quantiteDeclaree = sechage ? (lot.quantiteDeclaree ?? lotInfo?.quantiteDeclaree ?? null) : null;
+  const titreProgramme = sechage ? t("lot_dialog.choose_program_dryer", "Programme de séchage") : t("lot_dialog.choose_program", "Programme de lavage");
+  const categorie = lotInfo?.categorie || lot.categorie;
+  const categorieLabel = categorie ? t(`categories.${categorie}`, categorie) : "—";
 
-  const handleConfirmer = () => {
-    const scanInfo = modeManuel
-      ? {
-          ...lotInfo,
-          temperature:        prog.temperature,
-          vitesse:            prog.vitesse,
-          duree:              prog.duree,
-          programmeRecommande: prog.nom,
-        }
-      : lotInfo;
-    confirmerAjoutLot(lot, scanInfo);
-    setModeManuel(false);
-    setProg({ nom: "", temperature: "", vitesse: "", duree: "" });
+  useEffect(() => {
+    if (programmesLavage?.length || !loadProgrammesLavage) return undefined;
+    let actif = true;
+    loadProgrammesLavage().catch(() => null).finally(() => { if (actif) setChargement(false); });
+    return () => { actif = false; };
+  }, []);
+
+  const candidats = useMemo(
+    () => programmesCandidats(programmesLavage, categorie, lotInfo?.programmeRecommande),
+    [programmesLavage, categorie, lotInfo?.programmeRecommande],
+  );
+  const choisiId = choix ?? candidats.initialId;
+  const tous = [...candidats.suggeres, ...(candidats.defaut ? [candidats.defaut] : [])];
+  const choisi = tous.find((p) => p.id === choisiId) || null;
+  const aucunSuggere = candidats.suggeres.length === 0;
+
+  const confirmer = () => {
+    const origine = !choisi ? null : choisi.id === candidats.defautId && aucunSuggere ? "DEFAUT" : choisi.id === candidats.recommandeId ? "RECOMMANDE" : "CHOIX";
+    const poidsCharge = poids !== "" && Number(poids) > 0 ? Number(poids) : null;
+    onConfirmer({ ...lot, poidsCharge, poidsActuel: poidsCharge ?? lot.poidsActuel }, versScanInfo(lotInfo, choisi, origine === "RECOMMANDE" ? (lotInfo?.origineProgramme || origine) : origine));
   };
 
-  const handleFermer = () => {
-    setLotDialog(null);
-    setModeManuel(false);
-  };
+  const nbPieces = lot.nbLinges || lot.nbPieces || linges.length;
 
   return (
-    <div
-      data-modal="true"
-      style={{
-        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-        background: "rgba(0,0,0,0.55)", display: "flex",
-        alignItems: "center", justifyContent: "center",
-        zIndex: 9999, backdropFilter: "blur(5px)"
-      }}
+    <Modal
+      size="md"
+      icon={sechage ? <Wind size={20} /> : <Layers size={20} />}
+      title={lotInfo?.codeLot || lot.codeLot}
+      subtitle={[categorieLabel, lot.typeCollecte, `${Number(lot.poidsActuel || 0).toFixed(1)} kg`, nbPieces ? `${nbPieces} ${t("lot_dialog.pieces", "pcs")}` : null].filter(Boolean).join(" · ")}
+      headerActions={(lotInfo?.groupeLavage || lot.groupeLavage) ? <GroupeLavageBadge groupe={lotInfo?.groupeLavage || lot.groupeLavage} /> : undefined}
+      onClose={onFermer}
+      footer={(
+        <>
+          <Button variant="secondary" onClick={onFermer}>{t("common.cancel")}</Button>
+          <Button icon={<Check size={16} />} onClick={confirmer} disabled={chargement && !choisi}>
+            {sechage ? t("lot_dialog_sechage.add_to_dryer", "Ajouter au séchoir") : t("lot_dialog.add_to_load")}
+          </Button>
+        </>
+      )}
     >
-      <div style={{
-        background: "white", borderRadius: "22px", padding: "28px",
-        maxWidth: "540px", width: "95%", maxHeight: "90vh", overflowY: "auto",
-        boxShadow: "0 28px 80px rgba(0,0,0,0.22)"
-      }}>
-
-        {/* Header */}
-        <div style={{
-          display: "flex", justifyContent: "space-between",
-          alignItems: "center", marginBottom: "22px"
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{
-              width: "44px", height: "44px", borderRadius: "12px",
-              background: "#d1fae5", display: "flex",
-              alignItems: "center", justifyContent: "center"
-            }}>
-              <FaLayerGroup size={20} color="#10b981" />
-            </div>
+      <div className="lid" data-modal="true">
+        <label className="lid__poids">
+          <span>{t("lot_dialog.load_weight", "Poids de chargement (kg)")}</span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={poids}
+            onChange={(e) => setPoids(e.target.value)}
+            placeholder={t("lot_dialog.load_weight_placeholder", "Poids de la balance")}
+          />
+          <small>
+            {(lot.poidsBalance ?? lotInfo?.poidsBalance) != null
+              ? t("lot_dialog.load_weight_hint", "Proposé : poids de la balance du bac ({{kg}} kg). Modifiable.", { kg: Number(lot.poidsBalance ?? lotInfo?.poidsBalance).toFixed(2) })
+              : t("lot_dialog.load_weight_none", "Aucune pesée : saisissez le poids de la charge.")}
+          </small>
+        </label>
+        <div className="lid__head">
+          <span>{titreProgramme}</span>
+          {choisi && <small>{t("lot_dialog.selected_program", "Sélectionné : {{nom}}", { nom: choisi.nom })}</small>}
+        </div>
+        {lotInfo?.origineProgramme && !sechage && (
+          <div className="lid__notice">
             <div>
-              <div style={{ fontWeight: 800, fontSize: "17px", color: "#0f172a" }}>
-                {lotInfo?.codeLot || lot.codeLot}
-              </div>
-              <div style={{ fontSize: "12px", color: "#64748b" }}>
-                {lot.categorie} · {lot.typeCollecte}
-                · {lot.poidsActuel?.toFixed(1) || 0} kg
-                · {lot.nbLinges || linges.length} pcs
-              </div>
+              <strong>{libelleOrigineProgramme(t, lotInfo.origineProgramme)}</strong>
+              {lotInfo.programmeRecommande && <span>{lotInfo.programmeRecommande}</span>}
             </div>
           </div>
-          <button
-            onClick={handleFermer}
-            style={{
-              background: "#f1f5f9", border: "none", borderRadius: "50%",
-              width: "34px", height: "34px", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#64748b"
-            }}
-          >
-            <FaTimes size={14} />
-          </button>
-        </div>
+        )}
 
-        {/* Toggle mode */}
-        <div style={{
-          display: "flex", gap: "8px", marginBottom: "20px",
-          background: "#f1f5f9", padding: "4px", borderRadius: "10px"
-        }}>
-          {[
-            { id: false, icon: <FaSoap size={12} />, label: t('lot_dialog.suggested_program') },
-            { id: true,  icon: <FaEdit size={12} />, label: t('lot_dialog.manual_entry') },
-          ].map(({ id, icon, label }) => (
-            <button
-              key={String(id)}
-              onClick={() => setModeManuel(id)}
-              style={{
-                flex: 1, padding: "8px", borderRadius: "8px", border: "none",
-                cursor: "pointer", fontWeight: 600, fontSize: "13px",
-                background: modeManuel === id ? "white" : "transparent",
-                color: modeManuel === id ? "#10b981" : "#94a3b8",
-                boxShadow: modeManuel === id ? "0 2px 6px rgba(0,0,0,0.07)" : "none",
-                transition: "all 0.2s",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
-              }}
-            >
-              {icon} {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Programme suggéré */}
-        {!modeManuel && lotInfo && (
-          <div style={{ marginBottom: "20px" }}>
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: "8px",
-              padding: "7px 16px", background: "#10b981", borderRadius: "20px",
-              fontSize: "13px", fontWeight: 700, color: "white", marginBottom: "16px"
-            }}>
-              <FaSoap size={12} /> {lotInfo.programmeRecommande}
+        {chargement && !tous.length ? (
+          <div className="lid__empty"><Loader2 size={18} className="animate-spin" /> {t("common.loading")}</div>
+        ) : !tous.length ? (
+          <div className="lid__notice is-warn">
+            <TriangleAlert size={16} />
+            <div>
+              <strong>{t("lot_dialog.no_program", "Aucun programme disponible")}</strong>
+              <span>{lotInfo?.programmeRecommande
+                ? t("lot_dialog.server_program", "Le serveur appliquera : {{nom}}", { nom: lotInfo.programmeRecommande })
+                : t("lot_dialog.no_program_hint", "Créez un programme pour cette catégorie ou un programme par défaut.")}</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "10px" }}>
-              {[
-                { icon: <FaThermometerHalf />, label: t('lot_dialog.temperature'), val: `${lotInfo.temperature}°C`,  color: "#ef4444" },
-                { icon: <FaTachometerAlt />,   label: t('lot_dialog.spin_speed'),    val: `${lotInfo.vitesse} rpm`,    color: "#0ea5e9" },
-                { icon: <FaSoap />,            label: t('lot_dialog.duration'),       val: lotInfo.duree || "—",        color: "#7c3aed" },
-              ].map(({ icon, label, val, color }) => (
-                <div key={label} style={{
-                  background: "#f8fafc", borderRadius: "10px",
-                  padding: "12px", border: "1px solid #e2e8f0"
-                }}>
-                  <div style={{
-                    fontSize: "11px", color: "#94a3b8",
-                    display: "flex", alignItems: "center", gap: "5px", marginBottom: "6px"
-                  }}>
-                    <span style={{ color }}>{icon}</span> {label}
+          </div>
+        ) : (
+          <div className="lid__groups" role="radiogroup" aria-label={titreProgramme}>
+            {candidats.suggeres.length > 0 && (
+              <section>
+                <h4>{t("lot_dialog.suggested_for", "Suggérés pour {{categorie}}", { categorie: categorieLabel })}</h4>
+                <div className="lid__list">
+                  {candidats.suggeres.map((p) => (
+                    <CarteProgramme
+                      key={p.id}
+                      programme={p}
+                      sechage={sechage}
+                      actif={p.id === choisiId}
+                      recommande={p.id === candidats.recommandeId}
+                      defaut={p.id === candidats.defautId}
+                      categorieLabel={categorieLabel}
+                      onChoisir={setChoix}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {candidats.defaut && (
+              <section>
+                <h4>{t("lot_dialog.default_program", "Programme par défaut")}</h4>
+                {aucunSuggere && (
+                  <div className="lid__notice is-warn">
+                    <TriangleAlert size={15} />
+                    <div>
+                      <strong>{t("lot_dialog.origin_default", "Programme par défaut — aucun programme pour la catégorie {{categorie}}", { categorie: categorieLabel })}</strong>
+                      <span>{t("lot_dialog.origin_default_hint", "Vérifiez qu'il convient à ce linge.")}</span>
+                    </div>
                   </div>
-                  <div style={{ fontWeight: 800, fontSize: "16px", color: "#0f172a" }}>{val}</div>
+                )}
+                <div className="lid__list">
+                  <CarteProgramme
+                    programme={candidats.defaut}
+                    sechage={sechage}
+                    actif={candidats.defaut.id === choisiId}
+                    recommande={candidats.defaut.id === candidats.recommandeId}
+                    defaut
+                    categorieLabel={categorieLabel}
+                    onChoisir={setChoix}
+                  />
                 </div>
-              ))}
+              </section>
+            )}
+          </div>
+        )}
+
+        {(quantites.length > 0 || quantiteDeclaree != null) && (
+          <div className="lid__notice is-danger">
+            <TriangleAlert size={15} />
+            <div>
+              <strong>{t("lavage_infecte.quantities")}{quantiteDeclaree != null ? ` · ${t("lavage_infecte.total_declared")} : ${quantiteDeclaree}` : ""}</strong>
+              {quantites.length > 0 && (
+                <span className="lid__qtes">
+                  {quantites.map((q) => <em key={q.categorie}>{t(`categories.${q.categorie}`, q.categorie)} <b>{q.quantite}</b></em>)}
+                </span>
+              )}
             </div>
           </div>
         )}
 
-        {/* Saisie manuelle */}
-        {modeManuel && (
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px",
-            marginBottom: "20px"
-          }}>
-            {[
-              { key: "nom",         label: t('lot_dialog.program_name'), placeholder: t('lot_dialog.program_name_placeholder'), full: true  },
-              { key: "temperature", label: t('lot_dialog.temperature'), placeholder: t('lot_dialog.temperature_placeholder'), full: false },
-              { key: "vitesse",     label: t('lot_dialog.spin_speed'),   placeholder: t('lot_dialog.spin_speed_placeholder'), full: false },
-              { key: "duree",       label: t('lot_dialog.duration'),      placeholder: t('lot_dialog.duration_placeholder'), full: false },
-            ].map(({ key, label, placeholder, full }) => (
-              <div key={key} style={{ gridColumn: full ? "1 / -1" : "auto" }}>
-                <label style={{
-                  fontSize: "11px", fontWeight: 600, color: "#64748b",
-                  display: "block", marginBottom: "5px"
-                }}>
-                  {label}
-                </label>
-                <input
-                  type={key === "nom" ? "text" : "number"}
-                  placeholder={placeholder}
-                  value={prog[key]}
-                  onChange={e => setProg(prev => ({ ...prev, [key]: e.target.value }))}
-                  style={{
-                    width: "100%", padding: "10px 12px",
-                    borderRadius: "8px", border: "2px solid #e2e8f0",
-                    fontSize: "14px", outline: "none",
-                    boxSizing: "border-box", fontWeight: 500
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Liste linges */}
         {linges.length > 0 && (
-          <div style={{ marginBottom: "18px" }}>
-            <div style={{
-              fontSize: "12px", fontWeight: 600, color: "#64748b",
-              marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px"
-            }}>
-              <FaBoxes size={11} /> {linges.length} {t('lot_dialog.linens_in_lot')}
-            </div>
-            <div style={{ maxHeight: "110px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "3px" }}>
+          <details className="lid__linges">
+            <summary><Boxes size={13} /> {linges.length} {t("lot_dialog.linens_in_bac", "linge(s) dans le bac")}</summary>
+            <ul>
               {linges.map((l, i) => (
-                <div key={i} style={{
-                  display: "flex", gap: "10px", padding: "5px 10px",
-                  background: "#f8fafc", borderRadius: "7px",
-                  fontSize: "12px", border: "1px solid #f1f5f9"
-                }}>
-                  <code style={{ fontWeight: 600, color: "#0ea5e9", minWidth: "90px" }}>
-                    {l.codeBarre}
-                  </code>
-                  <span style={{ color: "#64748b" }}>{l.categorie}</span>
-                  <span style={{ marginLeft: "auto", color: "#94a3b8" }}>{l.etat}</span>
-                </div>
+                <li key={l.id ?? l.codeBarre ?? i}>
+                  <code>{l.codeBarre}</code>
+                  <span>{l.categorie ? t(`categories.${l.categorie}`, l.categorie) : "—"}</span>
+                  <small>{l.etat}</small>
+                </li>
               ))}
-            </div>
-          </div>
+            </ul>
+          </details>
         )}
-
-        {/* Actions */}
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button
-            onClick={handleFermer}
-            style={{
-              flex: 1, padding: "12px", borderRadius: "10px",
-              border: "1px solid #e2e8f0", background: "white",
-              color: "#64748b", fontWeight: 600, fontSize: "14px", cursor: "pointer"
-            }}
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            onClick={handleConfirmer}
-            style={{
-              flex: 2, padding: "12px", borderRadius: "10px", border: "none",
-              background: "linear-gradient(135deg,#10b981,#059669)",
-              color: "white", fontWeight: 700, fontSize: "14px", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: "8px"
-            }}
-          >
-            <FaCheck size={13} /> {t('lot_dialog.add_to_load')}
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
+  );
+}
+
+export default function LotInfoDialog() {
+  const { lotDialog, setLotDialog, confirmerAjoutLot } = useLavage();
+  if (!lotDialog) return null;
+  return (
+    <Contenu
+      key={lotDialog.lot?.codeLot}
+      lotDialog={lotDialog}
+      onFermer={() => setLotDialog(null)}
+      onConfirmer={confirmerAjoutLot}
+    />
+  );
+}
+
+export function LotInfoDialogSechage() {
+  const { lotDialog, setLotDialog, confirmerAjoutLot } = useSechage();
+  if (!lotDialog) return null;
+  return (
+    <Contenu
+      key={lotDialog.lot?.codeLot}
+      type="sechage"
+      lotDialog={lotDialog}
+      onFermer={() => setLotDialog(null)}
+      onConfirmer={confirmerAjoutLot}
+    />
   );
 }

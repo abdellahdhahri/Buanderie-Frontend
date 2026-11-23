@@ -1,8 +1,29 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
+import { appelerLogout, effacerSession } from "../services/sessionGuard";
 
 const AuthContext = createContext(null);
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+
+const MESSAGE_SANS_DROIT = "Votre compte n'a aucun droit d'accès au module Buanderie.";
+
+const refuserSansDroit = async (token, estAdmin, privileges) => {
+  const aDesDroits = estAdmin || privileges.length > 0;
+  if (aDesDroits) return;
+  await appelerLogout(token);
+  effacerSession();
+  throw new Error(MESSAGE_SANS_DROIT);
+};
+
+export const ETAPES_ACTIONS = {
+  tri: { categorie: 2, nom: "Tri" },
+  lavage: { categorie: 3, nom: "Lavage" },
+  sechage: { categorie: 4, nom: "Séchage" },
+  pliage: { categorie: 5, nom: "Pliage" },
+  stockage: { categorie: 6, nom: "Stockage" },
+  livraison: { categorie: 7, nom: "Livraison" }
+};
 
 export function AuthProvider({ children }) {
   const [auth, setAuth] = useState(null);
@@ -53,8 +74,12 @@ export function AuthProvider({ children }) {
         login: loginResponse.login || loginValue,
         admin: loginResponse.admin === true,
         privileges: Array.isArray(loginResponse.privileges) ? loginResponse.privileges : [],
+        etapes: Array.isArray(loginResponse.etapes) ? loginResponse.etapes : [],
+        codeBarre: loginResponse.codeBarre || loginResponse.user?.codeBarre || null,
         agent: loginResponse.user || null
       };
+
+      await refuserSansDroit(authData.token, authData.admin || authData.privileges.some((p) => p === "ADMIN" || p === "ALL"), authData.privileges);
 
       localStorage.setItem("auth", JSON.stringify(authData));
       setAuth(authData);
@@ -83,7 +108,6 @@ export function AuthProvider({ children }) {
       }
 
       const loginResponse = await response.json();
-      console.log("la reponse est :",loginResponse)
 
       if (!loginResponse?.token) {
         throw new Error("Le serveur n'a pas retourné de JWT");
@@ -94,8 +118,12 @@ export function AuthProvider({ children }) {
         login: loginResponse.login || "Utilisateur badge",
         admin: loginResponse.administrateur === true,
         privileges: Array.isArray(loginResponse.privileges) ? loginResponse.privileges : [],
+        etapes: Array.isArray(loginResponse.etapes) ? loginResponse.etapes : [],
+        codeBarre: loginResponse.codeBarre || loginResponse.user?.codeBarre || null,
         agent: loginResponse.user || null
       };
+
+      await refuserSansDroit(authData.token, authData.admin || authData.privileges.some((p) => p === "ADMIN" || p === "ALL"), authData.privileges);
 
       localStorage.setItem("auth", JSON.stringify(authData));
       setAuth(authData);
@@ -107,11 +135,10 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await appelerLogout(auth?.token);
     setAuth(null);
-    localStorage.removeItem("auth");
-    localStorage.removeItem("agent");
-    window.dispatchEvent(new Event("authChanged"));
+    effacerSession();
   };
 
   const hasPrivilege = (code) => {
@@ -135,6 +162,15 @@ export function AuthProvider({ children }) {
     return codes.every(code => auth.privileges.includes(code));
   };
 
+  const verifierHabilitation = useCallback((action) => {
+    const etape = ETAPES_ACTIONS[action];
+    if (!etape || !auth || auth.admin === true) return true;
+    if (!Array.isArray(auth.etapes) || auth.etapes.length === 0) return true;
+    if (auth.etapes.some((e) => e.categorie === etape.categorie)) return true;
+    toast.warning(`Vous n'êtes pas habilité pour l'étape ${etape.nom}`);
+    return false;
+  }, [auth]);
+
   const isAuthenticated = !!auth?.token;
 
   return (
@@ -145,6 +181,8 @@ export function AuthProvider({ children }) {
         token: auth?.token || null,
         admin: auth?.admin || false,
         privileges: auth?.privileges || [],
+        etapes: auth?.etapes || [],
+        verifierHabilitation,
         agent: auth?.agent || null,
         isAuthenticated,
         loading,

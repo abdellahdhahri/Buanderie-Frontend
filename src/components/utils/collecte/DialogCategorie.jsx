@@ -1,7 +1,10 @@
-import React from "react";
-import { FaTimes, FaBiohazard } from "react-icons/fa";
+import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { X, ShieldAlert, Sparkles } from "lucide-react";
 import { CATEGORIES_INFECTE } from "../../../constants/collecte";
+import { getCategorieMeta } from "../../../constants/categoriesLinge";
 import { getActiveCategories } from "../../../utils/appSettings";
+import "./DialogCategorie.css";
 
 import drapImage from "../../../assets/linges/drap.png";
 import taieImage from "../../../assets/linges/taie.png";
@@ -11,11 +14,13 @@ import peignoirImage from "../../../assets/linges/PEIGNOIR.png";
 import nappeImage from "../../../assets/linges/nape.png";
 import servietteTableImage from "../../../assets/linges/serviettetable.png";
 import uniformeImage from "../../../assets/linges/tenue-de-bloc.jpg";
+import champOperatoireImage from "../../../assets/linges/champoperatoir.jpg";
 import autreImage from "../../../assets/linges/uniforme.png";
 
 const CATEGORY_IMAGES = {
   DRAP: drapImage,
   TAIE_OREILLER: taieImage,
+  CHAMP_OPERATOIRE: champOperatoireImage,
   SERVIETTE_BAIN: servietteBainImage,
   SERVIETTE_VISAGE: servietteVisageImage,
   PEIGNOIR: peignoirImage,
@@ -25,221 +30,112 @@ const CATEGORY_IMAGES = {
   AUTRE: autreImage,
 };
 
+const GROUPES = [
+  { id: "LITERIE", cats: ["DRAP", "TAIE_OREILLER", "COUETTE"] },
+  { id: "BLOC", cats: ["CHAMP_OPERATOIRE", "UNIFORME"] },
+  { id: "TOILETTE", cats: ["SERVIETTE_BAIN", "SERVIETTE_VISAGE", "PEIGNOIR"] },
+  { id: "RESTAURATION", cats: ["NAPPE", "SERVIETTE_TABLE"] },
+  { id: "DIVERS", cats: ["AUTRE"] },
+];
+
+const NOUVELLES = ["COUETTE", "CHAMP_OPERATOIRE"];
+
+function Visuel({ cat, label }) {
+  const [erreur, setErreur] = useState(false);
+  const src = CATEGORY_IMAGES[cat.id];
+  const { Icon } = getCategorieMeta(cat.id);
+
+  if (src && !erreur) {
+    return <img src={src} alt={label} onError={() => setErreur(true)} />;
+  }
+  return <Icon size={30} strokeWidth={1.8} color={cat.color} />;
+}
 
 export default function DialogCategorie({ onChoisir, onFermer }) {
-  const handleImageError = (e) => {
-    e.target.style.display = 'none';
-    const parent = e.target.parentElement;
-    const fallback = document.createElement('span');
-    fallback.textContent = e.target.alt || '📦';
-    fallback.style.fontSize = '32px';
-    fallback.style.fontWeight = '400';
-    parent.insertBefore(fallback, e.target);
-  };
+  const { t } = useTranslation();
+
+  const groupes = useMemo(() => {
+    const actives = getActiveCategories();
+    const parId = Object.fromEntries(CATEGORIES_INFECTE.map((c) => [c.id, c]));
+    let rang = 0;
+    return GROUPES.map((g) => ({
+      ...g,
+      items: g.cats
+        .filter((id) => parId[id] && actives.includes(id))
+        .map((id) => ({ cat: parId[id], rang: ++rang })),
+    })).filter((g) => g.items.length);
+  }, []);
+
+  const libelle = (cat) => t(`categories.${cat.id}`, { defaultValue: cat.label });
+
+  const choisir = (cat) => onChoisir({ ...cat, label: libelle(cat) });
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") return onFermer?.();
+      const n = parseInt(e.key, 10);
+      if (Number.isNaN(n)) return;
+      const cible = groupes.flatMap((g) => g.items).find((i) => i.rang === (n === 0 ? 10 : n));
+      if (cible) choisir(cible.cat);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   return (
-    <div style={{ 
-      position: "fixed", 
-      top: 0, 
-      left: 0, 
-      right: 0, 
-      bottom: 0, 
-      background: "rgba(15, 23, 42, 0.75)", 
-      display: "flex", 
-      alignItems: "center", 
-      justifyContent: "center", 
-      zIndex: 9999, 
-      backdropFilter: "blur(6px)" 
-    }}>
-      <div style={{ 
-        background: "#ffffff", 
-        borderRadius: "16px", 
-        padding: "32px", 
-        maxWidth: "640px", 
-        width: "92%", 
-        boxShadow: "0 24px 64px rgba(0,0,0,0.35)", 
-        maxHeight: "90vh", 
-        overflowY: "auto",
-        border: "1px solid #e2e8f0"
-      }}>
-        {/* ─── Header ─── */}
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center", 
-          marginBottom: "28px",
-          paddingBottom: "16px",
-          borderBottom: "1px solid #e2e8f0"
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ 
-              width: "44px", 
-              height: "44px", 
-              borderRadius: "10px", 
-              background: "#0f172a", 
-              display: "flex", 
-              alignItems: "center", 
-              justifyContent: "center" 
-            }}>
-              <FaBiohazard size={20} color="#94a3b8" />
-            </div>
-            <div>
-              <div style={{ 
-                fontWeight: 600, 
-                fontSize: "18px", 
-                color: "#0f172a",
-                letterSpacing: "-0.3px"
-              }}>
-                Sélectionner une catégorie
-              </div>
-              <div style={{ 
-                fontSize: "13px", 
-                color: "#64748b", 
-                marginTop: "2px",
-                fontWeight: 400
-              }}>
-                Choisissez la catégorie du linge infecté
-              </div>
-            </div>
+    <div className="dcat-overlay" onClick={onFermer}>
+      <div className="dcat-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <header className="dcat-head">
+          <div className="dcat-head__icon">
+            <ShieldAlert size={22} strokeWidth={2.2} />
           </div>
-          <button 
-            onClick={onFermer} 
-            style={{ 
-              background: "transparent", 
-              border: "1px solid #e2e8f0", 
-              borderRadius: "8px", 
-              width: "36px", 
-              height: "36px", 
-              cursor: "pointer", 
-              display: "flex", 
-              alignItems: "center", 
-              justifyContent: "center",
-              transition: "all 0.15s",
-              color: "#94a3b8"
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = "#f1f5f9";
-              e.currentTarget.style.borderColor = "#94a3b8";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderColor = "#e2e8f0";
-            }}
-          >
-            <FaTimes size={16} />
+          <div className="dcat-head__text">
+            <h3>{t("collecte.cat_dlg_title")}</h3>
+            <p>{t("collecte.cat_dlg_sub")}</p>
+          </div>
+          <button type="button" className="dcat-close" onClick={onFermer} aria-label="close">
+            <X size={18} />
           </button>
+        </header>
+
+        <div className="dcat-body">
+          {groupes.map((g) => (
+            <section key={g.id} className="dcat-group">
+              <div className="dcat-group__title">
+                <span>{t(`collecte.cat_grp_${g.id}`)}</span>
+                <i />
+              </div>
+              <div className="dcat-grid">
+                {g.items.map(({ cat, rang }) => {
+                  const label = libelle(cat);
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      className="dcat-card"
+                      style={{ "--c": cat.color, "--c-bg": cat.bg, "--c-bd": cat.border }}
+                      onClick={() => choisir(cat)}
+                    >
+                      {rang <= 10 && <kbd className="dcat-card__key">{rang === 10 ? 0 : rang}</kbd>}
+                      {NOUVELLES.includes(cat.id) && (
+                        <span className="dcat-card__new">
+                          <Sparkles size={10} />
+                          {t("collecte.cat_dlg_new")}
+                        </span>
+                      )}
+                      <span className="dcat-card__visual">
+                        <Visuel cat={cat} label={label} />
+                      </span>
+                      <span className="dcat-card__label">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
 
-        {/* ─── Grille de catégories ─── */}
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(3, 1fr)", 
-          gap: "12px" 
-        }}>
-          {CATEGORIES_INFECTE.filter((cat) => getActiveCategories().includes(cat.id)).map((cat) => {
-            const imageSrc = CATEGORY_IMAGES[cat.id];
-            const isImageAvailable = imageSrc !== undefined;
-
-            return (
-              <button
-                key={cat.id}
-                onClick={() => onChoisir(cat)}
-                style={{
-                  padding: "20px 12px",
-                  borderRadius: "12px",
-                  border: "1px solid #e2e8f0",
-                  background: "#fafbfc",
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "10px",
-                  transition: "all 0.15s ease",
-                  position: "relative",
-                  minHeight: "120px"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#0f172a";
-                  e.currentTarget.style.background = "#f1f5f9";
-                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#e2e8f0";
-                  e.currentTarget.style.background = "#fafbfc";
-                  e.currentTarget.style.boxShadow = "none";
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}
-              >
-                {/* Image de la catégorie */}
-                {isImageAvailable ? (
-                  <img
-                    src={imageSrc}
-                    alt={cat.label}
-                    style={{
-                      width: "48px",
-                      height: "48px",
-                      objectFit: "contain",
-                      display: "block",
-                      opacity: 0.85
-                    }}
-                    onError={handleImageError}
-                  />
-                ) : (
-                  <span style={{ fontSize: "32px", lineHeight: 1, opacity: 0.7 }}>
-                    {cat.emoji || "📦"}
-                  </span>
-                )}
-                
-                {/* Nom de la catégorie */}
-                <span style={{
-                  fontWeight: 500,
-                  fontSize: "12px",
-                  color: "#0f172a",
-                  textAlign: "center",
-                  lineHeight: 1.3,
-                  letterSpacing: "0.2px"
-                }}>
-                  {cat.label}
-                </span>
-
-                {/* Badge "Infecté" */}
-                {cat.infecte && (
-                  <span style={{
-                    position: "absolute",
-                    top: "8px",
-                    right: "8px",
-                    background: "#0f172a",
-                    color: "#f8fafc",
-                    fontSize: "8px",
-                    fontWeight: 600,
-                    padding: "2px 8px",
-                    borderRadius: "4px",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px"
-                  }}>
-                    ⚠️
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ─── Footer ─── */}
-        <div style={{
-          marginTop: "20px",
-          paddingTop: "16px",
-          borderTop: "1px solid #f1f5f9",
-          display: "flex",
-          justifyContent: "center",
-          gap: "12px",
-          fontSize: "12px",
-          color: "#94a3b8",
-          fontWeight: 400
-        }}>
-          <span>Cliquez sur une catégorie pour continuer</span>
-        </div>
+        <footer className="dcat-foot">{t("collecte.cat_dlg_hint")}</footer>
       </div>
     </div>
   );

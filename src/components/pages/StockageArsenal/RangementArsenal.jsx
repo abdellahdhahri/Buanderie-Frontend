@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useAuth } from "../../../constants/AuthContext";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -17,6 +18,7 @@ import {
   RefreshCw,
   ScanBarcode,
   TriangleAlert,
+  Pencil,
   User,
   Users,
   Warehouse,
@@ -38,7 +40,8 @@ import {
 } from "../../../services/receptionArsenalService";
 import { CategoryBar, CategoryChips, EmptyState, Loading, ScanZone, ShelfGrid } from "./arsenalUi";
 import { accentOf, shelfLabel } from "./arsenalUtils";
-import { Illustration, ShelfGlyph } from "./illustrations";
+import { ShelfGlyph } from "./illustrations";
+import { EtapesCollecte, PastilleEtat } from "../Collecte/shared/CollecteRc";
 
 const ORDER = ["agent", "remises", "quantite", "etagere", "unParUn"];
 
@@ -87,17 +90,13 @@ function StageHead({ eyebrow, title, text, art, right, warn }) {
         {text && <p className="sa-stage__text">{text}</p>}
       </div>
       {right}
-      {art && (
-        <div className="sa-stage__art">
-          <Illustration kind={art} />
-        </div>
-      )}
     </div>
   );
 }
 
 export default function RangementArsenal({ arsenal, emplacements }) {
   const { t } = useTranslation();
+  const { verifierHabilitation } = useAuth();
 
   const [step, setStep] = useState("agent");
   const [scanValue, setScanValue] = useState("");
@@ -216,6 +215,7 @@ export default function RangementArsenal({ arsenal, emplacements }) {
       return;
     }
 
+    verifierHabilitation("stockage");
     setBusy(true);
     try {
       const res = await rangerTout(remise.remiseLingeId, {
@@ -278,6 +278,7 @@ export default function RangementArsenal({ arsenal, emplacements }) {
       return;
     }
 
+    verifierHabilitation("stockage");
     try {
       const res = await rangerLinge(remise.remiseLingeId, {
         arsenalID: arsenal.id,
@@ -327,66 +328,34 @@ export default function RangementArsenal({ arsenal, emplacements }) {
 
   return (
     <div className="sa-flow">
-      <aside className="sa-track" aria-label={t("stockageArsenal.steps.label")}>
-        <div className="sa-track__title">{t("stockageArsenal.track_title")}</div>
-        <ol ref={trackRef}>
-          <TrackItem
-            icon={<Warehouse size={13} />}
-            label={t("stockageArsenal.arsenal")}
-            value={arsenal.designation}
-            state="done"
-          />
-          <TrackItem
-            icon={<User size={13} />}
-            label={t("stockageArsenal.steps.agent")}
-            value={agent?.nom}
-            meta={agent?.badge}
-            state={stateOf("agent")}
-            action={agent ? t("common.edit") : null}
-            onAction={resetAgent}
-          />
-          <TrackItem
-            icon={<Package size={13} />}
-            label={t("stockageArsenal.steps.remises")}
-            value={remise?.numeroLivraison}
-            meta={remise ? t("stockageArsenal.n_to_store", { count: remise.totalARanger }) : null}
-            state={stateOf("remises")}
-            action={remise ? t("common.edit") : null}
-            onAction={backToRemises}
-          />
-          <TrackItem
-            icon={<Hash size={13} />}
-            label={t("stockageArsenal.steps.quantite")}
-            value={at > ORDER.indexOf("quantite") ? t("stockageArsenal.n_counted", { count: quantiteTotale }) : null}
-            meta={
-              at > ORDER.indexOf("quantite") && !(TOTAL_KEY in quantites)
-                ? Object.entries(quantites)
-                    .map(([cat, q]) => `${t(`categories.${cat}`, cat)} : ${Number(q) || 0}`)
-                    .join(" · ")
-                : null
-            }
-            state={stateOf("quantite")}
-            action={step === "etagere" ? t("common.edit") : null}
-            onAction={() => setStep("quantite")}
-          />
-          <TrackItem
-            icon={<Layers size={13} />}
-            label={step === "unParUn" ? t("stockageArsenal.active_shelf") : t("stockageArsenal.steps.etagere")}
-            value={etagere ? shelfLabel(etagere) : null}
-            meta={etagere?.codeBarre}
-            state={stateOf("etagere")}
-          />
-          {step === "unParUn" && (
-            <TrackItem
-              icon={<ListChecks size={13} />}
-              label={t("stockageArsenal.steps.unParUn")}
-              value={`${rangesCount} / ${totalInitial}`}
-              meta={t("stockageArsenal.stored")}
-              state={remiseTerminee ? "done" : "warn"}
-            />
-          )}
-        </ol>
-      </aside>
+      <EtapesCollecte
+        etapes={[
+          t("stockageArsenal.steps.agent"),
+          t("stockageArsenal.steps.remises"),
+          t("stockageArsenal.steps.quantite"),
+          t("stockageArsenal.steps.etagere"),
+          t("stockageArsenal.steps.unParUn"),
+        ]}
+        faites={[at > 0, at > 1, at > 2, at > 3 || Boolean(etagere && step === "unParUn"), remiseTerminee]}
+        label={t("stockageArsenal.steps.label")}
+      />
+
+      <div className="sa-ctx">
+        {agent && (
+          <button type="button" className="sa-ctx__btn" onClick={resetAgent} title={t("common.edit")}>
+            <User size={13} /> {agent.nom} · {agent.badge} <Pencil size={12} />
+          </button>
+        )}
+        {remise && (
+          <button type="button" className="sa-ctx__btn" onClick={backToRemises} title={t("common.edit")}>
+            <Package size={13} /> {remise.numeroLivraison} · {t("stockageArsenal.n_to_store", { count: remise.totalARanger })} <Pencil size={12} />
+          </button>
+        )}
+        {at > ORDER.indexOf("quantite") && (
+          <PastilleEtat tone="muted">{t("stockageArsenal.n_counted", { count: quantiteTotale })}</PastilleEtat>
+        )}
+        {etagere && <PastilleEtat tone="ok">{shelfLabel(etagere)}</PastilleEtat>}
+      </div>
 
       <section className="sa-stage">
         <AnimatePresence mode="popLayout" initial={false}>

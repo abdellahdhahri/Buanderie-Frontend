@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Swal from "sweetalert2";
+import Swal from "../../kit/dialogueApi";
 import { RefreshCw, Pencil, Trash2, Users, BarChart3, Printer, UserMinus, Loader2, Clock } from "lucide-react";
 import { useEtape, EtapeProvider } from "../../../contextes/EtapeContext";
 import BadgeModal from "../../ui/modals/BadgeModal";
+import BarcodeLabel from "../../BarcodeLabel";
 import { fetchStatistiquesPersonnel, getTypeOperationInfo } from "../../../services/statistiqueService";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterActions,
   ListSection, DataTable, Pagination, Badge, PersonCell,
   Modal, Button, FormField, ConfirmDialog,
@@ -409,6 +409,7 @@ function EtapeListInner() {
       label: t("common.actions"), align: "center",
       render: (e) => (
         <RowActions>
+          <BarcodeLabel item={e} type="etape" variant="icon" />
           <RowButton icon={Users} title={t("etapes.view_personnel")} onClick={() => openDetails(e)} />
           <RowButton icon={Pencil} title={t("common.edit")} onClick={() => openForm(e)} />
           <RowButton icon={Trash2} tone="danger" title={t("common.delete")} onClick={() => setDeleteTarget(e)} />
@@ -421,19 +422,12 @@ function EtapeListInner() {
     <Page>
       {viewMode === "list" && (
         <>
-          <PageHeader
-            icon={<PageHeaderIcon size={40} />}
-            title={t("etapes.title")}
-            subtitle={t("etapes.subtitle")}
-            total={list.sorted.length}
-            onIconClick={() => setShowColumnSettings(true)}
-          />
-
           <ActionBar>
             <ActionButton icon={IconAjouter} label={t("etapes.new_step")} variant="ajouter" onClick={() => openForm(null)} />
             <ActionButton icon={IconDetails} label={t("etapes.view_personnel")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
             <ActionButton icon={IconModifier} label={t("common.edit")} variant="modifier" disabled={!selected} onClick={() => openForm(selected)} />
             <ActionButton icon={IconSupprimer} label={t("common.delete")} variant="supprimer" disabled={!selected} onClick={() => setDeleteTarget(selected)} />
+            <BarcodeLabel item={selected} type="etape" variant="action" />
             <ActionButton icon={<RefreshCw size={18} className={loading ? "animate-spin" : ""} />} label={t("common.refresh")} variant="details" onClick={loadEtapes} />
           </ActionBar>
 
@@ -488,6 +482,7 @@ function EtapeListInner() {
           badge={<Badge variant={zoneVariant(selected.zone)} style={{ padding: "10px 18px", fontSize: "0.85rem" }}>{selected.zone || t("etapes.zone_undefined")}</Badge>}
           actions={(
             <>
+              <BarcodeLabel item={selected} type="etape" variant="action" />
               <DetailsButton icon={Pencil} onClick={() => openForm(selected)}>{t("common.edit")}</DetailsButton>
               <DetailsButton icon={Trash2} variant="danger" onClick={() => setDeleteTarget(selected)}>{t("common.delete")}</DetailsButton>
             </>

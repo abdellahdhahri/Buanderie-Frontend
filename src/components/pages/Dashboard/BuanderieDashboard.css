@@ -501,3 +501,6 @@
     object-fit: cover;
     transform: scale(1.03);
 }
+
+.card-link { position: absolute; inset: 0; z-index: 5; border-radius: inherit; }
+.card-link:focus-visible { outline: 3px solid #0794a4; outline-offset: -3px; }

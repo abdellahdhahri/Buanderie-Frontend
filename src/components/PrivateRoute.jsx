@@ -6,7 +6,8 @@ import {
   useLocation,
   useMatches,
 } from "react-router-dom";
-import { NAV_ITEMS } from "../constants/navigation";
+import { NAV_ITEMS, premiereRouteAutorisee } from "../constants/navigation";
+import AucunAcces from "./pages/Auth/AucunAcces";
 import { isAdministrateur } from "../utils/privileges";
 
 
@@ -150,6 +151,17 @@ export function ProtectedLayout() {
       ? auth.privileges
       : [];
 
+  const routeParDefaut =
+    auth.admin === true ||
+    privileges.includes("ADMIN") ||
+    privileges.includes("ALL")
+      ? "/"
+      : premiereRouteAutorisee(privileges);
+
+  if (!routeParDefaut) {
+    return <AucunAcces />;
+  }
+
 
  
 
@@ -160,7 +172,7 @@ export function ProtectedLayout() {
     console.warn("🚫 ACCÈS REFUSÉ (administrateur uniquement)", location.pathname);
     return (
       <Navigate
-        to="/"
+        to={routeParDefaut}
         replace
         state={{ unauthorized: true, attemptedPath: location.pathname }}
       />
@@ -220,9 +232,13 @@ export function ProtectedLayout() {
     );
 
 
+    if (location.pathname === routeParDefaut) {
+      return <AucunAcces />;
+    }
+
     return (
       <Navigate
-        to="/"
+        to={routeParDefaut}
         replace
         state={{
           unauthorized: true,

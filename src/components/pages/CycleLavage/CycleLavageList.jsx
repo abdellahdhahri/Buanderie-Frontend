@@ -1,19 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import printJS from "print-js";
-import { RefreshCw, Eye, Printer } from "lucide-react";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
+import { RefreshCw, Eye, Printer, AlertTriangle } from "lucide-react";
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterDateRange, FilterActions,
   ListSection, DataTable, Pagination, Badge,
-  DetailsPage, DetailsButton, KpiTiles, DetailCard, DetailGrid, InfoList,
+  DetailsPage, DetailsButton, KpiTiles, DetailCard, DetailGrid, InfoList, DetailAlert,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
   RowActions, RowButton, Code, QuickStats, day, tk,
 } from "../../kit";
 import { IconDetails } from "../../kit/ActionIcons";
+import { chargerItemsCycle, codeElement, libelleTypeSource } from "../../../services/lavageInfecteService";
+import { produitsDuCycle } from "../../../services/produitNettoyageService";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+
+const TONS_SOURCE = { BAC: "info", BAC_INFECTE: "danger" };
 
 const STATUTS = { TERMINE: "success", EN_COURS: "warning", EN_ATTENTE: "secondary", ANNULE: "danger" };
 const ETATS_LINGE = { COLLECTE: "warning", EN_LAVAGE: "info", LAVE: "success", SECHE: "success", STOCKE: "secondary", SALE: "danger" };
@@ -39,7 +42,7 @@ const lingesDesItems = (cycle) => (cycle.items || []).map((item, index) => ({
   poids: item.poidsCharge || 0,
   etat: item.etat || "COLLECTE",
   rfidTag: item.rfidTag || null,
-  lotId: item.sourceId || null,
+  bacId: item.bacId ?? item.sourceId ?? null,
 }));
 
 export default function CycleLavageList() {
@@ -50,6 +53,10 @@ export default function CycleLavageList() {
   const [viewMode, setViewMode] = useState("list");
   const [linges, setLinges] = useState([]);
   const [isLingesLoading, setIsLingesLoading] = useState(false);
+  const [elements, setElements] = useState([]);
+  const [elementsEtat, setElementsEtat] = useState({ chargement: false, erreur: null });
+  const [produits, setProduits] = useState([]);
+  const [produitsEtat, setProduitsEtat] = useState({ chargement: false, erreur: null });
   const [showStats, setShowStats] = useState(false);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
 
@@ -67,19 +74,42 @@ export default function CycleLavageList() {
 
   useEffect(() => { fetchCycles(); }, []);
 
+  const fetchElements = async (cycle) => {
+    setElements([]);
+    setElementsEtat({ chargement: true, erreur: null });
+    try {
+      setElements(await chargerItemsCycle(cycle.id));
+      setElementsEtat({ chargement: false, erreur: null });
+    } catch (err) {
+      setElementsEtat({ chargement: false, erreur: err.message });
+    }
+  };
+
+  const fetchProduits = async (cycle) => {
+    setProduits([]);
+    setProduitsEtat({ chargement: true, erreur: null });
+    try {
+      setProduits(await produitsDuCycle(cycle.id));
+      setProduitsEtat({ chargement: false, erreur: null });
+    } catch (err) {
+      setProduitsEtat({ chargement: false, erreur: err.message });
+    }
+  };
+
   const fetchLinges = async (cycle) => {
-    if (cycle.items?.length) { setLinges(lingesDesItems(cycle)); return; }
     setIsLingesLoading(true);
     setLinges([]);
     try {
-      let response = await fetch(`${API_URL}/api/lavage/cycles/${cycle.id}/linges`);
-      if (!response.ok) response = await fetch(`${API_URL}/api/cycles/${cycle.id}/linges`);
+      const response = await fetch(`${API_URL}/api/lavage/cycles/${cycle.id}/linges`);
       if (response.ok) {
         const data = await response.json();
         setLinges(Array.isArray(data) ? data : data.content || data.items || data._embedded?.linges || []);
+      } else if (cycle.items?.length) {
+        setLinges(lingesDesItems(cycle));
       }
     } catch (err) {
       console.error("Erreur chargement linges:", err);
+      if (cycle.items?.length) setLinges(lingesDesItems(cycle));
     } finally {
       setIsLingesLoading(false);
     }
@@ -136,6 +166,8 @@ export default function CycleLavageList() {
     setSelected(c);
     setViewMode("details");
     fetchLinges(c);
+    fetchElements(c);
+    fetchProduits(c);
   };
 
   const imprimer = (cycle) => {
@@ -220,7 +252,24 @@ export default function CycleLavageList() {
     etat: { label: t("cycles.status"), render: (l) => <EtatBadge value={l.etat} /> },
     poids: { label: t("cycles.capacity"), align: "right", render: (l) => `${l.poids || 0} kg` },
     rfidTag: { label: "RFID", render: (l) => (l.rfidTag ? <Code>{l.rfidTag}</Code> : "—") },
-    lotId: { label: "Lot", render: (l) => (l.lotId ? `#${l.lotId}` : "—") },
+    bacId: { label: t("tri.bac", "Bac"), render: (l) => (l.bacId ? `#${l.bacId}` : "—") },
+  };
+
+  const PRODUIT_COLUMNS = {
+    designation: { label: t("produits.designation", "Désignation"), render: (p) => <strong>{p.designation || p.produit?.designation || "—"}</strong> },
+    codeBarre: { label: t("produits.code_barre", "Code-barres"), render: (p) => <Code>{p.codeBarre || p.produit?.codeBarre || "—"}</Code> },
+    dosage: { label: t("produits.dosage", "Dosage"), render: (p) => p.dosage ?? p.produit?.dosage ?? "—" },
+  };
+
+  const ELEMENT_COLUMNS = {
+    type: {
+      label: t("lavage_infecte.items_type"),
+      render: (e) => <Badge variant={TONS_SOURCE[e.typeSource] || "secondary"}>{libelleTypeSource(t, e.typeSource)}</Badge>,
+    },
+    code: { label: t("lavage_infecte.items_source"), render: (e) => <Code>{codeElement(e)}</Code> },
+    categorie: { label: t("cycles.categories"), render: (e) => (e.categorie ? t(`categories.${e.categorie}`, e.categorie) : "—") },
+    quantite: { label: t("lavage_infecte.items_quantity"), align: "center", render: (e) => e.quantite ?? e.quantiteDeclaree ?? e.nbPieces ?? "—" },
+    poids: { label: t("lavage_infecte.items_weight"), align: "right", render: (e) => (e.poidsCharge != null || e.poids != null ? `${Number(e.poidsCharge ?? e.poids).toFixed(1)} kg` : "—") },
   };
 
   const parStatut = Object.keys(STATUTS).map((s, i) => ({ label: statutLabel(s), value: list.sorted.filter((c) => c.statut === s).length, color: ["#10b981", "#f59e0b", "#64748b", "#ef4444"][i] }));
@@ -233,14 +282,6 @@ export default function CycleLavageList() {
     <Page>
       {viewMode === "list" && (
         <>
-          <PageHeader
-            icon={<PageHeaderIcon size={40} />}
-            title={t("cycles.title")}
-            subtitle={t("cycles.subtitle", { count: list.sorted.length })}
-            total={list.sorted.length}
-            onIconClick={() => setShowColumnSettings(true)}
-          />
-
           <ActionBar>
             <ActionButton icon={IconDetails} label={t("cycles.details")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
             <ActionButton icon={Printer} label={t("cycles.print")} variant="imprimer" disabled={!selected} onClick={() => imprimer(selected)} />
@@ -336,6 +377,34 @@ export default function CycleLavageList() {
               ]} />
             </DetailCard>
           </DetailGrid>
+          <DetailCard title={`${t("lavage_infecte.items_source")} · ${elements.length}`}>
+            {elementsEtat.erreur ? (
+              <DetailAlert icon={<AlertTriangle size={16} />} title={t("common.error", "Erreur")}>{elementsEtat.erreur}</DetailAlert>
+            ) : (
+              <DataTable
+                columns={ELEMENT_COLUMNS}
+                rows={elements}
+                rowKey={(e) => e.id ?? `${e.typeSource}-${e.sourceId ?? codeElement(e)}`}
+                loading={elementsEtat.chargement}
+                loadingText={t("cycles.loading")}
+                emptyText={t("lavage_infecte.no_items")}
+              />
+            )}
+          </DetailCard>
+          <DetailCard title={`${t("produits.used", "Produits utilisés")} · ${produits.length}`}>
+            {produitsEtat.erreur ? (
+              <DetailAlert icon={<AlertTriangle size={16} />} title={t("common.error", "Erreur")}>{produitsEtat.erreur}</DetailAlert>
+            ) : (
+              <DataTable
+                columns={PRODUIT_COLUMNS}
+                rows={produits}
+                rowKey={(p, i) => p.id ?? p.produitId ?? i}
+                loading={produitsEtat.chargement}
+                loadingText={t("cycles.loading")}
+                emptyText={t("produits.none_used", "Aucun produit utilisé")}
+              />
+            )}
+          </DetailCard>
           <DetailCard title={`${linges.length} ${t("cycles.linges_count")}`}>
             <DataTable
               columns={LINGE_COLUMNS}

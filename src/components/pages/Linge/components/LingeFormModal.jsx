@@ -6,6 +6,7 @@ import { CATEGORIES_LINGE } from "../../../../constants/categoriesLinge";
 import { getActiveCategories } from "../../../../utils/appSettings";
 import { Modal, Button, FormField, FormGrid, TextArea, Tabs, SelectRecherche } from "../../../kit";
 import { ETAT_OPTIONS } from "../lingeConstants";
+import { GROUPES_LAVAGE } from "../../../utils/shared/GroupeLavageBadge";
 
 const HiddenRequired = ({ value }) => (
   <input
@@ -106,6 +107,14 @@ export function LingeFormModal({
           <FormField label={t("linge.life_cycles")}>
             <input type="number" step="1" min="0" placeholder="—" value={newLinge.dureVie} onChange={(e) => set({ dureVie: e.target.value })} />
           </FormField>
+          {lingeToEdit && (
+            <FormField label={t("groupe_lavage.label", "Groupe")} span>
+              <select value={newLinge.groupeLavage || ""} onChange={(e) => set({ groupeLavage: e.target.value })}>
+                <option value="">{t("groupe_lavage.aucun", "Aucun")}</option>
+                {GROUPES_LAVAGE.map((g) => <option key={g} value={g}>{t(`groupe_lavage.${g}`, g)}</option>)}
+              </select>
+            </FormField>
+          )}
 
           <Section title={t("linge.sections.assignment", "Affectation")} hint={t("linge.sections.assignment_hint", "Service et porteur")} />
           <FormField label={t("linge.service")} required span={!isUniforme}>

@@ -49,6 +49,7 @@ export const EMPTY_LINGE_FORM = {
   porteurId: "",
   etat: "SALE",
   observations: "",
+  groupeLavage: "",
 };
 
 export const EMPTY_FILTERS = {

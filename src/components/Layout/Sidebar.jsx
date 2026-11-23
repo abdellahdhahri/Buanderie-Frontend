@@ -66,9 +66,23 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
     };
   }, [activePopup, openSubmenu]);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/process");
+  const handleLogout = async () => {
+    await logout();
+    navigate("/auth", { replace: true });
+  };
+
+  const ajusterPopup = (el) => {
+    if (!el) return;
+    el.style.top = "0px";
+    const marge = 8;
+    const hauteurMax = window.innerHeight - marge * 2;
+    el.style.maxHeight = `${hauteurMax}px`;
+    el.style.overflowY = "auto";
+    const rect = el.getBoundingClientRect();
+    let decalage = 0;
+    if (rect.bottom > window.innerHeight - marge) decalage = window.innerHeight - marge - rect.bottom;
+    if (rect.top + decalage < marge) decalage = marge - rect.top;
+    el.style.top = `${decalage}px`;
   };
 
   const fermerSurMobile = () => {
@@ -118,7 +132,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
       <nav className="sidebar__nav">
         {sidebarOpen && <span className="sidebar__section-label">{t("navigation.main_menu", "Menu principal")}</span>}
-        {visibleNavItems.map((item) => {
+        {visibleNavItems.map((item, index) => {
           const classes = `nav-item nav-item--${item.id} ${activeNavItem?.id === item.id ? "nav-item--active" : ""} ${!sidebarOpen ? "nav-item--icon-only" : ""}`;
           const contenu = (
             <>
@@ -135,7 +149,9 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
           );
 
           return (
-            <div key={item.id} className="nav-item-wrap" data-nav={item.id}>
+            <React.Fragment key={item.id}>
+            {item.separateur && index > 0 && <div className={`sidebar__divider ${!sidebarOpen ? "sidebar__divider--compact" : ""}`} role="separator" />}
+            <div className="nav-item-wrap" data-nav={item.id}>
               {sidebarOpen && !item.children ? (
                 <Link to={item.path || "/"} className={classes} onClick={() => { setOpenSubmenu(null); fermerSurMobile(); }}>
                   {contenu}
@@ -153,7 +169,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
               )}
 
               {!sidebarOpen && activePopup === item.id && (
-                <div className="nav-popup">
+                <div className="nav-popup" ref={ajusterPopup}>
                   <span className="nav-popup__title">{label(item)}</span>
                   {item.children ? (
                     <div className={`nav-popup__grid ${item.children.length > 3 ? "nav-popup__grid--many" : "nav-popup__grid--few"}`}>
@@ -195,6 +211,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
                 </div>
               )}
             </div>
+            </React.Fragment>
           );
         })}
       </nav>

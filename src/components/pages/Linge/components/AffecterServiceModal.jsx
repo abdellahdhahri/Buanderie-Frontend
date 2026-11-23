@@ -25,6 +25,7 @@ const affecter = async (linge, serviceId, fallback) => {
       porteurId: linge.porteurId ?? null,
       rfidTag: linge.rfidTag || null,
       observations: linge.observations || null,
+      groupeLavage: linge.groupeLavage || null,
     }),
   });
   if (!res.ok) throw new Error(await lireErreur(res, fallback));

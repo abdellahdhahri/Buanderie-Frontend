@@ -1,0 +1,23 @@
+.lv-timer { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 12px; background: var(--cr-surface-2, #f8fafc); border: 1px solid var(--cr-border, #e2e8f0); border-left: 4px solid var(--tm); }
+.lv-timer__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lv-timer__head strong { font-size: .88rem; font-weight: 800; color: var(--cr-text, #0f172a); }
+.lv-timer__clock { text-align: center; }
+.lv-timer__clock output { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 2.1rem; font-weight: 800; letter-spacing: .04em; line-height: 1.1; color: var(--cr-text, #0f172a); font-variant-numeric: tabular-nums; }
+.lv-timer__clock small { display: block; margin-top: 4px; font-size: .82rem; color: var(--cr-muted, #64748b); }
+.lv-timer__bar { height: 8px; border-radius: 999px; background: var(--cr-surface, #fff); border: 1px solid var(--cr-border, #e2e8f0); overflow: hidden; }
+.lv-timer__bar i { display: block; height: 100%; background: var(--tm); transition: width 1s linear; }
+.lv-timer__scale { display: flex; justify-content: space-between; margin-top: 4px; font-size: .74rem; color: var(--cr-muted, #64748b); }
+.lv-timer__scale strong { color: var(--cr-text, #0f172a); }
+.lv-timer__params { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; }
+.lv-timer__params div { padding: 7px 10px; border-radius: 8px; background: var(--cr-surface, #fff); border: 1px solid var(--cr-border, #e2e8f0); }
+.lv-timer__params dt { font-size: .7rem; color: var(--cr-muted, #64748b); }
+.lv-timer__params dd { margin: 1px 0 0; font-size: .88rem; font-weight: 800; color: var(--cr-text, #0f172a); }
+.lv-timer__msg { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; font-size: .82rem; font-weight: 700; }
+.lv-timer__msg.is-over { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.lv-timer__msg.is-ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.dark .lv-timer__msg.is-over { background: rgba(239, 68, 68, .12); border-color: rgba(239, 68, 68, .3); color: #fca5a5; }
+.dark .lv-timer__msg.is-ok { background: rgba(16, 185, 129, .12); border-color: rgba(16, 185, 129, .3); color: #6ee7b7; }
+.lv-timer .lv-tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 6px; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.lv-timer .lv-tag.is-infecte { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.lv-timer .lv-tag.is-warn { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+@media (prefers-reduced-motion: reduce) { .lv-timer * { transition: none !important; } }

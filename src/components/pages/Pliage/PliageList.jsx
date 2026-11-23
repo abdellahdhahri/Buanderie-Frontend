@@ -2,18 +2,20 @@ import React, { useState, useContext, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { LingeContext } from "../../../contextes/LingeContext";
 import { useNavigate } from "react-router-dom";
-import { FaRss, FaBarcode, FaUser, FaCheckCircle, FaTimes, FaExclamationTriangle } from "react-icons/fa";
-import { Card, CardContent } from "../../ui/card";
-import { Button } from "../../ui/button";
-import { Badge } from "../../ui/badge";
+import { Check, Radio, RotateCcw, ScanLine, Shirt } from "lucide-react";
 import DialogueControleQualite from "../../dialogues/DialogueControleQualite";
 import DialogueRangementService from "../../dialogues/DialogueRangementService";
+import { Page } from "../../kit";
+import { EmplacementMachine } from "../Lavage/PosteLavage";
 import { PliageProvider, usePliage } from "../../../contextes/PliageContext";
-import EtapesStepper from "../../utils/shared/EtapesStepper";
 import ScanInput from "../../utils/shared/ScanInput";
 import { getAgent, isAgentConnected } from "../../../services/agentService";
 import "../Linge/WorkflowList.css";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
+import "../Collecte/shared/CollecteRh.css";
+import "../Lavage/Lavage.css";
+import "../Lavage/PosteLavage.css";
+import "../Reception/Reception.css";
+import "../Lavage/LavageV2.css";
 
 function PliageInner() {
   const { t } = useTranslation();
@@ -65,11 +67,6 @@ function PliageInner() {
     }
   }, [agentFromContext]);
 
-  const getAgentFullName = () => {
-    if (!agent) return '';
-    return agent.nomPrenom || agent.nom || agent.matricule;
-  };
-
   const handleScan = async (code) => {
     setScanValue("");
     if (dialogueItem) return; // contrôle qualité en cours
@@ -88,11 +85,29 @@ function PliageInner() {
     return mode === "RFID" ? t('pliage.scan_rfid') : t('pliage.scan_linge');
   };
 
-  const getBorderColor = () => !agent ? "#dc2626" : "#0ea5e9";
+  const getBorderColor = () => !agent ? "#dc2626" : "#0794a4";
+
+  const reinitialiser = () => {
+    setScanValue("");
+    deconnecterAgent();
+    setAgent(null);
+  };
+
+  const lingeCourant = dialogueItem || rangementItem;
+  const nomAgent = agent ? String(agent.nomPrenom || agent.nom || agent.matricule || "").trim() : "";
+  const initialesAgent = nomAgent.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase() || "?";
+  const etapeFaite = [Boolean(agent), Boolean(lingeCourant), Boolean(rangementItem && !dialogueItem), false];
+  const etapeActive = etapeFaite.findIndex((f) => !f);
+  const etapes = [
+    t("pliage.step_identify", "Identification de l'agent"),
+    t("pliage.step_scan", "Scan du linge"),
+    t("pliage.step_quality", "Contrôle qualité"),
+    t("pliage.step_storage", "Rangement"),
+  ];
+  const libelleMode = mode === "RFID" ? "RFID" : t("pliage.barcode_mode", "Code-barres");
 
   return (
-    <div className="collecte-container">
-      {/* Après pliage : contrôle qualité, puis consigne de rangement sur l'étagère du service */}
+    <Page className="cr-page lv-page lw-page rc lw-v2">
       {dialogueItem && (
         <DialogueControleQualite
           key={dialogueItem.id ?? dialogueItem.codeBarre}
@@ -111,166 +126,63 @@ function PliageInner() {
         />
       )}
 
-      {/* ─── EN-TÊTE ─────────────────────────────────────────────────────── */}
-      <div className="page-head" style={{ marginBottom: "32px" }}>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-          marginBottom: "8px"
-        }}>
-          <PageHeaderIcon size={52} />
-          <div>
-            <h1 style={{
-              fontSize: "28px",
-              fontWeight: 800,
-              color: "#0f172a",
-              margin: 0
-            }}>
-              {t('pliage.title')}
-            </h1>
-            <p style={{
-              fontSize: "14px",
-              color: "#64748b",
-              margin: "2px 0 0 0"
-            }}>
-              {agent 
-                ? `${t('pliage.agent')}: ${getAgentFullName()}`
-                : t('pliage.no_agent_connected')}
-            </p>
-          </div>
+      <div className="rc-toolbar">
+        <div className="rc-head__right">
+          {agent && (
+            <div className="rc-agent">
+              <span className="rc-agent__avatar">{initialesAgent}</span>
+              <span className="rc-agent__text">
+                <span className="rc-agent__name">{nomAgent || "—"}</span>
+                <span className="rc-agent__id">{agent.matricule || agent.codeBarre}</span>
+              </span>
+            </div>
+          )}
+          <button type="button" className="rc-btn" disabled={!agent} onClick={reinitialiser}>
+            <RotateCcw size={14} /> {t("common.reset")}
+          </button>
         </div>
       </div>
 
-      <div className="collecte-panel-grand" style={{
-        background: "white",
-        borderRadius: "20px",
-        padding: "32px",
-        border: "1px solid #e2e8f0",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.06)"
-      }}>
+      <ol className="rc-steps rc-steps--4" aria-label={t("pliage.steps", "Étapes du pliage")}>
+        {etapes.map((label, i) => (
+          <li key={label} className={`rc-step ${etapeFaite[i] ? "is-done" : ""} ${etapeActive === i ? "is-active" : ""}`}>
+            <span className="rc-step__num">{etapeFaite[i] ? <Check size={14} strokeWidth={3} /> : i + 1}</span>
+            <span className="rc-step__label">{label}</span>
+          </li>
+        ))}
+      </ol>
 
-        {/* Barre supérieure */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-          flexWrap: "wrap",
-          gap: "12px"
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            {agent ? (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "8px 16px",
-                background: "#f0fdf4",
-                borderRadius: "10px",
-                border: "1px solid #bbf7d0"
-              }}>
-                <FaCheckCircle color="#22c55e" size={16} />
-                <span style={{ fontWeight: 700, color: "#15803d", fontSize: "14px" }}>
-                  {getAgentFullName()}
-                </span>
-                <Badge variant="outline" style={{ fontSize: "11px" }}>
-                  {agent.codeBarre || agent.matricule}
-                </Badge>
-                <button
-                  onClick={() => {
-                    deconnecterAgent();
-                    setAgent(null);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#94a3b8",
-                    cursor: "pointer"
-                  }}
-                >
-                  <FaTimes size={12} />
-                </button>
-              </div>
-            ) : (
-              <div style={{ fontSize: "13px", color: "#94a3b8" }}>{t('pliage.no_agent_connected')}</div>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setScanValue("");
-                deconnecterAgent();
-                setAgent(null);
-              }}
-            >
-              {t('common.reset')}
-            </Button>
-          </div>
-        </div>
-
-        {/* ─── Message si agent non connecté ──────────────────────────────── */}
-        {!agent && (
-          <div style={{
-            padding: "12px 16px",
-            borderRadius: "10px",
-            background: "#fef2f2",
-            border: "1px solid #fca5a5",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            fontSize: "13px",
-            color: "#dc2626"
-          }}>
-            <FaExclamationTriangle size={16} />
-            <span style={{ fontWeight: 600 }}>{t('pliage.no_agent_connected')}</span>
-            <span style={{ color: "#64748b" }}>{t('pliage.no_agent_connect_text')}</span>
-          </div>
-        )}
-
-        {/* Zone scan */}
-        <Card style={{
-          marginBottom: "20px",
-          border: `2px dashed ${getBorderColor()}`
-        }}>
-          <CardContent className="p-5">
-            <ScanInput
-              placeholder={getPlaceholder()}
-              value={scanValue}
-              onChange={setScanValue}
-              onSubmit={handleScan}
-              borderColor={getBorderColor()}
-              keepFocus={true}
-              autoDebounce={true}
-              disabled={!agent || !!dialogueItem}
+      <div className="lw-stack">
+        <section className={`rc-card rc-scan ${!agent ? "is-infecte" : ""}`}>
+          <header className="rc-scan__bar">
+            <span className="rc-scan__title"><ScanLine size={17} /> {t("pliage.title")}</span>
+            <span className="rc-mode"><i /> {libelleMode}</span>
+          </header>
+          <div className="rc-scan__body lv2-scan">
+            <div className={`rc-scan__field ${!agent ? "is-infecte" : ""}`}>
+              <ScanInput
+                placeholder=""
+                value={scanValue}
+                onChange={setScanValue}
+                onSubmit={handleScan}
+                borderColor={getBorderColor()}
+                keepFocus={true}
+                autoDebounce={true}
+                disabled={!agent || !!dialogueItem}
+              />
+            </div>
+            <EmplacementMachine
+              machine={lingeCourant ? { code: lingeCourant.codeSuivi || lingeCourant.codeBarre || "—" } : null}
+              icon={mode === "RFID" ? <Radio size={20} /> : <Shirt size={20} />}
+              libelle={dialogueItem ? t("pliage.step_quality", "Contrôle qualité") : t("pliage.step_storage", "Rangement")}
+              videTitre={t("pliage.no_linen", "Aucun linge en cours")}
+              detail={lingeCourant?.categorie ? t(`categories.${lingeCourant.categorie}`, lingeCourant.categorie) : null}
+              tone="teal"
             />
-          </CardContent>
-        </Card>
-
-        {/* Info agent */}
-        {agent && (
-          <Card style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
-            <CardContent className="p-4">
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
-                <FaUser color="#22c55e" />
-                <span style={{ fontWeight: 600, color: "#15803d" }}>{t('pliage.ready_to_fold')}</span>
-                <span style={{ color: "#64748b" }}>{t('pliage.scan_sec_linge')}</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+          </div>
+        </section>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
+    </Page>
   );
 }
 

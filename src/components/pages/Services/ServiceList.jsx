@@ -2,9 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { RefreshCw, Loader2, CloudDownload, CheckCircle2, AlertTriangle, ChevronDown, History, Settings2, Pencil, Ban, BedDouble } from "lucide-react";
-import Swal from "sweetalert2";
+import Swal from "../../kit/dialogueApi";
 import { motion, AnimatePresence } from "framer-motion";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import { SynchroniserButton } from "../../ui/SynchroniserButton";
 import { BadgeImporte, BadgeInactif } from "../Arsenal/ArsenalEmplacements";
 import { useIntegration } from "../../../hooks/useIntegration";
@@ -13,7 +12,7 @@ import { serviceService } from "../../../services/serviceService";
 import { formatDateTime } from "../../../utils/appSettings";
 
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterActions,
   ListSection, DataTable, Pagination, Badge,
   Modal, Button, FormField,
@@ -361,14 +360,6 @@ export default function ServiceList() {
     <Page>
       {viewMode === "list" && (
         <>
-          <PageHeader
-            icon={<PageHeaderIcon size={40} />}
-            title={t("services_page.title", "Services")}
-            subtitle={t("services_page.subtitle", "Services de l'établissement et chambres rattachées.")}
-            total={list.sorted.length}
-            onIconClick={() => setShowColumnSettings(true)}
-          />
-
           <div style={{ marginBottom: 16 }}>
             <BandeauIntegration importes={importes} endpoint={endpoint} onSynchro={recharger} />
           </div>

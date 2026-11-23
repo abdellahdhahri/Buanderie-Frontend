@@ -1,20 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pencil, Ban } from "lucide-react";
-import Swal from "sweetalert2";
+import { Pencil, Ban, ListPlus } from "lucide-react";
+import Swal from "../../kit/dialogueApi";
 import { arsenalService, emplacementService } from "../../../services/arsenalService";
 import { useIntegration } from "../../../hooks/useIntegration";
 import {
   ActionBar, ActionButton, DataTable, Badge, Modal, Button, FormField, FormGrid, RowActions, RowButton, Code,
 } from "../../kit";
+import { lireNoms } from "./ImportArsenauxCubix";
 import { IconAjouter } from "../../kit/ActionIcons";
 
 const VIDE = { nom: "", numero: "", codeBarre: "", actif: true };
 
 export function BadgeImporte({ item }) {
   const { t } = useTranslation();
+  const { modeCubix } = useIntegration();
   if (item?.source !== "EXTERNE") return null;
-  return <span className="kit-tag">{t("integration.imported", "Importé")}</span>;
+  return <span className="kit-tag">{modeCubix ? "CUBIX" : t("integration.imported", "Importé")}</span>;
 }
 
 export function BadgeInactif({ item }) {
@@ -25,7 +27,9 @@ export function BadgeInactif({ item }) {
 
 export function ArsenalEmplacements({ arsenal, tous }) {
   const { t } = useTranslation();
-  const { estImporte } = useIntegration();
+  const { estImporte, modeCubix } = useIntegration();
+  const cubix = modeCubix && arsenal.source === "EXTERNE";
+  const [multi, setMulti] = useState(null);
   const [emplacements, setEmplacements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rafraichir, setRafraichir] = useState(0);
@@ -75,6 +79,24 @@ export function ArsenalEmplacements({ arsenal, tous }) {
     }
   };
 
+  const ajouterPlusieurs = async (e) => {
+    e.preventDefault();
+    const noms = lireNoms(multi);
+    if (!noms.length) return;
+    setSaving(true);
+    try {
+      const res = await arsenalService.ajouterEmplacements(arsenal.id, noms);
+      const n = Array.isArray(res?.crees) ? res.crees.length : 0;
+      setMulti(null);
+      recharger();
+      Swal.fire({ title: "✅", text: `${n} ${t("arsenal.created", "créé(s)")}${res?.message ? ` — ${res.message}` : ""}`, icon: "success" });
+    } catch (err) {
+      Swal.fire({ title: t("common.error"), text: err.message, icon: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const desactiver = async (emp) => {
     const result = await Swal.fire({
       title: t("arsenal.location_disable_confirm", "Désactiver cet emplacement ?"),
@@ -111,9 +133,10 @@ export function ArsenalEmplacements({ arsenal, tous }) {
 
   return (
     <>
-      {!estImporte("EMPLACEMENT") && (
+      {(!estImporte("EMPLACEMENT") || cubix) && (
         <ActionBar>
           <ActionButton icon={IconAjouter} label={t("arsenal.new_location", "Ajouter un emplacement")} variant="ajouter" onClick={() => ouvrir(null)} />
+          {cubix && <ActionButton icon={ListPlus} label={t("arsenal.add_locations", "Ajouter des emplacements")} variant="ajouter" onClick={() => setMulti("")} />}
         </ActionBar>
       )}
       <DataTable
@@ -124,6 +147,28 @@ export function ArsenalEmplacements({ arsenal, tous }) {
         loadingText={t("common.loading")}
         emptyText={t("arsenal.no_locations", "Aucun emplacement.")}
       />
+
+      {multi !== null && (
+        <Modal
+          className="kit-std-form"
+          size="sm"
+          title={t("arsenal.add_locations", "Ajouter des emplacements")}
+          subtitle={arsenal.nom}
+          onClose={saving ? undefined : () => setMulti(null)}
+          footer={(
+            <>
+              <Button variant="secondary" onClick={() => setMulti(null)} disabled={saving}>{t("common.cancel")}</Button>
+              <Button type="submit" form="emplacements-multi-form" disabled={saving || !lireNoms(multi).length}>{saving ? t("common.saving") : `${t("common.save")} (${lireNoms(multi).length})`}</Button>
+            </>
+          )}
+        >
+          <form id="emplacements-multi-form" onSubmit={ajouterPlusieurs}>
+            <FormField label={t("arsenal.locations_to_create", "Noms (un par ligne)")} required>
+              <textarea rows={6} value={multi} onChange={(e) => setMulti(e.target.value)} placeholder={"C1\nC2"} />
+            </FormField>
+          </form>
+        </Modal>
+      )}
 
       {edition && (
         <Modal
@@ -147,9 +192,11 @@ export function ArsenalEmplacements({ arsenal, tous }) {
               <FormField label={t("arsenal.number", "N°")}>
                 <input type="number" value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} />
               </FormField>
-              <FormField label={t("arsenal.barcode", "Code-barres")}>
-                <input value={form.codeBarre} onChange={(e) => setForm({ ...form, codeBarre: e.target.value })} />
-              </FormField>
+              {!modeCubix && (
+                <FormField label={t("arsenal.barcode", "Code-barres")}>
+                  <input value={form.codeBarre} onChange={(e) => setForm({ ...form, codeBarre: e.target.value })} />
+                </FormField>
+              )}
               <FormField label={t("common.active", "Actif")}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, height: 38 }}>
                   <input type="checkbox" style={{ width: "auto" }} checked={form.actif} onChange={(e) => setForm({ ...form, actif: e.target.checked })} />

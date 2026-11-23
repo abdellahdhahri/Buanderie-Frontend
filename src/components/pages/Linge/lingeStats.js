@@ -74,7 +74,6 @@ export function exportLingesXlsx(linges, { t, getServiceName, getPorteurName, fi
       { header: t("linge.export.lifespan", "Durée de vie"), key: "durevie", width: 13, type: "integer" },
       { header: t("linge.export.wearer", "Porteur"), key: "porteur", width: 24 },
       { header: t("linge.export.bin", "Bac"), key: "bac", width: 10 },
-      { header: t("linge.export.lot", "Lot"), key: "lot", width: 10 },
       { header: "ID", key: "id", width: 8, type: "integer" },
     ],
     rows: linges.map((l) => ({
@@ -87,7 +86,6 @@ export function exportLingesXlsx(linges, { t, getServiceName, getPorteurName, fi
       durevie: l.durevie ?? l.dureVie ?? "",
       porteur: l.porteurId ? getPorteurName(l.porteurId) : "",
       bac: l.bacCode || l.bacId || "",
-      lot: l.lotId || "",
       id: l.id,
     })),
   };

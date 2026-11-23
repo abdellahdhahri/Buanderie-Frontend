@@ -64,15 +64,12 @@ export const collecteService = {
     );
   },
 
-  /**
-   * Déclare un sac infecté
-   */
-  declarerSacInfecte: async (collecteId, data) => {
+  declarerQuantitesInfectees: async (collecteId, { matriculeAgent, serviceId, chambre, observations, bacId, items }) => {
     return apiCall(
       `/api/collecte/service/${collecteId}/infecte`,
       {},
       "POST",
-      data
+      { matriculeAgent, serviceId, chambre, observations, bacId, items }
     );
   },
 

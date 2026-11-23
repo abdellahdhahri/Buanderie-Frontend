@@ -1,19 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Swal from "sweetalert2";
+import Swal from "../../kit/dialogueApi";
 import { RefreshCw, Pencil, Trash2, Ban, BedDouble } from "lucide-react";
 import BarcodeLabel from "../../BarcodeLabel";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import { lireErreur } from "../../../services/integrationService";
 import { useIntegration } from "../../../hooks/useIntegration";
 import { useCircuitInfecte } from "../../../hooks/useEstablishment";
 import { BadgeImporte, BadgeInactif } from "../Arsenal/ArsenalEmplacements";
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterActions,
   ListSection, DataTable, Pagination, Badge,
   Modal, Button, FormField,
-  DetailsPage, DetailsButton, KpiTiles, DetailCard, DetailAlert,
+  DetailsPage, DetailsButton, KpiTiles, DetailCard,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
   RowActions, RowButton, FormGrid, Code, QuickStats, tk,
 } from "../../kit";
@@ -24,6 +23,24 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
 const TYPES_LIT = ["SIMPLE", "DOUBLE", "KING"];
 const CHAMBRE_VIDE = { code: "", codeBarre: "", serviceId: "", actif: true, creerLitParDefaut: false };
 const LIT_VIDE = { chambreId: "", code: "", reference: "", description: "", type: "SIMPLE", actif: true };
+
+const idLitDe = (g) => g.litId ?? null;
+const categorieDe = (g) => g.categorie || g.categorieLinge || "—";
+
+const listeDe = (o) => {
+  for (const k of ["linges", "lingesAffectes", "lingesPoses"]) if (Array.isArray(o?.[k])) return o[k];
+  return [];
+};
+
+const aplatirEtat = (etat) => {
+  const sorties = [];
+  (Array.isArray(etat?.lits) ? etat.lits : []).forEach((lit) => {
+    const id = lit.litId ?? lit.id ?? null;
+    listeDe(lit).forEach((g) => sorties.push({ ...g, litId: id, codeLit: lit.codeLit ?? null }));
+  });
+  listeDe(etat).forEach((g) => sorties.push({ ...g, litId: g.litId ?? null }));
+  return sorties;
+};
 
 const COLUMNS_DEFAULT = [
   { key: "code", label: "Code", visible: true, searchable: true },
@@ -57,6 +74,7 @@ export default function ChambreList() {
   const [viewMode, setViewMode] = useState("list");
   const [lits, setLits] = useState([]);
   const [isLitsLoading, setIsLitsLoading] = useState(false);
+  const [lingesChambre, setLingesChambre] = useState([]);
   const [form, setForm] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [litEdition, setLitEdition] = useState(null);
@@ -95,14 +113,22 @@ export default function ChambreList() {
     setRafraichir((n) => n + 1);
   }, []);
 
-  const fetchLits = useCallback(async (chambreId) => {
+  const fetchLits = useCallback(async (chambreId, chambreCle) => {
     setIsLitsLoading(true);
     setLits([]);
+    setLingesChambre([]);
     try {
-      const response = await fetch(`${API_URL}/api/lits/chambre/${chambreId}${tous ? "?tous=true" : ""}`);
+      const [response, resLinges] = await Promise.all([
+        fetch(`${API_URL}/api/lits/chambre/${chambreId}${tous ? "?tous=true" : ""}`),
+        fetch(`${API_URL}/api/affectation/chambre/${chambreCle ?? chambreId}/etat`).catch(() => null),
+      ]);
       if (response.ok) {
         const data = await response.json();
         setLits(Array.isArray(data) ? data : []);
+      }
+      if (resLinges?.ok) {
+        const data = await resLinges.json();
+        setLingesChambre(aplatirEtat(data));
       }
     } catch {
       setLits([]);
@@ -157,7 +183,7 @@ export default function ChambreList() {
     if (!c) return;
     setSelected(c);
     setViewMode("details");
-    fetchLits(c.id);
+    fetchLits(c.id, c.cle);
   };
 
   const openForm = (c) => setForm({
@@ -248,7 +274,7 @@ export default function ChambreList() {
       });
       if (!response.ok) throw new Error(await lireErreur(response, t("chambre.alerts.error")));
       setLitEdition(null);
-      fetchLits(selected.id);
+      fetchLits(selected.id, selected.cle);
       toast(t("chambre.bed_saved", "Lit enregistré"));
     } catch (err) {
       erreur(err);
@@ -271,7 +297,7 @@ export default function ChambreList() {
     try {
       const response = await fetch(`${API_URL}/api/lits/${lit.id}`, { method: "DELETE" });
       if (!response.ok) throw new Error(await lireErreur(response, t("chambre.alerts.error")));
-      fetchLits(selected.id);
+      fetchLits(selected.id, selected.cle);
     } catch (err) {
       erreur(err);
     }
@@ -320,7 +346,32 @@ export default function ChambreList() {
     },
   };
 
-  const etatLit = (l) => (l.etat === 0 ? { label: t("chambre.free"), variant: "success" } : l.etat === 2 ? { label: t("chambre.occupied"), variant: "warning" } : { label: t("chambre.unknown"), variant: "secondary" });
+  const etatLit = (l) => (l.etat === 0 ? { label: t("chambre.free", "Libre"), variant: "success" } : l.etat === 2 ? { label: t("chambre.occupied", "Occupé"), variant: "warning" } : { label: t("chambre.unknown"), variant: "secondary" });
+
+  const lingesParLit = useMemo(() => {
+    const map = new Map();
+    lingesChambre.forEach((g) => {
+      const id = idLitDe(g);
+      const cle = id == null ? "sans" : String(id);
+      if (!map.has(cle)) map.set(cle, []);
+      map.get(cle).push(g);
+    });
+    return map;
+  }, [lingesChambre]);
+
+  const lingesDuLit = (l) => {
+    const parId = lingesParLit.get(String(l.cle ?? l.id)) || lingesParLit.get(String(l.id));
+    if (parId?.length) return parId;
+    const code = String(l.code || "").trim().toUpperCase();
+    if (!code) return [];
+    return lingesChambre.filter((g) => g.litId != null && String(g.codeLit || "").trim().toUpperCase() === code);
+  };
+
+  const resumeCategories = (liste) => {
+    const cats = {};
+    liste.forEach((g) => { const k = categorieDe(g); cats[k] = (cats[k] || 0) + 1; });
+    return Object.entries(cats).sort((a, b) => b[1] - a[1]);
+  };
 
   const LIT_COLUMNS = {
     code: {
@@ -334,19 +385,33 @@ export default function ChambreList() {
     },
     reference: { label: t("chambre.bed_reference", "Référence"), render: (l) => <Code>{l.reference || `#${String(l.id).padStart(4, "0")}`}</Code> },
     etat: { label: t("common.status", "État"), align: "center", render: (l) => <Badge variant={etatLit(l).variant}>{etatLit(l).label}</Badge> },
+    linges: {
+      label: t("chambre.linges", "Linges"),
+      render: (l) => {
+        const liste = lingesDuLit(l);
+        if (!liste.length) return <span style={{ color: "var(--slate-500)" }}>—</span>;
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+            {resumeCategories(liste).map(([cat, nb]) => (
+              <Badge key={cat} variant="info">{t(`categories.${cat}`, cat)} × {nb}</Badge>
+            ))}
+          </div>
+        );
+      },
+    },
     ...(circuitInfecte ? {
       infecte: {
         label: t("chambre.infected"), align: "center",
         render: (l) => (
-          <span onClick={(e) => e.stopPropagation()}>
+          <span onClick={(e) => e.stopPropagation()} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Badge variant={l.infecte ? "danger" : "success"}>
+              {l.infecte ? t("chambre.infected", "Infecté") : t("chambre.not_infected", "Non infecté")}
+            </Badge>
             <Check
               checked={!!l.infecte}
               disabled={infectionImportee}
-              title={infectionImportee ? t("chambre.infection_locked", "L'état d'infection est synchronisé depuis le système externe") : undefined}
               onChange={(v) => basculerInfection(l, v)}
-            >
-              {l.infecte ? <Badge variant="danger">{t("chambre.infected")}</Badge> : null}
-            </Check>
+            />
           </span>
         ),
       },
@@ -356,7 +421,7 @@ export default function ChambreList() {
       render: (l) => (
         <RowActions>
           <BarcodeLabel item={l} type="lit" ctx={{ chambre: selected?.code }} variant="icon" />
-          {l.source === "EXTERNE" ? <Badge variant="secondary">{t("integration.read_only", "Lecture seule")}</Badge> : (
+          {l.source !== "EXTERNE" && (
             <>
               <RowButton icon={Pencil} title={t("chambre.edit_bed", "Modifier le lit")} onClick={() => ouvrirLit(l)} />
               {l.actif !== false && <RowButton icon={Ban} tone="danger" title={t("chambre.disable_bed", "Désactiver le lit")} onClick={() => desactiverLit(l)} />}
@@ -384,14 +449,6 @@ export default function ChambreList() {
     <Page>
       {viewMode === "list" && (
         <>
-          <PageHeader
-            icon={<PageHeaderIcon size={40} />}
-            title={t("chambre.title")}
-            subtitle={t("chambre.subtitle")}
-            total={list.sorted.length}
-            onIconClick={() => setShowColumnSettings(true)}
-          />
-
           <ActionBar>
             {!chambresImportees && <ActionButton icon={IconAjouter} label={t("chambre.new")} variant="ajouter" onClick={() => openForm(null)} />}
             <ActionButton icon={IconDetails} label={t("chambre.show_beds")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
@@ -486,11 +543,6 @@ export default function ChambreList() {
           ].filter(Boolean)} />
 
           <DetailCard title={t("chambre.beds_total", "Lits")}>
-            {infectionImportee && (
-              <DetailAlert title={t("integration.read_only", "Lecture seule")}>
-                <p>{t("chambre.infection_locked", "L'état d'infection est synchronisé depuis le système externe")}</p>
-              </DetailAlert>
-            )}
             {!litsImportes && selected.actif !== false && (
               <ActionBar>
                 <ActionButton icon={IconAjouter} label={t("chambre.new_bed", "Ajouter un lit")} variant="ajouter" onClick={() => ouvrirLit(null)} />
@@ -505,6 +557,27 @@ export default function ChambreList() {
               emptyText={t("chambre.no_beds", "Aucun lit")}
             />
           </DetailCard>
+
+          {lingesChambre.length > 0 && (
+            <DetailCard title={t("chambre.linges_chambre", "Linges de la chambre")}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
+                {lits.map((lit) => ({ lit, liste: lingesDuLit(lit) })).filter((x) => x.liste.length).map(({ lit, liste }) => (
+                  <div key={lit.id} style={{ border: "1px solid var(--slate-200, #e2e8f0)", borderRadius: 12, padding: 12, background: "#fff" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+                      <strong style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><BedDouble size={16} />{lit.code || `LIT-${lit.id}`}</strong>
+                      <Badge variant="info">{liste.length}</Badge>
+                    </div>
+                    {liste.map((g) => (
+                      <div key={g.lingeId ?? g.codeBarre} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, padding: "3px 0" }}>
+                        <span>{t(`categories.${categorieDe(g)}`, categorieDe(g))}</span>
+                        <Code>{g.codeBarre}</Code>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </DetailCard>
+          )}
         </DetailsPage>
       )}
 

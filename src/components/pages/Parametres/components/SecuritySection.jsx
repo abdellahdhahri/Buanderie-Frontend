@@ -43,9 +43,9 @@ export function SecuritySection() {
     setForm(EMPTY);
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/process");
+  const handleLogout = async () => {
+    await logout();
+    navigate("/auth", { replace: true });
   };
 
   return (

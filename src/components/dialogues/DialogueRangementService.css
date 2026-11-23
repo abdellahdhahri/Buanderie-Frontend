@@ -1,0 +1,26 @@
+.drs .kit-modal-footer { align-items: center; }
+.drs-body { display: flex; flex-direction: column; gap: 16px; }
+
+.drs-shelf { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 14px; background: #e9f8fa; border: 1px solid #bfe9ef; }
+.drs-shelf__icon { width: 46px; height: 46px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; background: linear-gradient(135deg, #067a87, #0794a4); color: #fff; box-shadow: 0 6px 14px -6px rgba(7, 148, 164, .6); }
+.drs-shelf small { display: block; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #067a87; }
+.drs-shelf strong { display: block; margin-top: 2px; font-size: 1.45rem; font-weight: 800; letter-spacing: -.02em; color: #0f172a; overflow-wrap: anywhere; }
+
+.drs-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
+.drs-info > div { padding: 10px 12px; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; min-width: 0; }
+.drs-info dt { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #64748b; }
+.drs-info dd { margin: 4px 0 0; font-size: .9rem; font-weight: 700; color: #0f172a; }
+.drs-info code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88rem; overflow-wrap: anywhere; }
+.drs-cat { display: inline-flex; align-items: center; gap: 6px; color: var(--c, #0794a4); }
+.drs-cat i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+.drs-timer { flex: 1; height: 4px; margin-right: 12px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+.drs-timer i { display: block; height: 100%; border-radius: inherit; background: #0794a4; transition: width .1s linear; }
+
+.dark .drs-shelf { background: rgba(45, 212, 191, .12); border-color: rgba(45, 212, 191, .3); }
+.dark .drs-shelf strong, .dark .drs-info dd { color: var(--dk-text, #e2e8f0); }
+.dark .drs-info > div { background: var(--dk-surface-2, #0f172a); border-color: var(--dk-border, #334155); }
+.dark .drs-timer { background: var(--dk-border, #334155); }
+
+@media (prefers-reduced-motion: reduce) { .drs-timer i { transition: none; } }
+@media (max-width: 480px) { .drs-info { grid-template-columns: 1fr; } }

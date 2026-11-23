@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, BarChart3, Building2, Layers, Pause, Play, RefreshCw, Shirt } from "lucide-react";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
+import { ArrowLeft, BarChart3, Building2, Clock, Layers, Pause, Play, RefreshCw, Shirt } from "lucide-react";
 import { fetchSuiviGlobal, fetchSuiviService } from "../../../services/suiviStockService";
 import { accentOf } from "../StockageArsenal/arsenalUtils";
 import { ZONES_STOCK, zoneLabel } from "../../../constants/zonesStock";
@@ -9,9 +8,11 @@ import ZoneMatrix from "./ZoneMatrix";
 import ZoneIcon from "./ZoneIcon";
 import LingesModal from "./LingesModal";
 import {
-  Page, PageHeader, ActionBar, ActionButton, FilterPanel, FilterRow, FilterText,
-  DataTable, DetailAlert, Tabs, QuickStats, Button,
+  Page, ActionBar, ActionButton, FilterPanel, FilterRow, FilterText,
+  DetailAlert, Tabs, QuickStats, Button,
 } from "../../kit";
+import "../Reception/Reception.css";
+import "./SuiviStock.css";
 
 const REFRESH_MS = 30000;
 
@@ -39,7 +40,7 @@ export default function SuiviStock() {
   const [auto, setAuto] = useState(true);
   const [tick, setTick] = useState(0);
   const [search, setSearch] = useState("");
-  const [onglet, setOnglet] = useState("zones");
+  const [onglet, setOnglet] = useState("categories");
   const [modalFilter, setModalFilter] = useState(null);
   const [showStats, setShowStats] = useState(false);
 
@@ -69,7 +70,7 @@ export default function SuiviStock() {
   const openService = (row) => {
     setServiceView({ id: row.key, name: row.label });
     setServiceData(null);
-    setOnglet("zones");
+    setOnglet("categories");
   };
   const backToGlobal = () => { setServiceView(null); setServiceData(null); };
 
@@ -101,47 +102,29 @@ export default function SuiviStock() {
 
   const totalParc = current?.totalParc || 0;
 
-  const ZONE_COLUMNS = {
-    zone: {
-      label: t("suiviStock.repartition"),
-      render: (r) => (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontWeight: 700 }}>
-          <span className="kit-zone-icon" style={{ "--z": r.zone.color }}><ZoneIcon zone={r.zone.id} size={16} /></span>
-          {zoneLabel(t, r.zone.id)}
-        </span>
-      ),
-    },
-    count: { label: t("inventaire.linens_count", "Linges"), align: "right", render: (r) => <strong>{r.count.toLocaleString("fr-FR")}</strong> },
-    part: {
-      label: "%", align: "left",
-      render: (r) => (
-        <div style={{ minWidth: 140 }}>
-          <span className="kit-muted" style={{ fontSize: ".8rem" }}>{fmtPct(r.count, totalParc)}</span>
-          <div className="kit-gauge"><span style={{ width: fmtPct(r.count, totalParc).replace(" ", ""), background: r.zone.color }} /></div>
-        </div>
-      ),
-    },
-  };
+  const champsZones = zoneRows.map((r) => ({
+    key: r.key,
+    label: zoneLabel(t, r.zone.id),
+    icon: <ZoneIcon zone={r.zone.id} size={16} />,
+    color: r.zone.color,
+    value: r.count.toLocaleString("fr-FR"),
+    hint: fmtPct(r.count, totalParc),
+    pct: totalParc > 0 ? (r.count / totalParc) * 100 : 0,
+    onClick: r.count ? () => openLinges({ zone: r.zone.id }) : undefined,
+    title: t("suiviStock.see_linges"),
+  }));
 
   const ongletsDisponibles = [
-    { value: "zones", icon: <Layers size={15} />, label: t("suiviStock.repartition") },
     { value: "categories", icon: <Shirt size={15} />, label: t("suiviStock.by_category"), count: categorieRows.length },
     ...(!serviceView ? [{ value: "services", icon: <Building2 size={15} />, label: t("suiviStock.by_service"), count: serviceRows.length }] : []),
   ];
 
   return (
-    <Page>
-      <PageHeader
-        icon={<PageHeaderIcon size={40} />}
-        title={serviceView ? `${t("suiviStock.title")} · ${serviceView.name}` : t("suiviStock.title")}
-        subtitle={`${t("suiviStock.last_calc")} : ${formatCalcul(current?.dateCalcul ?? global?.dateCalcul)}`}
-        badge={`${t("suiviStock.total_parc")} : ${totalParc.toLocaleString("fr-FR")}`}
-        onBack={serviceView ? backToGlobal : undefined}
-        backTitle={t("suiviStock.back_global")}
-      />
-
+    <Page className="rc ss">
       <ActionBar>
         {serviceView && <ActionButton icon={<ArrowLeft size={18} />} label={t("suiviStock.back_global")} variant="details" onClick={backToGlobal} />}
+        <ActionButton icon={<Layers size={18} />} label={t("suiviStock.see_linges")} variant="details" disabled={!totalParc} onClick={() => openLinges({})} />
+        <ActionButton icon={<BarChart3 size={18} />} label={t("kit.stats", "Statistiques")} variant="rapport-global" disabled={!current} onClick={() => setShowStats(true)} />
         <ActionButton icon={<RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />} label={t("suiviStock.refresh")} variant="details" disabled={refreshing} onClick={refresh} />
         <ActionButton
           icon={auto ? <Pause size={18} /> : <Play size={18} />}
@@ -149,8 +132,6 @@ export default function SuiviStock() {
           variant={auto ? "etat-accepter" : "modifier"}
           onClick={() => setAuto((a) => !a)}
         />
-        <ActionButton icon={<BarChart3 size={18} />} label={t("kit.stats", "Statistiques")} variant="rapport-global" disabled={!current} onClick={() => setShowStats(true)} />
-        <ActionButton icon={<Layers size={18} />} label={t("suiviStock.see_linges")} variant="imprimer" disabled={!totalParc} onClick={() => openLinges({})} />
       </ActionBar>
 
       {error && (
@@ -160,9 +141,46 @@ export default function SuiviStock() {
         </DetailAlert>
       )}
 
+      {current ? (
+        <section className="rc-card ss-zones">
+          <header className="ss-zones__head">
+            <h3 className="rc-card__title">
+              {serviceView ? <><Building2 size={15} /> {serviceView.name}</> : t("suiviStock.repartition", "Répartition par zone")}
+            </h3>
+            <span className="ss-zones__total"><b>{totalParc.toLocaleString("fr-FR")}</b> {t("suiviStock.linges_unit", "linges")}</span>
+            <span className="ss-zones__calc"><Clock size={13} /> {formatCalcul(current.dateCalcul)}</span>
+          </header>
+          <div className="ss-zones__grid">
+            {champsZones.map((z) => (
+              <button
+                key={z.key}
+                type="button"
+                className="ss-zone"
+                style={{ "--z": z.color }}
+                disabled={!z.onClick}
+                onClick={z.onClick}
+                title={z.title}
+              >
+                <span className="ss-zone__top">
+                  <span className="ss-zone__icon">{z.icon}</span>
+                  <span className="ss-zone__label">{z.label}</span>
+                </span>
+                <span className="ss-zone__value">{z.value}</span>
+                <span className="ss-zone__bar"><i style={{ width: `${z.pct}%` }} /></span>
+                <span className="ss-zone__hint">{z.hint}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : !error && (
+        <section className="rc-card ss-zones" aria-busy="true">
+          <div className="rc-loading">{t("common.loading")}</div>
+        </section>
+      )}
+
       <div className="kit-toolbar">
         <Tabs items={ongletsDisponibles} value={onglet} onChange={setOnglet} />
-        {onglet !== "services" && <span className="kit-muted" style={{ fontSize: ".8rem" }}>{t("suiviStock.click_cell")}</span>}
+        {onglet === "categories" && <span className="kit-muted" style={{ fontSize: ".8rem" }}>{t("suiviStock.click_cell")}</span>}
       </div>
 
       {onglet === "services" && (
@@ -174,17 +192,6 @@ export default function SuiviStock() {
       )}
 
       <div className="employee-list-section">
-        {onglet === "zones" && (
-          <DataTable
-            columns={ZONE_COLUMNS}
-            rows={zoneRows}
-            rowKey={(r) => r.key}
-            onRowClick={(r) => r.count && openLinges({ zone: r.zone.id })}
-            loading={!current && !error}
-            loadingText={t("common.loading")}
-            emptyText={t("suiviStock.empty")}
-          />
-        )}
         {onglet === "categories" && (
           <ZoneMatrix
             rows={categorieRows}

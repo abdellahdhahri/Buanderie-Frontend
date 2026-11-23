@@ -75,6 +75,11 @@ export const ProgrammeProvider = ({ children }) => {
     }
   };
 
+  const definirProgrammeLavageParDefaut = async (id) => {
+    const response = await axios.patch(`${API_BASE_URL}/lavage/${id}`, { parDefaut: true });
+    return response.data;
+  };
+
   const deleteProgrammeLavage = async (id) => {
     try {
       setIsLoading(true);
@@ -145,6 +150,7 @@ export const ProgrammeProvider = ({ children }) => {
       createProgrammeLavage,
       updateProgrammeLavage,
       deleteProgrammeLavage,
+      definirProgrammeLavageParDefaut,
       createProgrammeSechage,
       updateProgrammeSechage,
       deleteProgrammeSechage

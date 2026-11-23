@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { machineService } from '../services/machineService';
-import Swal from 'sweetalert2';
+import Swal from "../components/kit/dialogueApi";
 
 const MachineContext = createContext();
 

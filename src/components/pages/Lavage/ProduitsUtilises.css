@@ -1,0 +1,71 @@
+.pu {
+  --pu-accent: #0794a4;
+  --pu-accent-soft: #e6f6f8;
+  --pu-border: var(--cr-border, #e2e8f0);
+  --pu-surface: var(--cr-surface, #ffffff);
+  --pu-surface-2: var(--cr-surface-2, #f8fafc);
+  --pu-text: var(--cr-text, #0f172a);
+  --pu-muted: var(--cr-muted, #64748b);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  margin: 4px 0;
+  background: var(--pu-surface);
+  border: 1px solid var(--pu-border);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+
+.pu__head { display: flex; align-items: center; gap: 12px; }
+.pu__icon { width: 38px; height: 38px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--pu-accent-soft); color: var(--pu-accent); }
+.pu__title { flex: 1; min-width: 0; }
+.pu__title h4 { margin: 0; font-size: .95rem; font-weight: 700; color: var(--pu-text); }
+.pu__title p { margin: 2px 0 0; font-size: .78rem; line-height: 1.35; color: var(--pu-muted); }
+.pu__pill { padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; color: var(--pu-muted); background: var(--pu-surface-2); border: 1px solid var(--pu-border); white-space: nowrap; }
+.pu__count { min-width: 26px; height: 26px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: .8rem; font-weight: 700; color: #fff; background: var(--pu-accent); }
+
+.pu__controls { display: grid; gap: 12px; }
+.pu__field { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.pu__field label { font-size: .78rem; font-weight: 600; color: var(--pu-text); }
+
+.pu__control { position: relative; display: flex; align-items: center; }
+.pu__control > svg { position: absolute; left: 12px; color: var(--pu-muted); pointer-events: none; }
+.pu__control select,
+.pu__control input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px 0 36px;
+  font-size: .9rem;
+  color: var(--pu-text);
+  background: var(--pu-surface);
+  border: 1.5px solid var(--pu-border);
+  border-radius: 10px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.pu__control select { cursor: pointer; }
+.pu__control select:disabled,
+.pu__control input:disabled { background: var(--pu-surface-2); cursor: not-allowed; opacity: .7; }
+.pu__control select:hover:not(:disabled),
+.pu__control input:hover:not(:disabled) { border-color: #cbd5e1; }
+.pu__control select:focus-visible,
+.pu__control input:focus-visible { outline: none; border-color: var(--pu-accent); box-shadow: 0 0 0 3px rgba(7, 148, 164, .25); }
+
+.pu__empty { margin: 0; padding: 12px 14px; font-size: .82rem; color: var(--pu-muted); background: var(--pu-surface-2); border: 1px dashed var(--pu-border); border-radius: 10px; text-align: center; }
+
+.pu__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pu__item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--pu-surface-2); border: 1px solid var(--pu-border); border-left: 3px solid var(--pu-accent); border-radius: 10px; }
+.pu__item-icon { width: 30px; height: 30px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--pu-accent-soft); color: var(--pu-accent); }
+.pu__item-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pu__item-text strong { font-size: .88rem; color: var(--pu-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pu__item-text span { font-size: .76rem; color: var(--pu-muted); }
+
+.pu__remove { min-height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; font-size: .78rem; font-weight: 600; color: #b91c1c; background: var(--pu-surface); border: 1px solid #fecaca; border-radius: 8px; cursor: pointer; transition: background .15s; }
+.pu__remove:hover:not(:disabled) { background: #fef2f2; }
+.pu__remove:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(185, 28, 28, .25); }
+.pu__remove:disabled { opacity: .5; cursor: not-allowed; }
+
+@media (prefers-color-scheme: dark) {
+  .pu { --pu-accent-soft: rgba(7, 148, 164, .18); }
+  .pu__remove { background: transparent; }
+}

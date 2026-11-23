@@ -1,16 +1,18 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Swal from "sweetalert2";
-import { RefreshCw, Pencil, Trash2, CheckCircle, Wrench, AlertCircle, Clock, WashingMachine, Wind, Repeat } from "lucide-react";
+import Swal from "../../kit/dialogueApi";
+import { RefreshCw, Pencil, Trash2, CheckCircle, Wrench, AlertCircle, AlertTriangle, Clock, WashingMachine, Wind, Repeat, Download } from "lucide-react";
 import { useMachineContext } from "../../../contextes/MachineContext";
+import { useAuth } from "../../../constants/AuthContext";
+import { TYPES_RECLAMATION_MACHINE, DESCRIPTION_MAX, declarerReclamationMachine } from "../../../services/reclamationMachineService";
 import { SynchroniserButton } from "../../ui/SynchroniserButton";
 import { useIntegration } from "../../../hooks/useIntegration";
 import { formatDateTime } from "../../../utils/appSettings";
 import BarcodeLabel from "../../BarcodeLabel";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
+import ImportMachinesCubix from "./ImportMachinesCubix";
 
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterActions,
   ListSection, DataTable, Pagination, Badge,
   Modal, Button, FormField, ConfirmDialog,
@@ -29,6 +31,8 @@ const TYPES_MACHINE = [
 const ETATS_TECHNIQUES = [
   { value: "FONCTIONNEL", label: "Fonctionnel", variant: "success", icon: CheckCircle },
   { value: "EN_PANNE", label: "En panne", variant: "danger", icon: AlertCircle },
+  { value: "FONCTIONNEL_AVEC_PROBLEME", label: "Fonctionnel avec problème", variant: "warning", icon: AlertTriangle },
+  { value: "EN_COURS_DE_REPARATION", label: "En réparation", variant: "info", icon: Wrench },
   { value: "EN_MAINTENANCE", label: "En maintenance", variant: "warning", icon: Wrench },
   { value: "HORS_SERVICE", label: "Hors service", variant: "secondary", icon: AlertCircle },
 ];
@@ -48,6 +52,7 @@ const CATEGORIES_MACHINE = [
 const VIDE = {
   reference: "", type: "LAVEUR", marque: "", categorie: "", capaciteKg: "", code: "",
   etatTechnique: "FONCTIONNEL", etatImmobilisation: "DISPONIBLE", localisation: "", designation: "", modele: "",
+  nom: "", description: "",
 };
 
 const COLUMNS_DEFAULT = [
@@ -68,7 +73,8 @@ const nomMachine = (m) => m.designation || m.reference || "—";
 export default function MachineList() {
   const { t } = useTranslation();
   const { machines, isLoading, pagination, loadMachines, createMachine, updateMachine, deleteMachine } = useMachineContext();
-  const { estImporte } = useIntegration();
+  const { agent: agentConnecte } = useAuth() || {};
+  const { estImporte, modeCubix } = useIntegration();
   const machinesImportees = estImporte("MACHINE");
 
   const [activeTab, setActiveTab] = useState("LAVEUR");
@@ -80,6 +86,9 @@ export default function MachineList() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showImportCubix, setShowImportCubix] = useState(false);
+  const [signalement, setSignalement] = useState(null);
+  const [signalementBusy, setSignalementBusy] = useState(false);
 
   const etatTech = (v) => ETATS_TECHNIQUES.find((e) => e.value === v);
   const etatImmo = (v) => ETATS_IMMOBILISATION.find((e) => e.value === v);
@@ -169,6 +178,7 @@ export default function MachineList() {
         capaciteKg: m.capaciteKg ?? "", code: m.code || "", etatTechnique: m.etatTechnique || "FONCTIONNEL",
         etatImmobilisation: m.etatImmobilisation || "DISPONIBLE", localisation: m.localisation || "",
         designation: m.designation || "", modele: m.modele || "",
+        nom: m.nom || "", description: m.description || "",
       },
     });
   };
@@ -177,11 +187,62 @@ export default function MachineList() {
   const toast = (text) => Swal.fire({ title: "✅", text, icon: "success", timer: 1500, showConfirmButton: false });
   const erreur = (err) => Swal.fire({ title: "❌", text: err?.message || t("machines.error_text"), icon: "error" });
 
+  const openSignalement = (m) => {
+    if (!m) return;
+    setSignalement({
+      machine: m,
+      type: TYPES_RECLAMATION_MACHINE[0].value,
+      description: "",
+      matriculeAgent: agentConnecte?.matricule || agentConnecte?.codeBarre || "",
+    });
+  };
+  const setSignal = (patch) => setSignalement((s) => ({ ...s, ...patch }));
+
+  const handleSignalement = async (e) => {
+    e.preventDefault();
+    const { machine, type, description, matriculeAgent } = signalement;
+    const matricule = matriculeAgent.trim();
+    if (!matricule) {
+      Swal.fire({ title: t("reclamations.agent_required", "Agent déclarant obligatoire"), text: t("reclamations.agent_required_text", "Scannez ou saisissez le code-barres du personnel."), icon: "warning" });
+      return;
+    }
+    setSignalementBusy(true);
+    try {
+      await declarerReclamationMachine({ codeMachine: machine.code || machine.reference, type, matriculeAgent: matricule, description });
+      setSignalement(null);
+      toast(t("machines.report_success", "Problème signalé : la réclamation a été enregistrée."));
+      await loadMachines();
+    } catch (err) {
+      erreur(err);
+    } finally {
+      setSignalementBusy(false);
+    }
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     const { machine, rec } = form;
     if (!rec.reference && !rec.designation) {
       Swal.fire({ title: t("machines.reference_required"), text: t("machines.reference_required_text"), icon: "warning" });
+      return;
+    }
+    const externe = machine?.source === "EXTERNE";
+    const changements = machine ? (() => {
+      const diff = {};
+      const texte = (v) => (v ?? "").toString().trim();
+      if (texte(rec.marque) !== texte(machine.marque)) diff.marque = texte(rec.marque);
+      const capacite = rec.capaciteKg === "" ? null : parseFloat(rec.capaciteKg);
+      if (capacite != null && !Number.isNaN(capacite) && capacite !== machine.capaciteKg) diff.capaciteKg = capacite;
+      if (texte(rec.localisation) !== texte(machine.localisation)) diff.localisation = texte(rec.localisation);
+      if (texte(rec.nom) !== texte(machine.nom)) diff.nom = texte(rec.nom);
+      if (texte(rec.description) !== texte(machine.description)) diff.description = texte(rec.description);
+      if (rec.categorie && rec.categorie !== (machine.categorie || "")) diff.categorie = rec.categorie;
+      if (rec.etatTechnique && rec.etatTechnique !== machine.etatTechnique) diff.etatTechnique = rec.etatTechnique;
+      if (!externe && rec.type && rec.type !== machine.type) diff.type = rec.type;
+      return diff;
+    })() : null;
+    if (machine && Object.keys(changements).length === 0) {
+      setForm(null);
       return;
     }
     setIsSaving(true);
@@ -198,9 +259,11 @@ export default function MachineList() {
         etatTechnique: rec.etatTechnique || "FONCTIONNEL",
         etatImmobilisation: rec.etatImmobilisation || "DISPONIBLE",
         localisation: rec.localisation?.trim() || null,
+        ...(rec.nom?.trim() ? { nom: rec.nom.trim() } : {}),
+        ...(rec.description?.trim() ? { description: rec.description.trim() } : {}),
       };
       if (machine) {
-        await updateMachine(machine.id, payload);
+        await updateMachine(machine.id, changements);
         toast(t("machines.update_success"));
         setSelected(null);
         setViewMode("list");
@@ -293,6 +356,7 @@ export default function MachineList() {
       render: (m) => (
         <RowActions>
           <BarcodeLabel item={m} type="machine" variant="icon" />
+          <RowButton icon={AlertTriangle} tone="danger" title={t("machines.report", "Signaler un problème")} onClick={() => openSignalement(m)} />
           <RowButton icon={Pencil} title={t("common.edit")} onClick={() => openEdit(m)} />
           <RowButton icon={Trash2} tone="danger" title={t("common.delete")} onClick={() => setDeleteTarget(m)} />
         </RowActions>
@@ -306,21 +370,17 @@ export default function MachineList() {
     <Page>
       {viewMode === "list" && (
         <>
-          <PageHeader
-            icon={<PageHeaderIcon size={40} />}
-            title={t("machines.title")}
-            subtitle={t("machines.subtitle")}
-            total={list.sorted.length}
-            onIconClick={() => setShowColumnSettings(true)}
-          />
-
           <ActionBar>
             {!machinesImportees && (
               <ActionButton icon={IconAjouter} label={t("machines.new")} variant="ajouter" onClick={openCreate} />
             )}
+            {modeCubix && (
+              <ActionButton icon={Download} label={t("machines.import_cubix", "Importer depuis CUBIX")} variant="ajouter" onClick={() => setShowImportCubix(true)} />
+            )}
             <SynchroniserButton referentiel="MACHINE" onTermine={loadMachines} variant="action" />
             <ActionButton icon={IconDetails} label={t("machines.details")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
             <ActionButton icon={IconModifier} label={t("common.edit")} variant="modifier" disabled={!selected} onClick={() => openEdit(selected)} />
+            <ActionButton icon={AlertTriangle} label={t("machines.report", "Signaler un problème")} variant="supprimer" disabled={!selected} onClick={() => openSignalement(selected)} />
             <ActionButton icon={IconSupprimer} label={t("common.delete")} variant="supprimer" disabled={!selected} onClick={() => setDeleteTarget(selected)} />
             <BarcodeLabel item={selected} type="machine" variant="action" />
             <ActionButton
@@ -427,6 +487,7 @@ export default function MachineList() {
           actions={(
             <>
               <BarcodeLabel item={selected} type="machine" variant="action" />
+              <DetailsButton icon={AlertTriangle} variant="danger" onClick={() => openSignalement(selected)}>{t("machines.report", "Signaler un problème")}</DetailsButton>
               <DetailsButton icon={Pencil} onClick={() => openEdit(selected)}>{t("common.edit")}</DetailsButton>
               <DetailsButton icon={Trash2} variant="danger" onClick={() => setDeleteTarget(selected)}>{t("common.delete")}</DetailsButton>
             </>
@@ -476,14 +537,21 @@ export default function MachineList() {
         >
           <form id="machine-form" onSubmit={handleSave}>
             <FormGrid>
-              <FormField label={t("machines.designation")} required>
-                <input value={form.rec.designation} onChange={(e) => setRec({ designation: e.target.value })} placeholder={t("machines.designation_placeholder")} />
+              <FormField
+                label={<>{t("machines.designation")} {form.machine?.source === "EXTERNE" && <Badge variant="info">CUBIX</Badge>}</>}
+                required={!form.machine}
+                hint={form.machine?.source === "EXTERNE" ? t("machines.cubix_readonly", "Géré par CUBIX : lecture seule.") : undefined}
+              >
+                <input value={form.rec.designation} onChange={(e) => setRec({ designation: e.target.value })} placeholder={t("machines.designation_placeholder")} disabled={!!form.machine} />
               </FormField>
-              <FormField label={t("machines.code")} hint={form.machine ? t("machines.code_disabled") : t("machines.code_auto")}>
+              <FormField
+                label={<>{t("machines.code")} {form.machine?.source === "EXTERNE" && <Badge variant="info">CUBIX</Badge>}</>}
+                hint={form.machine ? t("machines.code_disabled") : t("machines.code_auto")}
+              >
                 <input value={form.rec.code} onChange={(e) => setRec({ code: e.target.value.toUpperCase() })} placeholder={t("machines.code_placeholder")} disabled={!!form.machine} />
               </FormField>
               <FormField label={t("machines.type")} required>
-                <select value={form.rec.type} onChange={(e) => setRec({ type: e.target.value })} required>
+                <select value={form.rec.type} onChange={(e) => setRec({ type: e.target.value })} required disabled={form.machine?.source === "EXTERNE"}>
                   {TYPES_MACHINE.map((ty) => <option key={ty.value} value={ty.value}>{typeLabel(ty.value)}</option>)}
                 </select>
               </FormField>
@@ -491,7 +559,7 @@ export default function MachineList() {
                 <input value={form.rec.marque} onChange={(e) => setRec({ marque: e.target.value })} placeholder={t("machines.brand_placeholder")} />
               </FormField>
               <FormField label={t("machines.model")}>
-                <input value={form.rec.modele} onChange={(e) => setRec({ modele: e.target.value })} placeholder={t("machines.model_placeholder")} />
+                <input value={form.rec.modele} onChange={(e) => setRec({ modele: e.target.value })} placeholder={t("machines.model_placeholder")} disabled={!!form.machine} />
               </FormField>
               <FormField label={t("machines.category")}>
                 <select value={form.rec.categorie} onChange={(e) => setRec({ categorie: e.target.value })}>
@@ -508,12 +576,51 @@ export default function MachineList() {
                 </select>
               </FormField>
               <FormField label={t("machines.availability")}>
-                <select value={form.rec.etatImmobilisation} onChange={(e) => setRec({ etatImmobilisation: e.target.value })}>
+                <select value={form.rec.etatImmobilisation} onChange={(e) => setRec({ etatImmobilisation: e.target.value })} disabled={!!form.machine}>
                   {ETATS_IMMOBILISATION.map((e) => <option key={e.value} value={e.value}>{etatLabel(e)}</option>)}
                 </select>
               </FormField>
               <FormField label={t("machines.location")} span>
                 <input value={form.rec.localisation} onChange={(e) => setRec({ localisation: e.target.value })} placeholder={t("machines.location_placeholder")} />
+              </FormField>
+              <FormField label={t("machines.name", "Nom")}>
+                <input value={form.rec.nom} onChange={(e) => setRec({ nom: e.target.value })} />
+              </FormField>
+              <FormField label={t("machines.description", "Description")}>
+                <input value={form.rec.description} onChange={(e) => setRec({ description: e.target.value })} />
+              </FormField>
+            </FormGrid>
+          </form>
+        </Modal>
+      )}
+
+      {signalement && (
+        <Modal
+          className="kit-std-form"
+          size="sm"
+          title={`${t("machines.report", "Signaler un problème")} · ${signalement.machine.code || signalement.machine.reference}`}
+          onClose={signalementBusy ? undefined : () => setSignalement(null)}
+          footer={(
+            <>
+              <Button variant="secondary" onClick={() => setSignalement(null)} disabled={signalementBusy}>{t("common.cancel")}</Button>
+              <Button type="submit" form="signalement-form" disabled={signalementBusy}>{signalementBusy ? t("common.saving") : t("machines.report_send", "Signaler")}</Button>
+            </>
+          )}
+        >
+          <form id="signalement-form" onSubmit={handleSignalement}>
+            <FormGrid>
+              <FormField label={t("reclamations.details_title", "Type")} required span>
+                <select value={signalement.type} onChange={(e) => setSignal({ type: e.target.value })} required>
+                  {TYPES_RECLAMATION_MACHINE.map((ty) => (
+                    <option key={ty.value} value={ty.value}>{t(`reclamations.types.${ty.value}`, ty.label)}</option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label={t("reclamations.agent_code", "Agent déclarant (code-barres)")} required span hint={t("reclamations.agent_code_hint", "Badge ou matricule du personnel qui signale le défaut")}>
+                <input value={signalement.matriculeAgent} onChange={(e) => setSignal({ matriculeAgent: e.target.value.toUpperCase() })} required />
+              </FormField>
+              <FormField label={t("reclamations.problem_description", "Description")} span hint={`${signalement.description.length} / ${DESCRIPTION_MAX}`}>
+                <textarea rows={4} maxLength={DESCRIPTION_MAX} value={signalement.description} onChange={(e) => setSignal({ description: e.target.value })} />
               </FormField>
             </FormGrid>
           </form>
@@ -532,6 +639,10 @@ export default function MachineList() {
         />
       )}
 
+      {showImportCubix && (
+        <ImportMachinesCubix onClose={() => setShowImportCubix(false)} onImporte={loadMachines} />
+      )}
+
       {showStats && (
         <QuickStats
           title={`${t("machines.title")} · ${typeLabel(activeTab)}`}
@@ -545,7 +656,7 @@ export default function MachineList() {
           repartitions={[
             {
               title: t("machines.technical_state"),
-              items: ETATS_TECHNIQUES.map((e, i) => ({ label: etatLabel(e), value: list.sorted.filter((m) => m.etatTechnique === e.value).length, color: ["#10b981", "#ef4444", "#f59e0b", "#64748b"][i] })),
+              items: ETATS_TECHNIQUES.map((e, i) => ({ label: etatLabel(e), value: list.sorted.filter((m) => m.etatTechnique === e.value).length, color: ["#10b981", "#ef4444", "#f59e0b", "#3b82f6", "#eab308", "#64748b"][i] })),
             },
             {
               title: t("machines.availability"),

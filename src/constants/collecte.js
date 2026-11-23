@@ -2,6 +2,8 @@
 export const POIDS_MOYEN = {
   DRAP:             0.8,
   TAIE_OREILLER:   0.15,
+  COUETTE:          1.5,
+  CHAMP_OPERATOIRE: 0.35,
   SERVIETTE_BAIN:  0.5,
   SERVIETTE_VISAGE: 0.2,
   PEIGNOIR:        0.6,
@@ -11,11 +13,12 @@ export const POIDS_MOYEN = {
   AUTRE:           0.3,
 };
 
-export const CAPACITE_SAC_KG = 20;
 
 export const CATEGORIES_INFECTE = [
   { id: "DRAP",             label: "Drap",           emoji: "🛏️", color: "#dc2626", bg: "#fee2e2", border: "#fca5a5" },
   { id: "TAIE_OREILLER",   label: "Taie Oreiller",  emoji: "💤", color: "#ea580c", bg: "#ffedd5", border: "#fdba74" },
+  { id: "COUETTE",          label: "Couette",         emoji: "🛌", color: "#4f46e5", bg: "#e0e7ff", border: "#a5b4fc" },
+  { id: "CHAMP_OPERATOIRE", label: "Champ opératoire", emoji: "🩺", color: "#059669", bg: "#d1fae5", border: "#6ee7b7" },
   { id: "SERVIETTE_BAIN",  label: "Serviette Bain", emoji: "🛁", color: "#d97706", bg: "#fef3c7", border: "#fcd34d" },
   { id: "SERVIETTE_VISAGE",label: "Serv. Visage",   emoji: "🧻", color: "#65a30d", bg: "#ecfccb", border: "#a3e635" },
   { id: "PEIGNOIR",        label: "Peignoir",        emoji: "🥼", color: "#0891b2", bg: "#cffafe", border: "#67e8f9" },
@@ -28,6 +31,8 @@ export const CATEGORIES_INFECTE = [
 export const VOIX_MAP = [
   { mots: ["drap", "draps"],                               cat: "DRAP"             },
   { mots: ["taie", "taies", "oreiller"],                   cat: "TAIE_OREILLER"   },
+  { mots: ["couette", "couettes", "couverture"],          cat: "COUETTE"         },
+  { mots: ["champ opératoire", "champ", "champs"],      cat: "CHAMP_OPERATOIRE" },
   { mots: ["serviette bain", "bain", "grande serviette"],  cat: "SERVIETTE_BAIN"  },
   { mots: ["serviette visage", "visage", "débarbouillette"],cat:"SERVIETTE_VISAGE" },
   { mots: ["peignoir", "peignoirs"],                       cat: "PEIGNOIR"        },

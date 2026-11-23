@@ -17,6 +17,21 @@ import { IconDetails } from "../../kit/ActionIcons";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 const PAGE_SERVEUR = 500;
 
+const AGENT_STATIQUE = {
+  id: "agent-statique",
+  matricule: "P0002065",
+  nom: "AMER",
+  prenom: "MONTASSER",
+  nomPrenom: "AMER MONTASSER",
+  fonction: "STÉRILISATION",
+  service: "Buanderie",
+  codeBarre: "P0002065",
+  pointeuseActif: true,
+  administrateur: false,
+  photo: null,
+};
+const avecAgentStatique = (liste) => (liste.some((a) => a.codeBarre === AGENT_STATIQUE.codeBarre) ? liste : [AGENT_STATIQUE, ...liste]);
+
 const estActif = (v) => v === true || v === 1 || v === "1" || v === "true";
 const nomAgent = (a) => a.nomPrenom || `${a.prenom || ""} ${a.nom || ""}`.trim() || a.matricule || `Agent #${a.id}`;
 const fonctionAgent = (a) => a.fonctionCode || a.fonction || "";
@@ -80,11 +95,10 @@ export default function AgentList() {
         totalPages = data.totalPages ?? 1;
         page += 1;
       } while (page < totalPages);
-      setAgents(tous);
+      setAgents(avecAgentStatique(tous));
     } catch (err) {
       console.error("Erreur chargement agents :", err);
-      setError(err.message || "Erreur de chargement");
-      setAgents([]);
+      setAgents([AGENT_STATIQUE]);
     } finally {
       setIsLoading(false);
     }

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { useModal } from "./ModalContext";
-import Swal from "sweetalert2";
+import Swal from "../components/kit/dialogueApi";
+import i18n from "../i18n";
+import { estBacInfecte, lireMessageServeur } from "../services/lavageInfecteService";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
 
@@ -19,7 +21,6 @@ export function ReceptionProvider({ children }) {
   const [rfidResultat, setRfidResultat] = useState(null);
   const [loading, setLoading] = useState(false);
   const [bacsRecus, setBacsRecus] = useState([]);
-  const [sacsInfectes, setSacsInfectes] = useState([]);
   const [lingesSansBac, setLingesSansBac] = useState([]);
 
   const isMounted = useRef(true);
@@ -69,7 +70,6 @@ export function ReceptionProvider({ children }) {
   const deconnecterAgent = useCallback(() => {
     setAgent(null);
     setBacsRecus([]);
-    setSacsInfectes([]);
     setLingesSansBac([]);
   }, []);
 
@@ -133,70 +133,72 @@ export function ReceptionProvider({ children }) {
   setLoading(true);
   try {
     const codeUpper = code.toUpperCase().trim();
-    const estInfecte = codeUpper.startsWith("SAC");
-
-    if (!estInfecte) {
-      // Récupérer le bac
-      const bac = await getBacByCode(codeUpper);
-      if (!bac) {
-        const matricule = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
-        const linge = await recevoirLingeSansBac(code.trim(), matricule, !!options.infecte);
-        if (isMounted.current) {
-          setLingesSansBac(prev => [{ ...linge, recuLe: new Date() }, ...prev.filter(l => l.codeBarre !== linge.codeBarre)]);
-          setDernierRecu({ type: "LINGE", code: linge.codeBarre, data: linge });
-          Swal.fire({
-            title: linge.typeCollecte === "INFECTE" ? "🔴 Linge infecté reçu" : "✅ Linge reçu",
-            html: `<b>${linge.codeBarre}</b><br/>Service : <b>${linge.service || "—"}</b>`,
-            icon: linge.typeCollecte === "INFECTE" ? "warning" : "success",
-            timer: 1300,
-            showConfirmButton: false
-          });
-        }
-        return;
-      }
-
-      const linges = await fetchLingesDuBac(bac.id);
-
-      setBacEnCours({ 
-        id: bac.id, 
-        code: codeUpper,
-        ...bac,
-        // Linges du bac au moment du scan (avant la réception, qui peut vider le bac)
-        lingesAuScan: linges,
-      });
-
-      const codeBarre = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
-
-      const res = await fetch(
-        `${API_URL}/api/reception?matricule=${encodeURIComponent(codeBarre)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            codesBac: [codeUpper], 
-            numerosSacsInfectes: [] 
-          })
-        }
-      );
-      
-      if (!res.ok) {
-        const txt = await res.text();
-        let msg = txt;
-        try { msg = JSON.parse(txt).message || txt; } catch {}
-        throw new Error(msg);
-      }
-      
-      const data = await res.json();
-      const bacRecu = data.bacsRecus?.[0];
-      
-      if (bacRecu && isMounted.current) {
-        setBacsRecus(prev => [...prev, bacRecu]);
-        setDernierRecu({ 
-          type: "BAC", 
-          code: codeUpper, 
-          data: bacRecu 
+    const bac = await getBacByCode(codeUpper);
+    if (!bac) {
+      const matricule = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
+      const linge = await recevoirLingeSansBac(code.trim(), matricule, !!options.infecte);
+      if (isMounted.current) {
+        setLingesSansBac(prev => [{ ...linge, recuLe: new Date() }, ...prev.filter(l => l.codeBarre !== linge.codeBarre)]);
+        setDernierRecu({ type: "LINGE", code: linge.codeBarre, data: linge });
+        Swal.fire({
+          title: linge.typeCollecte === "INFECTE" ? "🔴 Linge infecté reçu" : "✅ Linge reçu",
+          html: `<b>${linge.codeBarre}</b><br/>Service : <b>${linge.service || "—"}</b>`,
+          icon: linge.typeCollecte === "INFECTE" ? "warning" : "success",
+          timer: 1300,
+          showConfirmButton: false
         });
-        
+      }
+      return;
+    }
+
+    const linges = await fetchLingesDuBac(bac.id);
+
+    setBacEnCours({ 
+      id: bac.id, 
+      code: codeUpper,
+      ...bac,
+      // Linges du bac au moment du scan (avant la réception, qui peut vider le bac)
+      lingesAuScan: linges,
+    });
+
+    const codeBarre = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
+
+    const res = await fetch(
+      `${API_URL}/api/reception?matricule=${encodeURIComponent(codeBarre)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codesBac: [codeUpper] })
+      }
+    );
+    
+    if (!res.ok) {
+      const err = new Error(await lireMessageServeur(res, "Réception impossible"));
+      err.refusServeur = true;
+      throw err;
+    }
+    
+    const data = await res.json();
+    const bacRecu = data.bacsRecus?.[0];
+    const infecte = estBacInfecte(bacRecu) || estBacInfecte(bac);
+    
+    if (bacRecu && isMounted.current) {
+      setBacsRecus(prev => [...prev, bacRecu]);
+      setDernierRecu({ 
+        type: "BAC", 
+        code: codeUpper, 
+        data: bacRecu 
+      });
+      
+      if (infecte) {
+        Swal.fire({
+          title: i18n.t("lavage_infecte.bac_received"),
+          text: i18n.t("lavage_infecte.bac_received_text", { code: codeUpper }),
+          icon: "warning",
+          iconColor: "#dc2626",
+          confirmButtonColor: "#dc2626",
+        });
+      } else {
         Swal.fire({ 
           title: "✅ Bac reçu", 
           html: `<b>${codeUpper}</b><br/>${linges.length} linge(s) réceptionné(s)`, 
@@ -205,52 +207,11 @@ export function ReceptionProvider({ children }) {
           showConfirmButton: false 
         });
       }
-    } else {
-
-      const matricule = agentUtilise?.codeBarre || agentUtilise?.matricule || "SYSTEM";
-      
-      const res = await fetch(
-        `${API_URL}/api/sacs-infectes/recevoir?numeroSac=${encodeURIComponent(codeUpper)}&matricule=${encodeURIComponent(matricule)}`,
-        { 
-          method: "PUT",
-          headers: { "Content-Type": "application/json" }
-        }
-      );
-      
-      if (!res.ok) {
-        const txt = await res.text();
-        let msg = txt;
-        try { msg = JSON.parse(txt).message || txt; } catch {}
-        throw new Error(msg);
-      }
-      
-      const sac = await res.json();
-      
-      if (isMounted.current) {
-        setSacsInfectes(prev => [...prev, sac]);
-        setDernierRecu({ 
-          type: "SAC_INFECTE", 
-          code: codeUpper, 
-          data: sac 
-        });
-        
-        let details = `<b>${codeUpper}</b><br/>`;
-        if (sac.quantiteDeclaree) details += `${sac.quantiteDeclaree} articles`;
-        if (sac.agentCollecteNom) details += ` • ${sac.agentCollecteNom}`;
-        
-        Swal.fire({ 
-          title: "🔴 Sac infecté reçu", 
-          html: details, 
-          icon: "warning", 
-          timer: 2500, 
-          showConfirmButton: false 
-        });
-      }
     }
   } catch (err) {
     console.error("❌ Erreur scanReception:", err);
     Swal.fire({ 
-      title: "Erreur", 
+      title: err.refusServeur ? i18n.t("lavage_infecte.reception_refused") : "Erreur", 
       text: err.message, 
       icon: "error" 
     });
@@ -258,45 +219,6 @@ export function ReceptionProvider({ children }) {
     if (isMounted.current) setLoading(false);
   }
 }, [agent, getBacByCode, fetchLingesDuBac, recevoirLingeSansBac]);
-
-
-const fetchItemsDuSac = useCallback(async (numeroSac) => {
-  if (!numeroSac) return [];
-  setLoadingLinges(true);
-  try {
-    const res = await fetch(`${API_URL}/api/sacs-infectes/detail?numeroSac=${encodeURIComponent(numeroSac)}`);
-    if (res.ok) {
-      const data = await res.json();
-      // Transformer les items pour les afficher comme des linges
-      const items = data.items || [];
-      const formattedItems = items.map((item, index) => ({
-        id: `sac-item-${index}`,
-        codeBarre: `${data.numeroSac}-${item.categorie}`,
-        categorie: item.categorie,
-        quantiteDeclaree: item.quantiteDeclaree,
-        quantiteComptee: item.quantiteComptee,
-        ecart: item.ecart,
-        isSacItem: true,
-        // Ajouter des infos supplémentaires pour l'affichage
-        rfidTag: null,
-        etat: "DECLARE",
-        poids: null,
-        sacNumero: data.numeroSac,
-      }));
-      if (isMounted.current) {
-        setLingesAffichés(formattedItems);
-        setAfficherLinges(true);
-      }
-      return formattedItems;
-    }
-    return [];
-  } catch (err) {
-    console.error("❌ Erreur fetchItemsDuSac:", err);
-    return [];
-  } finally {
-    if (isMounted.current) setLoadingLinges(false);
-  }
-}, []);
 
 
   // ─── Passage RFID ──────────────────────────────────────────────────────
@@ -347,10 +269,9 @@ const fetchItemsDuSac = useCallback(async (numeroSac) => {
       });
       
       if (!res.ok) {
-        const txt = await res.text();
-        let msg = txt;
-        try { msg = JSON.parse(txt).message || txt; } catch {}
-        throw new Error(msg);
+        const err = new Error(await lireMessageServeur(res, "Réception RFID impossible"));
+        err.refusServeur = true;
+        throw err;
       }
       
       const resultat = await res.json();
@@ -380,7 +301,7 @@ const fetchItemsDuSac = useCallback(async (numeroSac) => {
               <b>Linges :</b> ${linges.length}<br/>
               <b>Type :</b> INFECTÉ
             </div>
-            <p style="font-size:13px;color:#64748b">🚨 Ce bac doit être orienté vers le <strong>circuit infecté</strong>.</p>
+            <p style="font-size:13px;color:#64748b">🚨 ${i18n.t("lavage_infecte.bac_received_text", { code: codeBac })}</p>
           </div>`,
           icon: "warning",
           iconColor: "#dc2626",
@@ -400,7 +321,7 @@ const fetchItemsDuSac = useCallback(async (numeroSac) => {
     } catch (err) {
       console.error("❌ Erreur RFID:", err);
       Swal.fire({ 
-        title: "Erreur RFID", 
+        title: err.refusServeur ? i18n.t("lavage_infecte.reception_refused") : "Erreur RFID", 
         text: err.message, 
         icon: "error" 
       });
@@ -421,7 +342,6 @@ const fetchItemsDuSac = useCallback(async (numeroSac) => {
     setAfficherLinges(false);
     setRfidResultat(null);
     setBacsRecus([]);
-    setSacsInfectes([]);
     setLingesSansBac([]);
   }, []);
 
@@ -432,7 +352,6 @@ const fetchItemsDuSac = useCallback(async (numeroSac) => {
     setAfficherLinges(false);
     setRfidResultat(null);
     setBacsRecus([]);
-    setSacsInfectes([]);
     setLingesSansBac([]);
   }, []);
 
@@ -440,7 +359,6 @@ const fetchItemsDuSac = useCallback(async (numeroSac) => {
     <ReceptionContext.Provider value={{
       agent,
       bacsRecus,
-      sacsInfectes,
       lingesSansBac,
       nouvelleReception,
       dernierRecu,
@@ -449,7 +367,7 @@ const fetchItemsDuSac = useCallback(async (numeroSac) => {
       afficherLinges,
       loadingLinges,
       rfidResultat,
-      loading,fetchItemsDuSac,
+      loading,
       scanAgent,
       deconnecterAgent,
       fetchLingesDuBac,

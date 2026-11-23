@@ -1,90 +1,49 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import {
+  Area, AreaChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart,
+  ResponsiveContainer, Tooltip, XAxis, YAxis,
+} from "recharts";
+import {
+  Activity, AlertTriangle, Bell, Biohazard, CheckCircle2, ClipboardX, Droplets, Layers, PieChart as PieIcon,
+  RefreshCcw, Route, Truck, Users, Warehouse, WashingMachine,
+  ArrowUpRight, Hourglass, PackageCheck, RefreshCw, Shirt,
+} from "lucide-react";
 import { fetchLingesIncomplets } from "../../../services/analyseService";
 import { useSetting } from "../../../utils/appSettings";
 import { useCircuitInfecte } from "../../../hooks/useEstablishment";
-import { useTranslation } from "react-i18next";
-import {
-  FaSync, FaBell, FaArrowUp, FaArrowDown,
-  FaTshirt, FaTruck,
-  FaBiohazard, FaExclamationTriangle,
-  FaCheckCircle, FaClock,
-  FaWarehouse, FaUsers, FaWrench,
-  FaChartPie, FaChartBar,
-  FaLayerGroup,
-} from "react-icons/fa";
-import { Card, CardContent } from "../../ui/card";
 import { useChartTheme } from "../../../hooks/useIsDark";
-import { Badge } from "../../ui/badge";
-import { Button } from "../../ui/button";
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  PointElement,
-  LineElement
-} from 'chart.js';
-import { Pie, Bar, Doughnut } from 'react-chartjs-2';
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
-import {
-  Shirt, PackageCheck, RefreshCcw, Truck, Droplets, ClipboardX, Hourglass, Activity, ArrowUpRight,
-  GripVertical, LayoutGrid,
-} from "lucide-react";
-import { DraggableGrid } from "./components/DraggableGrid";
-import { usePersistentOrder } from "./components/usePersistentOrder";
-import "./stats-dashboard.css";
-import { Page, PageHeader, ActionBar, ActionButton, DetailAlert } from "../../kit";
-
-ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  PointElement,
-  LineElement
-);
+import { Page } from "../../kit";
+import "./stats-board.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
-const COLORS = {
-  primary: "#0d9488",
-  success: "#10b981",
-  info: "#0ea5e9",
-  warning: "#f59e0b",
-  danger: "#ef4444",
-  purple: "#8b5cf6",
+const ETATS = {
+  LIVRE: { label: "En service", color: "#0d9488" },
+  COLLECTE: { label: "Collecté", color: "#0ea5e9" },
+  RECEPTION: { label: "Réception", color: "#8b5cf6" },
+  EN_TRI: { label: "Tri", color: "#f59e0b" },
+  EN_LAVAGE: { label: "Lavage", color: "#3b82f6" },
+  LAVE: { label: "Lavé", color: "#06b6d4" },
+  EN_SECHAGE: { label: "Séchage", color: "#f97316" },
+  SECHE: { label: "Séché", color: "#84cc16" },
+  PLIE: { label: "Plié", color: "#a855f7" },
+  STOCKE: { label: "Stock", color: "#10b981" },
+  MANQUANT: { label: "Manquant", color: "#ef4444" },
+  HORS_SERVICE: { label: "Hors service", color: "#64748b" },
 };
 
-const KPI_IDS = ["actifs", "disponibles", "circuit", "collectes", "lavages", "incomplets", "finDeVie", "infection"];
-const WIDGET_IDS = ["activite", "repartitionLinges", "stock", "etatMachines", "repartMachines", "alertes", "collectes", "agents"];
-
-const CHART_COLORS = [
-  '#0d9488', '#0ea5e9', '#8b5cf6', '#ec4899', '#f59e0b',
-  '#10b981', '#ef4444', '#6366f1', '#14b8a6', '#f97316'
+const MACHINES = [
+  { key: "DISPONIBLE", color: "#10b981", label: "dashboard.available" },
+  { key: "EN_COURS", color: "#0ea5e9", label: "dashboard.in_progress" },
+  { key: "EN_MAINTENANCE", color: "#f59e0b", label: "dashboard.maintenance" },
+  { key: "HORS_SERVICE", color: "#ef4444", label: "dashboard.out_of_service" },
 ];
 
-const ETATS = {
-  LIVRE: { label: "En service", color: "#0d9488", bg: "#ccfbf1", icon: "🛏️" },
-  COLLECTE: { label: "Collecté", color: "#0ea5e9", bg: "#e0f2fe", icon: "🚚" },
-  RECEPTION: { label: "Réception", color: "#8b5cf6", bg: "#ede9fe", icon: "📥" },
-  EN_TRI: { label: "Tri", color: "#f59e0b", bg: "#fef3c7", icon: "🔀" },
-  EN_LAVAGE: { label: "Lavage", color: "#3b82f6", bg: "#dbeafe", icon: "🫧" },
-  LAVE: { label: "Lavé", color: "#06b6d4", bg: "#cffafe", icon: "💧" },
-  EN_SECHAGE: { label: "Séchage", color: "#f97316", bg: "#ffedd5", icon: "🌬️" },
-  SECHE: { label: "Séché", color: "#84cc16", bg: "#ecfccb", icon: "☀️" },
-  PLIE: { label: "Plié", color: "#a855f7", bg: "#f3e8ff", icon: "📐" },
-  STOCKE: { label: "Stock", color: "#10b981", bg: "#d1fae5", icon: "📦" },
-  MANQUANT: { label: "Manquant", color: "#ef4444", bg: "#fee2e2", icon: "❓" },
-  HORS_SERVICE: { label: "Hors service", color: "#64748b", bg: "#f1f5f9", icon: "🗑️" },
-};
+const num = (n) => (Number(n) || 0).toLocaleString("fr-FR");
+const pct = (part, total) => (total > 0 ? Math.round((part / total) * 100) : 0);
+const cleJour = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 function useDashboard() {
   const [data, setData] = useState(null);
@@ -95,26 +54,23 @@ function useDashboard() {
   const fetchData = useCallback(async () => {
     try {
       const [kpisRes, stockRes, alertesRes, machinesRes, collectesRes, incompletsRes, completRes] = await Promise.all([
-        fetch(`${API_URL}/api/dashboard/kpis`).then(r => r.ok ? r.json() : {}),
-        fetch(`${API_URL}/api/dashboard/stock`).then(r => r.ok ? r.json() : []),
-        fetch(`${API_URL}/api/dashboard/alertes`).then(r => r.ok ? r.json() : {}),
-        fetch(`${API_URL}/api/dashboard/analytique`).then(r => r.ok ? r.json() : {}),
-        fetch(`${API_URL}/api/historique/collectes`).then(r => r.ok ? r.json() : []),
+        fetch(`${API_URL}/api/dashboard/kpis`).then((r) => (r.ok ? r.json() : {})),
+        fetch(`${API_URL}/api/dashboard/stock`).then((r) => (r.ok ? r.json() : [])),
+        fetch(`${API_URL}/api/dashboard/alertes`).then((r) => (r.ok ? r.json() : {})),
+        fetch(`${API_URL}/api/dashboard/analytique`).then((r) => (r.ok ? r.json() : {})),
+        fetch(`${API_URL}/api/historique/collectes`).then((r) => (r.ok ? r.json() : [])),
         fetchLingesIncomplets({ page: 0, size: 1 }).catch(() => null),
-        fetch(`${API_URL}/api/dashboard`).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`${API_URL}/api/dashboard`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       ]);
-
-      const dist = machinesRes?.distributionEtats || {};
-
       setData({
-        kpis: kpisRes,
+        kpis: { ...(kpisRes || {}), bacsInfectesEnAttente: kpisRes?.bacsInfectesEnAttente ?? completRes?.indicateurs?.bacsInfectesEnAttente ?? completRes?.bacsInfectesEnAttente },
         incomplets: incompletsRes,
         stock: Array.isArray(stockRes) ? stockRes : [],
-        alertes: alertesRes,
+        alertes: alertesRes || {},
         machines: machinesRes?.machines || [],
         agents: machinesRes?.activiteAgents || [],
-        dist,
-        collectes: Array.isArray(collectesRes) ? collectesRes.slice(0, 5) : [],
+        dist: machinesRes?.distributionEtats || {},
+        collectes: Array.isArray(collectesRes) ? collectesRes : [],
         parcours: Array.isArray(completRes?.parcours) ? completRes.parcours : [],
         circuitInfecteActif: (completRes?.indicateurs?.circuitInfecteActif ?? completRes?.circuitInfecteActif) !== false,
       });
@@ -129,765 +85,541 @@ function useDashboard() {
 
   const refreshSeconds = Number(useSetting("refresh.statsSeconds")) || 30;
   useEffect(() => {
-    fetchData();
+    const premier = setTimeout(fetchData, 0);
     const interval = setInterval(fetchData, refreshSeconds * 1000);
-    return () => clearInterval(interval);
+    return () => { clearTimeout(premier); clearInterval(interval); };
   }, [fetchData, refreshSeconds]);
 
-  return { data, loading, error, lastUpdate, refresh: fetchData };
+  return { data, loading, error, lastUpdate, refresh: fetchData, refreshSeconds };
 }
 
-function KpiCard({ label, value, icon: Icon, color, trend, trendValue, onClick, hint }) {
-  const isUp = trend === 'up';
-  const clickable = typeof onClick === "function";
+function Tuile({ titre, icon, extra, className = "", children }) {
   return (
-    <div
-      className={`kpi-tile${clickable ? " is-clickable" : ""}`}
-      style={{ "--kpi-color": color }}
-      {...(clickable ? {
-        role: "button",
-        tabIndex: 0,
-        title: hint,
-        onClick,
-        onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } },
-      } : {})}
-    >
-      {clickable && <span className="kpi-tile__go" aria-hidden="true"><ArrowUpRight className="h-4 w-4" /></span>}
-      <div className="kpi-tile__top">
-        <span className="kpi-tile__icon"><Icon className="h-[19px] w-[19px]" strokeWidth={2} /></span>
-        <span className="kpi-tile__label">{label}</span>
-      </div>
-      <div className="kpi-tile__bottom">
-        <span className="kpi-tile__value">{value}</span>
-        {trend && (
-          <span className={`kpi-tile__trend ${isUp ? 'is-up' : 'is-down'}`}>
-            {isUp ? <FaArrowUp size={8} /> : <FaArrowDown size={8} />}
-            {trendValue}
-            <small>vs hier</small>
-          </span>
-        )}
-      </div>
+    <section className={`sb-card ${className}`}>
+      {(titre || extra) && (
+        <header className="sb-card__head">
+          {titre && <h3>{icon}{titre}</h3>}
+          {extra && <div className="sb-card__extra">{extra}</div>}
+        </header>
+      )}
+      {children}
+    </section>
+  );
+}
+
+function Vide({ icon, texte }) {
+  return <div className="sb-empty">{icon}<span>{texte}</span></div>;
+}
+
+function InfoBulle({ active, payload, label, unite }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="sb-tip">
+      {label && <strong>{label}</strong>}
+      {payload.map((p) => (
+        <span key={p.dataKey}><i style={{ background: p.color || p.stroke }} />{p.name} : <b>{num(p.value)}</b>{unite ? ` ${unite}` : ""}</span>
+      ))}
     </div>
   );
 }
 
-const texteDont = (valeur, t) => {
-  if (valeur == null || valeur === '' || valeur === 0) return null;
-  if (typeof valeur === 'number') return t('dashboard.from_disabled_steps', 'dont {{n}} venant d\'étapes désactivées', { n: valeur });
-  if (Array.isArray(valeur)) return valeur.join(', ');
-  if (typeof valeur === 'object') return Object.entries(valeur).map(([k, v]) => `${k} : ${v}`).join(', ');
-  return String(valeur);
-};
-
-function ParcoursWidget({ parcours }) {
-  const { t } = useTranslation();
-  const max = Math.max(1, ...parcours.map((e) => e.nbLinges || 0));
+function Anneau({ valeur, couleur, taille = 64 }) {
+  const r = taille / 2 - 6;
+  const c = 2 * Math.PI * r;
+  const v = Math.max(0, Math.min(100, valeur || 0));
   return (
-    <Card className="border-slate-100 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-teal-500 flex items-center justify-center text-white">
-            <FaLayerGroup size={12} />
-          </div>
-          <h3 className="text-xs font-bold text-slate-700">{t('dashboard.linens_by_step', 'Linges par étape')}</h3>
-          <Badge className="ml-auto bg-teal-50 text-teal-700 text-[9px] px-2 py-0.5">{parcours.length}</Badge>
-        </div>
-        <div className="kit-parcours">
-          {parcours.map((e, i) => {
-            const dont = texteDont(e.dontEtapesDesactivees, t);
-            return (
-              <div key={e.code || i} className="kit-parcours__row" title={dont || undefined}>
-                <span className="kit-parcours__n">{e.ordre ?? i + 1}</span>
-                <div className="kit-parcours__main">
-                  <span className="kit-parcours__name">
-                    {e.nom || e.code}
-                    {dont && <span className="kit-parcours__info" aria-label={dont}><FaExclamationTriangle size={10} /></span>}
-                  </span>
-                  <div className="kit-parcours__bar"><span style={{ width: `${((e.nbLinges || 0) / max) * 100}%` }} /></div>
-                </div>
-                <span className="kit-parcours__val">{(e.nbLinges || 0).toLocaleString('fr-FR')}</span>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+    <svg className="sb-ring" width={taille} height={taille} viewBox={`0 0 ${taille} ${taille}`} aria-hidden="true">
+      <circle cx={taille / 2} cy={taille / 2} r={r} className="sb-ring__track" />
+      <circle
+        cx={taille / 2}
+        cy={taille / 2}
+        r={r}
+        className="sb-ring__value"
+        style={{ stroke: couleur }}
+        strokeDasharray={c}
+        strokeDashoffset={c - (c * v) / 100}
+      />
+      <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle">{v}%</text>
+    </svg>
   );
 }
 
-function PieChartComponent({ data, title, labels }) {
+function CarteFlux({ parcours, dist }) {
+  const { t } = useTranslation();
   const ct = useChartTheme();
-  const chartData = {
-    labels: labels || [],
-    datasets: [
-      {
-        data: data || [],
-        backgroundColor: CHART_COLORS.slice(0, 5),
-        borderColor: ct.segmentBorder,
-        borderWidth: 2,
-      },
-    ],
-  };
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          padding: 8,
-          usePointStyle: true,
-          pointStyle: 'circle',
-          font: { size: 9, weight: '500' },
-          color: ct.legend
-        }
-      }
-    },
-    cutout: '65%',
-  };
+  const points = parcours.length
+    ? [...parcours].sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0)).map((e) => ({ nom: e.nom || e.code, valeur: e.nbLinges || 0 }))
+    : Object.entries(dist).map(([k, v]) => ({ nom: ETATS[k]?.label || k, valeur: v || 0 }));
+  const top = [...points].sort((a, b) => b.valeur - a.valeur).slice(0, 5);
+  const total = points.reduce((s, p) => s + p.valeur, 0);
 
   return (
-    <Card className="border-slate-100 h-full shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-400 to-teal-500 flex items-center justify-center text-white">
-            <FaChartPie size={11} />
+    <Tuile
+      className="sb-span-7"
+      titre={t("stats_board.flow_title", "Parcours du linge")}
+      icon={<Route size={15} />}
+      extra={<span className="sb-pill">{num(total)} {t("dashboard.linens")}</span>}
+    >
+      {points.length === 0 ? (
+        <Vide icon={<Route size={22} />} texte={t("common.no_data", "Aucune donnée")} />
+      ) : (
+        <div className="sb-flux">
+          <div className="sb-flux__chart">
+            <ResponsiveContainer width="100%" height={210}>
+              <AreaChart data={points} margin={{ top: 10, right: 8, left: -18, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="sbFlux" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#0794a4" stopOpacity={0.32} />
+                    <stop offset="100%" stopColor="#0794a4" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={ct.grid} vertical={false} />
+                <XAxis dataKey="nom" tick={{ fontSize: 10, fill: ct.ticks }} axisLine={false} tickLine={false} interval={0} angle={-20} dy={8} height={42} />
+                <YAxis tick={{ fontSize: 10, fill: ct.ticks }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<InfoBulle />} cursor={{ stroke: "#0794a4", strokeDasharray: "4 4" }} />
+                <Area type="monotone" dataKey="valeur" name={t("dashboard.linens")} stroke="#0794a4" strokeWidth={2.5} fill="url(#sbFlux)" dot={{ r: 3.5, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 5 }} />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-          <h3 className="text-xs font-bold text-slate-700">{title || 'Répartition'}</h3>
-        </div>
-        <div className="h-[180px]">
-          <Pie data={chartData} options={options} />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function BarChartComponent({ data, title, labels }) {
-  const ct = useChartTheme();
-  const chartData = {
-    labels: labels || ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
-    datasets: [
-      {
-        label: 'Activité',
-        data: data || [12, 19, 15, 22, 18, 14, 8],
-        backgroundColor: CHART_COLORS.slice(0, 7),
-        borderRadius: 4,
-        borderSkipped: false,
-      },
-    ],
-  };
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false,
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: {
-          color: ct.grid,
-          drawBorder: false,
-        },
-        ticks: {
-          font: { size: 8 },
-          color: ct.ticks,
-        }
-      },
-      x: {
-        grid: {
-          display: false,
-        },
-        ticks: {
-          font: { size: 8 },
-          color: ct.ticks,
-        }
-      }
-    },
-  };
-
-  return (
-    <Card className="border-slate-100 h-full shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center text-white">
-            <FaChartBar size={11} />
-          </div>
-          <h3 className="text-xs font-bold text-slate-700">{title || 'Activité quotidienne'}</h3>
-        </div>
-        <div className="h-[180px]">
-          <Bar data={chartData} options={options} />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function StockServices({ services }) {
-  const { t } = useTranslation();
-
-  if (!services || services.length === 0) {
-    return (
-      <Card className="border-slate-100 shadow-sm">
-        <CardContent className="p-6 text-center">
-          <FaWarehouse className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">{t('dashboard.no_stock_data')}</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="border-slate-100 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-teal-500 flex items-center justify-center text-white">
-            <FaWarehouse size={12} />
-          </div>
-          <h3 className="text-xs font-bold text-slate-700">{t('dashboard.stock_by_service')}</h3>
-          <Badge className="ml-auto bg-teal-50 text-teal-700 text-[9px] px-2 py-0.5">
-            {services.length}
-          </Badge>
-        </div>
-
-        <div className="space-y-2 max-h-[220px] overflow-y-auto">
-          {services.map((s, i) => {
-            const total = s.nbTotal || 1;
-            const enPlace = s.nbLivre || 0;
-            const enCircuit = s.nbEnCircuit || 0;
-            const stocke = s.nbStocke || 0;
-
-            return (
-              <div key={i} className="p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-semibold text-slate-700">{s.serviceCode || "N/A"}</span>
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="text-teal-600 font-medium">{enPlace}</span>
-                    <span className="text-slate-300">/</span>
-                    <span className="text-slate-500">{total}</span>
-                  </div>
-                </div>
-                <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                  <div className="h-full bg-teal-500 rounded-full" style={{ width: `${(enPlace / total) * 100}%` }} />
-                </div>
-                <div className="flex gap-4 mt-1.5 text-[10px] text-slate-400">
-                  <span>📦 {enPlace} {t('dashboard.in_place')}</span>
-                  <span>🔄 {enCircuit} {t('dashboard.in_circuit')}</span>
-                  <span title={t('dashboard.available_hint', 'Inclut le linge plié ou séché quand le stockage ou le pliage est désactivé')}>📥 {stocke} {t('dashboard.available_short', 'Disponibles')}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function EtatMachines({ machines }) {
-  const { t } = useTranslation();
-
-  if (!machines || machines.length === 0) {
-    return (
-      <Card className="border-slate-100 shadow-sm">
-        <CardContent className="p-4 text-center py-6">
-          <FaWrench className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-sm text-slate-500">{t('dashboard.no_machines')}</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const stats = {
-    DISPONIBLE: machines.filter(m => m.etat === "DISPONIBLE").length,
-    EN_COURS: machines.filter(m => m.etat === "EN_COURS").length,
-    EN_MAINTENANCE: machines.filter(m => m.etat === "EN_MAINTENANCE").length,
-    HORS_SERVICE: machines.filter(m => m.etat === "HORS_SERVICE").length,
-  };
-
-  const total = machines.length;
-
-  const etatConfig = {
-    DISPONIBLE: { color: "emerald", bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", label: t('dashboard.available'), icon: "🟢", barColor: "#10b981" },
-    EN_COURS: { color: "blue", bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500", label: t('dashboard.in_progress'), icon: "🔵", barColor: "#3b82f6" },
-    EN_MAINTENANCE: { color: "amber", bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500", label: t('dashboard.maintenance'), icon: "🟡", barColor: "#f59e0b" },
-    HORS_SERVICE: { color: "red", bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500", label: t('dashboard.out_of_service'), icon: "🔴", barColor: "#ef4444" },
-  };
-
-  const typeIcon = {
-    LAVEUR: '🫧',
-    SECHEUR: '🌬️',
-    LAVEUR_SECHEUR: '🔁'
-  };
-
-  return (
-    <Card className="border-slate-100 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center text-white">
-            <FaWrench size={12} />
-          </div>
-          <h3 className="text-xs font-bold text-slate-700">{t('dashboard.machine_status')}</h3>
-          <Badge className="ml-auto bg-amber-50 text-amber-700 text-[9px] px-2 py-0.5">
-            {total} {t('dashboard.machines')}
-          </Badge>
-        </div>
-
-        <div className="space-y-2 mb-4">
-          {Object.entries(etatConfig).map(([key, config]) => {
-            const count = stats[key] || 0;
-            const pct = total > 0 ? (count / total) * 100 : 0;
-            if (count === 0) return null;
-
-            return (
-              <div key={key}>
-                <div className="flex justify-between items-center text-xs mb-0.5">
-                  <span className="flex items-center gap-1.5">
-                    <span className="text-sm">{config.icon}</span>
-                    <span className="font-medium text-slate-600">{config.label}</span>
-                  </span>
-                  <span className="font-bold text-slate-700">{count}</span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <div 
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ 
-                      width: `${Math.min(pct, 100)}%`,
-                      backgroundColor: config.barColor
-                    }} 
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          {machines.slice(0, 4).map((m, i) => {
-            const e = etatConfig[m.etat] || { bg: "bg-slate-50", text: "text-slate-600", dot: "bg-slate-400", label: m.etat || "Inconnu", icon: "⚪" };
-            const icon = typeIcon[m.type] || '⚙️';
-            
-            return (
-              <div key={i} className={`p-2.5 rounded-lg ${e.bg} border border-slate-100`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-base">{icon}</span>
-                    <span className="text-sm font-mono font-semibold text-slate-700">{m.code || "N/A"}</span>
-                  </div>
-                  <span className={`text-[9px] font-medium ${e.text} flex items-center gap-1`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${e.dot}`} />
-                    {e.label}
-                  </span>
-                </div>
-                <div className="flex gap-4 mt-1 text-[10px] text-slate-500">
-                  <span>🔄 {m.cyclesAujourdhui || 0} {t('dashboard.cycles')}</span>
-                  <span>⚖️ {m.poidsTraiteAujourdhui || 0} kg</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {machines.length > 4 && (
-          <p className="text-[10px] text-slate-400 text-center mt-2.5">
-            + {machines.length - 4} {t('dashboard.other_machines')}
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function RepartitionMachines({ machines }) {
-  const ct = useChartTheme();
-  const { t } = useTranslation();
-
-  if (!machines || machines.length === 0) {
-    return (
-      <Card className="border-slate-100 shadow-sm">
-        <CardContent className="p-4 text-center py-6">
-          <FaLayerGroup className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-sm text-slate-500">{t('dashboard.no_machines')}</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const stats = {
-    DISPONIBLE: machines.filter(m => m.etat === "DISPONIBLE").length,
-    EN_COURS: machines.filter(m => m.etat === "EN_COURS").length,
-    EN_MAINTENANCE: machines.filter(m => m.etat === "EN_MAINTENANCE").length,
-    HORS_SERVICE: machines.filter(m => m.etat === "HORS_SERVICE").length,
-  };
-
-  const total = machines.length;
-
-  const chartData = {
-    labels: [t('dashboard.available'), t('dashboard.in_progress'), t('dashboard.maintenance'), t('dashboard.out_of_service')],
-    datasets: [
-      {
-        data: [stats.DISPONIBLE, stats.EN_COURS, stats.EN_MAINTENANCE, stats.HORS_SERVICE],
-        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
-        borderColor: ct.segmentBorder,
-        borderWidth: 2,
-      },
-    ],
-  };
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          padding: 8,
-          usePointStyle: true,
-          pointStyle: 'circle',
-          font: { size: 9, weight: '500' },
-          color: ct.legend
-        }
-      }
-    },
-    cutout: '65%',
-  };
-
-  const etatList = [
-    { key: 'DISPONIBLE', label: t('dashboard.available'), icon: '🟢', count: stats.DISPONIBLE, color: '#10b981', bg: 'bg-emerald-50' },
-    { key: 'EN_COURS', label: t('dashboard.in_progress'), icon: '🔵', count: stats.EN_COURS, color: '#3b82f6', bg: 'bg-blue-50' },
-    { key: 'EN_MAINTENANCE', label: t('dashboard.maintenance'), icon: '🟡', count: stats.EN_MAINTENANCE, color: '#f59e0b', bg: 'bg-amber-50' },
-    { key: 'HORS_SERVICE', label: t('dashboard.out_of_service'), icon: '🔴', count: stats.HORS_SERVICE, color: '#ef4444', bg: 'bg-red-50' },
-  ];
-
-  return (
-    <Card className="border-slate-100 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-400 to-purple-500 flex items-center justify-center text-white">
-            <FaLayerGroup size={12} />
-          </div>
-          <h3 className="text-xs font-bold text-slate-700">{t('dashboard.machine_distribution')}</h3>
-          <Badge className="ml-auto bg-purple-50 text-purple-700 text-[9px] px-2 py-0.5">
-            {total} {t('dashboard.machines')}
-          </Badge>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3">
-          <div className="h-[200px]">
-            <Doughnut data={chartData} options={options} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {etatList.map((item) => (
-              <div 
-                key={item.key}
-                className={`p-2.5 rounded-lg ${item.bg} border border-slate-100`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-base">{item.icon}</span>
-                    <span className="text-xs font-medium text-slate-600">{item.label}</span>
-                  </div>
-                  <span className="text-sm font-bold" style={{ color: item.color }}>
-                    {item.count}
-                  </span>
-                </div>
-              </div>
+          <ul className="sb-flux__top">
+            <li className="sb-flux__label">{t("stats_board.top_steps", "Étapes les plus chargées")}</li>
+            {top.map((p) => (
+              <li key={p.nom}>
+                <span>{p.nom}</span>
+                <b>{num(p.valeur)}</b>
+                <small>{pct(p.valeur, total)}%</small>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </Tuile>
   );
 }
 
-function AlertesWidget({ alertes, circuitInfecte = true }) {
-  const { t } = useTranslation();
+function CarteJour({ kpis, lastUpdate, loading, refreshSeconds, onRefresh, refreshing }) {
+  const { t, i18n } = useTranslation();
+  const maintenant = lastUpdate || new Date();
+  const lundi = new Date(maintenant);
+  lundi.setDate(maintenant.getDate() - ((maintenant.getDay() + 6) % 7));
+  const semaine = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(lundi);
+    d.setDate(lundi.getDate() + i);
+    return d;
+  });
+  const langue = i18n.language || "fr";
 
-  const all = [
+  return (
+    <Tuile className="sb-span-5 sb-today">
+      <div className="sb-today__top">
+        <div>
+          <span className="sb-today__month">{maintenant.toLocaleDateString(langue, { month: "long", year: "numeric" })}</span>
+          <strong className="sb-today__day">{maintenant.toLocaleDateString(langue, { weekday: "long", day: "numeric" })}</strong>
+        </div>
+        <button type="button" className="sb-icon-btn" onClick={onRefresh} disabled={refreshing} aria-label={t("dashboard.refresh")} title={t("dashboard.refresh")}>
+          <RefreshCcw size={16} className={refreshing ? "animate-spin" : ""} />
+        </button>
+      </div>
+      <ol className="sb-week">
+        {semaine.map((d) => {
+          const aujourdHui = cleJour(d) === cleJour(maintenant);
+          return (
+            <li key={cleJour(d)} className={aujourdHui ? "is-today" : ""}>
+              <small>{d.toLocaleDateString(langue, { weekday: "short" })}</small>
+              <b>{d.getDate()}</b>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="sb-today__figures">
+        <div>
+          <span className="sb-today__icon is-violet"><Truck size={16} /></span>
+          <small>{t("dashboard.collections_today")}</small>
+          <strong>{num(kpis.collectesAujourdhui)}</strong>
+        </div>
+        <div>
+          <span className="sb-today__icon is-blue"><Droplets size={16} /></span>
+          <small>{t("dashboard.washes_today")}</small>
+          <strong>{num(kpis.lavagesAujourdhui)}</strong>
+        </div>
+      </div>
+      <footer className="sb-today__foot">
+        <span className={`sb-live ${loading ? "" : "is-on"}`}><i />{t("dashboard.auto_update")} · {refreshSeconds}s</span>
+        <small>{lastUpdate ? `${t("dashboard.last_update")} ${lastUpdate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : t("dashboard.waiting_for_data")}</small>
+      </footer>
+    </Tuile>
+  );
+}
+
+function CarteCollectes({ collectes, circuitInfecte, reference }) {
+  const { t, i18n } = useTranslation();
+  const jours = useMemo(() => {
+    const base = reference || new Date();
+    const liste = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() - (6 - i));
+      return { cle: cleJour(d), nom: d.toLocaleDateString(i18n.language || "fr", { weekday: "short", day: "numeric" }), blancs: 0, infectes: 0, nb: 0 };
+    });
+    const index = new Map(liste.map((j) => [j.cle, j]));
+    collectes.forEach((c) => {
+      if (!c.dateCollecte) return;
+      const j = index.get(cleJour(new Date(c.dateCollecte)));
+      if (!j) return;
+      j.blancs += (c.nbBlancs || 0) + (c.nbPropres || 0);
+      j.infectes += c.nbInfectes || 0;
+      j.nb += 1;
+    });
+    return liste;
+  }, [collectes, reference, i18n.language]);
+
+  const totalBlancs = jours.reduce((s, j) => s + j.blancs, 0);
+  const totalInfectes = jours.reduce((s, j) => s + j.infectes, 0);
+  const totalCollectes = jours.reduce((s, j) => s + j.nb, 0);
+
+  return (
+    <Tuile
+      className="sb-span-7 sb-hero"
+      titre={t("stats_board.collections_week", "Collectes — 7 derniers jours")}
+      icon={<Truck size={15} />}
+      extra={<span className="sb-pill is-glass">{num(totalCollectes)} {t("stats_board.collections", "collectes")}</span>}
+    >
+      <div className="sb-hero__tags">
+        <span className="sb-hero__tag"><i className="is-white" />{t("stats_board.white_linen", "Linge blanc")} <b>{num(totalBlancs)}</b></span>
+        {circuitInfecte && <span className="sb-hero__tag is-red"><i className="is-red" />{t("stats_board.infected_linen", "Linge infecté")} <b>{num(totalInfectes)}</b></span>}
+      </div>
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart data={jours} margin={{ top: 12, right: 12, left: -18, bottom: 0 }}>
+          <CartesianGrid stroke="rgba(255,255,255,.14)" vertical={false} />
+          <XAxis dataKey="nom" tick={{ fontSize: 10, fill: "rgba(255,255,255,.75)" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: "rgba(255,255,255,.6)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip content={<InfoBulle />} cursor={{ stroke: "rgba(255,255,255,.4)" }} />
+          <Line className="sb-glow" type="monotone" dataKey="blancs" name={t("stats_board.white_linen", "Linge blanc")} stroke="#ffffff" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: "#fff", stroke: "rgba(255,255,255,.4)", strokeWidth: 8 }} />
+          {circuitInfecte && (
+            <Line className="sb-glow is-red" type="monotone" dataKey="infectes" name={t("stats_board.infected_linen", "Linge infecté")} stroke="#fb7185" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: "#fb7185", stroke: "rgba(251,113,133,.35)", strokeWidth: 8 }} />
+          )}
+        </LineChart>
+      </ResponsiveContainer>
+    </Tuile>
+  );
+}
+
+function CarteIndicateurs({ kpis, circuitInfecte, masques }) {
+  const { t } = useTranslation();
+  const total = Number(kpis.totalLinges) || Number(kpis.lingesActifs) || 0;
+  const items = [
+    { id: "disponibles", label: t("dashboard.available_linens"), valeur: kpis.lingesDisponibles, p: pct(kpis.lingesDisponibles, total), color: "#10b981" },
+    { id: "circuit", label: t("dashboard.in_circuit"), valeur: kpis.lingesEnCircuit, p: pct(kpis.lingesEnCircuit, total), color: "#0ea5e9" },
+    { id: "actifs", label: t("dashboard.active_linens"), valeur: kpis.lingesActifs, p: pct(kpis.lingesActifs, total), color: "#0794a4" },
+    { id: "finDeVie", label: t("dashboard.end_of_life"), valeur: kpis.lingesProcheFin, p: pct(kpis.lingesProcheFin, total), color: "#ef4444" },
+    ...(circuitInfecte ? [{ id: "infection", label: t("dashboard.infection_rate"), valeur: null, p: Math.round(Number(kpis.tauxInfectionMois) || 0), color: "#f59e0b" }] : []),
+  ].filter((k) => !masques.includes(k.id)).slice(0, 4);
+
+  return (
+    <Tuile className="sb-span-5" titre={t("stats_board.indicators", "Indicateurs du parc")} icon={<Activity size={15} />} extra={<span className="sb-pill">{num(total)} {t("dashboard.linens")}</span>}>
+      <div className="sb-kpis">
+        {items.map((k) => (
+          <div key={k.id} className="sb-kpi">
+            <Anneau valeur={k.p} couleur={k.color} />
+            <div>
+              <strong>{k.valeur != null ? num(k.valeur) : `${k.p}%`}</strong>
+              <small>{k.label}</small>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Tuile>
+  );
+}
+
+function CarteMachines({ machines, taux }) {
+  const { t } = useTranslation();
+  const total = machines.length;
+  const compte = Object.fromEntries(MACHINES.map((m) => [m.key, machines.filter((x) => x.etat === m.key).length]));
+  const occupation = taux != null ? Math.round(Number(taux) || 0) : pct(compte.EN_COURS, total);
+  const cycles = machines.reduce((s, m) => s + (m.cyclesAujourdhui || 0), 0);
+  const poids = machines.reduce((s, m) => s + (Number(m.poidsTraiteAujourdhui) || 0), 0);
+  const r = 62;
+  const c = 2 * Math.PI * r;
+
+  return (
+    <Tuile className="sb-span-4 sb-machines" titre={t("dashboard.machine_status")} icon={<WashingMachine size={15} />} extra={<span className="sb-pill is-glass">{total} {t("dashboard.machines")}</span>}>
+      {total === 0 ? (
+        <Vide icon={<WashingMachine size={22} />} texte={t("dashboard.no_machines")} />
+      ) : (
+        <>
+          <div className="sb-machines__gauge">
+            <svg viewBox="0 0 160 160" aria-hidden="true">
+              <defs>
+                <linearGradient id="sbGauge" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#5eead4" />
+                  <stop offset="100%" stopColor="#ffffff" />
+                </linearGradient>
+              </defs>
+              <circle cx="80" cy="80" r={r} className="sb-gauge__track" />
+              <circle cx="80" cy="80" r={r} className="sb-gauge__value" strokeDasharray={c} strokeDashoffset={c - (c * occupation) / 100} />
+            </svg>
+            <div className="sb-machines__center">
+              <strong>{occupation}%</strong>
+              <small>{t("stats_board.occupancy", "Occupation")}</small>
+            </div>
+          </div>
+          <ul className="sb-machines__states">
+            {MACHINES.map((m) => (
+              <li key={m.key}><i style={{ background: m.color }} />{t(m.label)}<b>{compte[m.key]}</b></li>
+            ))}
+          </ul>
+          <div className="sb-machines__today">
+            <span><b>{num(cycles)}</b> {t("dashboard.cycles")}</span>
+            <span><b>{num(Math.round(poids))}</b> kg</span>
+          </div>
+        </>
+      )}
+    </Tuile>
+  );
+}
+
+function CarteEtats({ dist }) {
+  const { t } = useTranslation();
+  const lignes = Object.entries(dist)
+    .map(([k, v]) => ({ cle: k, nom: ETATS[k]?.label || k, valeur: Number(v) || 0, color: ETATS[k]?.color || "#94a3b8" }))
+    .filter((l) => l.valeur > 0)
+    .sort((a, b) => b.valeur - a.valeur);
+  const total = lignes.reduce((s, l) => s + l.valeur, 0);
+
+  return (
+    <Tuile className="sb-span-4" titre={t("dashboard.linen_distribution")} icon={<PieIcon size={15} />}>
+      {lignes.length === 0 ? (
+        <Vide icon={<PieIcon size={22} />} texte={t("common.no_data", "Aucune donnée")} />
+      ) : (
+        <div className="sb-donut">
+          <div className="sb-donut__chart">
+            <ResponsiveContainer width="100%" height={170}>
+              <PieChart>
+                <Pie data={lignes} dataKey="valeur" nameKey="nom" innerRadius={52} outerRadius={78} paddingAngle={2} stroke="none">
+                  {lignes.map((l) => <Cell key={l.cle} fill={l.color} />)}
+                </Pie>
+                <Tooltip content={<InfoBulle />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="sb-donut__center"><strong>{num(total)}</strong><small>{t("dashboard.linens")}</small></div>
+          </div>
+          <ul className="sb-legend">
+            {lignes.slice(0, 6).map((l) => (
+              <li key={l.cle}>
+                <span className="sb-legend__pct" style={{ background: l.color }}>{pct(l.valeur, total)}%</span>
+                <span className="sb-legend__name">{l.nom}</span>
+                <b>{num(l.valeur)}</b>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Tuile>
+  );
+}
+
+function CarteStock({ services }) {
+  const { t } = useTranslation();
+  const lignes = [...services].sort((a, b) => (b.nbTotal || 0) - (a.nbTotal || 0)).slice(0, 10);
+
+  return (
+    <Tuile
+      className="sb-span-8"
+      titre={t("dashboard.stock_by_service")}
+      icon={<Warehouse size={15} />}
+      extra={(
+        <div className="sb-keys">
+          <span><i className="is-teal" />{t("dashboard.in_place")}</span>
+          <span><i className="is-amber" />{t("dashboard.in_circuit")}</span>
+          <span><i className="is-green" />{t("dashboard.available_short", "Disponibles")}</span>
+        </div>
+      )}
+    >
+      {lignes.length === 0 ? (
+        <Vide icon={<Warehouse size={22} />} texte={t("dashboard.no_stock_data")} />
+      ) : (
+        <div className="sb-columns">
+          {lignes.map((s, i) => {
+            const total = s.nbTotal || 0;
+            const h = (v) => `${total > 0 ? Math.max(4, (v / total) * 100) : 0}%`;
+            return (
+              <div key={s.serviceCode || i} className="sb-col" title={`${s.serviceCode} · ${num(total)}`}>
+                <div className="sb-col__bars">
+                  <span className="sb-capsule is-teal"><i style={{ height: h(s.nbLivre || 0) }} /></span>
+                  <span className="sb-capsule is-amber"><i style={{ height: h(s.nbEnCircuit || 0) }} /></span>
+                  <span className="sb-capsule is-green"><i style={{ height: h(s.nbStocke || 0) }} /></span>
+                </div>
+                <b>{num(total)}</b>
+                <small>{s.serviceCode || "—"}</small>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Tuile>
+  );
+}
+
+function CarteAlertes({ alertes }) {
+  const { t } = useTranslation();
+  const toutes = [
     ...(alertes?.stockCritique || []),
-    ...(circuitInfecte ? alertes?.sacsEnAttente || [] : []),
     ...(alertes?.lingesBloqués || []).slice(0, 3),
     ...(alertes?.finDeVie || []).slice(0, 3),
   ];
-
   return (
-    <Card className="border-slate-100 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center text-white">
-            <FaBell size={12} />
-          </div>
-          <h3 className="text-xs font-bold text-slate-700">{t('dashboard.alerts')}</h3>
-          {all.length > 0 && (
-            <Badge className="ml-auto bg-red-100 text-red-700 text-[9px] px-2 py-0.5">
-              {all.length}
-            </Badge>
-          )}
+    <Tuile
+      className="sb-span-4"
+      titre={t("dashboard.alerts")}
+      icon={<Bell size={15} />}
+      extra={toutes.length > 0 ? <span className="sb-pill is-danger">{toutes.length}</span> : null}
+    >
+      {toutes.length === 0 ? (
+        <div className="sb-ok">
+          <CheckCircle2 size={28} />
+          <strong>{t("dashboard.all_under_control")}</strong>
+          <small>{t("dashboard.no_alerts")}</small>
         </div>
+      ) : (
+        <ul className="sb-alerts">
+          {toutes.slice(0, 5).map((a, i) => (
+            <li key={i} className={a.niveau === "CRITICAL" ? "is-critical" : ""}>
+              <AlertTriangle size={14} />
+              <div>
+                <strong>{a.message || t("dashboard.alert")}</strong>
+                {a.detail && <small>{a.detail}</small>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Tuile>
+  );
+}
 
-        {all.length === 0 ? (
-          <div className="text-center py-6">
-            <FaCheckCircle className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-            <p className="text-sm font-medium text-slate-600">{t('dashboard.all_under_control')}</p>
-            <p className="text-xs text-slate-400">{t('dashboard.no_alerts')}</p>
-          </div>
+function KpiCarte({ label, valeur, icon, couleur, part, detail, onClick }) {
+  const cliquable = typeof onClick === "function";
+  const Balise = cliquable ? "button" : "div";
+  return (
+    <Balise
+      type={cliquable ? "button" : undefined}
+      className={`sb-kpicard ${cliquable ? "is-clickable" : ""}`}
+      style={{ "--k": couleur }}
+      onClick={onClick}
+    >
+      <span className="sb-kpicard__top">
+        <span className="sb-kpicard__icon">{icon}</span>
+        <span className="sb-kpicard__label">{label}</span>
+        {cliquable && <ArrowUpRight size={15} className="sb-kpicard__go" />}
+      </span>
+      <strong className="sb-kpicard__value">{valeur}</strong>
+      <span className="sb-kpicard__foot">
+        {part != null ? (
+          <>
+            <span className="sb-kpicard__bar"><i style={{ width: `${Math.min(100, part)}%` }} /></span>
+            <small>{part}%</small>
+          </>
         ) : (
-          <div className="space-y-2 max-h-[160px] overflow-y-auto">
-            {all.slice(0, 5).map((a, i) => {
-              const isCrit = a.niveau === "CRITICAL";
-              return (
-                <div key={i} className={`p-2.5 rounded-lg ${isCrit ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-100'}`}>
-                  <div className="flex items-start gap-2">
-                    <span className="mt-0.5">{isCrit ? '🔴' : '⚠️'}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-slate-700">{a.message || t('dashboard.alert')}</p>
-                      {a.detail && <p className="text-[10px] text-slate-500 truncate">{a.detail}</p>}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <small>{detail}</small>
         )}
-      </CardContent>
-    </Card>
+      </span>
+    </Balise>
   );
 }
 
-function CollectesRecentes({ collectes }) {
+function RangeeKpis({ kpis, incomplets, circuitInfecte, masques, onIncomplets }) {
   const { t } = useTranslation();
+  const total = Number(kpis.totalLinges) || 0;
+  const part = (v) => (total > 0 && v != null ? pct(v, total) : null);
+  const items = [
+    { id: "actifs", label: t("dashboard.active_linens"), valeur: num(kpis.lingesActifs), icon: <Shirt size={18} />, couleur: "#0794a4", part: part(kpis.lingesActifs) },
+    { id: "disponibles", label: t("dashboard.available_linens"), valeur: num(kpis.lingesDisponibles), icon: <PackageCheck size={18} />, couleur: "#10b981", part: part(kpis.lingesDisponibles) },
+    { id: "circuit", label: t("dashboard.in_circuit"), valeur: num(kpis.lingesEnCircuit), icon: <RefreshCw size={18} />, couleur: "#0ea5e9", part: part(kpis.lingesEnCircuit) },
+    { id: "collectes", label: t("dashboard.collections_today"), valeur: num(kpis.collectesAujourdhui), icon: <Truck size={18} />, couleur: "#8b5cf6", detail: t("stats_board.today", "Aujourd'hui") },
+    { id: "lavages", label: t("dashboard.washes_today"), valeur: num(kpis.lavagesAujourdhui), icon: <Droplets size={18} />, couleur: "#3b82f6", detail: t("stats_board.today", "Aujourd'hui") },
+    { id: "incomplets", label: t("dashboard.incomplete_linens", "Linges incomplets"), valeur: incomplets ? num(incomplets.total) : "—", icon: <ClipboardX size={18} />, couleur: "#f59e0b", detail: t("dashboard.incomplete_linens_hint", "Voir les linges incomplets"), onClick: onIncomplets },
+    { id: "finDeVie", label: t("dashboard.end_of_life"), valeur: num(kpis.lingesProcheFin), icon: <Hourglass size={18} />, couleur: "#ef4444", part: part(kpis.lingesProcheFin) },
+    ...(circuitInfecte ? [
+      { id: "bacsInfectes", label: t("dashboard.infected_bins_waiting", "Bacs infectés en attente"), valeur: num(kpis.bacsInfectesEnAttente), icon: <Biohazard size={18} />, couleur: "#dc2626", detail: t("dashboard.infected_bins_waiting_hint", "Collectés ou en réception") },
+    ] : []),
+  ].filter((k) => !masques.includes(k.id));
 
-  if (!collectes || collectes.length === 0) {
-    return (
-      <Card className="border-slate-100 shadow-sm">
-        <CardContent className="p-4 text-center py-6">
-          <FaTruck className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-sm text-slate-500">{t('dashboard.no_recent_collections')}</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
+  if (!items.length) return null;
   return (
-    <Card className="border-slate-100 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-purple-500 flex items-center justify-center text-white">
-            <FaTruck size={12} />
-          </div>
-          <h3 className="text-xs font-bold text-slate-700">{t('dashboard.recent_collections')}</h3>
-        </div>
+    <div className="sb-span-12 sb-kpirow">
+      {items.map(({ id, ...k }) => <KpiCarte key={id} {...k} />)}
+    </div>
+  );
+}
 
-        <div className="space-y-2 max-h-[160px] overflow-y-auto">
-          {collectes.map((c, i) => {
-            const total = (c.nbBlancs || 0) + (c.nbInfectes || 0) + (c.nbPropres || 0) + (c.nbManquants || 0);
+function CarteEquipe({ agents }) {
+  const { t } = useTranslation();
+  const max = Math.max(1, ...agents.map((a) => a.nbOperations || 0));
+  return (
+    <Tuile className="sb-span-4" titre={t("dashboard.active_agents")} icon={<Users size={15} />} extra={<span className="sb-pill">{agents.length}</span>}>
+      {agents.length === 0 ? (
+        <Vide icon={<Users size={22} />} texte={t("dashboard.no_active_agents")} />
+      ) : (
+        <ul className="sb-team">
+          {agents.slice(0, 8).map((a, i) => {
+            const initiales = (a.nomComplet || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
             return (
-              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-700 truncate">{c.serviceCode || c.codeChambre || t('dashboard.collection')}</p>
-                  <p className="text-[10px] text-slate-400">
-                    {c.agentNom || t('dashboard.agent')} · {c.dateCollecte ? new Date(c.dateCollecte).toLocaleDateString("fr-FR") : "—"}
-                  </p>
+              <li key={a.nomComplet || i}>
+                <span className="sb-avatar" style={{ "--h": (i * 47) % 360 }}>{initiales}</span>
+                <div>
+                  <strong>{a.nomComplet || t("dashboard.agent")}</strong>
+                  <small>{a.etapeActive || "—"}</small>
+                  <span className="sb-team__bar"><i style={{ width: `${((a.nbOperations || 0) / max) * 100}%` }} /></span>
                 </div>
-                {total > 0 && (
-                  <Badge className="bg-purple-50 text-purple-700 text-[10px] px-2 py-0.5">
-                    {total} {t('dashboard.linens')}
-                  </Badge>
-                )}
-              </div>
+                <b>{num(a.nbOperations)}<small>{t("dashboard.ops")}</small></b>
+              </li>
             );
           })}
-        </div>
-      </CardContent>
-    </Card>
+        </ul>
+      )}
+    </Tuile>
   );
 }
-
-function AgentsActifs({ agents }) {
-  const { t } = useTranslation();
-
-  if (!agents || agents.length === 0) {
-    return (
-      <Card className="border-slate-100 shadow-sm">
-        <CardContent className="p-4 text-center py-6">
-          <FaUsers className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-sm text-slate-500">{t('dashboard.no_active_agents')}</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="border-slate-100 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-pink-500 flex items-center justify-center text-white">
-            <FaUsers size={12} />
-          </div>
-          <h3 className="text-xs font-bold text-slate-700">{t('dashboard.active_agents')}</h3>
-          <Badge className="ml-auto bg-pink-50 text-pink-700 text-[9px] px-2 py-0.5">
-            {agents.length}
-          </Badge>
-        </div>
-
-        <div className="space-y-2 max-h-[160px] overflow-y-auto">
-          {agents.slice(0, 5).map((a, i) => {
-            const initials = a.nomComplet?.split(" ").map(n => n[0]).join("").slice(0, 2) || "??";
-            return (
-              <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white text-xs font-bold">
-                  {initials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-700 truncate">{a.nomComplet || t('dashboard.agent')}</p>
-                  {a.etapeActive && (
-                    <p className="text-[10px] text-slate-400 truncate">{a.etapeActive}</p>
-                  )}
-                </div>
-                <Badge className="bg-teal-50 text-teal-700 text-[10px] px-2 py-0.5">
-                  {a.nbOperations || 0} {t('dashboard.ops')}
-                </Badge>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-const num = (n) => (n ?? 0).toLocaleString("fr-FR");
 
 export default function BuanderieStats() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data, loading, error, lastUpdate, refresh } = useDashboard();
-  const hiddenKpis = useSetting("dashboard.hiddenKpis") || [];
+  const { data, loading, error, lastUpdate, refresh, refreshSeconds } = useDashboard();
+  const masques = useSetting("dashboard.hiddenKpis") || [];
   const circuitEtablissement = useCircuitInfecte();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const kpiLayout = usePersistentOrder("stats.layout.kpis", KPI_IDS);
-  const widgetLayout = usePersistentOrder("stats.layout.widgets", WIDGET_IDS);
-  const resetLayout = () => { kpiLayout.reset(); widgetLayout.reset(); };
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
+  const actualiser = async () => {
+    setRefreshing(true);
     await refresh();
-    setTimeout(() => setIsRefreshing(false), 500);
+    setTimeout(() => setRefreshing(false), 400);
   };
 
   const kpis = data?.kpis || {};
   const circuitInfecte = circuitEtablissement && data?.circuitInfecteActif !== false;
-  const dist = data?.dist || {};
-  const machines = data?.machines || [];
-
-  const pieData = Object.entries(dist).map(([key, value]) => ({
-    label: ETATS[key]?.label || key,
-    value: value || 0
-  })).filter(d => d.value > 0);
-
-  const pieLabels = pieData.map(d => d.label);
-  const pieValues = pieData.map(d => d.value);
-
-  const barData = [12, 19, 15, 22, 18, 14, 8];
-  const barLabels = [t('dashboard.mon'), t('dashboard.tue'), t('dashboard.wed'), t('dashboard.thu'), t('dashboard.fri'), t('dashboard.sat'), t('dashboard.sun')];
-
-  const kpiItems = [
-    { id: "actifs",      node: <KpiCard label={t('dashboard.active_linens')} value={num(kpis.lingesActifs)} icon={Shirt} color={COLORS.primary} trend="up" trendValue="+12%" /> },
-    { id: "disponibles", node: <KpiCard label={t('dashboard.available_linens')} value={num(kpis.lingesDisponibles)} icon={PackageCheck} color={COLORS.success} trend="up" trendValue="+5%" /> },
-    { id: "circuit",     node: <KpiCard label={t('dashboard.in_circuit')} value={num(kpis.lingesEnCircuit)} icon={RefreshCcw} color={COLORS.info} trend="down" trendValue="-3%" /> },
-    { id: "collectes",   node: <KpiCard label={t('dashboard.collections_today')} value={num(kpis.collectesAujourdhui)} icon={Truck} color={COLORS.purple} /> },
-    { id: "lavages",     node: <KpiCard label={t('dashboard.washes_today')} value={num(kpis.lavagesAujourdhui)} icon={Droplets} color="#3b82f6" /> },
-    { id: "incomplets",  node: (
-      <KpiCard
-        label={t('dashboard.incomplete_linens', 'Linges incomplets')}
-        value={data?.incomplets ? num(data.incomplets.total) : '—'}
-        icon={ClipboardX}
-        color={COLORS.warning}
-        hint={t('dashboard.incomplete_linens_hint', 'Voir les linges incomplets')}
-        onClick={() => navigate('/linges?incomplets')}
-      />
-    ) },
-    { id: "finDeVie",    node: <KpiCard label={t('dashboard.end_of_life')} value={num(kpis.lingesProcheFin)} icon={Hourglass} color={COLORS.danger} /> },
-    { id: "infection",   node: <KpiCard label={t('dashboard.infection_rate')} value={kpis.tauxInfectionMois != null ? `${kpis.tauxInfectionMois}%` : '—'} icon={Activity} color={COLORS.warning} /> },
-  ];
-
-  const widgetItems = [
-    { id: "activite", span: 2, node: <BarChartComponent data={barData} labels={barLabels} title={t('dashboard.daily_activity')} /> },
-    { id: "repartitionLinges", node: (data?.parcours || []).length > 0 ? (
-      <ParcoursWidget parcours={data.parcours} />
-    ) : (
-      <PieChartComponent
-        data={pieValues}
-        labels={pieLabels}
-        title={t('dashboard.linen_distribution')}
-      />
-    ) },
-    { id: "stock",          node: <StockServices services={data?.stock || []} /> },
-    { id: "etatMachines",   node: <EtatMachines machines={machines} /> },
-    { id: "repartMachines", node: <RepartitionMachines machines={machines} /> },
-    { id: "alertes",        node: <AlertesWidget alertes={data?.alertes || {}} circuitInfecte={circuitInfecte} /> },
-    { id: "collectes",      node: <CollectesRecentes collectes={data?.collectes || []} /> },
-    { id: "agents",         node: <AgentsActifs agents={data?.agents || []} /> },
-  ];
 
   return (
-    <Page>
-      <PageHeader
-        icon={<PageHeaderIcon size={40} />}
-        title={t('dashboard.title')}
-        subtitle={loading ? t('dashboard.loading') : lastUpdate ? `${t('dashboard.last_update')} · ${lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : t('dashboard.waiting_for_data')}
-        right={<span className={`kit-op-pill ${loading ? '' : 'is-live'}`} style={{ '--op': loading ? '#f59e0b' : '#10b981' }}><i />{t('dashboard.auto_update')} · 30s</span>}
-      />
-
-      <ActionBar>
-        <ActionButton icon={<RefreshCcw size={18} className={isRefreshing ? 'animate-spin' : ''} />} label={t('dashboard.refresh')} variant="details" disabled={isRefreshing} onClick={handleRefresh} />
-        <ActionButton
-          icon={<LayoutGrid size={18} />}
-          label={t('dashboard.reset_layout', 'Réinitialiser la disposition')}
-          variant="modifier"
-          disabled={!(kpiLayout.isCustom || widgetLayout.isCustom)}
-          onClick={resetLayout}
-        />
-        <span className="kit-chip" style={{ marginLeft: 'auto' }}>
-          <GripVertical size={14} /> {t('dashboard.drag_hint', 'Glissez les cartes pour les réorganiser')}
-        </span>
-      </ActionBar>
-
+    <Page className="sb-page">
       {error && (
-        <div style={{ marginBottom: 16 }}>
-          <DetailAlert icon={<FaExclamationTriangle size={14} />} title={error} />
-        </div>
+        <div className="sb-error" role="alert"><AlertTriangle size={16} /> {error}</div>
       )}
 
-      <DraggableGrid
-        className="stats-grid--kpi mb-5"
-        items={kpiItems.filter((k) => !hiddenKpis.includes(k.id) && (circuitInfecte || k.id !== "infection"))}
-        order={kpiLayout.order}
-        setOrder={kpiLayout.setOrder}
-        onCommit={kpiLayout.save}
-        handleLabel={t('dashboard.drag_card', 'Glisser pour déplacer')}
-      />
-
-      <DraggableGrid
-        className="stats-grid--widgets"
-        items={widgetItems}
-        order={widgetLayout.order}
-        setOrder={widgetLayout.setOrder}
-        onCommit={widgetLayout.save}
-        handleLabel={t('dashboard.drag_card', 'Glisser pour déplacer')}
-      />
-
-      <div className="kit-chips" style={{ marginTop: 18, justifyContent: 'flex-end' }}>
-        <span className="kit-chip kit-chip--teal"><Shirt size={13} /> <strong>{num(kpis.totalLinges)}</strong> {t('dashboard.linens')}</span>
-        <span className="kit-chip kit-chip--info"><Activity size={13} /> <strong>{kpis.tauxOccupationMachines || 0}%</strong> {t('dashboard.machines')}</span>
-        {circuitInfecte && <span className="kit-chip kit-chip--danger"><Droplets size={13} /> <strong>{kpis.tauxInfectionMois || 0}%</strong> {t('dashboard.infection')}</span>}
-      </div>
+      {loading && !data ? (
+        <div className="sb-loading"><Layers size={22} /> {t("dashboard.loading")}</div>
+      ) : (
+        <div className="sb-grid">
+          <RangeeKpis kpis={kpis} incomplets={data?.incomplets} circuitInfecte={circuitInfecte} masques={masques} onIncomplets={() => navigate("/linges?incomplets")} />
+          <CarteFlux parcours={data?.parcours || []} dist={data?.dist || {}} />
+          <CarteJour kpis={kpis} lastUpdate={lastUpdate} loading={loading} refreshSeconds={refreshSeconds} onRefresh={actualiser} refreshing={refreshing} />
+          <CarteCollectes collectes={data?.collectes || []} circuitInfecte={circuitInfecte} reference={lastUpdate} />
+          <CarteIndicateurs kpis={kpis} circuitInfecte={circuitInfecte} masques={masques} />
+          <CarteMachines machines={data?.machines || []} taux={kpis.tauxOccupationMachines} />
+          <CarteEtats dist={data?.dist || {}} />
+          <CarteAlertes alertes={data?.alertes} />
+          <CarteStock services={data?.stock || []} />
+          <CarteEquipe agents={data?.agents || []} />
+        </div>
+      )}
     </Page>
   );
 }

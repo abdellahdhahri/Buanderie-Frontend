@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshCcw, Loader2 } from "lucide-react";
-import Swal from "sweetalert2";
+import Swal from "../kit/dialogueApi";
 import { lancerSynchronisation, messageLisible } from "../../services/integrationService";
 import { useIntegration } from "../../hooks/useIntegration";
 import { afficherJournal } from "../../utils/journalSynchro";

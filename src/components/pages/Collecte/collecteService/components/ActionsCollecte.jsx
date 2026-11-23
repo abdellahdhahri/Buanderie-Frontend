@@ -5,10 +5,7 @@ import { Icons } from "../../shared/icons";
 import { ActionButton } from "../../shared/ActionButton";
 import { useCircuitInfecte } from "../../../../../hooks/useEstablishment";
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   BOUTONS D'ACTION — déclarer un sac infecté / clôturer
-   ═══════════════════════════════════════════════════════════════════════════ */
-export function ActionsCollecte({ nbNonTr, loading, canClose, onDeclarerSac, onCloturer }) {
+export function ActionsCollecte({ nbNonTr, loading, canClose, onDeclarerInfecte, onCloturer }) {
   const { t } = useTranslation();
   const circuitInfecte = useCircuitInfecte();
 
@@ -19,7 +16,7 @@ export function ActionsCollecte({ nbNonTr, loading, canClose, onDeclarerSac, onC
       paddingTop: 16, borderTop: "1px solid #f1f5f9",
     }}>
       {circuitInfecte && <ActionButton
-        onClick={onDeclarerSac}
+        onClick={onDeclarerInfecte}
         icon={<Icons.Biohazard size={15} color="white" strokeWidth={2.5} />}
         label={t('collecte.declare_infected')}
         type="danger"

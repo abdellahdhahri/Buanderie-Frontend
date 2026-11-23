@@ -38,7 +38,7 @@ import { Modal } from "../../ui/modal";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
-import Swal from "sweetalert2";
+import Swal from "../../kit/dialogueApi";
 import { motion, AnimatePresence } from "framer-motion";
 import { printLabel } from "../../../utils/labels";
 import { getSetting } from "../../../utils/appSettings";

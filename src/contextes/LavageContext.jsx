@@ -1,13 +1,16 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { useModal } from "./ModalContext";
+import { useAuth } from "../constants/AuthContext";
 import { getAgent, isAgentConnected } from "../services/agentService";
-import { chargementService, versLotLavage } from "../services/parcoursService";
-import Swal from "sweetalert2";
+import { bacsPourLavage } from "../services/parcoursService";
+import { scannerBacPourCycle, lingesDuBac, demarrerCycleBac, ajouterBacAuCycle, versBacTri } from "../services/bacTriService";
+import { estCycleInfecte, terminerCycleLavage } from "../services/lavageInfecteService";
+import Swal from "../components/kit/dialogueApi";
 
 async function demanderPoids(codeLot, suggestion) {
   const { value, isConfirmed } = await Swal.fire({
-    title: `Poids du lot ${codeLot}`,
-    text: "Aucune pesée enregistrée pour ce lot : saisissez le poids de la charge (kg).",
+    title: `Poids du bac ${codeLot}`,
+    text: "Aucune pesée enregistrée pour ce bac : saisissez le poids de la charge (kg).",
     input: "number",
     inputValue: suggestion ? Number(suggestion).toFixed(2) : "",
     inputAttributes: { min: "0", step: "0.01" },
@@ -23,11 +26,26 @@ async function demanderPoids(codeLot, suggestion) {
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
 const API = `${API_BASE_URL}/api`;
 
+const versCycleActif = (c) => ({
+  id: c.id,
+  numeroCycle: c.numeroCycle,
+  machine: c.machine || null,
+  dateDebut: c.dateDebut || null,
+  programme: c.programmeLavage?.nom || null,
+  temperature: c.programmeLavage?.temperatureCelsius ?? null,
+  vitesse: c.programmeLavage?.vitesseEssorageRpm ?? null,
+  dureePrevue: c.programmeLavage?.dureeMinutes ?? null,
+  nbArticles: c.items?.length ?? null,
+  infecte: estCycleInfecte(c),
+  lots: [],
+});
+
 export const LavageContext = createContext();
 export const useLavage = () => useContext(LavageContext);
 
 export function LavageProvider({ children }) {
   const { showAlert, showConfirm } = useModal();
+  const { verifierHabilitation } = useAuth();
 
   const [agent, setAgent] = useState(null);
 
@@ -39,13 +57,15 @@ export function LavageProvider({ children }) {
   const [cycleInfo, setCycleInfo] = useState(null);
   const [loadingLots, setLoadingLots] = useState(false);
 
-  const [sacsInfectes, setSacsInfectes] = useState([]);
-  const [loadingSacs, setLoadingSacs] = useState(false);
-
   const [lotDialog, setLotDialog] = useState(null);
-  const [scanPropresNumerosac, setScanPropresNumerosac] = useState(null);
 
   const [loading, setLoading] = useState(false);
+  const [produitsUtilises, setProduitsUtilises] = useState([]);
+
+  const [cyclesActifs, setCyclesActifs] = useState([]);
+  const [chargementCycles, setChargementCycles] = useState(false);
+  const [cycleEnFin, setCycleEnFin] = useState(null);
+  const infosLocales = useRef({});
 
 
 
@@ -113,12 +133,93 @@ export function LavageProvider({ children }) {
     initAgent();
   }, []);
 
+  const fusionnerCycle = (c) => {
+    const local = infosLocales.current[c.id];
+    if (!local) return c;
+    return {
+      ...c,
+      machine: c.machine || local.machine,
+      dateDebut: c.dateDebut || local.dateDebut,
+      programme: c.programme || local.programme,
+      temperature: c.temperature ?? local.temperature,
+      vitesse: c.vitesse ?? local.vitesse,
+      dureePrevue: c.dureePrevue ?? local.dureePrevue,
+      lots: local.lots || [],
+      infecte: c.infecte || Boolean(local.infecte),
+      bac: local.bac || null,
+    };
+  };
+
+  const chargerCyclesActifs = useCallback(async () => {
+    setChargementCycles(true);
+    try {
+      const r = await fetch(`${API}/lavage/cycles`);
+      if (!r.ok) return;
+      const data = await r.json();
+      const liste = (Array.isArray(data) ? data : data?.content || [])
+        .filter((c) => c.statut === "EN_COURS")
+        .map(versCycleActif)
+        .map(fusionnerCycle)
+        .sort((a, b) => new Date(b.dateDebut || 0) - new Date(a.dateDebut || 0));
+      setCyclesActifs((prev) => {
+        const ids = new Set(liste.map((c) => c.id));
+        const locauxManquants = prev.filter((c) => !ids.has(c.id) && c.local);
+        return [...locauxManquants, ...liste];
+      });
+    } catch {
+      return;
+    } finally {
+      setChargementCycles(false);
+    }
+  }, []);
+
+  React.useEffect(() => { chargerCyclesActifs(); }, [chargerCyclesActifs]);
+
+  const finirCycle = useCallback(async (cycle, codeBac) => {
+    const resultat = await terminerCycleLavage(cycle.id, codeBac);
+    delete infosLocales.current[cycle.id];
+    setCyclesActifs((prev) => prev.filter((c) => c.id !== cycle.id));
+    return resultat;
+  }, []);
+
+  const ajouterCycleLocal = useCallback((cycle, infos = {}) => {
+    infosLocales.current[cycle.id] = { ...infos, dateDebut: cycle.dateDebut || new Date().toISOString() };
+    setCyclesActifs((prev) => [
+      { ...versCycleActif(cycle), ...infosLocales.current[cycle.id], id: cycle.id, numeroCycle: cycle.numeroCycle, local: true },
+      ...prev.filter((c) => c.id !== cycle.id),
+    ]);
+  }, []);
+
+  const terminerCycle = useCallback(async (cycle) => {
+    if (!cycle?.id) return;
+    const ok = await showConfirm(
+      "Fin du lavage",
+      `Terminer le cycle #${cycle.numeroCycle || cycle.id}${cycle.machine?.code ? ` (machine ${cycle.machine.code})` : ""} ?`,
+      "question"
+    );
+    if (!ok) return;
+    setCycleEnFin(cycle.id);
+    try {
+      await finirCycle(cycle);
+      showAlert("✅ Lavage terminé", `Cycle #${cycle.numeroCycle || cycle.id} terminé.`, "success");
+    } catch (err) {
+      showAlert("❌ Erreur", err.message, "error");
+    } finally {
+      setCycleEnFin(null);
+    }
+  }, [showAlert, showConfirm, finirCycle]);
+
   const scannerMachine = useCallback(async (code) => {
     setLoading(true);
     try {
       const r = await fetch(`${API_BASE_URL}/api/machines/code/${code}`);
       if (!r.ok) { showAlert("❌ Machine introuvable", code, "error"); return false; }
       const m = await r.json();
+      const occupee = cyclesActifs.find((c) => c.machine?.code === m.code);
+      if (occupee) {
+        showAlert("⚠️ Machine occupée", `${m.code} lave déjà le cycle #${occupee.numeroCycle || occupee.id}. Terminez-le ou scannez une autre machine.`, "warning");
+        return false;
+      }
       if (m.etat === "EN_COURS") {
         showAlert("⚠️ Machine occupée", `${code} est déjà en cours.`, "warning");
         return false;
@@ -131,44 +232,48 @@ export function LavageProvider({ children }) {
       showAlert("Erreur réseau", "", "error");
       return false;
     } finally { setLoading(false); }
-  }, [showAlert]);
+  }, [showAlert, cyclesActifs]);
 
   const chargerLots = useCallback(async () => {
     setLoadingLots(true);
     try {
-      const data = await chargementService.enAttente();
-      setLotsDisponibles((Array.isArray(data) ? data : []).map(versLotLavage));
+      setLotsDisponibles(await bacsPourLavage());
     } catch (err) {
       showAlert("Erreur", err.message, "error");
     } finally { setLoadingLots(false); }
   }, []);
 
-  const scannerLot = useCallback(async (code, poidsActuelSelectionnes) => {
+  const scannerLot = useCallback(async (code) => {
     if (!code?.trim()) return;
     setLoading(true);
     try {
-      if (lotsSelectionnes.find(ls => ls.lot.codeLot === code)) {
-        showAlert("⚠️ Déjà ajouté", `LOT ${code} est déjà dans le chargement.`, "info");
+      const codeBac = code.trim();
+      if (lotsSelectionnes.find(ls => ls.lot.codeLot === codeBac)) {
+        showAlert("⚠️ Déjà ajouté", `Le bac ${codeBac} est déjà dans le chargement.`, "info");
         return;
       }
-      const lot = lotsDisponibles.find(l => l.codeLot === code);
-      if (!lot) { showAlert("❌ Lot introuvable", code, "error"); return; }
-
-      if (machine && poidsActuelSelectionnes + (lot.poidsActuel || 0) < 0) {
-        //showAlert("⚠️ Capacité dépassée", `Machine pleine (${machine.capaciteKg} kg).`, "warning");
+      let lotInfo;
+      try {
+        lotInfo = await scannerBacPourCycle("lavage", codeBac);
+      } catch (err) {
+        if (/aucun programme/i.test(err.message || "")) showAlert("Aucun programme de lavage disponible", err.message, "warning");
+        else showAlert(`Bac ${codeBac}`, err.message, "error");
         return;
       }
-      const [rInfo, rLinges] = await Promise.all([
-        fetch(`${API}/lavage/scan-lot/${code}`),
-        fetch(`${API_BASE_URL}/api/linges/lots/${encodeURIComponent(code)}/linges`)
-      ]);
-      const lotInfo = rInfo.ok ? await rInfo.json() : null;
-      const linges = rLinges.ok ? await rLinges.json() : [];
-      setLotDialog({ lotInfo, linges, lot });
-    } catch {
-      showAlert("Erreur réseau", "", "error");
+      const connu = lotsDisponibles.find(l => l.codeLot === codeBac);
+      const lot = connu || versBacTri({
+        codeBac: lotInfo?.codeBac || codeBac,
+        categorie: lotInfo?.categorie,
+        poids: lotInfo?.poids,
+        poidsBalance: lotInfo?.poidsBalance,
+        nbLinges: lotInfo?.nbLinges,
+      });
+      const linges = await lingesDuBac(codeBac);
+      setLotDialog({ lotInfo: lotInfo ? { ...lotInfo, codeLot: lotInfo.codeBac || codeBac } : null, linges, lot });
+    } catch (err) {
+      showAlert("Erreur réseau", err?.message || "", "error");
     } finally { setLoading(false); }
-  }, [lotsDisponibles, lotsSelectionnes, machine, showAlert]);
+  }, [lotsDisponibles, lotsSelectionnes, showAlert]);
 
   const confirmerAjoutLot = useCallback((lot, scanInfo) => {
     setLotsSelectionnes(prev => [...prev, { lot, scanInfo }]);
@@ -187,7 +292,7 @@ export function LavageProvider({ children }) {
     }
 
     if (!lotsSelectionnes.length) {
-      showAlert("⚠️ Aucun lot", "Sélectionnez au moins un lot.", "warning");
+      showAlert("⚠️ Aucun bac", "Sélectionnez au moins un bac.", "warning");
       return;
     }
 
@@ -196,21 +301,23 @@ export function LavageProvider({ children }) {
       return;
     }
 
+    const programmeChoisi = lotsSelectionnes[0]?.scanInfo?.programmeRecommande;
     const ok = await showConfirm(
       "Démarrer le lavage",
-      `${lotsSelectionnes.length} lot(s) — ${poidsTotal.toFixed(1)} kg\nMachine : ${machine?.code}`,
+      `${lotsSelectionnes.length} bac(s) — ${poidsTotal.toFixed(1)} kg\nMachine : ${machine?.code}${programmeChoisi ? `\nProgramme : ${programmeChoisi}` : ""}`,
       "question"
     );
     if (!ok) return;
 
     const poidsLots = [];
     for (const ls of lotsSelectionnes) {
-      let poids = ls.lot.poidsBalance;
+      let poids = ls.lot.poidsCharge ?? ls.lot.poidsBalance;
       if (poids == null) poids = await demanderPoids(ls.lot.codeLot, ls.lot.poidsActuel);
       if (poids == null) return;
       poidsLots.push(poids);
     }
 
+    verifierHabilitation("lavage");
     setLoading(true);
     try {
       const p = lotsSelectionnes[0];
@@ -221,52 +328,60 @@ export function LavageProvider({ children }) {
         throw new Error("Matricule de l'agent introuvable");
       }
 
-      const r = await fetch(
-        `${API}/lavage/start?codeMachine=${machine.code}&codeLot=${p.lot.codeLot}&matriculeAgent=${encodeURIComponent(matricule)}&poidsCharge=${poidsLots[0]}`,
-        { method: "POST" }
-      );
-      
-      if (!r.ok) {
-        const errorText = await r.text();
-        let msg = errorText;
-        try { msg = JSON.parse(errorText).message || errorText; } catch {}
-        throw new Error(msg || "Erreur démarrage");
-      }
-      
-      const cycle = await r.json();
+      const cycle = await demarrerCycleBac("lavage", {
+        codeMachine: machine.code,
+        codeBac: p.lot.codeLot,
+        matriculeAgent: matricule,
+        poidsCharge: poidsLots[0],
+        programmeId: p.scanInfo?.programmeId,
+        produitIds: produitsUtilises.map((x) => x.id),
+      });
       setCycleId(cycle.id);
       
       const premiereInfo = lotsSelectionnes[0]?.scanInfo;
-      setCycleInfo({
-        dateDebut: new Date().toISOString(),
+      const infoCycle = {
+        dateDebut: cycle.dateDebut || new Date().toISOString(),
         dureePrevue: premiereInfo?.duree || null,
-        programme: premiereInfo?.programmeRecommande || "—",
+        programme: cycle.programmeLavage?.nom || premiereInfo?.programmeRecommande || "—",
         temperature: premiereInfo?.temperature || "—",
         vitesse: premiereInfo?.vitesse || "—",
-      });
+      };
+      setCycleInfo(infoCycle);
+      infosLocales.current[cycle.id] = {
+        ...infoCycle,
+        machine,
+        lots: lotsSelectionnes.map((ls, i) => ({ codeLot: ls.lot.codeLot, codeBac: ls.lot.codeLot, categorie: ls.lot.categorie, poids: poidsLots[i] })),
+      };
       
       for (let i = 1; i < lotsSelectionnes.length; i++) {
         const ls = lotsSelectionnes[i];
-        const rAjout = await fetch(
-          `${API}/lavage/${cycle.id}/add-lot?codeLot=${ls.lot.codeLot}&poidsCharge=${poidsLots[i]}`,
-          { method: "POST" }
-        );
-        if (!rAjout.ok) {
-          const txt = await rAjout.text();
-          let msg = txt;
-          try { msg = JSON.parse(txt).message || txt; } catch { msg = txt; }
-          showAlert(`Lot ${ls.lot.codeLot}`, msg, "warning");
+        try {
+          await ajouterBacAuCycle("lavage", cycle.id, ls.lot.codeLot, poidsLots[i]);
+        } catch (errAjout) {
+          showAlert(`Bac ${ls.lot.codeLot}`, errAjout.message, "warning");
         }
       }
       
-      setEtapeBlanc("EN_COURS");
-      showAlert("🚀 Lavage démarré", `Cycle #${cycle.id} en cours`, "success");
+      setCyclesActifs((prev) => [
+        { ...versCycleActif(cycle), ...infosLocales.current[cycle.id], id: cycle.id, numeroCycle: cycle.numeroCycle, local: true },
+        ...prev.filter((c) => c.id !== cycle.id),
+      ]);
+      setMachine(null);
+      setLotsSelectionnes([]);
+      setProduitsUtilises([]);
+      setCycleId(null);
+      setCycleInfo(null);
+      setEtapeBlanc("MACHINE");
+      chargerCyclesActifs();
+      chargerLots();
+      showAlert("🚀 Lavage démarré", `Cycle #${cycle.numeroCycle || cycle.id} en cours sur ${machine.code}. Vous pouvez lancer un autre lavage.`, "success");
     } catch (err) {
-      showAlert("❌ Erreur", err.message || "Erreur lors du démarrage", "error");
+      if (/aucun programme/i.test(err.message || "")) showAlert("Aucun programme de lavage disponible", err.message, "warning");
+      else showAlert("❌ Erreur", err.message || "Erreur lors du démarrage", "error");
     } finally {
       setLoading(false);
     }
-  }, [lotsSelectionnes, machine, agent, showAlert, showConfirm]);
+  }, [lotsSelectionnes, machine, agent, showAlert, showConfirm, chargerCyclesActifs, chargerLots, verifierHabilitation, produitsUtilises]);
 
   const terminerLavage = useCallback(async () => {
     if (!cycleId) {
@@ -296,166 +411,24 @@ export function LavageProvider({ children }) {
     }
   }, [cycleId, showAlert, showConfirm]);
 
+  const ajouterProduit = useCallback((produit) => {
+    setProduitsUtilises((prev) => (prev.some((p) => p.id === produit.id) ? prev : [...prev, produit]));
+  }, []);
+
+  const retirerProduit = useCallback((id) => {
+    setProduitsUtilises((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  const viderProduits = useCallback(() => setProduitsUtilises([]), []);
+
   const nouveauCycleBlanc = useCallback(() => {
+    setProduitsUtilises([]);
     setMachine(null);
     setLotsSelectionnes([]);
     setCycleId(null);
     setCycleInfo(null);
     setEtapeBlanc("MACHINE");
   }, []);
-
-  const chargerSacsInfectes = useCallback(async () => {
-    setLoadingSacs(true);
-    try {
-      const r = await fetch(`${API}/sacs-infectes/non-laves`);
-      if (r.ok) {
-        const data = await r.json();
-        setSacsInfectes(data);
-        return data;
-      }
-    } catch {} finally { setLoadingSacs(false); }
-    return [];
-  }, []);
-
-  const scannerSacInfecte = useCallback(async (code) => {
-    if (!code?.trim()) return;
-    try {
-      const r = await fetch(`${API}/sacs-infectes/detail?numeroSac=${code}`);
-      if (r.ok) {
-        const sac = await r.json();
-        setSacsInfectes(prev =>
-          prev.find(s => s.numeroSac === code) ? prev : [sac, ...prev]
-        );
-      } else {
-        showAlert("❌ Sac introuvable", code, "error");
-      }
-    } catch { showAlert("Erreur réseau", "", "error"); }
-  }, [showAlert]);
-
-  const laverSac = useCallback(async (numeroSac) => {
-    if (!agent) {
-      showAlert("❌ Agent non connecté", "Veuillez vous reconnecter.", "error");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const matricule = agent.codeBarre || agent.matricule;
-      if (!matricule) {
-        throw new Error("Matricule de l'agent introuvable");
-      }
-      
-      const r = await fetch(
-        `${API}/sacs-infectes/laver?numeroSac=${encodeURIComponent(numeroSac)}&matricule=${encodeURIComponent(matricule)}`,
-        { method: "PUT" }
-      );
-      
-      if (!r.ok) {
-        const errorText = await r.text();
-        let msg = errorText;
-        try { msg = JSON.parse(errorText).message || errorText; } catch {}
-        throw new Error(msg || "Erreur");
-      }
-      
-      const sac = await r.json();
-      setSacsInfectes(prev => prev.map(s => s.numeroSac === numeroSac ? sac : s));
-      showAlert("✅ Sac en lavage", `${numeroSac} vidé dans la machine`, "success");
-    } catch (err) {
-      showAlert("❌ Erreur", err.message, "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [agent, showAlert]);
-
-  const verifierSac = useCallback(async (numeroSac, itemsComptes) => {
-    if (!agent) {
-      showAlert("❌ Agent non connecté", "Veuillez vous reconnecter.", "error");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const matricule = agent.codeBarre || agent.matricule;
-      if (!matricule) {
-        throw new Error("Matricule de l'agent introuvable");
-      }
-      
-      const r = await fetch(`${API}/sacs-infectes/verifier`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          numeroSac, 
-          matriculeAgent: matricule, 
-          itemsComptes 
-        })
-      });
-      
-      if (!r.ok) {
-        const errorText = await r.text();
-        let msg = errorText;
-        try { msg = JSON.parse(errorText).message || errorText; } catch {}
-        throw new Error(msg || "Erreur");
-      }
-      
-      const sac = await r.json();
-      setSacsInfectes(prev => prev.map(s => s.numeroSac === numeroSac ? sac : s));
-      
-      if (sac.ecart === 0) {
-        showAlert("✅ Concordance parfaite", `${numeroSac} — écart : 0`, "success");
-      } else {
-        showAlert("⚠️ Écart détecté", `${numeroSac} — écart : ${sac.ecart}`, "warning");
-      }
-    } catch (err) {
-      showAlert("❌ Erreur", err.message, "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [agent, showAlert]);
-
-  const affecterLingesPropres = useCallback(async (numeroSac, codesLinges) => {
-    if (!agent) {
-      showAlert("❌ Agent non connecté", "Veuillez vous reconnecter.", "error");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const matricule = agent.codeBarre || agent.matricule;
-      if (!matricule) {
-        throw new Error("Matricule de l'agent introuvable");
-      }
-      
-      const r = await fetch(`${API}/sacs-infectes/affecter-linges-propres`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          numeroSac, 
-          matriculeAgent: matricule, 
-          codesLinges 
-        })
-      });
-      
-      if (!r.ok) {
-        const errorText = await r.text();
-        let msg = errorText;
-        try { msg = JSON.parse(errorText).message || errorText; } catch {}
-        throw new Error(msg || "Erreur");
-      }
-      
-      const sac = await r.json();
-      setSacsInfectes(prev => prev.map(s => s.numeroSac === numeroSac ? sac : s));
-      setScanPropresNumerosac(null);
-      showAlert(
-        "✅ Linges réintégrés",
-        `${sac.nombreLingesAffectes} linge(s) affecté(s) au flux normal`,
-        "success"
-      );
-    } catch (err) {
-      showAlert("❌ Erreur", err.message, "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [agent, showAlert]);
 
   const resetAll = useCallback(() => {
     setAgent(null);
@@ -465,12 +438,11 @@ export function LavageProvider({ children }) {
     setCycleId(null);
     setCycleInfo(null);
     setEtapeBlanc("MACHINE");
-    setSacsInfectes([]);
     setLotDialog(null);
-    setScanPropresNumerosac(null);
+    setProduitsUtilises([]);
   }, []);
 
-  const poidsTotal = lotsSelectionnes.reduce((s, ls) => s + (ls.lot.poidsActuel || 0), 0);
+  const poidsTotal = lotsSelectionnes.reduce((s, ls) => s + (Number(ls.lot.poidsCharge ?? ls.lot.poidsActuel) || 0), 0);
   const pctCharge = machine
     ? Math.min((poidsTotal / machine.capaciteKg) * 100, 100)
     : 0;
@@ -483,12 +455,11 @@ export function LavageProvider({ children }) {
       scannerMachine, chargerLots, scannerLot,
       confirmerAjoutLot, retirerLot,
       demarrerLavage, terminerLavage, nouveauCycleBlanc,
-      sacsInfectes, loadingSacs,
-      chargerSacsInfectes, scannerSacInfecte,
-      laverSac, verifierSac, affecterLingesPropres,
+      cyclesActifs, chargementCycles, chargerCyclesActifs, terminerCycle, cycleEnFin,
+      finirCycle, ajouterCycleLocal,
       lotDialog, setLotDialog,
-      scanPropresNumerosac, setScanPropresNumerosac,
       loading, resetAll,
+      produitsUtilises, ajouterProduit, retirerProduit, viderProduits,
     }}>
       {children}
     </LavageContext.Provider>

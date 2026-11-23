@@ -29,15 +29,16 @@ export default function ValiderLotModal({ lot, matriculeAgent, onClose, onValide
   }, [lot]);
 
   if (!lot) return null;
+  const code = lot.codeBac || lot.codeLot;
 
   const valider = async (e) => {
     e.preventDefault();
     setEnvoi(true);
     try {
-      const resultat = await chargementService.valider(lot.codeLot, matriculeAgent, poids === "" ? null : poids);
+      const resultat = await chargementService.valider(code, matriculeAgent, poids === "" ? null : poids);
       const avert = resultat?.messages || [];
       avert.forEach((m) => toast.warning(m));
-      toast.success(t("chargement.validated", "Lot {{code}} prêt pour le lavage", { code: lot.codeLot }));
+      toast.success(t("chargement.bac_validated", "Bac {{code}} prêt pour le lavage", { code }));
       onValide?.(resultat);
     } catch (err) {
       toast.error(err.message);
@@ -55,15 +56,15 @@ export default function ValiderLotModal({ lot, matriculeAgent, onClose, onValide
       size="sm"
       tone="success"
       icon={<Scale size={20} />}
-      title={t("chargement.validate_lot", "Valider le lot")}
-      subtitle={lot.codeLot}
+      title={t("chargement.validate_bac", "Valider le bac")}
+      subtitle={code}
       onClose={envoi ? undefined : onClose}
       className="kit-std-form"
       footer={(
         <>
           <Button variant="secondary" onClick={onClose} disabled={envoi}>{t("common.cancel", "Annuler")}</Button>
           <Button type="submit" form="form-valider-lot" variant="success" icon={<CheckCircle2 size={16} />} disabled={envoi}>
-            {envoi ? t("common.loading", "Chargement…") : t("chargement.validate_lot", "Valider le lot")}
+            {envoi ? t("common.loading", "Chargement…") : t("chargement.validate_bac", "Valider le bac")}
           </Button>
         </>
       )}

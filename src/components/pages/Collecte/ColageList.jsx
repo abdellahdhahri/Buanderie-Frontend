@@ -28,13 +28,12 @@ import {
 import { getAgent, isAgentConnected } from "../../../services/agentService";
 
 import "../Linge/WorkflowList.css";
-import { LitTile, LitDialog, LegendeLits } from "./components/ChambreLits";
+import { LitTile, LitDialog, estActionInfecte } from "./components/ChambreLits";
 import { useRattachementChambre, useCircuitInfecte } from "../../../hooks/useEstablishment";
-import { CollecteHeader } from "./shared/CollecteHeader";
-import { InfoBar, InfoChip, ChipBadge } from "./shared/InfoBar";
-import { MessageEtape } from "./shared/MessageEtape";
-import { StatutCard as StatutCardRh } from "./shared/StatutCard";
 import { ScanStatus as ScanStatusRh } from "./shared/ScanStatus";
+import { Check, ChevronDown, RotateCcw, ScanLine, UserCheck } from "lucide-react";
+import "../Reception/Reception.css";
+import "./CollecteChambre.css";
 import CollageListService from "./collecteService/CollageListService";
 
 
@@ -422,8 +421,8 @@ function DialogueInfecte({ linge, onFermer, onScanner }) {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {[
-              { num: 1, text: "Placez le linge dans un sac infecté (rouge)" },
-              { num: 2, text: "Scannez le code-barres du sac pour associer" },
+              { num: 1, text: "Placez le linge dans un bac infecté (rouge)" },
+              { num: 2, text: "Scannez le code ou le tag du bac infecté pour associer" },
             ].map((step) => (
               <div key={step.num} style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
                 <div style={{
@@ -471,7 +470,7 @@ function DialogueInfecte({ linge, onFermer, onScanner }) {
             onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(220,38,38,0.4)"; }}
           >
             <Icons.Biohazard size={15} color="white" strokeWidth={2.5} />
-            Scanner le sac infecté
+            Scanner le bac infecté
           </button>
         </div>
       </div>
@@ -504,6 +503,7 @@ function ColageListInner() {
   const [dlgInfecte, setDlgInfecte] = useState(null);
   const [lingeInfecteEnCours, setLingeInfecteEnCours] = useState(null);
   const [scanStatus, setScanStatus] = useState(null);
+  const [groupesOuverts, setGroupesOuverts] = useState({ traites: true, vides: true });
 
   const agentRef = useRef(null);
   const collecteRef = useRef(null);
@@ -549,7 +549,7 @@ function ColageListInner() {
     }
   }, []);
 
-  const majLit = useCallback((litId, statut, codes = [], sacInfecteId = null) => {
+  const majLit = useCallback((litId, statut, codes = [], bacInfecteId = null) => {
     setCollecte((p) =>
       p ? {
         ...p,
@@ -558,10 +558,10 @@ function ColageListInner() {
           const linges = l.linges.map((lg) => ({
             ...lg,
             statut: codes.includes(lg.codeBarre) ? statut : lg.statut,
-            sacInfecteId:
+            bacInfecteId:
               statut === "INFECTE" && codes.includes(lg.codeBarre)
-                ? sacInfecteId ?? lg.sacInfecteId ?? null
-                : lg.sacInfecteId ?? null,
+                ? bacInfecteId ?? lg.bacInfecteId ?? null
+                : lg.bacInfecteId ?? null,
           }));
           return { ...l, linges, statut: calculerStatutLit(linges) };
         }),
@@ -569,7 +569,7 @@ function ColageListInner() {
     );
   }, []);
 
-  const majLinge = useCallback((lingeId, statut, sacInfecteId = null) => {
+  const majLinge = useCallback((lingeId, statut, bacInfecteId = null) => {
     setCollecte((p) =>
       p ? {
         ...p,
@@ -578,9 +578,9 @@ function ColageListInner() {
           const linges = l.linges.map((lg) =>
             lg.lingeId === lingeId ? {
               ...lg, statut,
-              sacInfecteId: statut === "INFECTE"
-                ? sacInfecteId ?? lg.sacInfecteId ?? null
-                : lg.sacInfecteId,
+              bacInfecteId: statut === "INFECTE"
+                ? bacInfecteId ?? lg.bacInfecteId ?? null
+                : lg.bacInfecteId,
             } : lg
           );
           return { ...l, linges, statut: calculerStatutLit(linges) };
@@ -631,7 +631,7 @@ function ColageListInner() {
         ...l, statut: l.statut || "",
         estInfecte: !!l.estInfecte || idsInfectes.has(String(l.litId)),
         linges: (l.linges || []).map((lg) => ({
-          ...lg, sacInfecteId: lg.sacInfecteId ?? null,
+          ...lg, bacInfecteId: lg.bacInfecteId ?? null,
         })),
       }));
 
@@ -700,7 +700,7 @@ function ColageListInner() {
         success: {
           message: res.estInfecte ? `Lit ${res.codeLit} — infecté` : `Lit ${res.codeLit} — normal`,
           detail: res.estInfecte
-            ? "Cochez les linges puis scannez le sac rouge"
+            ? "Cochez les linges puis scannez le bac infecté"
             : "Cochez les linges puis scannez le bac blanc",
         },
         error: null,
@@ -772,10 +772,10 @@ function ColageListInner() {
       const res = await traiterLitAvecContenant(
         collecte.id, litEnCours.litId, codeContenant, selection
       );
-      const estInfecte = res.typeContenant === "SAC_INFECTE";
+      const estInfecte = res.typeContenant === "BAC_INFECTE";
       const statut = estInfecte ? "INFECTE" : "BLANC";
-      const sacId = res.sacInfecteId ?? res.sacInfecte?.id ?? null;
-      majLit(litEnCours.litId, statut, res.codes || [], sacId);
+      const bacId = estInfecte ? res.bacInfecteId ?? res.bacId ?? null : null;
+      majLit(litEnCours.litId, statut, res.codes || [], bacId);
 
       const codeLit = litEnCours.codeLit;
       const restants = lingesSelectionnables.length - (res.nbTraites || 0);
@@ -784,7 +784,7 @@ function ColageListInner() {
       setScanStatus({
         loading: false,
         success: {
-          message: estInfecte ? `Sac ${codeContenant} associé` : `Bac ${codeContenant} associé`,
+          message: estInfecte ? `Bac infecté ${codeContenant} associé` : `Bac blanc ${codeContenant} associé`,
           detail: restants > 0
             ? `${res.nbTraites} linge(s) · Lit ${codeLit} · ${restants} restant(s) à déclarer`
             : `${res.nbTraites} linge(s) · Lit ${codeLit}`,
@@ -792,7 +792,7 @@ function ColageListInner() {
         error: null,
       });
       setTimeout(() => setScanStatus(null), 3000);
-      if (estInfecte) voice.saySacInfecteOk(res.nbTraites, codeContenant);
+      if (estInfecte) voice.sayBacInfecteOk(res.nbTraites, codeContenant);
       else voice.sayBacBlancOk(res.nbTraites, codeContenant);
       if (restants > 0) {
         setTimeout(() => {
@@ -846,33 +846,29 @@ function ColageListInner() {
     voice.sayGuideInfecte();
   }, [voice]);
 
-  const handleScannerSacPourInfecte = useCallback((linge) => {
+  const handleScannerBacPourInfecte = useCallback((linge) => {
     setDlgInfecte(null);
     setLingeInfecteEnCours(linge);
     setScanStatus({ loading: false, success: null, error: null });
     setTimeout(() => {
       if (scanInputRef.current) scanInputRef.current.focus();
     }, 150);
-    voice.sayScannerSacInfecte();
+    voice.sayScannerBacInfecte();
   }, [voice]);
 
-  const handleDeclarerInfecte = useCallback(async (codeSac) => {
+  const handleDeclarerInfecte = useCallback(async (codeBacInfecte) => {
     if (!collecte || !lingeInfecteEnCours) return;
     setLoading(true);
-    setScanStatus({ loading: true, code: codeSac });
+    setScanStatus({ loading: true, code: codeBacInfecte });
     try {
-      const res = await declarerLingeInfecte(
-        collecte.id, lingeInfecteEnCours.lingeId, codeSac,
-        agentRef.current?.codeBarre || agentRef.current?.matricule
-      );
-      const sacId = res?.sacInfecteId ?? res?.sacInfecte?.id ?? null;
-      majLinge(lingeInfecteEnCours.lingeId, "INFECTE", sacId);
+      const res = await declarerLingeInfecte(collecte.id, lingeInfecteEnCours.lingeId, codeBacInfecte);
+      majLinge(lingeInfecteEnCours.lingeId, "INFECTE", res?.bacInfecteId ?? res?.bacId ?? null);
       retirerDeSelection(lingeInfecteEnCours.lingeId);
       setScanStatus({
         loading: false,
         success: {
           message: "Linge déclaré infecté",
-          detail: `${lingeInfecteEnCours.codeBarre} → Sac ${codeSac}`,
+          detail: `${lingeInfecteEnCours.codeBarre} → Bac infecté ${res?.codeBacInfecte || codeBacInfecte}`,
         },
         error: null,
       });
@@ -1006,11 +1002,11 @@ function ColageListInner() {
 
   const getPlaceholder = () => {
     if (!agent) return "Aucun agent connecté";
-    if (lingeInfecteEnCours) return `Scanner le sac infecté pour ${lingeInfecteEnCours.codeBarre}...`;
+    if (lingeInfecteEnCours) return `Scanner le bac infecté (code ou tag) pour ${lingeInfecteEnCours.codeBarre}...`;
     if (!collecte) return "Scannez le code de la chambre...";
     if (litEnCours) {
-      return litEnCours.actionSuivante === "SCANNER_SAC_INFECTE"
-        ? `Scanner le sac rouge — ${selection.length} linge(s) coché(s) — Lit ${litEnCours.codeLit}...`
+      return estActionInfecte(litEnCours.actionSuivante)
+        ? `Scanner le bac infecté (code ou tag) — ${selection.length} linge(s) coché(s) — Lit ${litEnCours.codeLit}...`
         : `Scanner le bac blanc — ${selection.length} linge(s) coché(s) — Lit ${litEnCours.codeLit}...`;
     }
     return "Cliquez sur un lit, ou scannez votre badge pour clôturer...";
@@ -1020,12 +1016,36 @@ function ColageListInner() {
     ? "#e2e8f0"
     : lingeInfecteEnCours
     ? "#dc2626"
-    : litEnCours?.actionSuivante === "SCANNER_SAC_INFECTE"
+    : estActionInfecte(litEnCours?.actionSuivante)
     ? "#dc2626"
     : "#7c3aed";
 
+  const nomAgent = agent ? String(agent.nomPrenom || agent.nom || agent.matricule || "").trim() : "";
+  const initialesAgent = nomAgent.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase() || "?";
+  const pct = litsAvecLinge > 0 ? Math.round((traites / litsAvecLinge) * 100) : 0;
+  const etapeFaite = [
+    Boolean(agent),
+    Boolean(collecte),
+    Boolean(collecte) && litsAvecLinge > 0 && nonTraites === 0,
+    false,
+  ];
+  const etapeActive = etapeFaite.findIndex((f) => !f);
+  const etapes = ["Identification de l'agent", "Scan de la chambre", "Collecte des lits", "Clôture"];
+  const litsParFiltre = {
+    tous: collecte?.lits || [],
+    afaire: (collecte?.lits || []).filter((l) => l.linges.length > 0 && !l.statut),
+    traites: (collecte?.lits || []).filter((l) => l.statut),
+    vides: (collecte?.lits || []).filter((l) => l.linges.length === 0),
+  };
+  const groupesLits = [
+    { key: "afaire", titre: "À collecter", lits: litsParFiltre.afaire, repliable: false },
+    { key: "traites", titre: "Traités", lits: litsParFiltre.traites, repliable: true },
+    { key: "vides", titre: "Sans linge", lits: litsParFiltre.vides, repliable: true },
+  ];
+  const infecteActif = Boolean(lingeInfecteEnCours) || estActionInfecte(litEnCours?.actionSuivante);
+
   return (
-    <div className="collecte-container cr-page">
+    <div className="collecte-container cr-page rc cc">
 
       <DialogueManquant
         linge={dlgManq}
@@ -1036,17 +1056,23 @@ function ColageListInner() {
       <DialogueInfecte
         linge={dlgInfecte}
         onFermer={() => setDlgInfecte(null)}
-        onScanner={handleScannerSacPourInfecte}
+        onScanner={handleScannerBacPourInfecte}
       />
 
-      <CollecteHeader
-        icon={<Icons.Bed size={24} color="white" strokeWidth={2.2} />}
-        title="Collecte Chambre"
-        agent={agent}
-        agentLabel="Agent"
-        noAgentLabel="Aucun agent connecté"
-        badge={collecte ? `Chambre ${collecte.codeChambre}` : undefined}
-        right={(
+      <div className="rc-toolbar">
+        <div className="rc-head__right">
+          {collecte && (
+            <span className="rc-mode"><i /> Chambre {collecte.codeChambre} · {totalLits} lits</span>
+          )}
+          {agent && (
+            <div className="rc-agent">
+              <span className="rc-agent__avatar">{initialesAgent}</span>
+              <span className="rc-agent__text">
+                <span className="rc-agent__name">{nomAgent || "—"}</span>
+                <span className="rc-agent__id">{agent.codeBarre || agent.matricule}</span>
+              </span>
+            </div>
+          )}
           <MuteButton
             muted={voice.muted}
             onToggle={voice.toggleMute}
@@ -1054,138 +1080,174 @@ function ColageListInner() {
             lang={voiceLang}
             onLangChange={setVoiceLang}
           />
-        )}
-      />
-
-      <div className="cr-shell">
-        {(agent || collecte) && (
-          <InfoBar onReset={etape !== "CHAMBRE" ? reset : undefined}>
-            {agent && (
-              <InfoChip icon={<Icons.User size={13} color="#6366f1" strokeWidth={2.2} />} text={agent.nomPrenom || agent.nom} color="#4f46e5">
-                <ChipBadge>{agent.codeBarre || agent.matricule}</ChipBadge>
-              </InfoChip>
-            )}
-            {collecte && (
-              <InfoChip icon={<Icons.Building size={13} color="#0794a4" strokeWidth={2.2} />} text={collecte.codeChambre} color="#067a87" delay={0.05}>
-                <ChipBadge>{totalLits} lits</ChipBadge>
-              </InfoChip>
-            )}
-          </InfoBar>
-        )}
-
-        <section className="cr-scan">
-          <ScanInput
-            ref={scanInputRef}
-            placeholder={getPlaceholder()}
-            value={scanVal}
-            onChange={setScanVal}
-            onSubmit={handleScan}
-            borderColor={borderColor}
-            keepFocus
-            autoDebounce
-            disabled={loading || !agent}
-          />
-
-          {lingeInfecteEnCours && (
-            <MessageEtape
-              tone="red"
-              icon={<Icons.Biohazard size={16} color="#dc2626" strokeWidth={2.4} />}
-              title={`Scannez le sac infecté pour le linge ${lingeInfecteEnCours.codeBarre}`}
-              animated
-            />
+          {etape !== "CHAMBRE" && (
+            <button type="button" className="rc-btn" onClick={reset}>
+              <RotateCcw size={14} /> Réinitialiser
+            </button>
           )}
+        </div>
+      </div>
 
-          {etape === "SCAN" && collecte && !lingeInfecteEnCours && !litEnCours && (
-            <MessageEtape
-              tone="blue"
-              icon={<Icons.Info size={16} color="#0794a4" strokeWidth={2.2} />}
-              title="Cliquez sur un lit pour voir ses linges"
-              subtitle="Scannez votre badge pour clôturer la collecte"
-            />
-          )}
+      <ol className="rc-steps rc-steps--4" aria-label="Étapes de la collecte">
+        {etapes.map((label, i) => (
+          <li key={label} className={`rc-step ${etapeFaite[i] ? "is-done" : ""} ${etapeActive === i ? "is-active" : ""}`}>
+            <span className="rc-step__num">{etapeFaite[i] ? <Check size={14} strokeWidth={3} /> : i + 1}</span>
+            <span className="rc-step__label">{label}</span>
+          </li>
+        ))}
+      </ol>
 
-          <ScanStatusRh status={scanStatus} />
-        </section>
-
-        {litOuvert && etape === "SCAN" && (
-          <LitDialog
-            lit={litOuvert}
-            enSelection={!!litEnCours}
-            actionSuivante={litEnCours?.actionSuivante}
-            selection={selection}
-            nbSelectionnables={lingesSelectionnables.length}
-            toutCoche={toutCoche}
-            onToggle={toggleSelection}
-            onToggleTout={toggleTout}
-            onFermer={annulerSelection}
-            onPropre={handlePropre}
-            onManquant={(l) => setDlgManq(l)}
-            onInfecte={handleInfecte}
-            scanStatus={scanStatus}
-            lingeInfecte={lingeInfecteEnCours}
-            t={t}
-          />
-        )}
-
-        {!agent && (
-          <MessageEtape
-            tone="red"
-            icon={<Icons.AlertTriangle size={16} color="#dc2626" strokeWidth={2.2} />}
-            title="Aucun agent connecté"
-            subtitle="Connectez-vous pour démarrer la collecte"
-          />
-        )}
-
-        {agent && !collecte && (
-          <MessageEtape
-            tone="blue"
-            icon={<Icons.Building size={16} color="#0794a4" strokeWidth={2.2} />}
-            title="Scannez le code de la chambre"
-            subtitle="après être sorti de la chambre avec le linge"
-          />
-        )}
-
-        {etape === "SCAN" && collecte && (
-          <>
-            <div className="cr-kpis">
-              <StatutCardRh label="Total" value={totalLits} icon={<Icons.Layers size={18} color="#0284c7" strokeWidth={2.2} />} color="#0284c7" />
-              <StatutCardRh label="Blancs" value={nbBlancs} icon={<Icons.CheckCheck size={18} color="#10b981" strokeWidth={2.5} />} color="#10b981" />
-              {circuitInfecte && (
-                <StatutCardRh label="Infectés" value={nbInfectes} icon={<Icons.Biohazard size={18} color="#dc2626" strokeWidth={2.2} />} color="#dc2626" />
-              )}
-              <StatutCardRh label="Restants" value={nonTraites} icon={<Icons.Activity size={18} color="#f59e0b" strokeWidth={2.2} />} color="#f59e0b" />
+      {!agent ? (
+        <section className="rc-card rc-welcome">
+          <div className="rc-welcome__icon"><UserCheck size={34} strokeWidth={1.6} /></div>
+          <div className="rc-welcome__body">
+            <span className="rc-eyebrow">Collecte chambre</span>
+            <h2>Aucun agent connecté</h2>
+            <div className="rc-scan__field is-infecte">
+              <ScanInput
+                ref={scanInputRef}
+                placeholder=""
+                value={scanVal}
+                onChange={setScanVal}
+                onSubmit={handleScan}
+                borderColor="#e03131"
+                keepFocus
+                autoDebounce
+                disabled
+              />
             </div>
-
-            <section className="cr-panel">
-              <header className="cr-panel__head">
-                <div>
-                  <h3><Icons.Bed size={16} color="currentColor" strokeWidth={2.2} /> Lits de la chambre</h3>
-                  <small>{totalLits} lit{totalLits > 1 ? "s" : ""} · {traites} traité{traites > 1 ? "s" : ""}</small>
-                </div>
-                <div className="cr-progress">
-                  <span>Progression</span>
-                  <div className="cr-progress__bar">
-                    <i style={{ width: `${litsAvecLinge > 0 ? (traites / litsAvecLinge) * 100 : 0}%` }} />
-                  </div>
-                  <strong>{litsAvecLinge > 0 ? Math.round((traites / litsAvecLinge) * 100) : 0}%</strong>
-                </div>
+          </div>
+        </section>
+      ) : (
+        <div className={etape === "SCAN" && collecte ? "rc-layout" : ""}>
+          <div className="rc-main">
+            <section className={`rc-card rc-scan ${infecteActif ? "is-infecte" : ""}`}>
+              <header className="rc-scan__bar">
+                <span className="rc-scan__title"><ScanLine size={17} /> Collecte chambre</span>
+                {litEnCours && (
+                  <span className="rc-mode"><i /> Lit {litEnCours.codeLit} · {selection.length} coché(s)</span>
+                )}
               </header>
-
-              <LegendeLits />
-              <div className="lits-grid" style={{ maxHeight: 620, overflowY: "auto", padding: 4 }}>
-                {collecte.lits.map((lit) => (
-                  <LitTile
-                    key={lit.litId}
-                    lit={lit}
-                    active={litOuvertId === lit.litId}
-                    onClick={handleClickLit}
+              <div className="rc-scan__body">
+                <div className={`rc-scan__field ${infecteActif ? "is-infecte" : ""}`}>
+                  <ScanInput
+                    ref={scanInputRef}
+                    placeholder=""
+                    value={scanVal}
+                    onChange={setScanVal}
+                    onSubmit={handleScan}
+                    borderColor={infecteActif ? "#e03131" : "#0d9488"}
+                    keepFocus
+                    autoDebounce
+                    disabled={loading}
                   />
-                ))}
+                </div>
+                {lingeInfecteEnCours && (
+                  <div className="cc-alert">
+                    <Icons.Biohazard size={18} color="currentColor" strokeWidth={2.2} />
+                    <span>Bac infecté requis · linge <code>{lingeInfecteEnCours.codeBarre}</code></span>
+                  </div>
+                )}
+                <ScanStatusRh status={scanStatus} />
               </div>
             </section>
-          </>
-        )}
-      </div>
+
+            {etape === "SCAN" && collecte && (
+              <section className="rc-card">
+                <div className="rc-card__head">
+                  <h3 className="rc-card__title"><Icons.Bed size={15} color="currentColor" strokeWidth={2.2} /> Lits de la chambre</h3>
+                  <span className="rc-count">{totalLits}</span>
+                  <div className="cc-progress">
+                    <span>{traites} / {litsAvecLinge} traités</span>
+                    <div className="cc-progress__bar"><i style={{ width: `${pct}%` }} /></div>
+                    <strong>{pct}%</strong>
+                  </div>
+                </div>
+                <div className="rc-card__body">
+                  <div className="lit-groups">
+                    {groupesLits.map((g) => {
+                      const ouvert = !g.repliable || groupesOuverts[g.key];
+                      if (g.key !== "afaire" && g.lits.length === 0) return null;
+                      return (
+                        <section key={g.key} className={`lit-group is-${g.key}`}>
+                          <button
+                            type="button"
+                            className="lit-group__head"
+                            disabled={!g.repliable}
+                            onClick={() => setGroupesOuverts((o) => ({ ...o, [g.key]: !o[g.key] }))}
+                            onMouseDown={(e) => e.preventDefault()}
+                            aria-expanded={ouvert}
+                          >
+                            <span className="lit-group__title">{g.titre}</span>
+                            <span className="lit-group__count">{g.lits.length}</span>
+                            {g.repliable && <ChevronDown size={16} className="lit-group__chev" />}
+                          </button>
+                          {ouvert && (g.lits.length === 0 ? (
+                            <div className="lit-group__empty"><Check size={16} strokeWidth={3} /> Tous les lits sont traités</div>
+                          ) : (
+                            <div className="lit-list">
+                              {g.lits.map((lit) => (
+                                <LitTile
+                                  key={lit.litId}
+                                  lit={lit}
+                                  active={litOuvertId === lit.litId}
+                                  onClick={handleClickLit}
+                                />
+                              ))}
+                            </div>
+                          ))}
+                        </section>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+            )}
+          </div>
+
+          {etape === "SCAN" && collecte && (
+            <aside className="rc-side">
+              <section className="rc-card">
+                <div className="rc-card__head">
+                  <h3 className="rc-card__title"><Icons.Layers size={15} color="currentColor" strokeWidth={2.2} /> Bilan de la chambre</h3>
+                </div>
+                <div className="rc-stats">
+                  <div className="rc-stat"><span className="rc-stat__value">{totalLits}</span><span className="rc-stat__label">Lits</span></div>
+                  <div className="rc-stat"><span className="rc-stat__value">{nbBlancs}</span><span className="rc-stat__label">Blancs</span></div>
+                  {circuitInfecte && (
+                    <div className="rc-stat rc-stat--danger"><span className="rc-stat__value">{nbInfectes}</span><span className="rc-stat__label">Infectés</span></div>
+                  )}
+                  <div className="rc-stat"><span className="rc-stat__value">{nonTraites}</span><span className="rc-stat__label">Restants</span></div>
+                </div>
+              </section>
+              <div className="rc-foot">
+                <span>Agent : <b>{nomAgent}</b></span>
+                <span>{new Date().toLocaleDateString("fr-FR")}</span>
+              </div>
+            </aside>
+          )}
+        </div>
+      )}
+
+      {litOuvert && etape === "SCAN" && (
+        <LitDialog
+          lit={litOuvert}
+          enSelection={!!litEnCours}
+          actionSuivante={litEnCours?.actionSuivante}
+          selection={selection}
+          nbSelectionnables={lingesSelectionnables.length}
+          toutCoche={toutCoche}
+          onToggle={toggleSelection}
+          onToggleTout={toggleTout}
+          onFermer={annulerSelection}
+          onPropre={handlePropre}
+          onManquant={(l) => setDlgManq(l)}
+          onInfecte={handleInfecte}
+          scanStatus={scanStatus}
+          lingeInfecte={lingeInfecteEnCours}
+          t={t}
+        />
+      )}
 
       <style>{`
         @keyframes spin {

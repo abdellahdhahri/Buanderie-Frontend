@@ -1,20 +1,26 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
-import { RefreshCw, Pencil, Trash2, Eye, History } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import Swal from "../../kit/dialogueApi";
+import { RefreshCw, Pencil, Trash2, Eye, History, Boxes, Layers, Download } from "lucide-react";
 import BarcodeLabel from "../../BarcodeLabel";
+import ImportCubixModal from "../../ui/ImportCubixModal";
+import { useIntegration } from "../../../hooks/useIntegration";
+import { bacImportService } from "../../../services/bacImportService";
 import { useBac } from "../../../contextes/BacContext";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterActions,
   ListSection, DataTable, Pagination, Badge,
   Modal, Button, FormField, TextArea, ConfirmDialog,
   DetailsPage, DetailsButton, KpiTiles, DetailCard, InfoList,
   ColumnSettingsModal, useListPage, useRowSelection, deleteMany, exportExcel,
-  RowActions, RowButton, FormGrid, Code,
+  RowActions, RowButton, FormGrid, Code, Tabs,
 } from "../../kit";
+import { CATEGORIES_LINGE } from "../../../constants/categoriesLinge";
+import GroupeLavageBadge from "../../utils/shared/GroupeLavageBadge";
+import { USAGES_BAC, ETATS_BAC_TRI, TONS_ETAT_BAC, listerBacsTri, libelleEtatBac, libelleUsageBac, estBacDechargement, libelleSourceBac } from "../../../services/bacTriService";
+import { listeQuantites } from "../../../services/lavageInfecteService";
 import { IconAjouter, IconDetails, IconModifier, IconSupprimer } from "../../kit/ActionIcons";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
@@ -22,11 +28,15 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 const VIDE = {
   code: "", reference: "", etat: "EN_RECEPTION", poids: "", capacite_max: "",
   nombreLinges: 0, typeCollecte: "BLANC", typebac: "BLANC", observation: "",
+  usage: "COLLECTE", categorie: "", poidsBalance: null,
 };
+
+const VIDE_TRI = { ...VIDE, usage: "TRI", etat: "VIDE" };
 
 const STATUTS_BAC = {
   BLANC: "info", INFECTE: "danger", MIXTE: "warning", EN_RECEPTION: "warning",
   EN_ATTENTE_COLLECTE: "secondary", COLLECTE_EN_COURS: "info", COLLECTE_TERMINEE: "success",
+  ...TONS_ETAT_BAC,
 };
 
 const ETATS_LINGE = {
@@ -38,6 +48,8 @@ const ETATS_LINGE = {
 const COLUMNS_DEFAULT = [
   { key: "reference", label: "Référence", visible: true, searchable: true },
   { key: "code", label: "Code", visible: false, searchable: true },
+  { key: "usage", label: "Usage", visible: true, searchable: true },
+  { key: "etat", label: "État", visible: true, searchable: true },
   { key: "dateCreation", label: "Date de création", visible: true, searchable: true },
   { key: "poids", label: "Poids / Capacité", visible: true, searchable: false },
   { key: "typeCollecte", label: "Type", visible: true, searchable: true },
@@ -45,16 +57,40 @@ const COLUMNS_DEFAULT = [
   { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
-const estSacInfecte = (bac) => bac.numeroSac?.toUpperCase().startsWith("SAC")
-  || bac.code?.toUpperCase().startsWith("SAC")
-  || bac.typebac === "INFECTE";
-
 const fmtDate = (v) => (v ? new Date(v).toLocaleDateString() : "—");
 
 export default function BacList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { bacs, loading: isBacsLoading, fetchBacs, addBac, updateBac, deleteBac } = useBac();
+  const { modeCubix } = useIntegration();
+  const [showImportCubix, setShowImportCubix] = useState(false);
+  const { pathname } = useLocation();
+  const onglet = /\/bacs-tri$/i.test(pathname) ? "tri" : "tous";
+  const changerOnglet = (v) => {
+    setSelected(null);
+    navigate(v === "tri" ? "/bacs-tri" : "/bac", { replace: true });
+  };
+  const [filtreTri, setFiltreTri] = useState({ etat: "all", categorie: "all", recherche: "" });
+  const [resultatTri, setResultatTri] = useState({ cle: null, liste: [] });
+  const [versionTri, setVersionTri] = useState(0);
+  const cleTri = `${filtreTri.etat}|${filtreTri.categorie}|${versionTri}`;
+  const bacsTri = resultatTri.liste;
+  const chargementTri = onglet === "tri" && resultatTri.cle !== cleTri;
+  const chargerBacsTri = useCallback(() => setVersionTri((v) => v + 1), []);
+
+  useEffect(() => {
+    if (onglet !== "tri") return undefined;
+    let actif = true;
+    listerBacsTri({ etat: filtreTri.etat, categorie: filtreTri.categorie })
+      .then((liste) => { if (actif) setResultatTri({ cle: cleTri, liste }); })
+      .catch((err) => {
+        if (!actif) return;
+        setResultatTri({ cle: cleTri, liste: [] });
+        Swal.fire({ title: "❌", text: err.message, icon: "error" });
+      });
+    return () => { actif = false; };
+  }, [onglet, cleTri, filtreTri.etat, filtreTri.categorie]);
 
   const [selected, setSelected] = useState(null);
   const [viewMode, setViewMode] = useState("list");
@@ -100,32 +136,10 @@ export default function BacList() {
     setBacLinges([]);
     try {
       let items = [];
-      if (estSacInfecte(bac)) {
-        const numeroSac = bac.numeroSac || bac.code;
-        const response = await fetch(`${API_URL}/api/sacs-infectes/detail?numeroSac=${encodeURIComponent(numeroSac)}`);
-        if (response.ok) {
-          const data = await response.json();
-          items = (data.items || []).map((item, index) => ({
-            id: `sac-item-${data.id}-${index}`,
-            codeBarre: `${data.numeroSac}-${item.categorie}`,
-            categorie: item.categorie,
-            quantiteDeclaree: item.quantiteDeclaree,
-            quantiteComptee: item.quantiteComptee,
-            ecart: item.ecart,
-            isSacItem: true,
-            etat: data.etat || "DECLARE",
-            poids: null,
-            rfidTag: null,
-            sacNumero: data.numeroSac,
-            agentCollecteNom: data.agentCollecteNom,
-          }));
-        }
-      } else {
-        const response = await fetch(`${API_URL}/api/bacs/bacs/${bac.id}/linges`);
-        if (response.ok) {
-          const data = await response.json();
-          items = Array.isArray(data) ? data : data.content || [];
-        }
+      const response = await fetch(`${API_URL}/api/bacs/bacs/${bac.id}/linges`);
+      if (response.ok) {
+        const data = await response.json();
+        items = Array.isArray(data) ? data : data.content || [];
       }
       setBacLinges(items);
       setBacLingesCount((prev) => ({ ...prev, [bac.id]: items.length }));
@@ -155,6 +169,7 @@ export default function BacList() {
     ...c,
     label: {
       reference: t("bacs.reference"), code: t("bacs.code"), dateCreation: t("bacs.date_creation"),
+      usage: t("bacs.usage", "Usage"), etat: t("bacs.status"),
       poids: `${t("bacs.weight")} / ${t("bacs.capacity")}`, typeCollecte: t("bacs.type"),
       linges: t("bacs.linges_count"), actions: t("common.actions"),
     }[c.key] || c.label,
@@ -165,6 +180,8 @@ export default function BacList() {
       case "dateCreation": return b.dateCreation ? fmtDate(b.dateCreation) : "";
       case "poids": return `${Number(b.poids) || 0} / ${Number(b.capacite_max) || 0} kg`;
       case "typeCollecte": return statutLabel(b.typeCollecte);
+      case "usage": return libelleUsageBac(t, b.usage);
+      case "etat": return statutLabel(b.etat);
       case "linges": return bacLingesCount[b.id] ?? "";
       case "actions": return "";
       default: return b[key] ?? "";
@@ -189,7 +206,7 @@ export default function BacList() {
   const { draft, setFilter } = list;
   const sel = useRowSelection(list.sorted);
 
-  const openCreate = () => setForm({ bac: null, rec: { ...VIDE } });
+  const openCreate = () => setForm({ bac: null, rec: { ...(onglet === "tri" ? VIDE_TRI : VIDE) } });
   const openEdit = (bac) => {
     if (!bac) return;
     setForm({
@@ -198,10 +215,18 @@ export default function BacList() {
         code: bac.code || "", reference: bac.reference || "", etat: bac.etat || "EN_RECEPTION",
         poids: bac.poids || "", capacite_max: bac.capacite_max || "", nombreLinges: bac.nombreLinges || 0,
         typebac: bac.typebac || "BLANC", typeCollecte: bac.typeCollecte || "BLANC", observation: bac.observations || "",
+        usage: bac.usage || "COLLECTE", categorie: bac.categorie || "", poidsBalance: bac.poidsBalance ?? null,
+        designation: bac.designation || "",
       },
     });
   };
   const setRec = (patch) => setForm((f) => ({ ...f, rec: { ...f.rec, ...patch } }));
+  const changerUsage = (usage) => setForm((f) => ({
+    ...f,
+    rec: usage === "TRI"
+      ? { ...f.rec, usage, typeCollecte: "BLANC", typebac: "BLANC", etat: f.bac?.usage === "TRI" ? f.rec.etat : "VIDE" }
+      : { ...f.rec, usage, categorie: "", etat: f.rec.etat === "VIDE" || ETATS_BAC_TRI[f.rec.etat] ? "EN_RECEPTION" : f.rec.etat },
+  }));
 
   const toast = (text) => Swal.fire({ title: "✅", text, icon: "success", timer: 1500, showConfirmButton: false });
   const erreur = (err) => Swal.fire({ title: "❌", text: err?.message || t("bacs.error_text"), icon: "error" });
@@ -213,11 +238,34 @@ export default function BacList() {
       Swal.fire({ title: t("bacs.reference_required"), text: t("bacs.reference_required_text"), icon: "warning" });
       return;
     }
+    if (rec.reference.trim().length > 20) {
+      Swal.fire({ title: t("bacs.reference_too_long", "Référence trop longue"), text: t("bacs.reference_too_long_text", "La référence ne doit pas dépasser 20 caractères."), icon: "warning" });
+      return;
+    }
+    const externe = bac?.sourceDonnee === "EXTERNE";
+    const changements = bac ? (() => {
+      const diff = {};
+      const code = rec.code.trim();
+      if (!externe && code && code !== (bac.code || "")) diff.code = code;
+      if (!externe && (rec.designation || "").trim() !== (bac.designation || "")) diff.designation = (rec.designation || "").trim();
+      if (rec.typebac && rec.typebac !== bac.typebac) diff.typebac = rec.typebac;
+      if (rec.usage && rec.usage !== bac.usage) diff.usage = rec.usage;
+      if (rec.typeCollecte && rec.typeCollecte !== bac.typeCollecte) diff.typeCollecte = rec.typeCollecte;
+      const capacite = rec.capacite_max === "" ? null : parseFloat(rec.capacite_max);
+      if (capacite != null && !Number.isNaN(capacite) && capacite !== bac.capacite_max) diff.capacite_max = capacite;
+      if ((rec.observation || "") !== (bac.observations || "")) diff.observations = rec.observation || "";
+      return diff;
+    })() : null;
+    if (bac && Object.keys(changements).length === 0) {
+      setForm(null);
+      return;
+    }
     setIsSaving(true);
     try {
       const payload = {
         reference: rec.reference.trim(),
-        etat: rec.etat || "EN_RECEPTION",
+        usage: rec.usage || "COLLECTE",
+        etat: rec.etat || (rec.usage === "TRI" ? "VIDE" : "EN_RECEPTION"),
         poids: parseFloat(rec.poids) || 0,
         capacite_max: parseFloat(rec.capacite_max) || 10,
         nombreLinges: parseInt(rec.nombreLinges) || 0,
@@ -225,12 +273,13 @@ export default function BacList() {
         typeCollecte: rec.typeCollecte || "BLANC",
         observations: rec.observation || "initialisation dans le systeme",
       };
-      const result = bac ? await updateBac(bac.id, payload) : await addBac(payload);
+      const result = bac ? await updateBac(bac.id, changements) : await addBac(payload);
       if (!result.success) throw new Error(result.error);
       toast(bac ? t("bacs.update_success") : t("bacs.create_success"));
       setForm(null);
       if (bac) { setSelected(null); setViewMode("list"); }
       await fetchBacs();
+      if (onglet === "tri") chargerBacsTri();
     } catch (err) {
       erreur(err);
     } finally {
@@ -306,8 +355,17 @@ export default function BacList() {
   };
 
   const TABLE_COLUMNS = {
-    reference: { label: t("bacs.reference"), sortable: true, render: (b) => <><strong>{b.reference || "—"}</strong>{b.code && <div><Code>{b.code}</Code></div>}</> },
+    reference: { label: t("bacs.reference"), sortable: true, render: (b) => (
+      <>
+        <strong>{b.reference || "—"}</strong>
+        {b.sourceDonnee === "EXTERNE" && <span className="kit-tag">CUBIX</span>}
+        {b.designation && <div className="kit-muted">{b.designation}</div>}
+        {b.code && <div><Code>{b.code}</Code></div>}
+      </>
+    ) },
     code: { label: t("bacs.code"), sortable: true, render: (b) => <Code>{b.code}</Code> },
+    usage: { label: t("bacs.usage", "Usage"), sortable: true, align: "center", render: (b) => <Badge variant={b.usage === "TRI" ? "info" : "secondary"}>{libelleUsageBac(t, b.usage)}</Badge> },
+    etat: { label: t("bacs.status"), sortable: true, align: "center", render: (b) => <StatutBadge value={b.etat} /> },
     dateCreation: { label: t("bacs.date_creation"), sortable: true, render: (b) => fmtDate(b.dateCreation) },
     poids: { label: `${t("bacs.weight")} / ${t("bacs.capacity")}`, sortable: true, render: (b) => <Jauge bac={b} /> },
     typeCollecte: { label: t("bacs.type"), sortable: true, align: "center", render: (b) => <StatutBadge value={b.typeCollecte} /> },
@@ -328,29 +386,111 @@ export default function BacList() {
     },
   };
 
+  const terme = filtreTri.recherche.trim().toLowerCase();
+  const bacsTriFiltres = !terme ? bacsTri : bacsTri.filter((b) =>
+    [b.reference, b.code, b.categorie, t(`categories.${b.categorie}`, b.categorie || "")]
+      .some((v) => String(v || "").toLowerCase().includes(terme)));
+
+  const kg = (v) => (v != null && v !== "" ? `${Number(v).toFixed(2)} kg` : "—");
+
+  const TRI_COLUMNS = {
+    reference: TABLE_COLUMNS.reference,
+    categorie: { label: t("bacs.category", "Catégorie"), render: (b) => (b.categorie ? <Badge variant="info">{t(`categories.${b.categorie}`, b.categorie)}</Badge> : "—") },
+    groupeLavage: { label: t("groupe_lavage.label", "Groupe"), align: "center", render: (b) => <GroupeLavageBadge groupe={b.groupeLavage} /> },
+    etat: { label: t("bacs.status"), align: "center", render: (b) => <StatutBadge value={b.etat} /> },
+    nombreLinges: { label: t("bacs.linges_count"), align: "center", render: (b) => <strong>{b.nombreLinges ?? 0}</strong> },
+    poids: { label: t("bacs.declared_weight", "Poids déclaré"), align: "right", render: (b) => kg(b.poids) },
+    poidsBalance: { label: t("bacs.scale_weight", "Poids balance"), align: "right", render: (b) => kg(b.poidsBalance) },
+    actions: TABLE_COLUMNS.actions,
+  };
+
   const LINGE_COLUMNS = {
     codeBarre: { label: t("bacs.code"), render: (l) => <Code>{l.codeBarre || l.codeSuivi || "N/A"}</Code> },
     categorie: { label: t("bacs.type"), render: (l) => l.categorie || "Non catégorisé" },
     etat: { label: t("bacs.status"), render: (l) => <EtatLingeBadge value={l.etat} /> },
-    poids: { label: t("bacs.weight"), align: "right", render: (l) => (l.isSacItem ? `${l.quantiteComptee ?? 0} / ${l.quantiteDeclaree ?? 0}` : `${l.poids || 0} kg`) },
+    poids: { label: t("bacs.weight"), align: "right", render: (l) => `${l.poids || 0} kg` },
     rfidTag: { label: "RFID", render: (l) => (l.rfidTag ? <Code>{l.rfidTag}</Code> : "—") },
     observations: { label: t("bacs.observations"), render: (l) => l.observations || "—" },
   };
 
   return (
     <Page>
+      {showImportCubix && (
+        <ImportCubixModal
+          title={t("bacs.import_cubix", "Importer depuis CUBIX")}
+          fetchPage={bacImportService.getAImporter}
+          importer={bacImportService.importer}
+          onClose={() => setShowImportCubix(false)}
+          onImporte={handleRefresh}
+        />
+      )}
       {viewMode === "list" && (
-        <>
-          <PageHeader
-            icon={<PageHeaderIcon size={40} />}
-            title={t("bacs.title")}
-            subtitle={t("bacs.subtitle")}
-            total={list.sorted.length}
-            onIconClick={() => setShowColumnSettings(true)}
-          />
+        <Tabs
+          value={onglet}
+          onChange={changerOnglet}
+          items={[
+            { value: "tous", label: t("bacs.tab_all", "Tous les bacs"), icon: <Boxes size={15} />, count: bacs?.length ?? 0 },
+            { value: "tri", label: t("bacs.tab_tri", "Bacs de tri"), icon: <Layers size={15} />, count: onglet === "tri" ? bacsTri.length : undefined },
+          ]}
+        />
+      )}
 
+      {viewMode === "list" && onglet === "tri" && (
+        <>
+          <ActionBar>
+            <ActionButton icon={IconAjouter} label={t("bacs.new_tri", "Nouveau bac de tri")} variant="ajouter" onClick={openCreate} />
+            <ActionButton icon={IconDetails} label={t("bacs.view_linges", "Voir les linges")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
+            <ActionButton icon={IconModifier} label={t("common.edit")} variant="modifier" disabled={!selected} onClick={() => openEdit(selected)} />
+            <BarcodeLabel item={selected} type="bac" variant="action" />
+            <ActionButton
+              icon={<RefreshCw size={18} className={chargementTri ? "animate-spin" : ""} />}
+              label={t("common.refresh")}
+              variant="details"
+              onClick={chargerBacsTri}
+            />
+          </ActionBar>
+
+          <FilterPanel>
+            <FilterRow>
+              <FilterText label={t("common.search")} value={filtreTri.recherche} onChange={(v) => setFiltreTri((f) => ({ ...f, recherche: v }))} />
+              <FilterSelect
+                label={t("bacs.status")}
+                value={filtreTri.etat}
+                onChange={(v) => setFiltreTri((f) => ({ ...f, etat: v }))}
+                allLabel={t("common.all")}
+                options={Object.keys(ETATS_BAC_TRI).map((v) => ({ value: v, label: libelleEtatBac(t, v) }))}
+              />
+              <FilterSelect
+                label={t("bacs.category", "Catégorie")}
+                value={filtreTri.categorie}
+                onChange={(v) => setFiltreTri((f) => ({ ...f, categorie: v }))}
+                allLabel={t("common.all")}
+                options={CATEGORIES_LINGE.map((c) => ({ value: c, label: t(`categories.${c}`, c) }))}
+              />
+            </FilterRow>
+          </FilterPanel>
+
+          <ListSection>
+            <DataTable
+              columns={TRI_COLUMNS}
+              rows={bacsTriFiltres}
+              rowKey={(b) => b.id ?? b.code ?? b.reference}
+              activeId={selected?.id}
+              onRowClick={(b) => setSelected(selected?.id === b.id ? null : b)}
+              onRowDoubleClick={openDetails}
+              loading={chargementTri && !bacsTri.length}
+              loadingText={t("common.loading")}
+              emptyText={t("bacs.no_tri", "Aucun bac de tri. Créez-en un avec « Nouveau bac de tri ».")}
+            />
+          </ListSection>
+        </>
+      )}
+
+      {viewMode === "list" && onglet === "tous" && (
+        <>
           <ActionBar>
             <ActionButton icon={IconAjouter} label={t("bacs.new")} variant="ajouter" onClick={openCreate} />
+            {modeCubix && <ActionButton icon={Download} label={t("bacs.import_cubix", "Importer depuis CUBIX")} variant="ajouter" onClick={() => setShowImportCubix(true)} />}
             <ActionButton icon={IconDetails} label={t("bacs.view_linges", "Voir les linges")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
             <ActionButton icon={IconModifier} label={t("common.edit")} variant="modifier" disabled={!selected} onClick={() => openEdit(selected)} />
             <ActionButton icon={IconSupprimer} label={t("common.delete")} variant="supprimer" disabled={!selected} onClick={() => setDeleteTarget(selected)} />
@@ -430,15 +570,36 @@ export default function BacList() {
         >
           <KpiTiles items={[
             { label: t("bacs.linges_count"), value: isLingesLoading ? "…" : bacLinges.length, tone: "blue" },
-            { label: t("bacs.weight"), value: `${Number(selected.poids) || 0} / ${Number(selected.capacite_max) || 0} kg`, tone: "green" },
+            selected.usage === "TRI"
+              ? { label: t("bacs.weights", "Poids déclaré / balance"), value: `${kg(selected.poids)} / ${kg(selected.poidsBalance)}`, tone: "green" }
+              : { label: t("bacs.weight"), value: `${Number(selected.poids) || 0} / ${Number(selected.capacite_max) || 0} kg`, tone: "green" },
             { label: t("bacs.status"), value: statutLabel(selected.etat), tone: "amber" },
             { label: t("bacs.date_creation"), value: fmtDate(selected.dateCreation), tone: "violet" },
           ]} />
 
+          {(selected.designation || selected.sourceDonnee === "EXTERNE") && (
+            <DetailCard title={t("modal.identification", "Identification")}>
+              <InfoList items={[
+                selected.designation && { label: t("machines.designation", "Désignation"), value: selected.designation },
+                selected.sourceDonnee === "EXTERNE" && { label: t("machines.source", "Source"), value: "CUBIX" },
+                selected.idExterne && { label: t("machines.external_id", "ID externe"), value: selected.idExterne },
+              ].filter(Boolean)} />
+            </DetailCard>
+          )}
+
+          {estBacDechargement(selected) && (
+            <DetailCard title={libelleSourceBac(t, selected)}>
+              <InfoList items={[
+                { label: t("bacs.declared_quantity", "Quantité déclarée"), value: selected.quantiteDeclaree ?? "—" },
+                ...listeQuantites(selected).map((q) => ({ label: t(`categories.${q.categorie}`, q.categorie), value: q.quantite })),
+              ]} />
+            </DetailCard>
+          )}
+
           <DetailCard title={t("bacs.view_linges", "Linges du bac")}>
             <ActionBar>
               <ActionButton icon={IconDetails} label={t("bacs.details_linge")} variant="details" disabled={!selectedLinge} onClick={() => setLingeDetail(selectedLinge)} />
-              <ActionButton icon={History} label={t("bacs.history")} variant="imprimer" disabled={!selectedLinge || selectedLinge.isSacItem} onClick={() => voirTracking(selectedLinge)} />
+              <ActionButton icon={History} label={t("bacs.history")} variant="imprimer" disabled={!selectedLinge} onClick={() => voirTracking(selectedLinge)} />
             </ActionBar>
             <DataTable
               columns={LINGE_COLUMNS}
@@ -469,7 +630,7 @@ export default function BacList() {
           onClose={() => setLingeDetail(null)}
           footer={(
             <>
-              {!lingeDetail.isSacItem && <Button variant="secondary" onClick={() => voirTracking(lingeDetail)}>{t("bacs.history")}</Button>}
+              <Button variant="secondary" onClick={() => voirTracking(lingeDetail)}>{t("bacs.history")}</Button>
               <Button onClick={() => setLingeDetail(null)}>{t("common.close")}</Button>
             </>
           )}
@@ -503,24 +664,50 @@ export default function BacList() {
           <form id="bac-form" onSubmit={handleSave}>
             <FormGrid>
               {form.bac && (
-                <FormField label={t("bacs.code")}>
-                  <input value={form.rec.code} disabled />
+                <FormField
+                  label={<>{t("bacs.code")} {form.bac.sourceDonnee === "EXTERNE" && <Badge variant="info">CUBIX</Badge>}</>}
+                  hint={form.bac.sourceDonnee === "EXTERNE" ? t("bacs.cubix_readonly", "Géré par CUBIX : lecture seule.") : undefined}
+                >
+                  <input value={form.rec.code} onChange={(e) => setRec({ code: e.target.value })} disabled={form.bac.sourceDonnee === "EXTERNE"} />
                 </FormField>
               )}
-              <FormField label={t("bacs.reference")} required>
-                <input value={form.rec.reference} onChange={(e) => setRec({ reference: e.target.value })} placeholder="ex: BAC-001" required />
+              {form.bac && (
+                <FormField
+                  label={<>{t("machines.designation", "Désignation")} {form.bac.sourceDonnee === "EXTERNE" && <Badge variant="info">CUBIX</Badge>}</>}
+                >
+                  <input value={form.rec.designation} onChange={(e) => setRec({ designation: e.target.value })} disabled={form.bac.sourceDonnee === "EXTERNE"} />
+                </FormField>
+              )}
+              <FormField label={t("bacs.reference")} required={!form.bac} hint={form.bac ? undefined : t("bacs.reference_hint", "20 caractères maximum, unique.")}>
+                <input value={form.rec.reference} onChange={(e) => setRec({ reference: e.target.value })} placeholder="ex: BAC-001" maxLength={20} required={!form.bac} disabled={!!form.bac} />
               </FormField>
+              <FormField label={t("bacs.usage", "Usage")}>
+                <select value={form.rec.usage} onChange={(e) => changerUsage(e.target.value)}>
+                  {Object.keys(USAGES_BAC).map((v) => <option key={v} value={v}>{libelleUsageBac(t, v)}</option>)}
+                </select>
+              </FormField>
+              {form.bac && (
+                <FormField label={t("bacs.scale_weight", "Poids balance")} hint={t("bacs.scale_weight_hint", "Renseigné lors de la pesée.")}>
+                  <input value={form.rec.poidsBalance != null ? `${Number(form.rec.poidsBalance).toFixed(2)} kg` : "—"} readOnly disabled />
+                </FormField>
+              )}
               <FormField label={t("bacs.current_weight")}>
-                <input type="number" step="0.1" value={form.rec.poids} onChange={(e) => setRec({ poids: e.target.value })} placeholder="0" />
+                <input type="number" step="0.1" value={form.rec.poids} onChange={(e) => setRec({ poids: e.target.value })} placeholder="0" disabled={form.rec.usage === "TRI" || !!form.bac} />
               </FormField>
               <FormField label={t("bacs.max_capacity")}>
                 <input type="number" step="0.1" value={form.rec.capacite_max} onChange={(e) => setRec({ capacite_max: e.target.value })} placeholder="10" />
               </FormField>
-              <FormField label={t("bacs.status")}>
-                <select value={form.rec.etat} onChange={(e) => setRec({ etat: e.target.value })}>
-                  {["EN_RECEPTION", "EN_ATTENTE_COLLECTE", "COLLECTE_EN_COURS", "COLLECTE_TERMINEE"].map((v) => <option key={v} value={v}>{statutLabel(v)}</option>)}
-                </select>
-              </FormField>
+              {form.rec.usage === "TRI" || form.bac ? (
+                <FormField label={t("bacs.status")}>
+                  <input value={libelleEtatBac(t, form.rec.etat || "VIDE")} readOnly disabled />
+                </FormField>
+              ) : (
+                <FormField label={t("bacs.status")}>
+                  <select value={form.rec.etat} onChange={(e) => setRec({ etat: e.target.value })}>
+                    {["EN_RECEPTION", "EN_ATTENTE_COLLECTE", "COLLECTE_EN_COURS", "COLLECTE_TERMINEE"].map((v) => <option key={v} value={v}>{statutLabel(v)}</option>)}
+                  </select>
+                </FormField>
+              )}
               <FormField label={t("bacs.type_bac")}>
                 <select value={form.rec.typebac} onChange={(e) => setRec({ typebac: e.target.value })}>
                   {["BLANC", "INFECTE"].map((v) => <option key={v} value={v}>{statutLabel(v)}</option>)}

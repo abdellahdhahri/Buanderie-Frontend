@@ -1,20 +1,21 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
+import Swal from "../../kit/dialogueApi";
 import { toast } from "sonner";
 import { lireErreur } from "../../../services/integrationService";
-import { RefreshCw, Pencil, Trash2, Eye, RotateCcw, Play, CheckCheck, Ban, Copy, Check, Printer, History, ArrowRight, Flag } from "lucide-react";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
+import { WashingMachine, RefreshCw, Pencil, Trash2, Eye, RotateCcw, Play, CheckCheck, Ban, Copy, Check, Printer, History, ArrowRight, Flag, Plus } from "lucide-react";
 import { ServiceContext } from "../../../contextes/ServiceContext";
 import { useAuth } from "../../../constants/AuthContext";
+import { useMachineContext } from "../../../contextes/MachineContext";
+import { TYPES_RECLAMATION_MACHINE, estReclamationMachine, libelleTypeMachine, declarerReclamationMachine } from "../../../services/reclamationMachineService";
 import { getSetting, formatDateTime } from "../../../utils/appSettings";
 import { getCategorieMeta } from "../../../constants/categoriesLinge";
 import { C, Glyph, tint, dot, useRelativeTime } from "../../ui/history-kit";
 import {
-  Page, PageHeader, ActionBar, ActionButton, ActionMenu,
+  Page, ActionBar, ActionButton, ActionMenu,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterDateRange, FilterActions,
-  ListSection, DataTable, Pagination, PersonName, PersonBlock,
+  ListSection, DataTable, Pagination, PersonName, PersonBlock, Badge,
   Modal, Button, FormField, TextArea, ConfirmDialog,
   DetailsPage, DetailsButton, DetailCard, DetailGrid, InfoList, DetailText, Timeline,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
@@ -35,8 +36,10 @@ const TYPES = {
   MAL_LAVE: { color: C.cyan, Icon: (p) => (<Glyph {...p}><rect x="4" y="3" width="16" height="18" rx="2.5" {...tint} /><path d="M4 7.5h16" /><circle cx="12" cy="14" r="4" /><path d="M10.6 12.6l2.8 2.8M13.4 12.6l-2.8 2.8" /></Glyph>) },
   AUTRE: { color: C.slate, Icon: (p) => (<Glyph {...p}><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4 3.5V17h0a2 2 0 0 1-2-2z" {...tint} /><path d="M12 8v3.5" /><circle cx="12" cy="13.8" r=".9" {...dot} /></Glyph>) },
 };
-const getType = (type) => TYPES[type] || TYPES.AUTRE;
-const TYPE_KEYS = Object.keys(TYPES);
+const MACHINE_META = { color: C.cyan, Icon: (p) => <WashingMachine {...p} /> };
+const getType = (type) => TYPES[type] || (String(type || "").startsWith("MACHINE_") ? MACHINE_META : TYPES.AUTRE);
+const TYPE_KEYS = [...Object.keys(TYPES), ...TYPES_RECLAMATION_MACHINE.map((x) => x.value)];
+const nomMachine = (m) => m?.designation || m?.code || m?.reference || (m?.id != null ? `#${m.id}` : "—");
 
 const STATUSES = {
   OUVERTE:  { color: C.amber, pulse: true, fb: "Ouverte" },
@@ -89,7 +92,9 @@ export default function ReclamationList() {
   const relative = useRelativeTime();
   const { services = [] } = useContext(ServiceContext) || {};
   const { agent: agentConnecte } = useAuth() || {};
+  const { loadMachines, machines = [] } = useMachineContext();
   const [reclamations, setReclamations] = useState([]);
+  const [bonsMaintenance, setBonsMaintenance] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [statut, setStatut] = useState("");
   const [selected, setSelected] = useState(null);
@@ -127,7 +132,7 @@ export default function ReclamationList() {
     return s ? (s.nom || s.code) : `#${id}`;
   }, [services, t]);
 
-  const typeLabel = (type) => t(`reclamations.types.${type}`, type || "—");
+  const typeLabel = (type) => t(`reclamations.types.${type}`, libelleTypeMachine(type));
   const statusLabel = (s) => t(`reclamations.statuses.${s}`, STATUSES[s]?.fb || s || "—");
   const categorieLabel = (c) => (c ? t(`categories.${c}`, c) : "—");
 
@@ -142,8 +147,8 @@ export default function ReclamationList() {
   const searchValue = (r, key) => {
     switch (key) {
       case "type": return `#${r.id} ${typeLabel(r.type)}`;
-      case "article": return `${r.linge?.codeBarre || ""} ${categorieLabel(r.linge?.categorie)} ${r.linge?.porteurNom || ""}`;
-      case "agent": return `${agentFullName(r.agent)} ${r.agent?.matricule || ""}`;
+      case "article": if (r.machine) return `${nomMachine(r.machine)} ${r.machine.code || ""}`; return `${r.linge?.codeBarre || ""} ${categorieLabel(r.linge?.categorie)} ${r.linge?.porteurNom || ""}`;
+      case "agent": return r.personnelNom || "";
       case "date": return formatDateTime(r.dateCreation);
       case "description": return r.description || "";
       case "status": return statusLabel(r.status);
@@ -167,6 +172,7 @@ export default function ReclamationList() {
     defaultSort: (a, b) => new Date(b.dateCreation) - new Date(a.dateCreation),
     filters: {
       type: { initial: "all", column: "type", test: (r, v) => v === "all" || r.type === v },
+      source: { initial: "all", column: "article", test: (r, v) => v === "all" || (v === "MACHINE") === estReclamationMachine(r) },
       dateFrom: { initial: "", column: "date", test: (r, v) => !v || day(r.dateCreation) >= v },
       dateTo: { initial: "", column: "date", test: (r, v) => !v || day(r.dateCreation) <= v },
     },
@@ -177,7 +183,15 @@ export default function ReclamationList() {
   const courant = selected ? reclamations.find((r) => r.id === selected.id) || selected : null;
   const openDetails = (r) => { if (r) { setSelected(r); setViewMode("details"); } };
 
-  const openForm = (r) => setForm({
+  const openForm = (r) => {
+    if (r && estReclamationMachine(r)) {
+      toast.info(t("reclamations.machine_not_editable", "Une réclamation de machine ne peut pas être modifiée : changez son statut."));
+      return;
+    }
+    ouvrirFormulaire(r);
+  };
+
+  const ouvrirFormulaire = (r) => setForm({
     rec: r,
     data: r
       ? {
@@ -197,6 +211,16 @@ export default function ReclamationList() {
       if (!codePersonnel) {
         Swal.fire({ title: t("reclamations.agent_required", "Agent déclarant obligatoire"), text: t("reclamations.agent_required_text", "Scannez ou saisissez le code-barres du personnel."), icon: "warning" });
         setIsSaving(false);
+        return;
+      }
+      const typeMachine = String(data.type || "").startsWith("MACHINE_");
+      if (typeMachine && !rec) {
+        const saved = await declarerReclamationMachine({ codeMachine: data.codeBarre.trim(), type: data.type, matriculeAgent: codePersonnel, description: data.description });
+        setReclamations((prev) => [saved, ...prev]);
+        Swal.fire({ title: "✅", text: t("reclamations.create_success"), icon: "success", timer: 1500, showConfirmButton: false });
+        setForm(null);
+        fetchReclamations();
+        loadMachines().catch(() => {});
         return;
       }
       const payload = {
@@ -225,7 +249,7 @@ export default function ReclamationList() {
       fetchReclamations();
     } catch (err) {
       console.error("Erreur:", err);
-      Swal.fire({ title: "❌", text: t("reclamations.error_text"), icon: "error" });
+      Swal.fire({ title: "❌", text: err?.message || t("reclamations.error_text"), icon: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -236,13 +260,13 @@ export default function ReclamationList() {
     setDeleteTarget(null);
     try {
       const response = await fetch(`${API_URL}/api/reclamations/${cible.id}`, { method: "DELETE" });
-      if (!response.ok) throw new Error(await response.text());
+      if (!response.ok) throw new Error(await lireErreur(response, t("reclamations.error_text")));
       setReclamations((prev) => prev.filter((r) => r.id !== cible.id));
       if (selected?.id === cible.id) { setSelected(null); setViewMode("list"); }
       Swal.fire({ title: "✅", text: t("reclamations.delete_success"), icon: "success", timer: 1500, showConfirmButton: false });
     } catch (err) {
       console.error("Erreur suppression:", err);
-      Swal.fire({ title: "❌", text: t("reclamations.error_text"), icon: "error" });
+      Swal.fire({ title: "❌", text: err?.message || t("reclamations.error_text"), icon: "error" });
     }
   };
 
@@ -260,6 +284,9 @@ export default function ReclamationList() {
       } catch (err) {
         echecs.push({ id: r.id, message: err.message });
       }
+    }
+    if (misesAJour.some((d) => estReclamationMachine(d)) && (to === "RESOLUE" || to === "FERMEE")) {
+      loadMachines().catch(() => {});
     }
     if (misesAJour.length) {
       const parId = new Map(misesAJour.map((d) => [d.id, d]));
@@ -289,7 +316,8 @@ export default function ReclamationList() {
   const imprimerFiche = (rec) => {
     const type = getType(rec.type);
     const linge = rec.linge || {};
-    const agent = agentFullName(rec.agent);
+    const machine = rec.machine || null;
+    const agent = rec.personnelNom || "";
     const typeLib = typeLabel(rec.type);
     const w = window.open("", "_blank", "width=820,height=900");
     if (!w) return;
@@ -304,13 +332,13 @@ export default function ReclamationList() {
       .foot{margin-top:32px;color:#64748b;font-size:11px;text-align:right}</style></head><body>
       <div class="head"><div><div class="muted">${escapeHtml(t("reclamations.sheet_title", "Fiche de réclamation"))}</div><h1>#${rec.id} · ${escapeHtml(typeLib)}</h1></div>
       <div class="muted">${escapeHtml(statusLabel(rec.status))} · ${escapeHtml(formatDateTime(rec.dateCreation))}</div></div>
-      <h2>${escapeHtml(t("reclamations.article_concerned", "Article concerné"))}</h2>
-      <div class="grid">${row(t("reclamations.article_code"), linge.codeBarre)}${row(t("reclamations.article_category"), t(`categories.${linge.categorie}`, linge.categorie || "—"))}
+      <h2>${escapeHtml(machine ? t("reclamations.machine_concerned", "Machine concernée") : t("reclamations.article_concerned", "Article concerné"))}</h2>
+      ${machine ? `<div class="grid">${row(t("machines.code", "Code"), machine.code)}${row(t("machines.designation", "Désignation"), nomMachine(machine))}</div>` : `<div class="grid">${row(t("reclamations.article_code"), linge.codeBarre)}${row(t("reclamations.article_category"), t(`categories.${linge.categorie}`, linge.categorie || "—"))}
       ${row(t("linge.service", "Service"), getServiceName(linge.serviceId))}${row(t("reclamations.wearer", "Porteur"), linge.porteurNom)}
-      ${row(t("reclamations.wash_count", "Lavages"), linge.nbLavage)}${row(t("reclamations.linen_state", "État du linge"), linge.etat ? t(`linge_etat.${linge.etat}`, linge.etat) : "—")}</div>
+      ${row(t("reclamations.wash_count", "Lavages"), linge.nbLavage)}${row(t("reclamations.linen_state", "État du linge"), linge.etat ? t(`linge_etat.${linge.etat}`, linge.etat) : "—")}</div>`}
       <h2>${escapeHtml(t("reclamations.problem_description"))}</h2><div class="desc">${escapeHtml(rec.description || t("reclamations.no_description", "Aucune description saisie."))}</div>
       <h2>${escapeHtml(t("reclamations.declared_by", "Déclarée par"))}</h2>
-      <div class="grid">${row(t("reclamations.agent"), agent)}${row(t("reclamations.matricule", "Matricule"), rec.agent?.matricule)}</div>
+      <div class="grid">${row(t("reclamations.agent"), agent)}</div>
       <div class="sign"><div>${escapeHtml(t("historique_collecte.sign_agent", "Signature de l'agent"))}</div><div>${escapeHtml(t("historique_collecte.sign_manager", "Visa du responsable"))}</div></div>
       <div class="foot">${escapeHtml(t("historique_collecte.printed_on", "Imprimé le"))} ${escapeHtml(formatDateTime(new Date()))}</div>
       <script>window.onload=()=>{window.print();}</script></body></html>`);
@@ -357,6 +385,17 @@ export default function ReclamationList() {
     article: {
       label: t("reclamations.article"), sortable: true,
       render: (r) => {
+        if (r.machine) {
+          return (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+              <span className="kit-zone-icon" style={{ "--z": MACHINE_META.color }}><WashingMachine size={16} /></span>
+              <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
+                <strong>{nomMachine(r.machine)}</strong>
+                <Code>{r.machine.code}</Code>
+              </span>
+            </span>
+          );
+        }
         const cat = getCategorieMeta(r.linge?.categorie);
         return (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
@@ -369,7 +408,7 @@ export default function ReclamationList() {
         );
       },
     },
-    agent: { label: t("reclamations.agent"), sortable: true, render: (r) => (r.agent ? <PersonName name={agentFullName(r.agent)} sub={r.agent.matricule} strong={false} /> : "—") },
+    agent: { label: t("reclamations.agent"), sortable: true, render: (r) => (r.personnelNom ? <PersonName name={r.personnelNom} strong={false} /> : "—") },
     date: {
       label: t("reclamations.date"), sortable: true,
       render: (r) => (
@@ -419,16 +458,8 @@ export default function ReclamationList() {
     <Page>
       {viewMode === "list" && (
         <>
-          <PageHeader
-            icon={<PageHeaderIcon size={40} />}
-            title={t("reclamations.title", "Réclamations")}
-            subtitle={t("reclamations.subtitle", "Suivi des défauts signalés sur les articles")}
-            total={list.sorted.length}
-            onIconClick={() => setShowColumnSettings(true)}
-          />
-
           <ActionBar>
-            <ActionButton icon={IconAjouter} label={t("reclamations.new")} variant="ajouter" onClick={() => openForm(null)} />
+            <ActionButton icon={IconAjouter} label={t("reclamations.new")} variant="ajouter" onClick={() => ouvrirFormulaire(null)} />
             <ActionButton icon={IconDetails} label={t("common.details")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
             <ActionButton icon={IconModifier} label={t("common.edit")} variant="modifier" disabled={!selected} onClick={() => openForm(selected)} />
             <ActionButton icon={IconSupprimer} label={t("common.delete")} variant="supprimer" disabled={!selected} onClick={() => setDeleteTarget(selected)} />
@@ -465,6 +496,16 @@ export default function ReclamationList() {
                   options={TYPE_KEYS.map((k) => ({ value: k, label: typeLabel(k) }))}
                 />
               )}
+              <FilterSelect
+                label={t("reclamations.source", "Nature")}
+                value={draft.source}
+                onChange={(v) => setFilter("source", v)}
+                allLabel={t("common.all")}
+                options={[
+                  { value: "LINGE", label: t("reclamations.source_linge", "Linge") },
+                  { value: "MACHINE", label: t("reclamations.source_machine", "Machine") },
+                ]}
+              />
               <FilterColumnSelect value={draft.searchColumn} onChange={(v) => setFilter("searchColumn", v)} columns={list.columnSettings} />
               <FilterText
                 label={t("common.search")}
@@ -514,6 +555,7 @@ export default function ReclamationList() {
 
       {viewMode === "details" && courant && (() => {
         const linge = courant.linge || {};
+        const machine = courant.machine || null;
         const cat = getCategorieMeta(linge.categorie);
         const meta = getType(courant.type);
         return (
@@ -556,6 +598,16 @@ export default function ReclamationList() {
             </DetailCard>
 
             <DetailGrid>
+              {machine ? (
+                <DetailCard title={t("reclamations.machine_concerned", "Machine concernée")}>
+                  <InfoList items={[
+                    { label: t("machines.designation", "Désignation"), value: nomMachine(machine) },
+                    { label: t("machines.code", "Code"), value: machine.code || "—" },
+                    { label: t("machines.brand", "Marque"), value: machine.marque || "—" },
+                    { label: t("machines.technical_state", "État technique"), value: machine.etatTechnique ? t(`machine_status.${machine.etatTechnique}`, machine.etatTechnique.replace(/_/g, " ").toLowerCase()) : "—" },
+                  ]} />
+                </DetailCard>
+              ) : (
               <DetailCard title={t("reclamations.article_concerned", "Article concerné")}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
                   <span className="kit-zone-icon" style={{ "--z": cat.accent, width: 44, height: 44 }}><cat.Icon size={22} /></span>
@@ -577,21 +629,39 @@ export default function ReclamationList() {
                   ...(linge.dureVie != null ? [{ label: t("linge.export.lifespan", "Durée de vie"), value: linge.dureVie }] : []),
                 ]} />
               </DetailCard>
+              )}
               <DetailCard title={t("reclamations.declared_by", "Déclarée par")}>
-                {courant.agent ? (
-                  <>
-                    <PersonBlock
-                      id={courant.agent.id}
-                      nom={courant.agent.prenom}
-                      prenom={courant.agent.nom}
-                      name={agentFullName(courant.agent)}
-                      sub={[courant.agent.matricule, courant.agent.poste && t(`reclamations.postes.${courant.agent.poste}`, courant.agent.poste.replace(/_/g, " ").toLowerCase())].filter(Boolean).join(" · ")}
-                    />
-                    {courant.agent.telephone && <InfoList items={[{ label: t("common.phone", "Téléphone"), value: courant.agent.telephone }]} />}
-                  </>
+                {courant.personnelNom ? (
+                  <PersonBlock id={courant.personnelId} name={courant.personnelNom} />
                 ) : <DetailText />}
               </DetailCard>
             </DetailGrid>
+
+            <DetailCard title={t("reclamations.maintenance_orders", "Bons de maintenance")}>
+              <ActionBar>
+                <ActionButton
+                  icon={<Plus size={18} />}
+                  label={t("reclamations.create_maintenance_order", "Créer un bon de maintenance")}
+                  variant="ajouter"
+                  onClick={() => setBonsMaintenance((prev) => {
+                    const liste = prev[courant.id] || [];
+                    const numero = `BM-${courant.id}-${String(liste.length + 1).padStart(2, "0")}`;
+                    return { ...prev, [courant.id]: [...liste, { numero, date: new Date().toISOString(), statut: "OUVERT" }] };
+                  })}
+                />
+              </ActionBar>
+              <DataTable
+                columns={{
+                  numero: { label: t("reclamations.maintenance_number", "N° du bon"), render: (b) => <Code>{b.numero}</Code> },
+                  date: { label: t("common.date", "Date"), render: (b) => formatDateTime(b.date) },
+                  objet: { label: t("reclamations.maintenance_object", "Objet"), render: () => (machine ? nomMachine(machine) : typeLabel(courant.type)) },
+                  statut: { label: t("common.status", "Statut"), render: (b) => <Badge variant="warning">{t("reclamations.maintenance_open", "Ouvert")}</Badge> },
+                }}
+                rows={bonsMaintenance[courant.id] || []}
+                rowKey={(b) => b.numero}
+                emptyText={t("reclamations.no_maintenance_order", "Aucun bon de maintenance.")}
+              />
+            </DetailCard>
           </DetailsPage>
         );
       })()}
@@ -611,8 +681,23 @@ export default function ReclamationList() {
         >
           <form id="reclamation-form" onSubmit={handleSave}>
             <FormGrid>
-              <FormField label={t("reclamations.article_code")} required span>
-                <input value={form.data.codeBarre} onChange={(e) => setData({ codeBarre: e.target.value.toUpperCase() })} required autoFocus />
+              <FormField
+                label={String(form.data.type).startsWith("MACHINE_") ? t("reclamations.machine_code", "Code de la machine") : t("reclamations.article_code")}
+                required
+                span
+              >
+                <input
+                  value={form.data.codeBarre}
+                  list={String(form.data.type).startsWith("MACHINE_") ? "reclamation-machines" : undefined}
+                  onChange={(e) => setData({ codeBarre: e.target.value.toUpperCase() })}
+                  required
+                  autoFocus
+                />
+                {String(form.data.type).startsWith("MACHINE_") && (
+                  <datalist id="reclamation-machines">
+                    {machines.map((m) => <option key={m.id} value={m.code || m.reference}>{nomMachine(m)}</option>)}
+                  </datalist>
+                )}
               </FormField>
               <FormField label={t("reclamations.agent_code", "Agent déclarant (code-barres)")} required span hint={t("reclamations.agent_code_hint", "Badge ou matricule du personnel qui signale le défaut")}>
                 <input value={form.data.codeBarrePersonnel} onChange={(e) => setData({ codeBarrePersonnel: e.target.value.toUpperCase(), agentId: "" })} required />
@@ -676,7 +761,7 @@ export default function ReclamationList() {
         <ConfirmDialog
           title={t("common.delete_confirm")}
           message={t("common.delete_confirm_text")}
-          details={<><strong>#{deleteTarget.id} · {typeLabel(deleteTarget.type)}</strong><br /><Code>{deleteTarget.linge?.codeBarre}</Code></>}
+          details={<><strong>#{deleteTarget.id} · {typeLabel(deleteTarget.type)}</strong><br /><Code>{deleteTarget.machine ? deleteTarget.machine.code : deleteTarget.linge?.codeBarre}</Code></>}
           confirmLabel={t("common.delete_confirm_yes")}
           cancelLabel={t("common.cancel")}
           onConfirm={confirmDelete}
@@ -700,7 +785,7 @@ export default function ReclamationList() {
           ]}
           classements={[{
             title: t("reclamations.agent"), personnel: true,
-            items: Object.entries(list.sorted.reduce((acc, r) => { const k = agentFullName(r.agent); if (k) acc[k] = (acc[k] || 0) + 1; return acc; }, {}))
+            items: Object.entries(list.sorted.reduce((acc, r) => { const k = r.personnelNom; if (k) acc[k] = (acc[k] || 0) + 1; return acc; }, {}))
               .map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value),
           }]}
         />

@@ -113,25 +113,12 @@ export const IconSteps = (p) => (
   </Icon>
 );
 
-// Lots : ballot de linge ficelé
 export const IconBundle = (p) => (
   <Icon {...p}>
     <rect x="3.5" y="14.5" width="17" height="6" rx="2" {...tint} />
     <rect x="4.5" y="9" width="15" height="5.5" rx="2" />
     <rect x="5.5" y="3.5" width="13" height="5.5" rx="2" {...tint} />
     <path d="M12 3.5v17" />
-  </Icon>
-);
-
-// Sacs infectés : sac avec pictogramme biologique
-export const IconInfectedBag = (p) => (
-  <Icon {...p}>
-    <path d="M7 9h10l1.4 10.3a2 2 0 0 1-2 2.2H7.6a2 2 0 0 1-2-2.2L7 9Z" {...tint} />
-    <path d="M9.5 9 8.3 5.2a.8.8 0 0 1 .8-1h5.8a.8.8 0 0 1 .8 1L14.5 9" />
-    <circle cx="12" cy="15.3" r="2.3" />
-    <circle cx="12" cy="12.4" r=".8" {...dot} />
-    <circle cx="9.5" cy="16.8" r=".8" {...dot} />
-    <circle cx="14.5" cy="16.8" r=".8" {...dot} />
   </Icon>
 );
 
@@ -339,6 +326,22 @@ export const IconComplaint = (p) => (
   </Icon>
 );
 
+export const IconAgents = (p) => (
+  <Icon {...p}>
+    <circle cx="9.5" cy="8" r="3.5" {...tint} />
+    <path d="M3 19.5c.6-3.4 3.3-5.5 6.5-5.5s5.9 2.1 6.5 5.5" {...tint} />
+    <path d="M15.5 4.8a3.3 3.3 0 0 1 0 6.4M18 14.3c1.7.8 2.8 2.6 3 5.2" />
+  </Icon>
+);
+
+export const IconBlockedLinen = (p) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" {...tint} />
+    <path d="M12 7.5V12l2.8 1.8" />
+    <path d="M5.9 5.9 18.1 18.1" />
+  </Icon>
+);
+
 // Historique des collectes : calendrier coché
 export const IconCollectHistory = (p) => (
   <Icon {...p}>
@@ -355,5 +358,12 @@ export const IconLogout = (p) => (
   <Icon {...p}>
     <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
     <path d="M10 16l-4-4 4-4M6 12h10" />
+  </Icon>
+);
+
+export const IconGear = (p) => (
+  <Icon {...p}>
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" {...tint} />
+    <circle cx="12" cy="12" r="3" />
   </Icon>
 );

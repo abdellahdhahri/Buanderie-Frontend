@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { useModal } from "./ModalContext";
+import { useAuth } from "../constants/AuthContext";
+import { listerBacsTri, versBacTri, scannerBacPourCycle, demarrerCycleBac, ajouterBacAuCycle } from "../services/bacTriService";
 
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
@@ -10,6 +12,7 @@ export const useSechage = () => useContext(SechageContext);
 
 export function SechageProvider({ children }) {
   const { showAlert, showConfirm } = useModal();
+  const { verifierHabilitation } = useAuth();
 
   const [agent,            setAgent]            = useState(null);
   const [etape,            setEtape]            = useState("MACHINE"); 
@@ -82,15 +85,12 @@ const identifierAgent = useCallback(async (codeOrAgent) => {
   const chargerLots = useCallback(async () => {
     setLoadingLots(true);
     try {
-      const r = await fetch(`${API_URL}/api/lots`);
-      if (r.ok) {
-        const tous = await r.json();
-        setLotsDisponibles(tous.filter(l => l.etat === "PRET_SECHAGE"));
-        //setLotsDisponibles(tous);
-      console.log("la liste de slots disponible est ================= ",tous)
-      }
-    } catch {} finally { setLoadingLots(false); }
-  }, []);
+      const bacs = await listerBacsTri({ etat: "EN_ATTENTE_SECHAGE" });
+      setLotsDisponibles(bacs.map(versBacTri));
+    } catch (err) {
+      showAlert("Erreur", err.message, "error");
+    } finally { setLoadingLots(false); }
+  }, [showAlert]);
 const setAgentDirect = useCallback((agentData) => {
   if (!agentData) { setAgent(null); return; }
 
@@ -117,18 +117,27 @@ const setAgentDirect = useCallback((agentData) => {
     if (!code?.trim()) return;
     setLoading(true);
     try {
-      if (lotsSelectionnes.find(ls => ls.lot.codeLot === code)) {
-        showAlert("⚠️ Déjà ajouté", `LOT ${code} est déjà dans le chargement.`, "info"); return;
+      const codeBac = code.trim();
+      if (lotsSelectionnes.find(ls => ls.lot.codeLot === codeBac)) {
+        showAlert("⚠️ Déjà ajouté", `Le bac ${codeBac} est déjà dans le chargement.`, "info"); return;
       }
-      const lot = lotsDisponibles.find(l => l.codeLot === code);
-      if (!lot) { showAlert("❌ Lot introuvable", code, "error"); return; }
-     /* if (machine && poidsActuel + (lot.poidsActuel||0) > machine.capaciteKg) {
-        showAlert("⚠️ Capacité dépassée", `Machine pleine (${machine.capaciteKg} kg).`, "warning"); return;
-      }*/
-      const rInfo = await fetch(`${API_BASE}/sechage/scan-lot/${code}`);
-      const lotInfo = rInfo.ok ? await rInfo.json() : null;
-      setLotDialog({ lotInfo, lot });
-    } catch { showAlert("Erreur réseau", "", "error"); }
+      let lotInfo;
+      try {
+        lotInfo = await scannerBacPourCycle("sechage", codeBac);
+      } catch (err) {
+        showAlert(`Bac ${codeBac}`, err.message, "error");
+        return;
+      }
+      const lot = lotsDisponibles.find(l => l.codeLot === codeBac) || versBacTri({
+        codeBac: lotInfo?.codeBac || codeBac,
+        etat: "EN_ATTENTE_SECHAGE",
+        categorie: lotInfo?.categorie,
+        poids: lotInfo?.poids,
+        poidsBalance: lotInfo?.poidsBalance,
+        nbLinges: lotInfo?.nbLinges,
+      });
+      setLotDialog({ lotInfo: lotInfo ? { ...lotInfo, codeLot: lotInfo.codeBac || codeBac } : null, lot });
+    } catch (err) { showAlert("Erreur réseau", err?.message || "", "error"); }
     finally { setLoading(false); }
   }, [lotsDisponibles, lotsSelectionnes, machine, showAlert]);
 
@@ -143,20 +152,21 @@ const setAgentDirect = useCallback((agentData) => {
 
   const demarrerSechage = useCallback(async (poidsTotal) => {
     if (!lotsSelectionnes.length) {
-      showAlert("⚠️ Aucun lot", "Sélectionnez au moins un lot.", "warning"); return;
+      showAlert("⚠️ Aucun bac", "Sélectionnez au moins un bac.", "warning"); return;
     }
     const ok = await showConfirm("Démarrer le séchage",
-      `${lotsSelectionnes.length} lot(s) — ${poidsTotal.toFixed(1)} kg\nMachine : ${machine?.code}`, "question");
+      `${lotsSelectionnes.length} bac(s) — ${poidsTotal.toFixed(1)} kg\nMachine : ${machine?.code}`, "question");
     if (!ok) return;
+    verifierHabilitation("sechage");
     setLoading(true);
     try {
       const premier = lotsSelectionnes[0];
-      const r = await fetch(
-        `${API_BASE}/sechage/start?codeMachine=${machine.code}&codeLot=${premier.lot.codeLot}&matriculeAgent=${encodeURIComponent(agent.codeBarre)}&poidsCharge=${premier.lot.poidsActuel||0}`,
-        { method: "POST" }
-      );
-      if (!r.ok) { const e = await r.json(); throw new Error(e.message||"Erreur démarrage"); }
-      const cycle = await r.json();
+      const cycle = await demarrerCycleBac("sechage", {
+        codeMachine: machine.code,
+        codeBac: premier.lot.codeLot,
+        matriculeAgent: agent.codeBarre || agent.matricule,
+        poidsCharge: premier.lot.poidsCharge ?? premier.lot.poidsBalance,
+      });
       setCycleId(cycle.id);
       const info = lotsSelectionnes[0]?.scanInfo;
       setCycleInfo({
@@ -168,14 +178,17 @@ const setAgentDirect = useCallback((agentData) => {
       });
       for (let i=1; i<lotsSelectionnes.length; i++) {
         const ls = lotsSelectionnes[i];
-        await fetch(`${API_BASE}/sechage/${cycle.id}/add-lot?codeLot=${ls.lot.codeLot}&poidsCharge=${ls.lot.poidsActuel||0}`,
-          { method: "POST" });
+        try {
+          await ajouterBacAuCycle("sechage", cycle.id, ls.lot.codeLot, ls.lot.poidsCharge ?? ls.lot.poidsBalance);
+        } catch (errAjout) {
+          showAlert(`Bac ${ls.lot.codeLot}`, errAjout.message, "warning");
+        }
       }
       setEtape("EN_COURS");
       showAlert("🌬️ Séchage démarré", `Cycle #${cycle.id} en cours`, "success");
     } catch(err) { showAlert("❌ Erreur", err.message, "error"); }
     finally { setLoading(false); }
-  }, [lotsSelectionnes, machine, agent, showAlert, showConfirm]);
+  }, [lotsSelectionnes, machine, agent, showAlert, showConfirm, verifierHabilitation]);
 
   const terminerSechage = useCallback(async () => {
     const ok = await showConfirm("Fin du séchage", `Terminer le cycle #${cycleId} ?`, "question");
@@ -183,7 +196,12 @@ const setAgentDirect = useCallback((agentData) => {
     setLoading(true);
     try {
       const r = await fetch(`${API_BASE}/sechage/${cycleId}/finish`, { method: "PUT" });
-      if (!r.ok) throw new Error("Erreur fin de cycle");
+      if (!r.ok) {
+        const txt = await r.text();
+        let msg = txt;
+        try { msg = JSON.parse(txt).message || txt; } catch { msg = txt; }
+        throw new Error(msg || "Erreur fin de cycle");
+      }
       setEtape("TERMINE"); setCycleInfo(null);
       showAlert("✅ Séchage terminé", `Cycle #${cycleId} — linges SECHE`, "success");
     } catch(err) { showAlert("❌ Erreur", err.message, "error"); }
@@ -199,7 +217,7 @@ const setAgentDirect = useCallback((agentData) => {
     setCycleId(null); setCycleInfo(null); setEtape("MACHINE"); setLotDialog(null);
   }, []);
 
-  const poidsTotal = lotsSelectionnes.reduce((s,ls)=>s+(ls.lot.poidsActuel||0),0);
+  const poidsTotal = lotsSelectionnes.reduce((s,ls)=>s+(Number(ls.lot.poidsCharge ?? ls.lot.poidsActuel)||0),0);
   const pctCharge  = machine ? Math.min((poidsTotal/machine.capaciteKg)*100,100) : 0;
 
   return (

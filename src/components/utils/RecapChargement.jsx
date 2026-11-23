@@ -1,180 +1,139 @@
 import React from "react";
-import { FaSoap, FaPlay, FaStop, FaTimes, FaLayerGroup, FaSpinner } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
+import { WashingMachine, Play, Square, X, Layers, Loader2, AlertTriangle, Sparkles } from "lucide-react";
 import { useLavage } from "../../contextes/LavageContext";
-import MinuteurLavage from "./MinuteurLavage";
+import { CarteCycle } from "../pages/Lavage/AtelierParts";
+import ProduitsUtilises from "../pages/Lavage/ProduitsUtilises";
+import { machineBloquee } from "../../services/reclamationMachineService";
+import GroupeLavageBadge from "./shared/GroupeLavageBadge";
 
-const couleurJauge = (pct) =>
-  pct >= 90 ? "#ef4444" : pct >= 70 ? "#f59e0b" : "#10b981";
-
-/**
- * Colonne droite sticky — récapitulatif du chargement machine.
- * Affiche : jauge capacité, liste des lots sélectionnés, bouton Démarrer/Fin.
- */
 export default function RecapChargement() {
+  const { t } = useTranslation();
   const {
     machine, lotsSelectionnes, retirerLot,
     poidsTotal, pctCharge, etapeBlanc, cycleId, cycleInfo,
     demarrerLavage, terminerLavage, loading,
   } = useLavage();
 
-  const couleur = couleurJauge(pctCharge);
+  const niveau = pctCharge >= 90 ? "is-full" : pctCharge >= 70 ? "is-warn" : "";
+  const nbPieces = lotsSelectionnes.reduce((s, ls) => s + (ls.lot.nbLinges || ls.lot.nbPieces || 0), 0);
+  const programmeCycle = lotsSelectionnes[0]?.scanInfo || null;
+  const programmesDifferents = new Set(lotsSelectionnes.map((ls) => ls.scanInfo?.programmeId ?? ls.scanInfo?.programmeRecommande ?? null)).size > 1;
 
   return (
-    <div style={{
-      background: "white", borderRadius: "16px", padding: "20px",
-      border: "1px solid #e2e8f0",
-      boxShadow: "0 4px 14px rgba(0,0,0,0.05)",
-      position: "sticky", top: "20px"
-    }}>
-      <div style={{
-        fontWeight: 700, fontSize: "14px", marginBottom: "14px",
-        display: "flex", alignItems: "center", gap: "8px"
-      }}>
-        <FaSoap color="#0ea5e9" /> Chargement machine
-      </div>
+    <aside className="lv-recap" aria-label={t("recap_chargement.title", "Chargement machine")}>
+      <header className="lv-recap__head">
+        <h3><WashingMachine size={16} /> {t("recap_chargement.title", "Chargement machine")}</h3>
+        <span className="lv-count">{lotsSelectionnes.length}</span>
+      </header>
 
-      {/* Jauge capacité */}
       {machine && (
-        <div style={{ marginBottom: "14px" }}>
-          <div style={{
-            display: "flex", justifyContent: "space-between",
-            fontSize: "12px", fontWeight: 600, marginBottom: "5px"
-          }}>
-            <span style={{ color: "#64748b" }}>{machine.code}</span>
-            <span style={{ color: couleur }}>
-              {poidsTotal.toFixed(1)} / {machine.capaciteKg} kg
-            </span>
+        <div className={`lv-gauge ${niveau}`}>
+          <div className="lv-gauge__row">
+            <span>{machine.code}</span>
+            <strong>{poidsTotal.toFixed(1)} / {machine.capaciteKg} kg</strong>
           </div>
-          <div style={{ height: "10px", background: "#f1f5f9", borderRadius: "5px", overflow: "hidden" }}>
-            <div style={{
-              width: `${pctCharge}%`, height: "100%",
-              borderRadius: "5px", background: couleur,
-              transition: "width 0.4s ease"
-            }} />
+          <div
+            className="lv-gauge__track"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(pctCharge || 0)}
+            aria-label={t("recap_chargement.capacity", "Remplissage de la machine")}
+          >
+            <i style={{ width: `${Math.min(pctCharge || 0, 100)}%` }} />
           </div>
           {pctCharge >= 90 && (
-            <div style={{ fontSize: "11px", color: "#ef4444", fontWeight: 600, marginTop: "4px" }}>
-              ⚠️ Capacité presque atteinte
+            <div className="lv-gauge__alert" role="status">
+              <AlertTriangle size={13} /> {t("recap_chargement.almost_full", "Capacité presque atteinte")}
             </div>
           )}
         </div>
       )}
 
-      {/* Liste lots sélectionnés */}
       {lotsSelectionnes.length === 0 ? (
-        <div style={{
-          textAlign: "center", padding: "20px 0",
-          color: "#94a3b8", fontSize: "13px"
-        }}>
-          <FaLayerGroup size={24} style={{ opacity: 0.2, marginBottom: "8px" }} />
-          <div>Aucun lot sélectionné</div>
-          <div style={{ fontSize: "11px", marginTop: "4px" }}>
-            Scannez ou cliquez sur un lot
-          </div>
+        <div className="lv-empty">
+          <Layers size={22} />
+          <strong>{t("recap_chargement.empty", "Aucun lot sélectionné")}</strong>
+          <span>{t("recap_chargement.empty_hint", "Scannez ou cliquez sur un lot")}</span>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+        <ul className="lv-recap__list">
           {lotsSelectionnes.map(({ lot, scanInfo }) => (
-            <div key={lot.codeLot} style={{
-              padding: "9px 12px", background: "#f8fafc",
-              borderRadius: "9px", border: "1px solid #e2e8f0",
-              display: "flex", justifyContent: "space-between", alignItems: "center"
-            }}>
+            <li key={lot.codeLot}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: "12px" }}>{lot.codeLot}</div>
-                <div style={{ fontSize: "11px", color: "#64748b" }}>
-                  {lot.categorie} · {lot.poidsActuel?.toFixed(1) || 0} kg
-                  {scanInfo?.temperature && (
-                    <span style={{ color: "#22c55e", marginLeft: "6px" }}>
-                      · {scanInfo.temperature}°C
-                    </span>
-                  )}
-                </div>
+                <strong>{lot.codeLot} <GroupeLavageBadge groupe={scanInfo?.groupeLavage || lot.groupeLavage} /></strong>
+                <small>
+                  {t(`categories.${lot.categorie}`, lot.categorie || "—")} · {lot.poidsActuel?.toFixed(1) || 0} kg
+                  {scanInfo?.programmeRecommande && ` · ${scanInfo.programmeRecommande}`}
+                </small>
               </div>
               {etapeBlanc === "LOTS" && (
                 <button
+                  type="button"
+                  className="lv-icon-btn lv-icon-btn--danger"
                   onClick={() => retirerLot(lot.codeLot)}
-                  style={{
-                    background: "none", border: "none",
-                    color: "#94a3b8", cursor: "pointer", padding: "4px"
-                  }}
+                  aria-label={t("recap_chargement.remove", "Retirer le lot {{code}}", { code: lot.codeLot })}
+                  title={t("recap_chargement.remove", "Retirer le lot {{code}}", { code: lot.codeLot })}
                 >
-                  <FaTimes size={12} />
+                  <X size={15} />
                 </button>
               )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
-      {/* Bouton Démarrer */}
-      {etapeBlanc === "LOTS" && (
-        <button
-          onClick={() => demarrerLavage(poidsTotal)}
-          disabled={loading || lotsSelectionnes.length === 0}
-          style={{
-            width: "100%", padding: "13px", borderRadius: "10px", border: "none",
-            background: lotsSelectionnes.length === 0
-              ? "#e2e8f0"
-              : "linear-gradient(135deg,#10b981,#059669)",
-            color: lotsSelectionnes.length === 0 ? "#94a3b8" : "white",
-            fontWeight: 800, fontSize: "14px",
-            cursor: lotsSelectionnes.length === 0 ? "not-allowed" : "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "8px"
-          }}
-        >
-          {loading
-            ? <FaSpinner style={{ animation: "spin 1s linear infinite" }} />
-            : <FaPlay size={13} />}
-          Démarrer le lavage
-        </button>
-      )}
-
-      {/* Minuteur + Bouton Fin */}
-      {etapeBlanc === "EN_COURS" && (
-        <>
-          <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 500, marginBottom: "8px" }}>
-            Cycle #{cycleId} en cours
-          </div>
-          {cycleInfo && (
-            <MinuteurLavage
-              dateDebut={cycleInfo.dateDebut}
-              dureePrevue={cycleInfo.dureePrevue}
-              programme={cycleInfo.programme}
-              temperature={cycleInfo.temperature}
-              vitesse={cycleInfo.vitesse}
-            />
-          )}
-          <button
-            onClick={terminerLavage}
-            disabled={loading}
-            style={{
-              width: "100%", padding: "13px", borderRadius: "10px", border: "none",
-              background: "linear-gradient(135deg,#ef4444,#dc2626)",
-              color: "white", fontWeight: 800, fontSize: "14px", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: "8px"
-            }}>
-            <FaStop size={13} /> Fin du lavage
-          </button>
-        </>
-      )}
-
-      {/* Récap bas */}
       {lotsSelectionnes.length > 0 && (
-        <div style={{
-          marginTop: "10px", padding: "8px 12px", background: "#f8fafc",
-          borderRadius: "8px", fontSize: "12px", color: "#64748b",
-          display: "flex", justifyContent: "space-between"
-        }}>
-          <span>{lotsSelectionnes.length} lot(s)</span>
-          <span>{poidsTotal.toFixed(1)} kg</span>
-          <span>
-            {lotsSelectionnes.reduce((s, ls) => s + (ls.lot.nbLinges || 0), 0)} pcs
-          </span>
+        <dl className="lv-recap__totals">
+          <div><dt>{t("recap_chargement.lots", "Lots")}</dt><dd>{lotsSelectionnes.length}</dd></div>
+          <div><dt>{t("recap_chargement.weight", "Poids")}</dt><dd>{poidsTotal.toFixed(1)} kg</dd></div>
+          <div><dt>{t("recap_chargement.pieces", "Pièces")}</dt><dd>{nbPieces}</dd></div>
+        </dl>
+      )}
+
+      {etapeBlanc === "EN_COURS" && cycleInfo && (
+        <CarteCycle
+          cycle={{ ...cycleInfo, id: cycleId, machine, lots: lotsSelectionnes.map(({ lot }) => ({ codeLot: lot.codeLot })) }}
+          icon={<WashingMachine size={18} />}
+        />
+      )}
+
+      {etapeBlanc === "LOTS" && programmeCycle?.programmeRecommande && (
+        <div className={`lv-prog ${programmesDifferents ? "is-warn" : ""}`}>
+          <span className="lv-prog__label"><Sparkles size={13} /> {t("recap_chargement.cycle_program", "Programme du cycle")}</span>
+          <strong>{programmeCycle.programmeRecommande}</strong>
+          <small>
+            {[programmeCycle.temperature != null && programmeCycle.temperature !== "" && `${programmeCycle.temperature}°C`, programmeCycle.vitesse != null && programmeCycle.vitesse !== "" && `${programmeCycle.vitesse} rpm`, programmeCycle.duree != null && programmeCycle.duree !== "" && `${programmeCycle.duree} min`].filter(Boolean).join(" · ")}
+          </small>
+          {programmesDifferents && (
+            <span className="lv-prog__warn"><AlertTriangle size={12} /> {t("recap_chargement.mixed_programs", "Lots avec des programmes différents : le programme du premier lot sera appliqué.")}</span>
+          )}
         </div>
       )}
 
-      <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
-    </div>
+      {etapeBlanc === "LOTS" && <ProduitsUtilises disabled={loading} />}
+
+      <div className="lv-recap__actions">
+        {etapeBlanc === "LOTS" && (
+          <button
+            type="button"
+            className="lv-btn lv-btn--primary lv-btn--block"
+            onClick={() => demarrerLavage(poidsTotal)}
+            disabled={loading || lotsSelectionnes.length === 0 || machineBloquee(machine)}
+            title={machineBloquee(machine) ? t("recap_chargement.machine_blocked", "La machine {{code}} est en panne : démarrage impossible", { code: machine.code }) : undefined}
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+            {t("recap_chargement.start", "Démarrer le lavage")}
+          </button>
+        )}
+        {etapeBlanc === "EN_COURS" && (
+          <button type="button" className="lv-btn lv-btn--danger lv-btn--block" onClick={terminerLavage} disabled={loading}>
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Square size={15} />}
+            {t("recap_chargement.finish", "Fin du lavage")}
+          </button>
+        )}
+      </div>
+    </aside>
   );
 }

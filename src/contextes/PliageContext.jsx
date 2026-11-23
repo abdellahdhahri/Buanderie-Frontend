@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { useModal } from "./ModalContext";
+import { useAuth } from "../constants/AuthContext";
 import { getAgent, isAgentConnected } from "../services/agentService";
+import { lireMessageServeur } from "../services/lavageInfecteService";
+import i18n from "../i18n";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -9,6 +12,7 @@ export const usePliage = () => useContext(PliageContext);
 
 export function PliageProvider({ children }) {
   const { showAlert } = useModal();
+  const { verifierHabilitation } = useAuth();
 
   const [agent,        setAgent]        = useState(null);
   const [dialogueItem, setDialogueItem] = useState(null);
@@ -104,6 +108,7 @@ export function PliageProvider({ children }) {
         return;
       }
 
+      verifierHabilitation("pliage");
       const res = await fetch(`${API_URL}/api/pliage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -114,20 +119,23 @@ export function PliageProvider({ children }) {
       });
       
       if (!res.ok) {
-        const txt = await res.text();
-        let msg = txt;
-        try { msg = JSON.parse(txt).message || txt; } catch {}
-        throw new Error(msg);
+        const err = new Error(await lireMessageServeur(res, "Pliage impossible"));
+        err.status = res.status;
+        throw err;
       }
       // Linge plié → contrôle qualité (ancienne étape Stockage)
       setRangementItem(null);
       setDialogueItem(item);
     } catch (err) {
-      showAlert("Erreur pliage", `❌ ${err.message}`, "error");
+      if (err.status === 400 && /infect/i.test(err.message || "")) {
+        showAlert(i18n.t("lavage_infecte.pliage_refused"), err.message, "warning");
+      } else {
+        showAlert("Erreur pliage", `❌ ${err.message}`, "error");
+      }
     } finally {
       setLoading(false);
     }
-  }, [agent, showAlert]);
+  }, [agent, showAlert, verifierHabilitation]);
 
   /**
    * Résultat du contrôle qualité :

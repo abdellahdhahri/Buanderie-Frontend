@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { useModal } from "./ModalContext";
+import { useAuth } from "../constants/AuthContext";
 import { STATS_INITIALES } from "../constants/tri";
+import { suggererBacs, trierDansBac, versBacTri } from "../services/bacTriService";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -9,6 +11,7 @@ export const useTri = () => useContext(TriContext);
 
 export function TriProvider({ children }) {
   const { showAlert, showConfirm } = useModal();
+  const { verifierHabilitation } = useAuth();
 
   const [agent,          setAgent]          = useState(null);
   const [lingeScanne,    setLingeScanne]    = useState(null);
@@ -54,13 +57,9 @@ export function TriProvider({ children }) {
   // ── Lots suggérés ─────────────────────────────────────────────────────────
   const fetchLotsSuggeres = useCallback(async (codeOuTag) => {
     try {
-      const res = await fetch(`${API}/api/lots/suggestion?codeOuTag=${encodeURIComponent(codeOuTag)}`);
-      if (res.ok) {
-        const lots = await res.json();
-        setLotsSuggeres(Array.isArray(lots) ? lots : []);
-        return lots;
-      }
-      return [];
+      const bacs = (await suggererBacs(codeOuTag)).map(versBacTri);
+      setLotsSuggeres(bacs);
+      return bacs;
     } catch { return []; }
   }, []);
 
@@ -79,7 +78,7 @@ export function TriProvider({ children }) {
 
       setLingeScanne(linge);
       const lots = await fetchLotsSuggeres(code);
-      if (!lots.length) showAlert("Aucun lot", "Aucun lot disponible pour ce linge.", "info");
+      if (!lots.length) showAlert("Aucun bac", "Aucun bac de tri ouvert pour ce linge.", "info");
       return linge;
     } catch {
       showAlert("Erreur réseau", "", "error");
@@ -88,40 +87,31 @@ export function TriProvider({ children }) {
   }, [showAlert, fetchLotsSuggeres]);
 
   // ── Affecter au lot ───────────────────────────────────────────────────────
-  const affecterAuLot = useCallback(async (lotId) => {
+  const affecterAuLot = useCallback(async (codeBac) => {
     if (!lingeScanne || !agent) return;
     const codeOuTag = lingeScanne.rfidTag || lingeScanne.codeBarre;
 
+    verifierHabilitation("tri");
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/tri`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codeOuTag, matriculeAgent: agent.matricule, lotId })
-      });
-      if (!res.ok) {
-        const err = await res.text();
-        let msg = err; try { msg = JSON.parse(err).message || err; } catch {}
-        throw new Error(msg);
-      }
-      const lot = await res.json();
+      const lot = versBacTri(await trierDansBac(codeOuTag, codeBac, agent.matricule));
       const entree = {
         id:        Date.now(),
         code:      codeOuTag,
         categorie: lingeScanne.categorie,
-        lot:       lot.codeLot || lotId,
+        lot:       lot.codeBac || codeBac,
         heure:     new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
       };
       setHistoriqueTri(prev => [entree, ...prev.slice(0, 49)]);
       setStatistiques(prev => ({ totalTrie: prev.totalTrie + 1, lotsUtilises: prev.lotsUtilises, poidsTotal: prev.poidsTotal + (lingeScanne.poidsKg || 0) }));
       setLingeScanne(null); setLotsSuggeres([]); setLotSelectionne(null);
-      showAlert("✅ Trié", `${codeOuTag} → lot ${lot.codeLot || lotId}`, "success");
+      showAlert("✅ Trié", `${codeOuTag} → bac ${lot.codeBac || codeBac}`, "success");
       return true;
     } catch (err) {
       showAlert("Erreur affectation", err.message, "error");
       return false;
     } finally { setLoading(false); }
-  }, [lingeScanne, agent, showAlert]);
+  }, [lingeScanne, agent, showAlert, verifierHabilitation]);
 
   const annuler = useCallback(() => {
     setLingeScanne(null); setLotsSuggeres([]); setLotSelectionne(null);

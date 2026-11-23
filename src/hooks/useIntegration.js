@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  chargerIntegration, estImporte, getIntegrationCourante, onIntegrationChange, synchronisationEnCours,
+  chargerIntegration, estImporte, estImporteCubix, getIntegrationCourante, onIntegrationChange, synchronisationEnCours,
 } from "../services/integrationService";
 
 // Configuration d'intégration partagée, rechargée après enregistrement ou synchronisation
@@ -24,6 +24,7 @@ export function useIntegration() {
   return {
     integration,
     erreur,
+    modeCubix: estImporteCubix(integration),
     estImporte: (referentiel) => estImporte(integration, referentiel),
     enCours: synchronisationEnCours,
   };

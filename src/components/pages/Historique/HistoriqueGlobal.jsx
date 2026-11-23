@@ -1,14 +1,13 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
+import Swal from "../../kit/dialogueApi";
 import { RefreshCw, Trash2, Eye, ArrowRight, History, User, Clock } from "lucide-react";
 import { ServiceContext } from "../../../contextes/ServiceContext";
 import { getSetting } from "../../../utils/appSettings";
 import { fetchGlobalHistory, fetchPersonnelsByIds, fetchPersonnelById, formatDate } from "../../../services/historiqueGlobalService";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterDateRange, FilterActions,
   ListSection, DataTable, Pagination, Badge, PersonName,
   Modal, Button, InfoList, DetailCard, DetailText,
@@ -253,8 +252,14 @@ export default function HistoriqueGlobal() {
   };
 
   const voirLinge = (e) => {
-    const code = e?.linge?.codeBarre || e?.codeLinge;
-    if (code) navigate(`/tracking?code=${code}`);
+    if (!e) return;
+    const code = codeLinge(e);
+    if (!code || code === "N/A") {
+      Swal.fire({ title: t("historique.no_linen_code", "Code du linge introuvable"), icon: "warning" });
+      return;
+    }
+    setDetail(null);
+    navigate(`/tracking?code=${encodeURIComponent(code)}`);
   };
 
   const TABLE_COLUMNS = {
@@ -300,14 +305,6 @@ export default function HistoriqueGlobal() {
 
   return (
     <Page>
-      <PageHeader
-        icon={<PageHeaderIcon size={40} />}
-        title={t("historique.title")}
-        subtitle={`${totalItems} ${t("historique.entries_found")}`}
-        total={totalItems}
-        onIconClick={() => setShowColumnSettings(true)}
-      />
-
       <ActionBar>
         <ActionButton icon={IconDetails} label={t("historique.movement_details")} variant="details" disabled={!selected} onClick={() => ouvrirDetail(selected)} />
         <ActionButton icon={History} label={t("linge.history", "Historique du linge")} variant="imprimer" disabled={!selected} onClick={() => voirLinge(selected)} />

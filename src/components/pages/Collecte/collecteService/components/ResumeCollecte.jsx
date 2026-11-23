@@ -8,14 +8,14 @@ import { ResumeCard, ResumeActions } from "../../shared/ResumeCard";
 /* ═══════════════════════════════════════════════════════════════════════════
    RÉSUMÉ — affiché après la clôture de la collecte service
    ═══════════════════════════════════════════════════════════════════════════ */
-export function ResumeCollecte({ resume, serviceNom, nbSacs, nbInfectes, onAutreService, onTerminer }) {
+export function ResumeCollecte({ resume, serviceNom, nbBacs, nbInfectes, onAutreService, onTerminer }) {
   const { t } = useTranslation();
 
   const compteurs = [
-    { icon: <Icons.CheckCheck size={22} color="#15803d" strokeWidth={2.5} />, label: t('collecte.white'), value: resume.nbBlancs, color: "#15803d", bg: "#f0fdf4" },
-    { icon: <Icons.Biohazard size={22} color="#dc2626" strokeWidth={2.2} />, label: t('collecte.infected'), value: resume.nbInfectes, color: "#dc2626", bg: "#fef2f2" },
-    { icon: <Icons.CheckCircle size={22} color="#0284c7" strokeWidth={2.5} />, label: t('collecte.propre'), value: resume.nbPropres, color: "#0284c7", bg: "#f0f9ff" },
-    { icon: <Icons.AlertTriangle size={22} color="#d97706" strokeWidth={2.2} />, label: t('collecte.missing'), value: resume.nbManquants, color: "#d97706", bg: "#fffbeb" },
+    { icon: <Icons.CheckCheck size={22} color="#0794a4" strokeWidth={2.5} />, label: t('collecte.white'), value: resume.nbBlancs, color: "#0794a4", bg: "#ffffff" },
+    { icon: <Icons.Biohazard size={22} color="#b91c1c" strokeWidth={2.2} />, label: t('collecte.infected'), value: resume.nbInfectes, color: "#b91c1c", bg: "#ffffff" },
+    { icon: <Icons.CheckCircle size={22} color="#047857" strokeWidth={2.5} />, label: t('collecte.propre'), value: resume.nbPropres, color: "#047857", bg: "#ffffff" },
+    { icon: <Icons.AlertTriangle size={22} color="#b45309" strokeWidth={2.2} />, label: t('collecte.missing'), value: resume.nbManquants, color: "#b45309", bg: "#ffffff" },
   ];
 
   return (
@@ -24,23 +24,22 @@ export function ResumeCollecte({ resume, serviceNom, nbSacs, nbInfectes, onAutre
       subtitle={resume.serviceNom || serviceNom}
       compteurs={compteurs}
     >
-      {nbSacs > 0 && (
+      {nbBacs > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
           style={{
             padding: "12px 18px", background: "#fef2f2",
-            borderRadius: 12, fontSize: 12.5, color: "#dc2626",
+            borderRadius: 12, fontSize: 12.5, color: "#b91c1c",
             fontWeight: 700, marginBottom: 22,
-            border: "1px solid #fca5a5",
+            border: "1px solid #fecaca",
             display: "flex", alignItems: "center", justifyContent: "center",
             gap: 9,
           }}
         >
-          <Icons.Biohazard size={15} color="#dc2626" strokeWidth={2.5} />
-          {nbSacs} {t('collecte.infected_sacs')} (
-          {nbInfectes} {t('collecte.pieces')}) → {t('collecte.waiting_for_reception')}
+          <Icons.Biohazard size={15} color="#b91c1c" strokeWidth={2.5} />
+          {t('collecte.bac_infecte.resume', '{{n}} pièce(s) infectée(s) déclarée(s) dans {{b}} bac(s) infecté(s)', { n: nbInfectes, b: resume.nbBacsInfectes ?? nbBacs })} → {t('collecte.waiting_for_reception')}
         </motion.div>
       )}
 

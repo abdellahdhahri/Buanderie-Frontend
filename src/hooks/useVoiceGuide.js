@@ -123,7 +123,7 @@ export function useVoiceGuide(lang = "fr") {
     sayLitDejaTraite:         (code)          => speak(M.lit_deja_traite(code), "alerte"),
     sayLitVide:               (code)          => speak(M.lit_vide(code), "alerte"),
     sayBacBlancOk:            (nb, code)      => speak(M.bac_blanc_ok(nb, code), "succes"),
-    saySacInfecteOk:          (nb, code)      => speak(M.sac_infecte_ok(nb, code), "alerte"),
+    sayBacInfecteOk:          (nb, code)      => speak(M.bac_infecte_ok(nb, code), "alerte"),
     sayContenantErreur:       (msg)           => speak(M.contenant_erreur(detail(msg)), "erreur"),
     sayLingePropre:           ()              => speak(M.linge_propre(), "succes"),
     sayLingeManquant:         ()              => speak(M.linge_manquant(), "alerte"),
@@ -144,7 +144,7 @@ export function useVoiceGuide(lang = "fr") {
     sayToutDecoche:           ()              => speak(msg("tout_decoche")),
     sayLingesRestantsLit:     (n)             => speak(msg("linges_restants_lit", n), "alerte"),
     sayGuideInfecte:          ()              => speak(msg("guide_infecte"), "infecte"),
-    sayScannerSacInfecte:     ()              => speak(msg("scanner_sac_infecte")),
+    sayScannerBacInfecte:     ()              => speak(msg("scanner_bac_infecte")),
     sayLingeInfecteOk:        ()              => speak(msg("linge_infecte_ok"), "infecte"),
 
     // ── DISTRIBUTION CHAMBRE ─────────────────────────────────────────
@@ -190,7 +190,7 @@ export function useVoiceGuide(lang = "fr") {
     sayLingeBlanc:            ()              => speak(msg("linge_blanc_ok"), "succes"),
     sayLingePropresService:   ()              => speak(M.linge_propre_service(), "succes"),
     sayLingeManquantService:  ()              => speak(M.linge_manquant_service(), "alerte"),
-    saySacInfecteDeclare:     (total)         => speak(M.sac_infecte_declare(total), "infecte"),
+    sayBacInfecteDeclare:     (total)         => speak(M.bac_infecte_declare(total), "infecte"),
     sayTousTraitesService:    ()              => speak(msg("tous_traites_service"), "succes"),
     sayClotureOkService:      (s, b, i, m)   => speak(M.cloture_ok_service(s, b, i, m), "succes"),
     sayClotureErreurService:  ()              => speak(msg("cloture_erreur_service"), "erreur"),

@@ -1,13 +1,12 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Swal from "sweetalert2";
-import { RefreshCw, Pencil, Trash2, Droplets, Wind } from "lucide-react";
+import Swal from "../../kit/dialogueApi";
+import { RefreshCw, Pencil, Trash2, Droplets, Wind, Star, ShieldPlus, Check } from "lucide-react";
 import { ProgrammeContext } from "../../../contextes/ProgrammeContext";
 import { CategoryPicker } from "../../ui/CategoryPicker";
 import { getCategorieMeta } from "../../../constants/categoriesLinge";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterActions,
   ListSection, DataTable, Pagination, Badge,
   Modal, Button, FormField, TextArea, ConfirmDialog,
@@ -16,19 +15,32 @@ import {
   Tabs, RowActions, RowButton, FormGrid, Code, QuickStats,
 } from "../../kit";
 import { IconAjouter, IconDetails, IconModifier, IconSupprimer } from "../../kit/ActionIcons";
+import GroupeLavageBadge, { GROUPES_LAVAGE } from "../../utils/shared/GroupeLavageBadge";
+import "./Programmes.css";
 
-const VIDE = { nom: "", temperatureCelsius: "", dureeMinutes: "", vitesseEssorageRpm: "", niveauHumidite: "", description: "", categories: [] };
+const VIDE = { typeProgramme: "LAVAGE", nom: "", temperatureCelsius: "", dureeMinutes: "", vitesseEssorageRpm: "", niveauHumidite: "", description: "", categories: [], parDefaut: false, groupeLavage: "" };
+
+const TYPES_PROGRAMME = [
+  { value: "LAVAGE", Icon: Droplets, tone: "info" },
+  { value: "DESINFECTION", Icon: ShieldPlus, tone: "danger" },
+];
+const typeDe = (p) => (p?.type === "DESINFECTION" ? "DESINFECTION" : "LAVAGE");
 
 const COLUMNS_DEFAULT = [
   { key: "id", label: "ID", visible: true, searchable: true },
   { key: "nom", label: "Nom", visible: true, searchable: true },
+  { key: "type", label: "Type", visible: true, searchable: true },
   { key: "temperatureCelsius", label: "Température", visible: true, searchable: false },
   { key: "dureeMinutes", label: "Durée", visible: true, searchable: false },
   { key: "parametre", label: "Essorage / Humidité", visible: true, searchable: false },
+  { key: "groupeLavage", label: "Groupe", visible: true, searchable: true },
   { key: "categories", label: "Catégories", visible: true, searchable: true },
+  { key: "parDefaut", label: "Par défaut", visible: true, searchable: false },
   { key: "description", label: "Description", visible: false, searchable: true },
   { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
+
+const peutEtreParDefaut = (type) => !type || type === "LAVAGE";
 
 const moyenne = (liste, champ) => (liste.length ? Math.round(liste.reduce((acc, p) => acc + (p[champ] || 0), 0) / liste.length) : 0);
 
@@ -36,7 +48,7 @@ export default function ProgrammeList() {
   const { t } = useTranslation();
   const {
     programmesLavage, programmesSechage, loadProgrammesLavage, loadProgrammesSechage,
-    createProgrammeLavage, updateProgrammeLavage, deleteProgrammeLavage,
+    createProgrammeLavage, updateProgrammeLavage, deleteProgrammeLavage, definirProgrammeLavageParDefaut,
     createProgrammeSechage, updateProgrammeSechage, deleteProgrammeSechage,
     isLoading, setLoading,
   } = useContext(ProgrammeContext);
@@ -49,6 +61,8 @@ export default function ProgrammeList() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [defautCible, setDefautCible] = useState(null);
+  const [defautEnCours, setDefautEnCours] = useState(false);
 
   const lavage = mode === "LAVAGE";
 
@@ -74,6 +88,8 @@ export default function ProgrammeList() {
       id: t("programmes.id"), nom: t("programmes.name"), temperatureCelsius: t("programmes.temperature_label"),
       dureeMinutes: t("programmes.duration_label"), parametre: lavage ? t("programmes.spin_label") : t("programmes.humidity_label"),
       categories: t("programmes.categories_label"), description: t("programmes.description"), actions: t("programmes.actions"),
+      parDefaut: t("programmes.default_label", "Par défaut"), type: t("programmes.type_label"),
+      groupeLavage: t("groupe_lavage.label", "Groupe"),
     }[c.key] || c.label,
   })), [t, lavage]);
 
@@ -85,6 +101,8 @@ export default function ProgrammeList() {
       case "parametre": return parametre(p) != null ? `${parametre(p)} ${lavage ? "RPM" : "%"}` : "";
       case "categories": return (p.categories || []).map(categorieLabel).join(", ");
       case "actions": return "";
+      case "parDefaut": return p.parDefaut ? t("programmes.default_label", "Par défaut") : "";
+      case "type": return lavage ? t(`programmes.type_${typeDe(p)}`) : t("programmes.sechage");
       default: return p[key] ?? "";
     }
   };
@@ -92,6 +110,7 @@ export default function ProgrammeList() {
     if (key === "id") return Number(p.id) || 0;
     if (key === "temperatureCelsius" || key === "dureeMinutes") return Number(p[key]) || 0;
     if (key === "parametre") return Number(parametre(p)) || 0;
+    if (key === "parDefaut") return p.parDefaut ? 0 : 1;
     return String(searchValue(p, key)).toLowerCase();
   };
 
@@ -104,6 +123,7 @@ export default function ProgrammeList() {
     getSortValue: sortValue,
     filters: {
       categorie: { initial: "all", column: "categories", test: (p, v) => v === "all" || (p.categories || []).includes(v) },
+      typeProgramme: { initial: "all", column: "type", test: (p, v) => v === "all" || !lavage || typeDe(p) === v },
     },
   });
   const { draft, setFilter } = list;
@@ -117,9 +137,12 @@ export default function ProgrammeList() {
     setForm({
       programme: p,
       rec: {
+        typeProgramme: typeDe(p),
         nom: p.nom || "", temperatureCelsius: p.temperatureCelsius || "", dureeMinutes: p.dureeMinutes || "",
         vitesseEssorageRpm: p.vitesseEssorageRpm || "", niveauHumidite: p.niveauHumidite || "",
         description: p.description || "", categories: p.categories || [],
+        parDefaut: !!p.parDefaut,
+        groupeLavage: p.groupeLavage || "",
       },
     });
   };
@@ -132,35 +155,36 @@ export default function ProgrammeList() {
       Swal.fire(t("common.error"), t("programmes.name_required"), "error");
       return;
     }
-    if (rec.categories.length === 0) {
-      Swal.fire(t("common.error"), t("programmes.categories_required"), "error");
-      return;
-    }
     const payload = {
-      type: programme?.type || mode,
+      type: lavage ? rec.typeProgramme : (programme?.type || mode),
       nom: rec.nom.trim(),
       temperatureCelsius: parseInt(rec.temperatureCelsius) || null,
       dureeMinutes: parseInt(rec.dureeMinutes) || null,
       description: rec.description || null,
       categories: rec.categories || [],
+      groupeLavage: rec.groupeLavage || null,
     };
     if (lavage) payload.vitesseEssorageRpm = parseInt(rec.vitesseEssorageRpm) || null;
     else payload.niveauHumidite = parseInt(rec.niveauHumidite) || null;
+    const aDefinirParDefaut = lavage && peutEtreParDefaut(payload.type) && rec.parDefaut && !programme?.parDefaut;
     setIsSaving(true);
     try {
       if (programme) {
         await (lavage ? updateProgrammeLavage : updateProgrammeSechage)(programme.id, payload);
+        if (aDefinirParDefaut) await definirProgrammeLavageParDefaut(programme.id);
         Swal.fire(t("common.success"), t("programmes.update_success"), "success");
         setSelected(null);
         setViewMode("list");
       } else {
-        await (lavage ? createProgrammeLavage : createProgrammeSechage)(payload);
+        const cree = await (lavage ? createProgrammeLavage : createProgrammeSechage)(payload);
+        if (aDefinirParDefaut && cree?.id != null) await definirProgrammeLavageParDefaut(cree.id);
         Swal.fire(t("common.success"), t("programmes.create_success"), "success");
       }
       await loadData();
       setForm(null);
     } catch (error) {
-      Swal.fire(t("common.error"), error.message || t("programmes.error_text"), "error");
+      await loadData();
+      Swal.fire(t("common.error"), error.response?.data?.message || error.message || t("programmes.error_text"), "error");
     } finally {
       setIsSaving(false);
     }
@@ -177,6 +201,22 @@ export default function ProgrammeList() {
       Swal.fire(t("common.success"), t("programmes.delete_success"), "success");
     } catch (error) {
       Swal.fire(t("common.error"), error.message || t("programmes.error_text"), "error");
+    }
+  };
+
+  const confirmerDefaut = async () => {
+    const cible = defautCible;
+    setDefautEnCours(true);
+    try {
+      await definirProgrammeLavageParDefaut(cible.id);
+      setDefautCible(null);
+      await loadData();
+      setSelected((s) => (s && s.id === cible.id ? { ...s, parDefaut: true } : s));
+      Swal.fire(t("common.success"), t("programmes.default_success", "{{nom}} est maintenant le programme par défaut.", { nom: cible.nom }), "success");
+    } catch (error) {
+      Swal.fire(t("common.error"), error.response?.data?.message || error.message || t("programmes.error_text"), "error");
+    } finally {
+      setDefautEnCours(false);
     }
   };
 
@@ -212,6 +252,13 @@ export default function ProgrammeList() {
 
   const TABLE_COLUMNS = {
     id: { label: t("programmes.id"), sortable: true, render: (p) => <Code>#{p.id}</Code> },
+    type: {
+      label: t("programmes.type_label"), sortable: true, align: "center",
+      render: (p) => {
+        const ty = TYPES_PROGRAMME.find((x) => x.value === typeDe(p));
+        return <Badge variant={ty.tone}><ty.Icon size={11} style={{ marginRight: 4, verticalAlign: -1 }} />{t(`programmes.type_${ty.value}`)}</Badge>;
+      },
+    },
     nom: {
       label: t("programmes.name"), sortable: true,
       render: (p) => (
@@ -227,12 +274,20 @@ export default function ProgrammeList() {
       label: lavage ? t("programmes.spin_label") : t("programmes.humidity_label"), sortable: true, align: "center",
       render: (p) => <Badge variant="default">{parametre(p) || "—"} {lavage ? "RPM" : "%"}</Badge>,
     },
+    groupeLavage: { label: t("groupe_lavage.label", "Groupe"), sortable: true, align: "center", render: (p) => <GroupeLavageBadge groupe={p.groupeLavage} vide={<span className="kit-muted">—</span>} /> },
     categories: { label: t("programmes.categories_label"), sortable: true, render: (p) => <Categories liste={p.categories} /> },
+    parDefaut: {
+      label: t("programmes.default_label", "Par défaut"), sortable: true, align: "center",
+      render: (p) => (p.parDefaut ? <Badge variant="warning"><Star size={11} fill="currentColor" style={{ marginRight: 4, verticalAlign: -1 }} />{t("programmes.default_label", "Par défaut")}</Badge> : <span className="kit-muted">—</span>),
+    },
     description: { label: t("programmes.description"), sortable: true, render: (p) => p.description || "—" },
     actions: {
       label: t("programmes.actions"), align: "center",
       render: (p) => (
         <RowActions>
+          {lavage && peutEtreParDefaut(p.type) && !p.parDefaut && (
+            <RowButton icon={Star} title={t("programmes.set_default", "Définir par défaut")} onClick={() => setDefautCible(p)} />
+          )}
           <RowButton icon={Pencil} title={t("programmes.edit")} onClick={() => openEdit(p)} />
           <RowButton icon={Trash2} tone="danger" title={t("programmes.delete")} onClick={() => setDeleteTarget(p)} />
         </RowActions>
@@ -240,18 +295,18 @@ export default function ProgrammeList() {
     },
   };
 
+  const defautAutorise = lavage && form?.rec?.typeProgramme === "LAVAGE";
+  const typeVerrouille = Boolean(form?.programme?.parDefaut);
+  const changerType = (value) => {
+    if (typeVerrouille && value !== "LAVAGE") return;
+    setRec(value === "DESINFECTION" ? { typeProgramme: value, parDefaut: false } : { typeProgramme: value });
+  };
+  const colonnesVisibles = list.visibleColumns.filter((c) => lavage || c.key !== "type");
+
   return (
     <Page>
       {viewMode === "list" && (
         <>
-          <PageHeader
-            icon={<PageHeaderIcon size={40} />}
-            title={lavage ? t("programmes.title_lavage") : t("programmes.title_sechage")}
-            subtitle={lavage ? t("programmes.subtitle_lavage") : t("programmes.subtitle_sechage")}
-            total={list.sorted.length}
-            onIconClick={() => setShowColumnSettings(true)}
-          />
-
           <ActionBar>
             <ActionButton icon={IconAjouter} label={lavage ? t("programmes.new_lavage") : t("programmes.new_sechage")} variant="ajouter" onClick={openCreate} />
             <ActionButton icon={IconDetails} label={t("common.details")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
@@ -281,6 +336,15 @@ export default function ProgrammeList() {
                 onChange={(v) => setFilter("searchTerm", v)}
                 onEnter={list.apply}
               />
+              {lavage && list.isColVisible("type") && (
+                <FilterSelect
+                  label={t("programmes.type_label")}
+                  value={draft.typeProgramme}
+                  onChange={(v) => setFilter("typeProgramme", v)}
+                  allLabel={t("programmes.all_types")}
+                  options={TYPES_PROGRAMME.map((x) => ({ value: x.value, label: t(`programmes.type_${x.value}`) }))}
+                />
+              )}
               {list.isColVisible("categories") && (
                 <FilterSelect
                   label={t("programmes.categories_label")}
@@ -309,7 +373,7 @@ export default function ProgrammeList() {
           >
             <DataTable
               columns={TABLE_COLUMNS}
-              visible={list.visibleColumns}
+              visible={colonnesVisibles}
               rows={list.paginated}
               sort={list.sort}
               onSort={list.toggleSort}
@@ -331,8 +395,14 @@ export default function ProgrammeList() {
           onBack={() => setViewMode("list")}
           eyebrow={lavage ? t("programmes.lavage") : t("programmes.sechage")}
           title={`#${selected.id} · ${selected.nom}`}
+          badge={lavage && typeDe(selected) === "DESINFECTION"
+            ? <Badge variant="danger"><ShieldPlus size={11} style={{ marginRight: 4, verticalAlign: -1 }} />{t("programmes.type_DESINFECTION")}</Badge>
+            : selected.parDefaut ? <Badge variant="warning"><Star size={11} fill="currentColor" style={{ marginRight: 4, verticalAlign: -1 }} />{t("programmes.default_label", "Par défaut")}</Badge> : undefined}
           actions={(
             <>
+              {lavage && peutEtreParDefaut(selected.type) && !selected.parDefaut && (
+                <DetailsButton icon={Star} onClick={() => setDefautCible(selected)}>{t("programmes.set_default", "Définir par défaut")}</DetailsButton>
+              )}
               <DetailsButton icon={Pencil} onClick={() => openEdit(selected)}>{t("programmes.edit")}</DetailsButton>
               <DetailsButton icon={Trash2} variant="danger" onClick={() => setDeleteTarget(selected)}>{t("programmes.delete")}</DetailsButton>
             </>
@@ -349,7 +419,11 @@ export default function ProgrammeList() {
             </DetailCard>
             <DetailCard title={t("programmes.description")}>
               <DetailText>{selected.description}</DetailText>
-              <InfoList items={[{ label: t("programmes.id"), value: selected.id }, { label: "Type", value: selected.type || mode }]} />
+              <InfoList items={[
+                { label: t("programmes.id"), value: selected.id },
+                { label: t("programmes.type_label"), value: lavage ? t(`programmes.type_${typeDe(selected)}`) : t("programmes.sechage") },
+                ...(lavage ? [{ label: t("programmes.default_label", "Par défaut"), value: selected.parDefaut ? t("common.yes", "Oui") : t("common.no", "Non") }] : []),
+              ]} />
             </DetailCard>
           </DetailGrid>
         </DetailsPage>
@@ -372,6 +446,34 @@ export default function ProgrammeList() {
         >
           <form id="programme-form" onSubmit={handleSubmit}>
             <FormGrid>
+              {lavage && (
+                <FormField label={t("programmes.type_label")} required span hint={typeVerrouille ? t("programmes.type_locked_default") : undefined}>
+                  <div className="prg-types" role="radiogroup" aria-label={t("programmes.type_label")}>
+                    {TYPES_PROGRAMME.map(({ value, Icon }) => {
+                      const actif = form.rec.typeProgramme === value;
+                      const bloque = typeVerrouille && value !== "LAVAGE";
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          role="radio"
+                          aria-checked={actif}
+                          disabled={bloque || isSaving}
+                          className={`prg-type prg-type--${value.toLowerCase()} ${actif ? "is-active" : ""}`}
+                          onClick={() => changerType(value)}
+                        >
+                          <span className="prg-type__icon"><Icon size={20} /></span>
+                          <span className="prg-type__text">
+                            <strong>{t(`programmes.type_${value}`)}</strong>
+                            <small>{t(`programmes.type_${value}_hint`)}</small>
+                          </span>
+                          {actif && <span className="prg-type__check"><Check size={13} strokeWidth={3} /></span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </FormField>
+              )}
               <FormField label={t("programmes.name")} required span>
                 <input value={form.rec.nom} onChange={(e) => setRec({ nom: e.target.value.toUpperCase() })} placeholder={t("programmes.name_placeholder")} required />
               </FormField>
@@ -393,18 +495,62 @@ export default function ProgrammeList() {
               <FormField label={t("programmes.description")} span>
                 <TextArea value={form.rec.description} onChange={(v) => setRec({ description: v })} placeholder={t("programmes.description_placeholder")} />
               </FormField>
-              <FormField label={t("programmes.categories_placeholder")} required span error={form.rec.categories.length === 0 ? t("programmes.categories_error") : null}>
+              <FormField label={t("groupe_lavage.label", "Groupe")} span>
+                <select value={form.rec.groupeLavage || ""} onChange={(e) => setRec({ groupeLavage: e.target.value })}>
+                  <option value="">{t("groupe_lavage.aucun", "Aucun")}</option>
+                  {GROUPES_LAVAGE.map((g) => <option key={g} value={g}>{t(`groupe_lavage.${g}`, g)}</option>)}
+                </select>
+              </FormField>
+              {lavage && (
+                <FormField
+                  label={t("programmes.default_label", "Par défaut")}
+                  span
+                  hint={!defautAutorise
+                    ? t("programmes.default_disabled_hint", "Un programme de désinfection ne peut pas être le programme par défaut.")
+                    : form.programme?.parDefaut
+                      ? t("programmes.default_current_hint", "C'est le programme par défaut actuel. Définissez-en un autre pour le remplacer.")
+                      : t("programmes.default_hint", "Utilisé pour les catégories sans programme de lavage. Remplace l'ancien programme par défaut.")}
+                >
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, height: 38, cursor: defautAutorise && !form.programme?.parDefaut ? "pointer" : "not-allowed", opacity: defautAutorise ? 1 : 0.55 }}>
+                    <input
+                      type="checkbox"
+                      style={{ width: "auto" }}
+                      checked={defautAutorise && !!form.rec.parDefaut}
+                      disabled={!defautAutorise || !!form.programme?.parDefaut}
+                      onChange={(e) => setRec({ parDefaut: e.target.checked })}
+                    />
+                    {t("programmes.default_checkbox", "Programme par défaut")}
+                  </label>
+                </FormField>
+              )}
+              <FormField
+                label={t("programmes.categories_placeholder")}
+                span
+                hint={t("programmes.categories_optional_hint")}
+              >
                 <CategoryPicker
                   multiple
                   value={form.rec.categories}
                   onChange={(categories) => setRec({ categories })}
-                  invalid={form.rec.categories.length === 0}
                 />
               </FormField>
             </FormGrid>
           </form>
         </Modal>
       )}
+
+      <ConfirmDialog
+        open={!!defautCible}
+        tone="success"
+        title={t("programmes.set_default", "Définir par défaut")}
+        message={t("programmes.set_default_confirm", "Ce programme sera utilisé pour les catégories sans programme de lavage. L'ancien programme par défaut ne le sera plus.")}
+        details={<strong>{defautCible?.nom}</strong>}
+        confirmLabel={t("programmes.set_default", "Définir par défaut")}
+        cancelLabel={t("common.cancel")}
+        busy={defautEnCours}
+        onConfirm={confirmerDefaut}
+        onClose={() => setDefautCible(null)}
+      />
 
       {deleteTarget && (
         <ConfirmDialog
@@ -428,6 +574,7 @@ export default function ProgrammeList() {
             { label: t("programmes.stats_avg_temp"), value: `${moyenne(programmes, "temperatureCelsius")}°C`, color: "#ef4444" },
             { label: t("programmes.stats_avg_duration"), value: `${moyenne(programmes, "dureeMinutes")} min`, color: "#3b82f6" },
             { label: t("programmes.stats_categories"), value: toutesCategories.length, color: "#8b5cf6" },
+            ...(lavage ? [{ label: t("programmes.stats_desinfection"), value: programmes.filter((p) => typeDe(p) === "DESINFECTION").length, color: "#dc2626" }] : []),
           ]}
           classements={[{ title: t("programmes.categories_label"), items: toutesCategories.map((c) => ({ label: categorieLabel(c), value: programmes.filter((p) => (p.categories || []).includes(c)).length })).sort((a, b) => b.value - a.value) }]}
         />

@@ -1,9 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { Biohazard, Building2 } from "lucide-react";
+import { Biohazard, Building2, Shirt } from "lucide-react";
 import { getCategorieMeta } from "../../../constants/categoriesLinge";
-import { LingeGlyph } from "../../pages/Reception/ReceptionArt";
 
 // Styles : pages/Reception/Reception.css (classes rc-*)
 export default function LingesSansBac({ linges, dernierCode }) {
@@ -30,7 +29,7 @@ export default function LingesSansBac({ linges, dernierCode }) {
     <section className="rc-card">
       <div className="rc-card__head">
         <h3 className="rc-card__title">
-          <LingeGlyph size={22} />
+          <Shirt size={15} />
           {t("reception.linges_sans_bac")}
         </h3>
         <span className="rc-count" style={{ marginLeft: "auto" }}>{linges.length}</span>

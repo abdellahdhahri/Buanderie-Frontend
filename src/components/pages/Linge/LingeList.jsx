@@ -4,11 +4,10 @@ import { LingeContext } from "../../../contextes/LingeContext";
 import { ServiceContext } from "../../../contextes/ServiceContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useModal } from "../../../contextes/ModalContext";
-import { Page, ListSection, ConfirmDialog, useRowSelection } from "../../kit";
+import { Page, ListSection, ConfirmDialog, useRowSelection, ColumnSettingsModal } from "../../kit";
 import { printLabel, printLabels } from "../../../utils/labels";
-import Swal from 'sweetalert2';
+import Swal from "../../kit/dialogueApi";
 import { EMPTY_LINGE_FORM, EMPTY_FILTERS } from "./lingeConstants";
-import { LingeHeader } from "./components/LingeHeader";
 import { LingeToolbar } from "./components/LingeToolbar";
 import { LingeFilters } from "./components/LingeFilters";
 import { LingeTable } from "./components/LingeTable";
@@ -19,12 +18,26 @@ import { LingeDetailModal } from "./components/LingeDetailModal";
 import { PrintConfirmModal } from "./components/PrintConfirmModal";
 import { LingeIncompletsBanner } from "./components/LingeIncompletsBanner";
 import { LingeStatsModal } from "./components/LingeStatsModal";
+import { ImportLingesCubix } from "./components/ImportLingesCubix";
 import { AffecterServiceModal } from "./components/AffecterServiceModal";
 import { fetchAllLinges, computeLingeStats, exportLingesXlsx } from "./lingeStats";
 import { fetchLingesIncomplets } from "../../../services/analyseService";
 import { getSetting } from "../../../utils/appSettings";
 import { useIntegration } from "../../../hooks/useIntegration";
 import { lireErreur } from "../../../services/integrationService";
+
+const COLONNES_LINGE = [
+  { key: "id", label: ["common.id", "ID"] },
+  { key: "code", label: ["common.code", "Code"] },
+  { key: "designation", label: ["linge.designation", "Désignation"] },
+  { key: "categorie", label: ["linge.category", "Catégorie"] },
+  { key: "groupeLavage", label: ["groupe_lavage.label", "Groupe"] },
+  { key: "poids", label: ["linge.weight", "Poids"] },
+  { key: "etat", label: ["linge.status", "État"] },
+  { key: "service", label: ["linge.service", "Service"] },
+  { key: "porteur", label: ["linge.carrier", "Porteur"] },
+  { key: "rfid", label: ["linge.rfid_tag", "RFID"] },
+];
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -45,7 +58,8 @@ export default function LingeList() {
     setPagedData,
     categories,
   } = useContext(LingeContext);
-  const { estImporte } = useIntegration();
+  const { estImporte, modeCubix } = useIntegration();
+  const [showImportCubix, setShowImportCubix] = useState(false);
   const lingesImportes = estImporte("LINGE");
 
   const { services } = useContext(ServiceContext);
@@ -172,6 +186,19 @@ export default function LingeList() {
     });
   };
 
+  const [showColumnSettings, setShowColumnSettings] = useState(false);
+  const [colonnesMasquees, setColonnesMasquees] = useState(() => {
+    try {
+      const memorise = localStorage.getItem("linges.colonnesMasquees");
+      return memorise ? JSON.parse(memorise) : ["id"];
+    } catch { return ["id"]; }
+  });
+  const basculerColonne = (key) => setColonnesMasquees((prev) => {
+    const suite = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
+    try { localStorage.setItem("linges.colonnesMasquees", JSON.stringify(suite)); } catch { /* stockage indisponible */ }
+    return suite;
+  });
+
   const handleSave = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -186,7 +213,8 @@ export default function LingeList() {
           durevie: newLinge.dureVie ? parseInt(newLinge.dureVie) : null,
           porteurId: newLinge.porteurId ? parseInt(newLinge.porteurId) : null,
           rfidTag: newLinge.rfidTag?.trim() || null,
-          observations: newLinge.observations?.trim() || null
+          observations: newLinge.observations?.trim() || null,
+          groupeLavage: newLinge.groupeLavage || null
         };
 
         const response = await fetch(`${API_URL}/api/linges/${lingeToEdit.id}`, {
@@ -359,7 +387,8 @@ export default function LingeList() {
       dureVie: linge.dureVie || "",
       porteurId: linge.porteurId || "",
       etat: linge.etat || "SALE",
-      observations: linge.observations || ""
+      observations: linge.observations || "",
+      groupeLavage: linge.groupeLavage || ""
     });
     setLingeToEdit(linge);
     setShowPopup(true);
@@ -510,9 +539,18 @@ export default function LingeList() {
   ].filter(Boolean);
   const stats = selection?.key === filtersKey ? computeLingeStats(selection.linges) : null;
 
+  const colonnesReglages = COLONNES_LINGE.map((c) => ({
+    key: c.key,
+    label: t(c.label[0], c.label[1]),
+    visible: !colonnesMasquees.includes(c.key),
+    searchable: false,
+  }));
+
   return (
     <Page>
-      <LingeHeader displayMode={displayMode} total={pagedData.totalElements} />
+      {showImportCubix && (
+        <ImportLingesCubix onClose={() => setShowImportCubix(false)} onImporte={() => loadPage(0)} />
+      )}
 
       <LingeToolbar
         hasSelection={!!selectedId}
@@ -523,6 +561,7 @@ export default function LingeList() {
           setLingeToEdit(null);
         }}
         onSynchronised={() => loadPage(0)}
+        onImportCubix={modeCubix ? () => setShowImportCubix(true) : undefined}
         onAssociateRfid={handleToolbarRfid}
         onDetail={() => selectedId && ouvrirDetail(selectedId)}
         onEdit={() => selectedId && ouvrirEdition(selectedLinge)}
@@ -530,7 +569,7 @@ export default function LingeList() {
         onPrintLabel={() => selectedId && imprimerEtiquette(selectedLinge)}
         onHistory={() => selectedId && navigate(`/tracking?code=${selectedLinge?.codebarre}`)}
         onRefresh={() => loadPage(currentPage)}
-        onAssignService={() => setAffectation(selectedLinge ? [selectedLinge] : [])}
+        onAssignService={() => setAffectation(sel.checkedItems.length ? sel.checkedItems : selectedLinge ? [selectedLinge] : [])}
       />
 
       {modeIncomplets ? (
@@ -551,6 +590,7 @@ export default function LingeList() {
           exporting={exporting}
           categories={categories}
           count={pagedData.totalElements}
+          onColumns={() => setShowColumnSettings(true)}
         />
       )}
 
@@ -576,6 +616,7 @@ export default function LingeList() {
         onRowClick={handleRowClick}
         onDetail={ouvrirDetail}
         showMissing={modeIncomplets}
+        colonnesMasquees={colonnesMasquees}
         onAssociateRfid={openRfidPopup}
         onAssignService={ouvrirEdition}
       />
@@ -589,6 +630,14 @@ export default function LingeList() {
         totalPages={pagedData.totalPages}
         isLoading={isLoading}
         onPageChange={handlePageChange}
+      />
+
+      <ColumnSettingsModal
+        show={showColumnSettings}
+        onClose={() => setShowColumnSettings(false)}
+        columns={colonnesReglages}
+        onToggleVisibility={basculerColonne}
+        onToggleSearch={() => {}}
       />
 
       <LingeFormModal

@@ -113,6 +113,8 @@
 .dark .nav-item--paie:is(:hover, .nav-item--active)             { background: rgba(32, 201, 151, .12); color: #8ce8c9; }
 .dark .nav-item--conges,
 .dark .nav-item--conges:is(:hover, .nav-item--active)           { background: rgba(242, 85, 85, .12); color: #fca5a5; }
+.dark .nav-item--processus,
+.dark .nav-item--processus:is(:hover, .nav-item--active)         { background: rgba(20, 184, 166, .13); color: #7be4d8; }
 .dark .nav-item--params,
 .dark .nav-item--params:is(:hover, .nav-item--active)           { background: rgba(139, 92, 246, .14); color: #d0bcff; }
 .dark .nav-item--suivi,

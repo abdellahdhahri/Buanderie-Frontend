@@ -6,7 +6,7 @@ import { ETAT_OPTIONS } from "../lingeConstants";
 const versFiltre = (v) => (v === "all" ? "" : v);
 const versSelect = (v) => (v === "" || v == null ? "all" : String(v));
 
-export function LingeFilters({ filters, onChange, services, categories = [], onReset, onStats, onExport, exporting, count }) {
+export function LingeFilters({ filters, onChange, services, categories = [], onReset, onStats, onExport, exporting, count, onColumns }) {
   const { t } = useTranslation();
   const set = (k) => (v) => onChange({ ...filters, [k]: versFiltre(v) });
   return (
@@ -44,6 +44,7 @@ export function LingeFilters({ filters, onChange, services, categories = [], onR
           onReset={onReset}
           resetTitle={t("linge.filters.clear", "Supprimer les filtres")}
           onStats={onStats}
+          onColumns={onColumns}
           onExcel={exporting ? undefined : onExport}
           style={{ marginLeft: 8 }}
         />

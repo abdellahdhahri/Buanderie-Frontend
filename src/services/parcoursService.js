@@ -32,37 +32,44 @@ export const parcoursService = {
 };
 
 export const chargementService = {
-  getLot: (codeLot) => requete(`/chargements/${encodeURIComponent(codeLot)}`, {}, "Lot introuvable"),
-  enAttente: () => requete("/chargements/en-attente", {}, "Erreur chargement des lots en attente"),
-  scan: (codeLot, codeOuTag, matriculeAgent) =>
-    requete("/chargements/scan", { method: "POST", body: JSON.stringify({ codeLot, codeOuTag, matriculeAgent }) }, "Scan refusé"),
-  pesee: (codeLot, poids) =>
-    requete(`/chargements/${encodeURIComponent(codeLot)}/pesee`, { method: "POST", body: JSON.stringify({ poids }) }, "Pesée refusée"),
-  valider: (codeLot, matriculeAgent, poids) =>
+  getBac: (codeBac) => requete(`/chargements/${encodeURIComponent(codeBac)}`, {}, "Bac introuvable"),
+  enAttente: () => requete("/chargements/en-attente", {}, "Erreur chargement des bacs en attente"),
+  scan: (codeBac, codeOuTag, matriculeAgent) =>
+    requete("/chargements/scan", { method: "POST", body: JSON.stringify({ codeBac, codeOuTag, matriculeAgent }) }, "Scan refusé"),
+  pesee: (codeBac, poids) =>
+    requete(`/chargements/${encodeURIComponent(codeBac)}/pesee`, { method: "POST", body: JSON.stringify({ poids }) }, "Pesée refusée"),
+  valider: (codeBac, matriculeAgent, poids) =>
     requete(
-      `/chargements/${encodeURIComponent(codeLot)}/validation`,
+      `/chargements/${encodeURIComponent(codeBac)}/validation`,
       { method: "POST", body: JSON.stringify({ matriculeAgent, ...(poids != null && poids !== "" ? { poids: Number(poids) } : {}) }) },
       "Validation refusée"
     ),
-  retirer: (codeLot, codeOuTag, matriculeAgent) =>
+  retirer: (codeBac, codeOuTag, matriculeAgent) =>
     requete(
-      `/chargements/${encodeURIComponent(codeLot)}/linges/${encodeURIComponent(codeOuTag)}?matriculeAgent=${encodeURIComponent(matriculeAgent || "")}`,
+      `/chargements/${encodeURIComponent(codeBac)}/linges/${encodeURIComponent(codeOuTag)}?matriculeAgent=${encodeURIComponent(matriculeAgent || "")}`,
       { method: "DELETE" },
       "Retrait refusé"
     ),
 };
 
-export const versLotLavage = (d) => ({
-  id: d.codeLot,
-  codeLot: d.codeLot,
+export const versBacLavage = (d) => ({
+  id: d.codeBac,
+  codeBac: d.codeBac,
+  codeLot: d.codeBac,
   categorie: d.categorie,
   typeCollecte: d.typeCollecte,
-  etat: d.etatLot,
+  etat: d.etatBac,
   poidsActuel: d.poidsBalance ?? d.poidsDeclare ?? 0,
   poidsDeclare: d.poidsDeclare,
   poidsBalance: d.poidsBalance ?? null,
   nbPieces: d.nbLinges,
+  estBac: true,
 });
+
+export async function bacsPourLavage() {
+  const data = await chargementService.enAttente();
+  return (Array.isArray(data) ? data : []).map(versBacLavage);
+}
 
 let etapesCourantes = null;
 let chargement = null;
