@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import printJS from "print-js";
-import { RefreshCw, Eye, Printer, AlertTriangle } from "lucide-react";
+import { RefreshCw, Printer, AlertTriangle } from "lucide-react";
 import {
   Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterDateRange, FilterActions,
   ListSection, DataTable, Pagination, Badge,
   DetailsPage, DetailsButton, KpiTiles, DetailCard, DetailGrid, InfoList, DetailAlert,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  RowActions, RowButton, Code, QuickStats, day, tk,
+  Code, QuickStats, day, tk,
 } from "../../kit";
 import { IconDetails } from "../../kit/ActionIcons";
 import { chargerItemsCycle, codeElement, libelleTypeSource } from "../../../services/lavageInfecteService";
@@ -29,7 +29,6 @@ const COLUMNS_DEFAULT = [
   { key: "agent", label: "Agent", visible: false, searchable: true },
   { key: "items", label: "Articles", visible: true, searchable: false },
   { key: "statut", label: "Statut", visible: true, searchable: true },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const formatDate = (v) => (v ? new Date(v).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—");
@@ -235,15 +234,6 @@ export default function CycleLavageList() {
     agent: { label: t("cycles.agent"), sortable: true, render: (c) => c.agent?.nom || "—" },
     items: { label: t("cycles.items"), sortable: true, align: "center", render: (c) => <Badge variant="info">{c.items?.length || 0}</Badge> },
     statut: { label: t("cycles.status"), sortable: true, align: "center", render: (c) => <StatutBadge value={c.statut} /> },
-    actions: {
-      label: t("cycles.actions"), align: "center",
-      render: (c) => (
-        <RowActions>
-          <RowButton icon={Eye} title={t("cycles.details")} onClick={() => openDetails(c)} />
-          <RowButton icon={Printer} title={t("cycles.print")} onClick={() => imprimer(c)} />
-        </RowActions>
-      ),
-    },
   };
 
   const LINGE_COLUMNS = {

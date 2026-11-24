@@ -12,7 +12,7 @@ import {
   Modal, Button, FormField, TextArea, ConfirmDialog,
   DetailsPage, DetailsButton, KpiTiles, DetailCard, DetailGrid, InfoList, DetailText,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  Tabs, RowActions, RowButton, FormGrid, Code, QuickStats,
+  Tabs, FormGrid, Code, QuickStats,
 } from "../../kit";
 import { IconAjouter, IconDetails, IconModifier, IconSupprimer } from "../../kit/ActionIcons";
 import GroupeLavageBadge, { GROUPES_LAVAGE } from "../../utils/shared/GroupeLavageBadge";
@@ -37,7 +37,6 @@ const COLUMNS_DEFAULT = [
   { key: "categories", label: "Catégories", visible: true, searchable: true },
   { key: "parDefaut", label: "Par défaut", visible: true, searchable: false },
   { key: "description", label: "Description", visible: false, searchable: true },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const peutEtreParDefaut = (type) => !type || type === "LAVAGE";
@@ -281,18 +280,6 @@ export default function ProgrammeList() {
       render: (p) => (p.parDefaut ? <Badge variant="warning"><Star size={11} fill="currentColor" style={{ marginRight: 4, verticalAlign: -1 }} />{t("programmes.default_label", "Par défaut")}</Badge> : <span className="kit-muted">—</span>),
     },
     description: { label: t("programmes.description"), sortable: true, render: (p) => p.description || "—" },
-    actions: {
-      label: t("programmes.actions"), align: "center",
-      render: (p) => (
-        <RowActions>
-          {lavage && peutEtreParDefaut(p.type) && !p.parDefaut && (
-            <RowButton icon={Star} title={t("programmes.set_default", "Définir par défaut")} onClick={() => setDefautCible(p)} />
-          )}
-          <RowButton icon={Pencil} title={t("programmes.edit")} onClick={() => openEdit(p)} />
-          <RowButton icon={Trash2} tone="danger" title={t("programmes.delete")} onClick={() => setDeleteTarget(p)} />
-        </RowActions>
-      ),
-    },
   };
 
   const defautAutorise = lavage && form?.rec?.typeProgramme === "LAVAGE";

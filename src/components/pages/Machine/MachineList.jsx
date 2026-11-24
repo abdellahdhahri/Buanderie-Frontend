@@ -18,7 +18,7 @@ import {
   Modal, Button, FormField, ConfirmDialog,
   DetailsPage, DetailsButton, KpiTiles, DetailCard, DetailGrid, InfoList,
   ColumnSettingsModal, useListPage, useRowSelection, deleteMany, exportExcel,
-  Tabs, RowActions, RowButton, FormGrid, Code, QuickStats,
+  Tabs, FormGrid, Code, QuickStats,
 } from "../../kit";
 import { IconAjouter, IconDetails, IconModifier, IconSupprimer } from "../../kit/ActionIcons";
 
@@ -65,7 +65,6 @@ const COLUMNS_DEFAULT = [
   { key: "localisation", label: "Localisation", visible: false, searchable: true },
   { key: "etatTechnique", label: "État technique", visible: true, searchable: true },
   { key: "etatImmobilisation", label: "Disponibilité", visible: true, searchable: true },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const nomMachine = (m) => m.designation || m.reference || "—";
@@ -351,17 +350,6 @@ export default function MachineList() {
     localisation: { label: t("machines.location"), sortable: true, render: (m) => m.localisation || "—" },
     etatTechnique: { label: t("machines.technical_state"), sortable: true, render: (m) => <EtatBadge etat={etatTech(m.etatTechnique)} value={m.etatTechnique} /> },
     etatImmobilisation: { label: t("machines.availability"), sortable: true, render: (m) => <EtatBadge etat={etatImmo(m.etatImmobilisation)} value={m.etatImmobilisation} /> },
-    actions: {
-      label: t("common.actions"), align: "center",
-      render: (m) => (
-        <RowActions>
-          <BarcodeLabel item={m} type="machine" variant="icon" />
-          <RowButton icon={AlertTriangle} tone="danger" title={t("machines.report", "Signaler un problème")} onClick={() => openSignalement(m)} />
-          <RowButton icon={Pencil} title={t("common.edit")} onClick={() => openEdit(m)} />
-          <RowButton icon={Trash2} tone="danger" title={t("common.delete")} onClick={() => setDeleteTarget(m)} />
-        </RowActions>
-      ),
-    },
   };
 
   const typeNouveau = activeTab === "LAVEUR" ? t("machines.laveur") : activeTab === "SECHEUR" ? t("machines.secheur") : t(`machine_type.${activeTab}`, "Laveur/Sécheur");

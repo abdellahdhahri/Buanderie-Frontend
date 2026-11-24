@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "../../kit/dialogueApi";
 import { toast } from "sonner";
 import { lireErreur } from "../../../services/integrationService";
-import { WashingMachine, RefreshCw, Pencil, Trash2, Eye, RotateCcw, Play, CheckCheck, Ban, Copy, Check, Printer, History, ArrowRight, Flag, Plus } from "lucide-react";
+import { WashingMachine, RefreshCw, Pencil, Trash2, RotateCcw, Play, CheckCheck, Ban, Copy, Check, Printer, History, ArrowRight, Flag, Plus } from "lucide-react";
 import { ServiceContext } from "../../../contextes/ServiceContext";
 import { useAuth } from "../../../constants/AuthContext";
 import { useMachineContext } from "../../../contextes/MachineContext";
@@ -19,7 +19,7 @@ import {
   Modal, Button, FormField, TextArea, ConfirmDialog,
   DetailsPage, DetailsButton, DetailCard, DetailGrid, InfoList, DetailText, Timeline,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  Tabs, RowActions, RowButton, FormGrid, Code, QuickStats, day, tk,
+  Tabs, RowButton, FormGrid, Code, QuickStats, day, tk,
 } from "../../kit";
 import { IconAjouter, IconDetails, IconModifier, IconSupprimer } from "../../kit/ActionIcons";
 
@@ -61,7 +61,6 @@ const COLUMNS_DEFAULT = [
   { key: "date", label: "Date", visible: true, searchable: true },
   { key: "description", label: "Description", visible: false, searchable: true },
   { key: "status", label: "Statut", visible: true, searchable: true },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const StatutPill = ({ status, label }) => {
@@ -424,20 +423,6 @@ export default function ReclamationList() {
       render: (r) => r.description || <span className="kit-muted">—</span>,
     },
     status: { label: t("reclamations.status"), sortable: true, align: "center", render: (r) => <StatutPill status={r.status} label={statusLabel(r.status)} /> },
-    actions: {
-      label: t("common.actions"), align: "center",
-      render: (r) => (
-        <RowActions>
-          <RowButton icon={Eye} title={t("common.details")} onClick={() => openDetails(r)} />
-          {actionsStatut(r).slice(0, 1).map((a) => (
-            <RowButton key={a.to} icon={a.Icon} title={a.label} onClick={() => demanderStatut(r, a.to)} />
-          ))}
-          <RowButton icon={Printer} title={t("reclamations.print_sheet", "Imprimer la fiche")} onClick={() => imprimerFiche(r)} />
-          <RowButton icon={Pencil} title={t("common.edit")} onClick={() => openForm(r)} />
-          <RowButton icon={Trash2} tone="danger" title={t("common.delete")} onClick={() => setDeleteTarget(r)} />
-        </RowActions>
-      ),
-    },
   };
 
   const compte = (s) => reclamations.filter((r) => r.status === s).length;

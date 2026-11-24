@@ -13,7 +13,7 @@ import {
   Modal, Button, FormField, ConfirmDialog,
   DetailsPage, DetailsButton, KpiTiles, DetailCard,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  Tabs, RowActions, RowButton, FormGrid, Code, tk,
+  Tabs, FormGrid, Code, tk,
 } from "../../kit";
 import { IconAjouter, IconDetails, IconModifier, IconSupprimer } from "../../kit/ActionIcons";
 
@@ -25,7 +25,6 @@ const COLUMNS_DEFAULT = [
   { key: "zone", label: "Zone", visible: true, searchable: true },
   { key: "categorie", label: "Catégorie", visible: false, searchable: true },
   { key: "ordre", label: "Ordre", visible: true, searchable: false },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const zoneVariant = (zone = "") => {
@@ -195,15 +194,6 @@ function OngletPersonnel({ etape }) {
   const COLONNES = {
     codeBarre: { label: t("etapes.code"), render: (p) => <Code>{p.codeBarre || p.matricule}</Code> },
     nom: { label: `${t("etapes.last_name")} / ${t("etapes.first_name")}`, render: (p) => <PersonCell id={p.id} nom={p.prenom} prenom={p.nom} label={`${p.nom || ""} ${p.prenom || ""}`.trim()} sub={p.fonction} /> },
-    actions: {
-      label: t("common.actions"), align: "center",
-      render: (p) => (
-        <RowActions>
-          <RowButton icon={Printer} title={t("etapes.print_label")} onClick={() => badge(p)} />
-          <RowButton icon={UserMinus} tone="danger" title={t("etapes.remove")} onClick={() => retirer(p)} />
-        </RowActions>
-      ),
-    },
   };
 
   return (
@@ -405,17 +395,6 @@ function EtapeListInner() {
     zone: { label: t("etapes.zone"), sortable: true, render: (e) => <Badge variant={zoneVariant(e.zone)}>{e.zone || t("etapes.zone_undefined")}</Badge> },
     categorie: { label: t("etapes.category"), sortable: true, render: (e) => e.categorie || "—" },
     ordre: { label: t("etapes.order"), sortable: true, align: "center", render: (e) => <strong>{e.ordre ?? "—"}</strong> },
-    actions: {
-      label: t("common.actions"), align: "center",
-      render: (e) => (
-        <RowActions>
-          <BarcodeLabel item={e} type="etape" variant="icon" />
-          <RowButton icon={Users} title={t("etapes.view_personnel")} onClick={() => openDetails(e)} />
-          <RowButton icon={Pencil} title={t("common.edit")} onClick={() => openForm(e)} />
-          <RowButton icon={Trash2} tone="danger" title={t("common.delete")} onClick={() => setDeleteTarget(e)} />
-        </RowActions>
-      ),
-    },
   };
 
   return (

@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Swal from "../../kit/dialogueApi";
-import { RefreshCw, Pencil, Trash2 } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import {
   Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterActions,
   ListSection, DataTable, Pagination, Badge,
   Modal, Button, FormField, FormGrid, ConfirmDialog,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  RowActions, RowButton, Code,
+  Code,
 } from "../../kit";
 import { IconAjouter, IconModifier, IconSupprimer } from "../../kit/ActionIcons";
 import {
@@ -32,7 +32,6 @@ const COLUMNS_DEFAULT = [
   { key: "dureeUtilisationApresOuverture", label: "Durée après ouverture", visible: true, searchable: false },
   { key: "temperatureStockage", label: "Stockage", visible: true, searchable: false },
   { key: "actif", label: "Statut", visible: true, searchable: false },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const num = (v) => (v === "" || v == null ? null : Number(v));
@@ -192,15 +191,6 @@ export default function ProduitNettoyageList() {
     actif: {
       label: t("produits.statut", "Statut"), sortable: true, align: "center",
       render: (p) => <Badge variant={p.actif === false ? "secondary" : "success"}>{p.actif === false ? t("produits.inactive", "Désactivé") : t("produits.active", "Actif")}</Badge>,
-    },
-    actions: {
-      label: t("common.actions", "Actions"), align: "center",
-      render: (p) => (
-        <RowActions>
-          <RowButton icon={Pencil} title={t("common.edit", "Modifier")} onClick={() => openEdit(p)} />
-          <RowButton icon={Trash2} tone="danger" title={t("common.delete", "Supprimer")} onClick={() => setDeleteTarget(p)} />
-        </RowActions>
-      ),
     },
   };
 

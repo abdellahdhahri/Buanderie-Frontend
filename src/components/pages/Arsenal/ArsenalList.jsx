@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import Swal from "../../kit/dialogueApi";
-import { RefreshCw, Pencil, Ban, Eye, History, Printer, Download } from "lucide-react";
+import { RefreshCw, Pencil, Ban, History, Printer, Download } from "lucide-react";
 import { printLabel } from "../../../utils/labels";
 import { arsenalService, getServices } from "../../../services/arsenalService";
 import { useIntegration } from "../../../hooks/useIntegration";
@@ -15,7 +15,7 @@ import {
   Modal, Button, FormField, InfoList,
   DetailsPage, DetailsButton, KpiTiles, DetailCard,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  Tabs, RowActions, RowButton, FormGrid, Code, tk,
+  Tabs, FormGrid, Code, tk,
 } from "../../kit";
 import { IconAjouter, IconDetails, IconModifier, IconSupprimer } from "../../kit/ActionIcons";
 
@@ -32,7 +32,6 @@ const COLUMNS_DEFAULT = [
   { key: "nom", label: "Nom", visible: true, searchable: true },
   { key: "service", label: "Service", visible: true, searchable: true },
   { key: "source", label: "Origine", visible: false, searchable: false },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const codeArsenal = (a) => a.code || `ARS-${a.id}`;
@@ -215,17 +214,6 @@ export default function ArsenalList() {
     nom: { label: t("arsenal.name"), sortable: true, render: (a) => <><strong>{a.nom}</strong><BadgeImporte item={a} /><BadgeInactif item={a} /></> },
     service: { label: t("arsenal.service"), sortable: true, render: (a) => <Badge variant={a.serviceId ? "info" : "secondary"}>{serviceNom(a.serviceId)}</Badge> },
     source: { label: t("machines.source", "Source"), sortable: true, render: (a) => searchValue(a, "source") || "—" },
-    actions: {
-      label: t("common.actions"), align: "center",
-      render: (a) => (
-        <RowActions>
-          <RowButton icon={Eye} title={t("arsenal.show_linens")} onClick={() => openDetails(a)} />
-          <RowButton icon={Printer} title={t("arsenal.print_code")} onClick={() => imprimer(a)} />
-          <RowButton icon={Pencil} title={t("common.edit")} onClick={() => openForm(a)} />
-          <RowButton icon={Ban} tone="danger" title={t("common.delete")} disabled={lectureSeule(a) || a.actif === false} onClick={() => desactiver(a)} />
-        </RowActions>
-      ),
-    },
   };
 
   const LINGE_COLUMNS = {

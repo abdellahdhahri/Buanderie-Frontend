@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "../../kit/dialogueApi";
-import { RefreshCw, Pencil, Trash2, Eye, History, Boxes, Layers, Download } from "lucide-react";
+import { RefreshCw, Pencil, Trash2, History, Boxes, Layers, Download } from "lucide-react";
 import BarcodeLabel from "../../BarcodeLabel";
 import ImportCubixModal from "../../ui/ImportCubixModal";
 import { useIntegration } from "../../../hooks/useIntegration";
@@ -15,7 +15,7 @@ import {
   Modal, Button, FormField, TextArea, ConfirmDialog,
   DetailsPage, DetailsButton, KpiTiles, DetailCard, InfoList,
   ColumnSettingsModal, useListPage, useRowSelection, deleteMany, exportExcel,
-  RowActions, RowButton, FormGrid, Code, Tabs,
+  FormGrid, Code, Tabs,
 } from "../../kit";
 import { CATEGORIES_LINGE } from "../../../constants/categoriesLinge";
 import GroupeLavageBadge from "../../utils/shared/GroupeLavageBadge";
@@ -54,7 +54,6 @@ const COLUMNS_DEFAULT = [
   { key: "poids", label: "Poids / Capacité", visible: true, searchable: false },
   { key: "typeCollecte", label: "Type", visible: true, searchable: true },
   { key: "linges", label: "Linges", visible: true, searchable: false },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const fmtDate = (v) => (v ? new Date(v).toLocaleDateString() : "—");
@@ -373,17 +372,6 @@ export default function BacList() {
       label: t("bacs.linges_count"), sortable: true, align: "center",
       render: (b) => (bacLingesCount[b.id] !== undefined ? <Badge variant="info">{bacLingesCount[b.id]}</Badge> : <span className="kit-muted">…</span>),
     },
-    actions: {
-      label: t("common.actions"), align: "center",
-      render: (b) => (
-        <RowActions>
-          <RowButton icon={Eye} title={t("bacs.view_linges", "Voir les linges")} onClick={() => openDetails(b)} />
-          <BarcodeLabel item={b} type="bac" variant="icon" />
-          <RowButton icon={Pencil} title={t("common.edit")} onClick={() => openEdit(b)} />
-          <RowButton icon={Trash2} tone="danger" title={t("common.delete")} onClick={() => setDeleteTarget(b)} />
-        </RowActions>
-      ),
-    },
   };
 
   const terme = filtreTri.recherche.trim().toLowerCase();
@@ -401,7 +389,6 @@ export default function BacList() {
     nombreLinges: { label: t("bacs.linges_count"), align: "center", render: (b) => <strong>{b.nombreLinges ?? 0}</strong> },
     poids: { label: t("bacs.declared_weight", "Poids déclaré"), align: "right", render: (b) => kg(b.poids) },
     poidsBalance: { label: t("bacs.scale_weight", "Poids balance"), align: "right", render: (b) => kg(b.poidsBalance) },
-    actions: TABLE_COLUMNS.actions,
   };
 
   const LINGE_COLUMNS = {

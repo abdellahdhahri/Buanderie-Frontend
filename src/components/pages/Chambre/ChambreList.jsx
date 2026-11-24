@@ -47,7 +47,6 @@ const COLUMNS_DEFAULT = [
   { key: "codeBarre", label: "Code-barres", visible: true, searchable: true },
   { key: "service", label: "Service", visible: true, searchable: true },
   { key: "source", label: "Origine", visible: false, searchable: false },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const Check = ({ checked, onChange, disabled, children, title }) => (
@@ -333,17 +332,6 @@ export default function ChambreList() {
     codeBarre: { label: t("chambre.code_barre"), sortable: true, render: (c) => <Code>{c.codeBarre}</Code> },
     service: { label: t("chambre.service"), sortable: true, render: (c) => <Badge variant={c.serviceId ? "info" : "warning"}>{serviceNom(c.serviceId)}</Badge> },
     source: { label: t("machines.source", "Source"), sortable: true, render: (c) => searchValue(c, "source") || "—" },
-    actions: {
-      label: t("chambre.actions"), align: "center",
-      render: (c) => (
-        <RowActions>
-          <RowButton icon={BedDouble} title={t("chambre.show_beds")} onClick={() => openDetails(c)} />
-          <BarcodeLabel item={c} type="chambre" variant="icon" />
-          <RowButton icon={Pencil} title={t("chambre.edit")} onClick={() => openForm(c)} />
-          <RowButton icon={Trash2} tone="danger" title={t("chambre.delete")} disabled={!peutDesactiver(c)} onClick={() => desactiver(c)} />
-        </RowActions>
-      ),
-    },
   };
 
   const etatLit = (l) => (l.etat === 0 ? { label: t("chambre.free", "Libre"), variant: "success" } : l.etat === 2 ? { label: t("chambre.occupied", "Occupé"), variant: "warning" } : { label: t("chambre.unknown"), variant: "secondary" });

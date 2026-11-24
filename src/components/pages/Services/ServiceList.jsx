@@ -18,7 +18,7 @@ import {
   Modal, Button, FormField,
   DetailsPage, DetailsButton, KpiTiles, DetailCard, DetailGrid, InfoList, DetailText,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  RowActions, RowButton, FormGrid, Code, QuickStats,
+  FormGrid, Code, QuickStats,
 } from "../../kit";
 import { IconAjouter, IconDetails, IconModifier, IconSupprimer } from "../../kit/ActionIcons";
 
@@ -144,7 +144,6 @@ const COLUMNS_DEFAULT = [
   { key: "reference", label: "Référence externe", visible: true, searchable: true },
   { key: "description", label: "Description", visible: false, searchable: true },
   { key: "source", label: "Origine", visible: true, searchable: false },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 export default function ServiceList() {
@@ -342,15 +341,6 @@ export default function ServiceList() {
     source: {
       label: t("machines.source", "Source"), sortable: true,
       render: (s) => <Badge variant={s.source === "EXTERNE" ? "info" : "default"}>{origine(s)}</Badge>,
-    },
-    actions: {
-      label: t("common.actions", "Actions"), align: "center",
-      render: (s) => (
-        <RowActions>
-          <RowButton icon={Pencil} title={t("common.edit", "Modifier")} disabled={lectureSeule(s)} onClick={() => ouvrir(s)} />
-          <RowButton icon={Ban} tone="danger" title={t("services_page.deactivate", "Désactiver")} disabled={lectureSeule(s) || s.actif === false} onClick={() => desactiver(s)} />
-        </RowActions>
-      ),
     },
   };
 

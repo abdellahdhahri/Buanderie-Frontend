@@ -28,6 +28,12 @@ export const NAV_ITEMS = [
     icon: <IconSettings />,
     children: [
       {
+        label: "Vue d'ensemble",
+        path: "/referentiels",
+        privilege: "LIG12",
+        icon: <IconDashboard />,
+      },
+      {
         label: "Services",
         path: "/services",
         privilege: "LIG1201",

@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from "re
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import Swal from "../../kit/dialogueApi";
-import { RefreshCw, Trash2, Eye, ArrowRight, History, User, Clock } from "lucide-react";
+import { RefreshCw, Trash2, ArrowRight, History, User, Clock } from "lucide-react";
 import { ServiceContext } from "../../../contextes/ServiceContext";
 import { getSetting } from "../../../utils/appSettings";
 import { fetchGlobalHistory, fetchPersonnelsByIds, fetchPersonnelById, formatDate } from "../../../services/historiqueGlobalService";
@@ -12,7 +12,7 @@ import {
   ListSection, DataTable, Pagination, Badge, PersonName,
   Modal, Button, InfoList, DetailCard, DetailText,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  RowActions, RowButton, Code, QuickStats, day, tk,
+  Code, QuickStats, day, tk,
 } from "../../kit";
 import { IconDetails, IconSupprimer } from "../../kit/ActionIcons";
 import { useOperations, AVEC_OBSERVATIONS } from "../../../hooks/useOperations";
@@ -45,7 +45,6 @@ const COLUMNS_DEFAULT = [
   { key: "operation", label: "Opération", visible: true, searchable: true },
   { key: "agent", label: "Agent", visible: true, searchable: true },
   { key: "observations", label: "Observations", visible: true, searchable: true },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const colonnesSauvegardees = () => {
@@ -287,16 +286,6 @@ export default function HistoriqueGlobal() {
       label: t("historique.observations"),
       tdProps: (e) => ({ title: e.observations || e.remarques || "", style: { maxWidth: 260, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }),
       render: (e) => e.observations || e.remarques || <span className="kit-muted">—</span>,
-    },
-    actions: {
-      label: t("common.actions"), align: "center",
-      render: (e) => (
-        <RowActions>
-          <RowButton icon={Eye} title={t("historique.movement_details")} onClick={() => ouvrirDetail(e)} />
-          <RowButton icon={History} title={t("linge.history", "Historique du linge")} onClick={() => voirLinge(e)} />
-          <RowButton icon={Trash2} tone="danger" title={t("common.delete")} onClick={() => setDeleteTarget(e)} />
-        </RowActions>
-      ),
     },
   };
 

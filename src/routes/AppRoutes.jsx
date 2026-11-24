@@ -23,6 +23,7 @@ import TriList from "../components/pages/Tri/TriList";
 import HistoriqueRemisesList from "../components/pages/HistoriqueRemises/HistoriqueRemisesList";
 import HistoriqueCollecte from "../components/pages/HistoriqueCollecte/HistoriqueCollecte";
 import MachinesDashboard from "../components/pages/Lavage/MachinesDashboard";
+import ReferentielsHub from "../components/pages/Referentiels/ReferentielsHub";
 import BacList from "../components/pages/Bac/BacList";
 import ImmobilisationList from "../components/pages/Immobilisation/ImmobilisationList";
 import CollageListUniforme from "../components/pages/Collecte/collecteUniforme/CollageListUniforme";
@@ -201,6 +202,13 @@ export const router = createBrowserRouter([
 
 
 
+          {
+            path: "referentiels",
+            Component: ReferentielsHub,
+            handle: {
+              privileges: ["LIG12"],
+            },
+          },
           {
             path: "services",
             Component: ServiceList,

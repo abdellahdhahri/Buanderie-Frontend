@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from "re
 import { useTranslation } from "react-i18next";
 import Swal from "../../kit/dialogueApi";
 import { motion } from "framer-motion";
-import { RefreshCw, Eye, Copy, Check, Printer, PackagePlus, Biohazard } from "lucide-react";
+import { RefreshCw, Copy, Check, Printer, PackagePlus, Biohazard } from "lucide-react";
 import AjouterLingesModal from "./AjouterLingesModal";
 import { ServiceContext } from "../../../contextes/ServiceContext";
 import { getSetting, formatDateTime } from "../../../utils/appSettings";
@@ -20,7 +20,7 @@ import {
   ListSection, DataTable, Pagination, PersonName,
   DetailsPage, DetailsButton, DetailCard, DetailGrid, InfoList, DetailText, DetailAlert, Timeline,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  Tabs, RowActions, RowButton, Code, QuickStats, day, tk,
+  Tabs, Code, QuickStats, day, tk,
 } from "../../kit";
 import { IconDetails, IconAjouter } from "../../kit/ActionIcons";
 
@@ -442,7 +442,6 @@ const COLUMNS_DEFAULT = [
   { key: "agent", label: "Agent", visible: true, searchable: true },
   { key: "progress", label: "Avancement", visible: true, searchable: false },
   { key: "etat", label: "État", visible: true, searchable: true },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 export default function HistoriqueCollecte() {
@@ -629,15 +628,6 @@ export default function HistoriqueCollecte() {
       },
     },
     etat: { label: t("historique_collecte.status", "État"), sortable: true, align: "center", render: (c) => <EtatPill etat={c.etatCollecte} t={t} /> },
-    actions: {
-      label: t("common.actions"), align: "center",
-      render: (c) => (
-        <RowActions>
-          <RowButton icon={Eye} title={t("historique_collecte.collection_details", "Détails de la collecte")} onClick={() => openDetails(c)} />
-          <RowButton icon={PackagePlus} title={t("historique_collecte.add_linens", "Ajouter des linges")} onClick={() => setAjoutPour(c)} />
-        </RowActions>
-      ),
-    },
   };
 
   const compteSource = (id) => collectes.filter((c) => getSource(c).id === id).length;

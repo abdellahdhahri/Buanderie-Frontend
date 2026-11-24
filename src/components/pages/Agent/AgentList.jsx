@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { RefreshCw, Eye, Printer, UserCheck, CheckCircle, XCircle } from "lucide-react";
+import { RefreshCw, Printer, UserCheck, CheckCircle, XCircle } from "lucide-react";
 
 import BadgeModal from "../../ui/modals/BadgeModal";
 import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
@@ -10,7 +10,7 @@ import {
   ListSection, DataTable, Pagination, Badge, PersonCell,
   DetailsPage, DetailsButton, KpiTiles, DetailCard, DetailGrid, InfoList, PersonBlock,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  RowActions, RowButton, Code,
+  Code,
 } from "../../kit";
 import { IconDetails } from "../../kit/ActionIcons";
 
@@ -45,7 +45,6 @@ const COLUMNS_DEFAULT = [
   { key: "codeBarre", label: "Code Barre", visible: true, searchable: true },
   { key: "pointeuseActif", label: "Pointeuse active", visible: false, searchable: false },
   { key: "administrateur", label: "Administrateur", visible: false, searchable: false },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const searchValue = (a, key) => {
@@ -163,15 +162,6 @@ export default function AgentList() {
     codeBarre: { label: "Code Barre", sortable: true, render: (a) => <Code>{a.codeBarre}</Code> },
     pointeuseActif: { label: "Pointeuse active", sortable: true, render: (a) => <StatutBadge actif={a.pointeuseActif} /> },
     administrateur: { label: "Administrateur", sortable: true, render: (a) => <StatutBadge actif={a.administrateur} /> },
-    actions: {
-      label: "Actions", align: "center",
-      render: (a) => (
-        <RowActions>
-          <RowButton icon={Printer} title="Imprimer le badge" onClick={() => openBadgeModal(a)} />
-          <RowButton icon={Eye} title="Voir les détails" onClick={() => openDetails(a)} />
-        </RowActions>
-      ),
-    },
   };
 
   return (

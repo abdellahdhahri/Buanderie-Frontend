@@ -126,12 +126,23 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
           <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />
           </svg>
-          <input placeholder={t("common.search")} value={recherche} onChange={(e) => setRecherche(e.target.value)} />
+          <input
+            placeholder={t("common.search")}
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Escape") setRecherche(""); }}
+          />
+          {recherche && (
+            <button type="button" className="sidebar__search-clear" onClick={() => setRecherche("")} aria-label="Effacer la recherche">×</button>
+          )}
         </div>
       )}
 
       <nav className="sidebar__nav">
         {sidebarOpen && <span className="sidebar__section-label">{t("navigation.main_menu", "Menu principal")}</span>}
+        {sidebarOpen && terme && visibleNavItems.length === 0 && (
+          <span className="sidebar__search-empty">{t("navigation.no_match", "Aucun menu ne correspond")}</span>
+        )}
         {visibleNavItems.map((item, index) => {
           const classes = `nav-item nav-item--${item.id} ${activeNavItem?.id === item.id ? "nav-item--active" : ""} ${!sidebarOpen ? "nav-item--icon-only" : ""}`;
           const contenu = (
@@ -174,7 +185,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }) {
                   {item.children ? (
                     <div className={`nav-popup__grid ${item.children.length > 3 ? "nav-popup__grid--many" : "nav-popup__grid--few"}`}>
                       {item.children.map((child) => (
-                        <Link key={child.label} to={child.path || "#"} className="nav-popup__card" onClick={() => setActivePopup(null)}>
+                        <Link key={child.label} to={child.path || "#"} className={`nav-popup__card ${samePath(currentPath, child.path) ? "nav-popup__card--active" : ""}`} onClick={() => setActivePopup(null)}>
                           <div className={`nav-popup__card-icon nav-popup__card-icon--${item.id}`}>{child.icon}</div>
                           <span className="nav-popup__card-label">{childLabel(child)}</span>
                         </Link>
