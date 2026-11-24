@@ -5,7 +5,7 @@ import React, { useId } from "react";
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Petit glyphe : une pièce de linge aiguillée vers deux paniers. */
-export function SortGlyph({ size = 40, c = "#e67700" }) {
+export function SortGlyph({ size = 40, c = "#0794a4" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true">
       <rect x="17" y="4" width="14" height="9" rx="3" fill={c} />
@@ -20,12 +20,12 @@ export function SortGlyph({ size = 40, c = "#e67700" }) {
 }
 
 /** État vide de l'historique : linge en attente au-dessus de trois lots. */
-export function SortArt({ c = "#e67700", width = 150 }) {
+export function SortArt({ c = "#0794a4", width = 150 }) {
   const uid = useId().replace(/:/g, "");
   const lots = [
-    { x: 12, tone: "#0d9488" },
+    { x: 12, tone: "#94a3b8" },
     { x: 58, tone: c },
-    { x: 104, tone: "#7c3aed" },
+    { x: 104, tone: "#64748b" },
   ];
   return (
     <svg width={width} viewBox="0 0 150 110" fill="none" aria-hidden="true" style={{ display: "block", maxWidth: "100%" }}>

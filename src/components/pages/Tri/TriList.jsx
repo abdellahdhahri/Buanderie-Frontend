@@ -2,24 +2,24 @@ import React, { useState, useContext, useRef, useEffect, useCallback } from "rea
 import { useTranslation } from "react-i18next";
 import { LingeContext } from "../../../contextes/LingeContext";
 import { useModal } from "../../../contextes/ModalContext";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  ArrowRight, Boxes, CheckCircle, ClipboardCheck, History, Loader2, LogOut, PieChart, RotateCcw, Scale, Tag, X,
+  ArrowRight, BarChart3, Boxes, CheckCircle, ClipboardCheck, ClipboardList, History, LogOut, RotateCcw,
+  Check, Loader2, ScanLine, UserCheck,
 } from "lucide-react";
-import { DataTable, Code, Badge, VueSwitch, useVue, RowActions, RowButton } from "../../kit";
+import { DataTable, Code, Badge, VueSwitch, useVue, RowActions, RowButton, Modal, QuickStats } from "../../kit";
 import ValiderLotModal from "../../utils/shared/ValiderLotModal";
 import { STATS_INITIALES, MODE_RFID, MODE_CODEBARRE } from "../../../constants/tri";
-import { LotBasketCard, LotBasketSvg, getFillTone } from "../../utils/shared/LotBasket";
+import { LotBasketCard, LotBasketSvg } from "../../utils/shared/LotBasket";
 import { getCategorieMeta } from "../../../constants/categoriesLinge";
-import { BadgeScanArt, ScannerGlyph } from "../Reception/ReceptionArt";
-import { SortArt, SortGlyph } from "./TriArt";
-import "../Linge/WorkflowList.css";
+import { SortGlyph } from "./TriArt";
 import "../Reception/Reception.css";
 import "./Tri.css";
 import { TriProvider, useTri } from "../../../contextes/TriContext";
 import ScanInput from "../../utils/shared/ScanInput";
+import GroupeLavageBadge from "../../utils/shared/GroupeLavageBadge";
 import { getAgent, isAgentConnected } from "../../../services/agentService";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
+import { suggererBacs, trierDansBac, versBacTri, libelleEtatBac } from "../../../services/bacTriService";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
@@ -42,9 +42,11 @@ function TriInner() {
   const [showDialog,    setShowDialog]    = useState(false);
   const [lingeEnCours,  setLingeEnCours]  = useState(null);
   const [lotAValider,   setLotAValider]   = useState(null);
+  const [scanBac,       setScanBac]       = useState("");
   const [etatsLots,     setEtatsLots]     = useState({});
   const [vueHistorique, setVueHistorique] = useVue("tri.historique");
   const [vueChoix,      setVueChoix]      = useVue("tri.choix");
+  const [showStats,     setShowStats]     = useState(false);
 
   const scanInputRef    = useRef(null);
   const isMounted       = useRef(true);
@@ -188,43 +190,21 @@ function TriInner() {
 
   const fetchLotsSuggere = useCallback(async (code) => {
     try {
-      const res = await fetch(`${API_URL}/api/tri/lots/suggestion?codeOuTag=${encodeURIComponent(code)}`);
-      if (res.ok) {
-        const lots = await res.json();
-        return lots;
-      }
-      return [];
+      return (await suggererBacs(code)).map(versBacTri);
     } catch (err) {
-      console.error("Erreur suggestion lots:", err);
-      return [];
+      showAlert(t('tri.tri_error'), err.message, "error");
+      return null;
     }
-  }, []);
+  }, [showAlert, t]);
 
-  const affecterAuLot = useCallback(async (lotId) => {
-    if (!lingeEnCours || !agentScanne) return;
+  const affecterAuLot = useCallback(async (codeBac) => {
+    if (!lingeEnCours || !agentScanne || !codeBac) return;
 
     setIsLoading(true);
     try {
-      const payload = {
-        matriculeAgent: agentScanne.matricule,
-        codeOuTag: lingeEnCours.codeSuivi || lingeEnCours.codeBarre || lingeEnCours.rfidTag,
-        lotId: lotId
-      };
-
-      const res = await fetch(`${API_URL}/api/tri`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        const error = await res.text();
-        let msg = error;
-        try { msg = JSON.parse(error).message || error; } catch {}
-        throw new Error(msg);
-      }
-
-      const lot = await res.json();
+      const codeOuTag = lingeEnCours.codeSuivi || lingeEnCours.codeBarre || lingeEnCours.rfidTag;
+      const lot = versBacTri(await trierDansBac(codeOuTag, String(codeBac).trim(), agentScanne.matricule));
+      setEtatsLots((prev) => ({ ...prev, [lot.codeBac]: { etatBac: lot.etat, poidsBalance: lot.poidsBalance } }));
       setLotSuggere(lot);
       setShowDialog(false);
       setLingeEnCours(null);
@@ -233,8 +213,9 @@ function TriInner() {
       setHistoriqueTri(prev => [{
         codeLinge: lingeEnCours.codeSuivi || lingeEnCours.codeBarre,
         categorie: lingeEnCours.categorie,
+        groupeLavage: lingeEnCours.groupeLavage,
         typeCollecte: lingeEnCours.typeCollecte,
-        lotCode: lot.codeLot,
+        lotCode: lot.codeBac,
         date: new Date().toLocaleTimeString(),
         poids: lingeEnCours.poids
       }, ...prev]);
@@ -249,8 +230,8 @@ function TriInner() {
         t('tri.tri_success'),
         t('tri.tri_success_weight', {
           code: lingeEnCours.codeSuivi || lingeEnCours.codeBarre,
-          lotCode: lot.codeLot,
-          poids: Number(lot.poidsActuel || 0).toFixed(2),
+          lotCode: lot.codeBac,
+          poids: Number(lot.poidsDeclare || 0).toFixed(2),
           categorie: lot.categorie,
           typeCollecte: lot.typeCollecte
         }),
@@ -297,12 +278,16 @@ function TriInner() {
       setLingeEnCours(linge);
 
       const lots = await fetchLotsSuggere(code);
-      
+      if (!lots) {
+        setLingeScanne(null);
+        setLingeEnCours(null);
+        return;
+      }
+
       if (lots.length === 0) {
         showAlert(
           t('tri.no_lot_available_title'),
           t('tri.no_lot_available_message', {
-            categorie: linge.categorie,
             typeCollecte: linge.typeCollecte
           }),
           "warning"
@@ -362,8 +347,8 @@ function TriInner() {
   };
 
   const getBorderColor = () => {
-    if (!agentScanne) return "#dc2626";
-    return "#e67700";
+    if (!agentScanne) return "#e03131";
+    return "#0d9488";
   };
 
   // ─── Rendu ────────────────────────────────────────────────────────────
@@ -387,26 +372,35 @@ function TriInner() {
     }, {})
   );
 
-  const lotPoids = Number(lotSuggere?.poidsActuel) || 0;
-  const lotTone = getFillTone(null);
-  const etatLot = (code, defaut) => etatsLots[code]?.etatLot || defaut || "EN_TRI";
+  const lotPoids = Number(lotSuggere?.poidsDeclare) || 0;
+  const etatLot = (code, defaut) => etatsLots[code]?.etatBac || defaut || "EN_TRI";
   const balanceLot = (code, defaut) => etatsLots[code]?.poidsBalance ?? defaut ?? null;
   const ouvrirValidation = (lot) => setLotAValider({
-    codeLot: lot.codeLot || lot.code,
-    poidsDeclare: lot.poidsActuel ?? lot.poids,
-    poidsBalance: balanceLot(lot.codeLot || lot.code, lot.poidsBalance),
+    codeBac: lot.codeBac || lot.codeLot || lot.code,
+    poidsDeclare: lot.poidsDeclare ?? lot.poids,
+    poidsBalance: balanceLot(lot.codeBac || lot.codeLot || lot.code, lot.poidsBalance),
     nbLinges: lot.nbLinges ?? lot.n,
   });
   const lotValide = (dto) => {
-    if (dto?.codeLot) setEtatsLots((prev) => ({ ...prev, [dto.codeLot]: dto }));
+    if (dto?.codeBac) setEtatsLots((prev) => ({ ...prev, [dto.codeBac]: dto }));
     setLotAValider(null);
     focusInput();
   };
 
   const lingeCourant = lingeEnCours || lingeScanne;
 
+  const lotEnTri = lotSuggere && etatLot(lotSuggere.codeBac, lotSuggere.etat) === "EN_TRI";
+
+  const etapeFaite = [Boolean(agentScanne), Boolean(lingeCourant || lotSuggere), Boolean(lotSuggere)];
+  const etapeActive = etapeFaite.findIndex((f) => !f);
+  const etapes = [
+    t("tri.step_identify", "Identification de l'agent"),
+    t("tri.step_scan", "Scan du linge"),
+    t("tri.step_assign", "Affectation au bac"),
+  ];
+
   return (
-    <div className="collecte-container rc">
+    <div className="collecte-container rc tr">
       {lotAValider && (
         <ValiderLotModal
           lot={lotAValider}
@@ -416,111 +410,111 @@ function TriInner() {
         />
       )}
 
-      {/* ── Fenêtre de choix du lot ── */}
-      <AnimatePresence>
-        {showDialog && lotsSuggere.length > 0 && (
-          <motion.div className="tr-modal" data-modal="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <motion.div
-              className={`tr-modal__box ${lotsSuggere.length > 2 ? "" : "is-narrow"}`}
-              initial={{ opacity: 0, y: 16, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.22 }}
-            >
-              <div className="tr-modal__head">
-                <CategoryTile categorie={lingeEnCours?.categorie} size={44} />
-                <div style={{ minWidth: 0 }}>
-                  <h2>{t('tri.choose_lot')}</h2>
-                  <p>
-                    <code style={{ fontWeight: 700, color: "var(--rc-text)" }}>{lingeEnCours?.codeSuivi || lingeEnCours?.codeBarre}</code>
-                    <span>{libelleCategorie(lingeEnCours?.categorie)}</span>
-                    <TypeCollecte type={lingeEnCours?.typeCollecte} />
-                  </p>
-                </div>
-                <button type="button" className="tr-modal__close" onClick={fermerDialogue} aria-label={t('common.close')}>
-                  <X size={16} />
+      {showDialog && lotsSuggere.length > 0 && (
+        <Modal
+          size={lotsSuggere.length > 2 ? "lg" : "md"}
+          icon={<CategoryTile categorie={lingeEnCours?.categorie} size={36} />}
+          title={t('tri.choose_lot')}
+          subtitle={[lingeEnCours?.codeSuivi || lingeEnCours?.codeBarre, lingeEnCours?.designation].filter(Boolean).join(" · ")}
+          headerActions={<><GroupeLavageBadge groupe={lingeEnCours?.groupeLavage} /> <TypeCollecte type={lingeEnCours?.typeCollecte} /></>}
+          onClose={fermerDialogue}
+          closeOnOverlay={false}
+          className="tr-choix"
+        >
+          <div className="tr-modal__body" data-modal="true">
+            <div className="tr-modal__hint" style={{ justifyContent: "space-between" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <SortGlyph size={20} /> {t('tri.choose_lot_hint', { count: lotsSuggere.length })}
+              </span>
+              <VueSwitch value={vueChoix} onChange={setVueChoix} compact />
+            </div>
+            <div className="tr-modal__scan">
+              <ScanInput
+                placeholder={t('tri.scan_bac', 'Scannez le bac de destination')}
+                value={scanBac}
+                onChange={setScanBac}
+                onSubmit={(c) => { setScanBac(""); affecterAuLot(c); }}
+                borderColor="#0d9488"
+                autoDebounce
+                disabled={isLoading}
+              />
+            </div>
+            {vueChoix === "tableau" ? (
+              <DataTable
+                columns={{
+                  codeLot: { label: t('tri.bac', 'Bac'), render: (l) => <Code>{l.codeBac}</Code> },
+                  etat: { label: t('tri.status'), render: (l) => libelleEtatBac(t, l.etat) },
+                  groupeLavage: { label: t('groupe_lavage.label', 'Groupe'), render: (l) => <GroupeLavageBadge groupe={l.groupeLavage} libre={l.etat === "VIDE" || !l.groupeLavage} /> },
+                  typeCollecte: { label: t('tri.type'), render: (l) => <TypeCollecte type={l.typeCollecte} /> },
+                  nb: { label: t('chargement.linens', 'Linges'), render: (l) => l.nbPieces ?? l.quantite ?? "—" },
+                  poids: { label: t('chargement.declared_weight', 'Poids déclaré'), render: (l) => `${Number(l.poidsDeclare || 0).toFixed(2)} kg` },
+                  balance: { label: t('chargement.scale', 'Balance'), render: (l) => (l.poidsBalance != null ? `${Number(l.poidsBalance).toFixed(2)} kg` : "—") },
+                  action: {
+                    label: t('cycles.actions', 'Actions'),
+                    render: (l) => (
+                      <RowActions>
+                        <RowButton icon={CheckCircle} title={t('tri.choose_lot')} onClick={() => affecterAuLot(l.codeBac)} />
+                      </RowActions>
+                    ),
+                  },
+                }}
+                rows={lotsSuggere}
+                rowKey={(l) => l.codeBac}
+                onRowDoubleClick={(l) => affecterAuLot(l.codeBac)}
+              />
+            ) : (
+              <div className="lot-basket-grid">
+                {lotsSuggere.map((lot, index) => (
+                  <LotBasketCard key={lot.codeBac || index} lot={lot} t={t} sansCapacite onSelect={() => affecterAuLot(lot.codeBac)} />
+                ))}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      <div className="rc-toolbar">
+        <div className="rc-head__right">
+            {agentScanne && (
+              <div className="rc-agent">
+                <span className="rc-agent__avatar">{initialesTri(nomAgent)}</span>
+                <span className="rc-agent__text">
+                  <span className="rc-agent__name">{nomAgent}</span>
+                  <span className="rc-agent__id">{agentScanne.codeBarre || agentScanne.matricule}</span>
+                </span>
+                <button type="button" className="rc-agent__out" onClick={handleLogoutAgent} title={t('tri.confirm_logout')} aria-label={t('tri.confirm_logout')}>
+                  <LogOut size={14} />
                 </button>
               </div>
-              <div className="tr-modal__body">
-                <div className="tr-modal__hint" style={{ justifyContent: "space-between" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                    <SortGlyph size={20} /> {t('tri.choose_lot_hint', { count: lotsSuggere.length })}
-                  </span>
-                  <VueSwitch value={vueChoix} onChange={setVueChoix} compact />
-                </div>
-                {vueChoix === "tableau" ? (
-                  <DataTable
-                    columns={{
-                      codeLot: { label: t('tri.lot', 'Lot'), render: (l) => <Code>{l.codeLot}</Code> },
-                      categorie: { label: t('tri.category'), render: (l) => libelleCategorie(l.categorie) },
-                      typeCollecte: { label: t('tri.type'), render: (l) => <TypeCollecte type={l.typeCollecte} /> },
-                      nb: { label: t('chargement.linens', 'Linges'), render: (l) => l.nbPieces ?? l.quantite ?? "—" },
-                      poids: { label: t('chargement.declared_weight', 'Poids déclaré'), render: (l) => `${Number(l.poidsActuel || 0).toFixed(2)} kg` },
-                      action: {
-                        label: t('cycles.actions', 'Actions'),
-                        render: (l) => (
-                          <RowActions>
-                            <RowButton icon={CheckCircle} title={t('tri.choose_lot')} onClick={() => affecterAuLot(l.id)} />
-                          </RowActions>
-                        ),
-                      },
-                    }}
-                    rows={lotsSuggere}
-                    rowKey={(l) => l.id || l.codeLot}
-                    onRowDoubleClick={(l) => affecterAuLot(l.id)}
-                  />
-                ) : (
-                  <div className="lot-basket-grid">
-                    {lotsSuggere.map((lot, index) => (
-                      <LotBasketCard key={lot.id || index} lot={lot} t={t} sansCapacite onSelect={() => affecterAuLot(lot.id)} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── En-tête ── */}
-      <header className="page-head rc-head">
-        <div className="rc-head__title">
-          <PageHeaderIcon size={52} />
-          <div>
-            <h1>{t('tri.title')}</h1>
-            <p>{agentScanne ? t('tri.ready_text') : t('tri.subtitle_no_agent')}</p>
-          </div>
+            )}
+            <button type="button" className="rc-btn" onClick={() => setShowStats(true)}>
+              <BarChart3 size={15} /> {t("common.statistics", "Statistiques")}
+            </button>
+            <button type="button" className="rc-btn" onClick={handleResetAll}>
+              <RotateCcw size={14} /> {t('tri.reset')}
+            </button>
         </div>
-        <div className="rc-head__right">
-          {agentScanne && (
-            <div className="rc-agent">
-              <span className="rc-agent__avatar">{initiales(nomAgent)}</span>
-              <span>
-                <span className="rc-agent__name" style={{ display: "block" }}>{nomAgent}</span>
-                <span className="rc-agent__id">{agentScanne.codeBarre || agentScanne.matricule}</span>
-              </span>
-              <button type="button" className="rc-agent__out" onClick={handleLogoutAgent} title={t('tri.confirm_logout')} aria-label={t('tri.confirm_logout')}>
-                <LogOut size={14} />
-              </button>
-            </div>
-          )}
-          <button type="button" className="rc-btn" onClick={handleResetAll}>
-            <RotateCcw size={14} /> {t('tri.reset')}
-          </button>
-        </div>
-      </header>
+      </div>
 
-      {/* ── Aucun agent : accueil ── */}
+      <ol className="rc-steps" aria-label={t("tri.steps", "Étapes du tri")}>
+        {etapes.map((label, i) => (
+          <li key={label} className={`rc-step ${etapeFaite[i] ? "is-done" : ""} ${etapeActive === i ? "is-active" : ""}`}>
+            <span className="rc-step__num">{etapeFaite[i] ? <Check size={14} strokeWidth={3} /> : i + 1}</span>
+            <span className="rc-step__label">{label}</span>
+          </li>
+        ))}
+      </ol>
+
       {!agentScanne ? (
         <section className="rc-card rc-welcome">
-          <BadgeScanArt />
-          <div>
+          <div className="rc-welcome__icon"><UserCheck size={34} strokeWidth={1.6} /></div>
+          <div className="rc-welcome__body">
             <span className="rc-eyebrow">{t('tri.no_agent_title')}</span>
-            <h2>{t('tri.welcome_title')}</h2>
-            <p>{t('tri.no_agent_message')}</p>
+            <h2>{t('tri.welcome_title', "Poste de tri")}</h2>
             <div className="rc-scan__field" style={{ "--scan": "var(--rc-sac)" }}>
               <ScanInput
                 ref={scanInputRef}
-                placeholder={getPlaceholder()}
+                placeholder=""
                 value={scanValue}
                 onChange={setScanValue}
                 onSubmit={handleScanAgent}
@@ -534,131 +528,105 @@ function TriInner() {
         </section>
       ) : (
         <div className="rc-layout">
-          {/* ═══ Colonne principale ═══ */}
           <div className="rc-main">
-            {/* Zone de scan */}
             <section className="rc-card rc-scan">
-              <div className="rc-scan__top">
-                <ScannerGlyph />
-                <div style={{ minWidth: 0 }}>
-                  <h2>{t('tri.scan_title')}</h2>
-                  <p>{t('tri.ready_text')}</p>
+              <header className="rc-scan__bar">
+                <span className="rc-scan__title"><ScanLine size={17} /> {t("tri.scan_title", "Scan du linge")}</span>
+                <span className="rc-mode"><i /> {modeScan === MODE_RFID ? t('tri.mode_rfid') : t('tri.mode_barcode')}</span>
+              </header>
+              <div className="rc-scan__body">
+                <div className="rc-scan__field">
+                  <ScanInput
+                    ref={scanInputRef}
+                    placeholder=""
+                    value={scanValue}
+                    onChange={setScanValue}
+                    onSubmit={handleScanLinge}
+                    borderColor={getBorderColor()}
+                    keepFocus={true}
+                    autoDebounce={true}
+                    disabled={isLoading || showDialog}
+                  />
                 </div>
-                <span className="rc-mode">
-                  <i /> {modeScan === MODE_RFID ? t('tri.mode_rfid') : t('tri.mode_barcode')}
-                </span>
+                {isLoading && (
+                  <div className="tr-loading"><Loader2 size={15} className="animate-spin" /> {t('common.loading')}</div>
+                )}
+                {lingeCourant && !lotSuggere && (
+                  <div className="tr-current">
+                    <CategoryTile categorie={lingeCourant.categorie} size={40} />
+                    <div className="tr-current__text">
+                      <span className="rc-label">{t('tri.last_scanned')}</span>
+                      <code>{lingeCourant.codeSuivi || lingeCourant.codeBarre}</code>
+                      <small>{[lingeCourant.designation, lingeCourant.poids != null ? `${lingeCourant.poids} kg` : null].filter(Boolean).join(" · ")}</small>
+                    </div>
+                    <GroupeLavageBadge groupe={lingeCourant.groupeLavage} />
+                    <TypeCollecte type={lingeCourant.typeCollecte} />
+                  </div>
+                )}
               </div>
-              <div className="rc-scan__field">
-                <ScanInput
-                  ref={scanInputRef}
-                  placeholder={getPlaceholder()}
-                  value={scanValue}
-                  onChange={setScanValue}
-                  onSubmit={handleScanLinge}
-                  borderColor={getBorderColor()}
-                  keepFocus={true}
-                  autoDebounce={true}
-                  disabled={isLoading || showDialog}
-                />
-              </div>
-              {isLoading && (
-                <div className="rc-scan__opts" style={{ color: "var(--rc-muted)", fontSize: 13 }}>
-                  <Loader2 size={15} className="animate-spin" /> {t('common.loading')}
-                </div>
-              )}
             </section>
 
-            {/* Linge en cours de tri */}
-            <AnimatePresence mode="popLayout">
-              {lingeCourant && !lotSuggere && (
-                <motion.section
-                  key={lingeCourant.codeSuivi || lingeCourant.codeBarre}
-                  className="rc-card rc-spot"
-                  style={{ "--k": getCategorieMeta(lingeCourant.categorie).accent }}
-                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  <div className="rc-spot__art">
-                    <CategoryTile categorie={lingeCourant.categorie} size={46} bare />
+            {lotSuggere && (
+              <section className={`rc-card rc-ticket ${String(lotSuggere.typeCollecte || "").toUpperCase().startsWith("INFECT") ? "is-sac" : ""}`}>
+                <div className="rc-ticket__banner">
+                  <CheckCircle size={16} />
+                  <strong>{t('tri.lot_affected')}</strong>
+                  <span className={`rc-pill ${lotEnTri ? "rc-pill--ok" : "rc-pill--warn"} tr-ticket__pill`}>
+                    <i /> {t(`lot_status.${etatLot(lotSuggere.codeBac, lotSuggere.etat)}`, etatLot(lotSuggere.codeBac, lotSuggere.etat))}
+                  </span>
+                </div>
+                <div className="tr-ticket__body">
+                  <div className="tr-ticket__basket">
+                    <LotBasketSvg code={lotSuggere.codeBac} poids={lotPoids} capacite={0} />
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <span className="rc-spot__type">{t('tri.last_scanned')}</span>
-                    <code className="rc-spot__code">{lingeCourant.codeSuivi || lingeCourant.codeBarre}</code>
-                    <div className="rc-spot__meta">
-                      <span><b>{libelleCategorie(lingeCourant.categorie)}</b></span>
-                      <TypeCollecte type={lingeCourant.typeCollecte} />
-                      {lingeCourant.poids != null && <span><Scale size={12} /> {lingeCourant.poids} {t('tri.weight')}</span>}
-                    </div>
-                  </div>
-                  {showDialog && (
-                    <span className="rc-pill rc-pill--warn"><i /> {t('tri.choose_lot')}</span>
-                  )}
-                </motion.section>
-              )}
-            </AnimatePresence>
-
-            {/* Lot affecté */}
-            <AnimatePresence mode="popLayout">
-              {lotSuggere && (
-                <motion.section
-                  key={`${lotSuggere.codeLot}-${historiqueTri.length}`}
-                  className="rc-card tr-lot"
-                  style={{ "--k": lotTone.main }}
-                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  <LotBasketSvg code={lotSuggere.codeLot} poids={lotPoids} capacite={0} />
-                  <div style={{ minWidth: 0 }}>
-                    <span className="rc-spot__type" style={{ "--k": "var(--rc-ok)" }}>
-                      <CheckCircle size={12} /> {t('tri.lot_affected')}
-                    </span>
-                    <code className="rc-spot__code">{lotSuggere.codeLot}</code>
-                    {historiqueTri[0] && (
-                      <span className="tr-route">
-                        <code>{historiqueTri[0].codeLinge}</code>
-                        <ArrowRight size={13} />
-                        <code>{lotSuggere.codeLot}</code>
-                      </span>
-                    )}
-                    <div className="tr-lot__fields">
-                      <div className="tr-field"><small>{t('tri.type')}</small><TypeCollecte type={lotSuggere.typeCollecte} /></div>
-                      <div className="tr-field"><small>{t('tri.category')}</small><b>{libelleCategorie(lotSuggere.categorie)}</b></div>
-                      <div className="tr-field"><small>{t('chargement.declared_weight', 'Poids déclaré')}</small><b>{lotPoids.toFixed(2)} kg</b></div>
-                      {balanceLot(lotSuggere.codeLot, lotSuggere.poidsBalance) != null && (
-                        <div className="tr-field"><small>{t('chargement.scale', 'Balance')}</small><b>{Number(balanceLot(lotSuggere.codeLot, lotSuggere.poidsBalance)).toFixed(2)} kg</b></div>
+                  <div className="tr-ticket__info">
+                    <div className="rc-ticket__main">
+                      <span className="rc-label">{t('tri.bac', 'Bac')}</span>
+                      <code className="rc-ticket__code">{lotSuggere.codeBac}</code>
+                      {historiqueTri[0] && (
+                        <span className="tr-route">
+                          <code>{historiqueTri[0].codeLinge}</code>
+                          <ArrowRight size={13} />
+                          <code>{lotSuggere.codeBac}</code>
+                        </span>
                       )}
-                      <div className="tr-field">
-                        <small>{t('tri.status')}</small>
-                        <span className={`rc-pill ${etatLot(lotSuggere.codeLot, lotSuggere.etat) === "EN_TRI" ? "rc-pill--ok" : "rc-pill--warn"}`}><i /> {t(`lot_status.${etatLot(lotSuggere.codeLot, lotSuggere.etat)}`, etatLot(lotSuggere.codeLot, lotSuggere.etat))}</span>
-                      </div>
                     </div>
-                    {etatLot(lotSuggere.codeLot, lotSuggere.etat) === "EN_TRI" && (
-                      <button type="button" className="rc-btn tr-validate" onClick={() => ouvrirValidation(lotSuggere)}>
-                        <ClipboardCheck size={15} /> {t('chargement.validate_lot', 'Valider le lot')}
-                      </button>
-                    )}
+                    <dl className="rc-ticket__meta tr-ticket__meta">
+                      <div><dt>{t('tri.type')}</dt><dd className="tr-ticket__small"><TypeCollecte type={lotSuggere.typeCollecte} /></dd></div>
+                      <div><dt>{t('groupe_lavage.label', 'Groupe')}</dt><dd className="tr-ticket__small"><GroupeLavageBadge groupe={lotSuggere.groupeLavage} vide="—" /></dd></div>
+                      <div><dt>{t('chargement.declared_weight', 'Poids déclaré')}</dt><dd>{lotPoids.toFixed(2)} <small>kg</small></dd></div>
+                      <div>
+                        <dt>{t('chargement.scale', 'Balance')}</dt>
+                        <dd>{balanceLot(lotSuggere.codeBac, lotSuggere.poidsBalance) != null ? <>{Number(balanceLot(lotSuggere.codeBac, lotSuggere.poidsBalance)).toFixed(2)} <small>kg</small></> : "—"}</dd>
+                      </div>
+                    </dl>
                   </div>
-                </motion.section>
-              )}
-            </AnimatePresence>
+                  {lotEnTri && (
+                    <button type="button" className="rc-btn rc-btn--primary rc-btn--lg" onClick={() => ouvrirValidation(lotSuggere)}>
+                      <ClipboardCheck size={16} /> {t('chargement.validate_bac', 'Valider le bac')}
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
 
-            {/* Historique de la session */}
             <section className="rc-card">
               <div className="rc-card__head">
-                <h3 className="rc-card__title"><History size={16} /> {t('tri.history')}</h3>
-                <span className="rc-count" style={{ marginLeft: "auto" }}>{historiqueTri.length}</span>
+                <h3 className="rc-card__title"><History size={15} /> {t('tri.history')}</h3>
+                <span className="rc-count">{historiqueTri.length}</span>
                 <VueSwitch value={vueHistorique} onChange={setVueHistorique} compact />
               </div>
               <div className="rc-card__body">
-                {historiqueTri.length > 0 && vueHistorique === "tableau" ? (
+                {historiqueTri.length === 0 ? (
+                  <div className="rc-empty">
+                    <History size={26} strokeWidth={1.4} />
+                    <strong>{t('tri.no_history')}</strong>
+                  </div>
+                ) : vueHistorique === "tableau" ? (
                   <DataTable
                     columns={{
                       codeLinge: { label: t('tri.code', 'Code'), render: (h) => <Code>{h.codeLinge}</Code> },
-                      categorie: { label: t('tri.category'), render: (h) => libelleCategorie(h.categorie) },
+                      groupeLavage: { label: t('groupe_lavage.label', 'Groupe'), render: (h) => <GroupeLavageBadge groupe={h.groupeLavage} vide="—" /> },
                       typeCollecte: { label: t('tri.type'), render: (h) => <TypeCollecte type={h.typeCollecte} /> },
                       lotCode: { label: t('tri.lot', 'Lot'), render: (h) => <Badge variant="info">{h.lotCode}</Badge> },
                       poids: { label: t('tri.weight'), render: (h) => (h.poids != null ? `${h.poids} kg` : "—") },
@@ -667,12 +635,6 @@ function TriInner() {
                     rows={historiqueTri}
                     rowKey={(h) => `${h.codeLinge}-${h.date}`}
                   />
-                ) : historiqueTri.length === 0 ? (
-                  <div className="rc-empty">
-                    <SortArt />
-                    <strong>{t('tri.no_history')}</strong>
-                    <span>{t('tri.history_empty_hint')}</span>
-                  </div>
                 ) : (
                   <div className="rc-grid">
                     {historiqueTri.map((item, index) => {
@@ -688,7 +650,7 @@ function TriInner() {
                           <span className="rc-item__icon"><Icon size={20} strokeWidth={1.9} /></span>
                           <span className="rc-item__body">
                             <span className="rc-item__code">{item.codeLinge}</span>
-                            <span className="rc-item__cat">{libelleCategorie(item.categorie)}</span>
+                            <span className="rc-item__cat"><GroupeLavageBadge groupe={item.groupeLavage} vide="—" /></span>
                             <span className="rc-item__foot">
                               <span className="tr-route"><ArrowRight size={12} /><code>{item.lotCode}</code></span>
                               <TypeCollecte type={item.typeCollecte} />
@@ -707,101 +669,94 @@ function TriInner() {
             </section>
           </div>
 
-          {/* ═══ Colonne de droite ═══ */}
           <aside className="rc-side">
-            <div className="rc-kpis">
-              <Kpi color="var(--rc)" icon={<SortGlyph size={22} c="currentColor" />} value={statistiques.totalTrie || 0} label={t('tri.articles_tried')} />
-              <Kpi color="var(--rc-ok)" icon={<Boxes size={18} />} value={statistiques.lotsUtilises || 0} label={t('tri.lots_used')} />
-              <Kpi color="#7c3aed" icon={<Scale size={18} />} value={`${Number(statistiques.poidsTotal || 0).toFixed(1)} ${t('tri.weight')}`} label={t('tri.total_weight')} />
-              <Kpi color="var(--rc-bac)" icon={<Tag size={17} />} text value={lotSuggere?.codeLot || "—"} label={t('tri.last_lot')} />
-            </div>
-
-            {historiqueTri.length > 0 && (
-              <section className="rc-card">
-                <div className="rc-card__head">
-                  <h3 className="rc-card__title"><PieChart size={16} /> {t('tri.by_category')}</h3>
-                </div>
-                <div className="rc-card__body">
-                  <div className="rc-dist" style={{ marginBottom: 0 }}>
-                    <div className="rc-dist__bar" aria-hidden="true">
-                      {Object.entries(parCategorie).map(([cat, n]) => (
-                        <span key={cat} style={{ flexGrow: n, background: getCategorieMeta(cat).accent }} />
-                      ))}
-                    </div>
-                    <div className="rc-chips">
-                      {Object.entries(parCategorie).map(([cat, n]) => (
-                        <span key={cat} className="rc-chip" style={{ "--c": getCategorieMeta(cat).accent }}>
-                          <i /> {libelleCategorie(cat)} <b>{n}</b>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            )}
-
             <section className="rc-card">
               <div className="rc-card__head">
-                <h3 className="rc-card__title"><Boxes size={16} /> {t('tri.session_lots')}</h3>
-                <span className="rc-count" style={{ marginLeft: "auto" }}>{lotsSession.length}</span>
+                <h3 className="rc-card__title"><ClipboardList size={15} /> {t("reception.balance_title", "Bilan de la session")}</h3>
               </div>
-              <div className="rc-card__body">
-                {lotsSession.length === 0 ? (
-                  <div className="rc-empty" style={{ padding: "14px 8px" }}>
-                    <span>{t('tri.session_lots_empty')}</span>
-                  </div>
-                ) : (
-                  <div className="tr-lots">
-                    {lotsSession.map((l) => (
-                      <div key={l.code} className={`tr-lots__item ${l.code === lotSuggere?.codeLot ? "is-last" : ""}`}>
-                        <span className="tr-lots__glyph"><SortGlyph size={22} /></span>
-                        <span className="tr-lots__main">
-                          <code>{l.code}</code>
-                          <small>{libelleCategorie(l.categorie)} · {l.typeCollecte}</small>
-                        </span>
-                        <span className="tr-lots__n">
-                          {l.n} {t('reception.linges_count')}
-                          <small>{l.poids.toFixed(1)} kg</small>
-                        </span>
-                        {etatLot(l.code) === "EN_TRI" ? (
-                          <button type="button" className="tr-lots__validate" onClick={() => ouvrirValidation(l)} title={t('chargement.validate_lot', 'Valider le lot')}>
-                            <ClipboardCheck size={15} />
-                          </button>
-                        ) : (
-                          <span className="rc-pill rc-pill--ok" title={t(`lot_status.${etatLot(l.code)}`, etatLot(l.code))}><i /> {t('chargement.ready_short', 'Prêt')}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className="rc-stats">
+                <div className="rc-stat"><span className="rc-stat__value">{statistiques.totalTrie || 0}</span><span className="rc-stat__label">{t('tri.articles_tried')}</span></div>
+                <div className="rc-stat"><span className="rc-stat__value">{statistiques.lotsUtilises || 0}</span><span className="rc-stat__label">{t('tri.lots_used')}</span></div>
+                <div className="rc-stat"><span className="rc-stat__value">{Number(statistiques.poidsTotal || 0).toFixed(1)}</span><span className="rc-stat__label">{t('tri.total_weight')} (kg)</span></div>
+                <div className="rc-stat"><span className="rc-stat__value rc-stat__value--text">{lotSuggere?.codeBac || "—"}</span><span className="rc-stat__label">{t('tri.last_lot')}</span></div>
               </div>
             </section>
 
+            <section className="rc-card">
+              <div className="rc-card__head">
+                <h3 className="rc-card__title"><Boxes size={15} /> {t('tri.session_lots')}</h3>
+                <span className="rc-count">{lotsSession.length}</span>
+              </div>
+              {lotsSession.length === 0 ? (
+                <div className="rc-empty">
+                  <Boxes size={26} strokeWidth={1.4} />
+                  <strong>{t('tri.session_lots_empty')}</strong>
+                </div>
+              ) : (
+                <div className="rc-log tr-log">
+                  <div className="rc-log__row rc-log__row--head">
+                    <span>{t('tri.bac', 'Bac')}</span>
+                    <span className="is-num">{t('reception.linges_count')}</span>
+                    <span className="is-num">kg</span>
+                    <span />
+                  </div>
+                  {lotsSession.map((l) => (
+                    <div key={l.code} className={`rc-log__row ${l.code === lotSuggere?.codeBac ? "is-last" : ""}`}>
+                      <span className="rc-log__code">
+                        <code>{l.code}</code>
+                      </span>
+                      <span className="is-num">{l.n}</span>
+                      <span className="is-num">{l.poids.toFixed(1)}</span>
+                      {etatLot(l.code) === "EN_TRI" ? (
+                        <button type="button" className="tr-lots__validate" onClick={() => ouvrirValidation(l)} title={t('chargement.validate_bac', 'Valider le bac')}>
+                          <ClipboardCheck size={15} />
+                        </button>
+                      ) : (
+                        <span className="rc-pill rc-pill--ok" title={t(`lot_status.${etatLot(l.code)}`, etatLot(l.code))}><i /> {t('chargement.ready_short', 'Prêt')}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
             <div className="rc-foot">
-              <span>{t('tri.matricule')} : <b style={{ color: "var(--rc-text)" }}>{agentScanne.matricule}</b></span>
+              <span>{t("reception.agent")} : <b>{nomAgent}</b></span>
               <span>{new Date().toLocaleDateString("fr-FR")}</span>
             </div>
           </aside>
         </div>
       )}
+
+      {showStats && (
+        <QuickStats
+          title={t("tri.title")}
+          subtitle={nomAgent || undefined}
+          onClose={() => setShowStats(false)}
+          kpis={[
+            { label: t('tri.articles_tried'), value: statistiques.totalTrie || 0 },
+            { label: t('tri.lots_used'), value: statistiques.lotsUtilises || 0, color: "#10b981" },
+            { label: t('tri.total_weight'), value: `${Number(statistiques.poidsTotal || 0).toFixed(1)} kg`, color: "#6366f1" },
+            { label: t('tri.last_lot'), value: lotSuggere?.codeBac || "—", color: "#f59e0b" },
+          ]}
+          repartitions={[{
+            title: t('tri.by_category'),
+            items: Object.entries(parCategorie).map(([cat, n]) => ({ label: libelleCategorie(cat), value: n, color: getCategorieMeta(cat).accent })),
+          }]}
+          classements={[{
+            title: t('tri.session_lots'),
+            items: lotsSession.map((l) => ({ label: l.code, value: l.n })),
+          }]}
+        />
+      )}
     </div>
   );
 }
 
-/* ── Aides ─────────────────────────────────────────────────────────────── */
-
-const initiales = (nom = "") =>
+const initialesTri = (nom = "") =>
   nom.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase() || "?";
 
-function Kpi({ color, icon, value, label, text = false }) {
-  return (
-    <div className="rc-kpi" style={{ "--k": color }}>
-      <span className="rc-kpi__icon">{icon}</span>
-      <span className={`rc-kpi__value ${text ? "rc-kpi__value--text" : ""}`}>{value}</span>
-      <span className="rc-kpi__label">{label}</span>
-    </div>
-  );
-}
+/* ── Aides ─────────────────────────────────────────────────────────────── */
 
 /** Icône de la catégorie sur une tuile teintée. */
 function CategoryTile({ categorie, size = 40, bare = false }) {

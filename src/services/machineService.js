@@ -43,6 +43,23 @@ export const machineService = {
     return response.json();
   },
 
+  getAImporter: async ({ q = "", page = 1, pageSize = 50 } = {}) => {
+    const params = new URLSearchParams({ q, page, pageSize });
+    const response = await fetch(`${API_URL}/api/machines/machinesAimporter?${params}`);
+    if (!response.ok) throw new Error(await lireErreur(response, "Erreur chargement des machines CUBIX"));
+    return response.json();
+  },
+
+  importer: async (selection) => {
+    const response = await fetch(`${API_URL}/api/machines/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(selection),
+    });
+    if (!response.ok) throw new Error(await lireErreur(response, "Erreur import des machines"));
+    return response.json();
+  },
+
   getCycles: async () => {
     const response = await fetch(`${API_URL}/api/lavage/cycles`);
     if (!response.ok) throw new Error("Erreur chargement cycles");
@@ -73,7 +90,7 @@ export const machineService = {
         lots,
       }),
     });
-    if (!response.ok) throw new Error("Erreur démarrage cycle");
+    if (!response.ok) throw new Error(await lireErreur(response, "Erreur démarrage cycle"));
     return response.json();
   },
 };

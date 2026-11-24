@@ -2,18 +2,21 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Eye, Radio, User as UserIcon, Building2 } from "lucide-react";
 import { DataTable, Badge, Code, RowActions, RowButton } from "../../../kit";
+import { useIntegration } from "../../../../hooks/useIntegration";
 import { EtatBadge } from "./EtatBadge";
+import GroupeLavageBadge from "../../../utils/shared/GroupeLavageBadge";
 import { ATTRIBUT_META, useAttributLabel } from "./LingeIncompletsBanner";
 
 export function LingeTable({
   linges, isLoading, displayMode, selectedId, formatEPC, getServiceName,
-  onRowClick, onDetail, onAssociateRfid, onAssignService, showMissing = false, selection,
+  onRowClick, onDetail, onAssociateRfid, onAssignService, showMissing = false, selection, colonnesMasquees = [],
 }) {
   const { t } = useTranslation();
+  const { modeCubix } = useIntegration();
   const attributLabel = useAttributLabel();
   const aRfid = (l) => l.rfidTag && l.rfidTag !== "";
 
-  const columns = {
+  const toutesColonnes = {
     id: {
       label: t("common.id"),
       render: (l) => (
@@ -21,7 +24,7 @@ export function LingeTable({
           <strong>{l.id}</strong>
           {l.source === "EXTERNE" && (
             <span className="kit-tag" title={l.idExterne ? `${t("linge.external_id", "ID externe")} : ${l.idExterne}` : undefined}>
-              {t("integration.imported", "Importé")}
+              {modeCubix ? "CUBIX" : t("integration.imported", "Importé")}
             </span>
           )}
         </>
@@ -33,7 +36,9 @@ export function LingeTable({
         ? (l.rfidTag ? <Code>{formatEPC(l.rfidTag)}</Code> : <span className="kit-muted">{t("linge.not_associated")}</span>)
         : <Code>{l.codebarre}</Code>),
     },
+    designation: { label: t("linge.designation", "Désignation"), render: (l) => l.designation || "—" },
     categorie: { label: t("linge.category"), render: (l) => t(`categories.${l.categorie}`, l.categorie) },
+    groupeLavage: { label: t("groupe_lavage.label", "Groupe"), render: (l) => <GroupeLavageBadge groupe={l.groupeLavage} vide="—" /> },
     poids: { label: t("linge.weight"), align: "right", render: (l) => (l.poids != null ? `${l.poids} kg` : "—") },
     etat: { label: t("linge.status"), render: (l) => <EtatBadge etat={l.etat} /> },
     service: {
@@ -85,6 +90,8 @@ export function LingeTable({
       ),
     },
   };
+
+  const columns = Object.fromEntries(Object.entries(toutesColonnes).filter(([k]) => !colonnesMasquees.includes(k)));
 
   return (
     <DataTable

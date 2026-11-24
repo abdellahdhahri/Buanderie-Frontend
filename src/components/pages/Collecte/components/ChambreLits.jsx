@@ -1,12 +1,15 @@
 import React, { useEffect, useId } from "react";
 import {
-  Biohazard, Check, CheckCheck, TriangleAlert, Sparkles, X, ScanLine, SquareCheckBig, Square,
+  Biohazard, Check, CheckCheck, TriangleAlert, Sparkles, X, ScanLine, SquareCheckBig, Square, Loader2,
+  BedDouble, ChevronRight,
 } from "lucide-react";
 import { getCategorieMeta } from "../../../../constants/categoriesLinge";
 import { useCircuitInfecte } from "../../../../hooks/useEstablishment";
 import "./ChambreLits.css";
 
 // ─── États visuels d'un lit ───────────────────────────────────────────────
+export const estActionInfecte = (action) => String(action || "").includes("INFECTE");
+
 export const LIT_TONES = {
   VIDE:     { main: "#94A3B8", soft: "#F1F5F9", label: "Vide" },
   A_FAIRE:  { main: "#7C3AED", soft: "#EDE9FE", label: "À collecter" },
@@ -133,26 +136,58 @@ export function BedTile({ tone, code, meta, pill, active, muted, flag, onClick, 
   );
 }
 
-/** Carte cliquable d'un lit (collecte). */
+export const etatLit = (lit) => {
+  const total = lit.linges?.length || 0;
+  if (!total) return lit.estInfecte ? "infecte-vide" : "vide";
+  if (lit.statut === "BLANC") return "blanc";
+  if (lit.statut === "INFECTE") return "infecte-ok";
+  if (lit.statut) return "traite";
+  return lit.estInfecte ? "infecte" : "afaire";
+};
+
+export const LIBELLES_ETAT_LIT = {
+  afaire: "À collecter",
+  infecte: "Lit infecté",
+  "infecte-vide": "Lit infecté",
+  blanc: "Blanc",
+  "infecte-ok": "Infecté",
+  traite: "Traité",
+  vide: "Vide",
+};
+
+/** Ligne d'un lit (collecte). */
 export function LitTile({ lit, active, onClick }) {
-  const tone = getLitTone(lit);
+  const etat = etatLit(lit);
   const total = lit.linges?.length || 0;
   const traites = (lit.linges || []).filter((l) => l.statut).length;
+  const restants = total - traites;
+  const pct = total ? Math.round((traites / total) * 100) : 0;
   const vide = total === 0;
+  const termine = !vide && restants === 0;
+  const infecte = etat === "infecte" || etat === "infecte-vide" || etat === "infecte-ok";
 
   return (
-    <BedTile
-      tone={tone}
-      code={lit.codeLit}
-      meta={vide ? "Aucun linge" : `${traites}/${total} linge${total > 1 ? "s" : ""}`}
-      pill={tone.label}
-      active={active}
-      muted={vide}
-      flag={lit.estInfecte && !lit.statut}
+    <button
+      type="button"
+      className={`lit-line is-${etat}${active ? " is-active" : ""}`}
       onClick={() => onClick(lit)}
+      onMouseDown={keepScanFocus}
+      aria-pressed={active}
     >
-      <BedSvg lit={lit} active={active} />
-    </BedTile>
+      <span className="lit-line__dot" aria-hidden="true">{termine ? <Check size={12} strokeWidth={3.4} /> : null}</span>
+      <span className="lit-line__code">Lit {lit.codeLit}</span>
+      <span className="lit-line__state">
+        {infecte && <Biohazard size={14} strokeWidth={2.4} />}
+        {LIBELLES_ETAT_LIT[etat]}
+      </span>
+      <span className="lit-line__linges">
+        {vide ? "Aucun linge" : termine ? `${total} linge${total > 1 ? "s" : ""} traité${total > 1 ? "s" : ""}` : <><b>{restants}</b> linge{restants > 1 ? "s" : ""} à collecter</>}
+      </span>
+      <span className="lit-line__progress" aria-hidden="true">
+        {!vide && <i style={{ width: `${pct}%` }} />}
+      </span>
+      {!vide ? <ChevronRight size={18} className="lit-line__go" /> : <span className="lit-line__go" />}
+    </button>
   );
 }
 
@@ -237,7 +272,7 @@ function LingeTile({ linge, selectable, checked, onToggle, onPropre, onManquant,
 
 /**
  * Petit dialogue des linges du lit ouvert, pensé pour l'écran tactile.
- * Le champ de scan reste actif derrière : on scanne le bac / sac sans fermer.
+ * Le champ de scan reste actif derrière : on scanne le bac blanc ou infecté sans fermer.
  */
 export function LitDialog({
   lit, enSelection, actionSuivante, selection, nbSelectionnables, toutCoche,
@@ -251,85 +286,105 @@ export function LitDialog({
   }, [onFermer]);
 
   const tone = getLitTone(lit);
-  const infecte = actionSuivante === "SCANNER_SAC_INFECTE";
+  const infecte = estActionInfecte(actionSuivante);
+  const accent = infecte ? "#dc2626" : "#0794a4";
   const total = lit.linges.length;
   const traites = lit.linges.filter((l) => l.statut).length;
+  const pct = total ? Math.round((traites / total) * 100) : 0;
   const nb = selection.length;
+  const contenant = infecte ? "bac infecté" : "bac blanc";
+
+  const etat = scanStatus?.loading ? "loading" : scanStatus?.error ? "error" : nb === 0 ? "idle" : "ready";
+  const scan = {
+    idle:    { Icon: SquareCheckBig, step: "Étape 1 · Sélection", text: "Touchez les linges collectés" },
+    ready:   { Icon: ScanLine, step: `Étape 2 · Scan du ${contenant}`, text: `Scannez le ${contenant} pour valider` },
+    loading: { Icon: Loader2, step: `Étape 2 · Scan du ${contenant}`, text: "Association en cours…" },
+    error:   { Icon: TriangleAlert, step: "Scan refusé", text: scanStatus?.error },
+  }[etat];
 
   return (
     <div className="lit-dialog__overlay" onClick={onFermer} onMouseDown={keepScanFocus}>
       <section
-        className="lit-dialog"
-        style={{ "--tone": tone.main, "--tone-soft": tone.soft }}
+        className={`lit-dialog${infecte ? " is-infecte" : ""}`}
+        style={{ "--tone": accent, "--lit-tone": tone.main, "--lit-soft": tone.soft }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label={`Lit ${lit.codeLit}`}
       >
         <header className="lit-dialog__head">
-          <div className="lit-dialog__bed"><BedSvg lit={lit} active={false} /></div>
+          <div className="lit-dialog__bed"><BedDouble size={24} color={tone.main} strokeWidth={2} /></div>
           <div className="lit-dialog__title">
-            <h3>Lit {lit.codeLit}</h3>
-            <p>
-              {total} linge{total > 1 ? "s" : ""} · {traites} traité{traites > 1 ? "s" : ""}
+            <span className="lit-dialog__eyebrow">{enSelection ? "Collecte du lit" : "Consultation"}</span>
+            <h3>
+              Lit {lit.codeLit}
+              <span className="lit-dialog__state">{tone.label}</span>
               {lit.estInfecte && !lit.statut && <span className="lit-dialog__flag"><Biohazard size={11} /> Infecté</span>}
-            </p>
+            </h3>
           </div>
           <button type="button" className="lit-dialog__close" onMouseDown={keepScanFocus} onClick={onFermer} aria-label="Fermer">
-            <X size={20} />
+            <X size={18} />
           </button>
         </header>
 
+        <div className="lit-dialog__progress">
+          <div className="lit-dialog__progress-bar"><i style={{ width: `${pct}%` }} /></div>
+          <span><b>{traites}</b>/{total} linge{total > 1 ? "s" : ""} traité{traites > 1 ? "s" : ""}</span>
+        </div>
+
         {lingeInfecte && (
           <div className="lit-dialog__banner is-infecte">
-            <Biohazard size={18} /> Scannez le sac infecté pour {lingeInfecte.codeBarre}
+            <Biohazard size={16} /> Scannez le bac infecté pour <code>{lingeInfecte.codeBarre}</code>
           </div>
         )}
 
-        <div className="lit-dialog__grid">
-          {lit.linges.map((linge) => (
-            <LingeTile
-              key={linge.lingeId}
-              linge={linge}
-              selectable={enSelection && !linge.statut}
-              checked={selection.includes(linge.lingeId)}
-              onToggle={onToggle}
-              onPropre={onPropre}
-              onManquant={onManquant}
-              onInfecte={onInfecte}
-              t={t}
-            />
-          ))}
+        <div className="lit-dialog__body">
+          <div className="lit-dialog__section">
+            <span>Linges du lit</span>
+            <em>{total}</em>
+          </div>
+          <div className="lit-dialog__grid">
+            {lit.linges.map((linge) => (
+              <LingeTile
+                key={linge.lingeId}
+                linge={linge}
+                selectable={enSelection && !linge.statut}
+                checked={selection.includes(linge.lingeId)}
+                onToggle={onToggle}
+                onPropre={onPropre}
+                onManquant={onManquant}
+                onInfecte={onInfecte}
+                t={t}
+              />
+            ))}
+          </div>
         </div>
 
         {enSelection ? (
-          <footer className={`lit-dialog__foot${infecte ? " is-infecte" : ""}`}>
-            <div className="lit-dialog__next">
-              <span className="lit-dialog__scan-icon"><ScanLine size={22} strokeWidth={2.2} /></span>
-              <div>
-                <strong>
-                  {nb} / {nbSelectionnables} coché{nb > 1 ? "s" : ""}
-                </strong>
-                <span>
-                  {scanStatus?.loading
-                    ? "Scan en cours…"
-                    : scanStatus?.error
-                    ? scanStatus.error
-                    : nb === 0
-                    ? "Touchez les linges collectés"
-                    : infecte ? "Scannez le sac rouge" : "Scannez le bac blanc"}
-                </span>
+          <footer className="lit-dialog__foot">
+            <div className={`lit-scan is-${etat}`} aria-live="polite">
+              <span className="lit-scan__icon">
+                <scan.Icon size={20} strokeWidth={2.2} className={etat === "loading" ? "animate-spin" : undefined} />
+                {etat === "ready" && <i className="lit-scan__beam" />}
+              </span>
+              <div className="lit-scan__text">
+                <small>{scan.step}</small>
+                <strong>{scan.text}</strong>
               </div>
+              <span className="lit-scan__count">
+                <span><b>{nb}</b>/{nbSelectionnables}</span>
+                <em>sélectionné{nb > 1 ? "s" : ""}</em>
+              </span>
             </div>
             {nbSelectionnables > 0 && (
               <button type="button" className="lit-dialog__all" onMouseDown={keepScanFocus} onClick={() => { vibrer(); onToggleTout(); }}>
-                {toutCoche ? <Square size={18} /> : <SquareCheckBig size={18} />}
+                {toutCoche ? <Square size={17} /> : <SquareCheckBig size={17} />}
                 {toutCoche ? "Tout décocher" : "Tout cocher"}
               </button>
             )}
           </footer>
         ) : (
           <footer className="lit-dialog__foot is-readonly">
-            <span>Lit déjà traité — consultation seule</span>
+            <span><CheckCheck size={16} /> Lit déjà traité — consultation seule</span>
             <button type="button" className="lit-dialog__all" onMouseDown={keepScanFocus} onClick={onFermer}>Fermer</button>
           </footer>
         )}

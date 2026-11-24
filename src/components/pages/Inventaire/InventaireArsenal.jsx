@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Swal from "sweetalert2";
+import Swal from "../../kit/dialogueApi";
 import printJS from "print-js";
 import { Trash2, ScanLine, Printer, Eraser, BarChart3 } from "lucide-react";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import {
-  Page, PageHeader, ActionBar, ActionButton, DataTable, Badge, DetailCard,
+  Page, ActionBar, ActionButton, DataTable, Badge, DetailCard,
   RowActions, RowButton, Code, QuickStats,
 } from "../../kit";
 
@@ -196,13 +195,6 @@ export default function InventaireArsenal() {
 
   return (
     <Page>
-      <PageHeader
-        icon={<PageHeaderIcon size={40} />}
-        title={t("inventaire.title")}
-        subtitle={t("inventaire.subtitle")}
-        badge={`${arsenals.length} arsenal(aux) · ${totalLinges} ${t("inventaire.linens_count")}`}
-      />
-
       <ActionBar>
         <ActionButton icon={Printer} label={t("inventaire.print_title")} variant="imprimer" disabled={!arsenals.length} onClick={imprimer} />
         <ActionButton icon={Eraser} label={t("inventaire.clear_all_title")} variant="supprimer" disabled={!arsenals.length} onClick={clearAll} />

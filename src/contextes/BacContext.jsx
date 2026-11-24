@@ -58,8 +58,10 @@ export default function BacProvider({ children }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bac)
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Erreur update");
+      const texte = await res.text();
+      let data = null;
+      try { data = texte ? JSON.parse(texte) : null; } catch { data = null; }
+      if (!res.ok) throw new Error(data?.message || data?.erreur || data?.error || (typeof data === "string" ? data : texte) || `Erreur update (${res.status})`);
       setBacs(prev => prev.map(b => b.id === id ? data : b));
       return { success: true, data };
     } catch (err) {

@@ -16,6 +16,7 @@ export default function ScanInput({
   disabled = false,
   keepFocus = true,   // activer le focus permanent
   autoDebounce = true, // soumettre automatiquement après 400ms
+  sansIndicateur = false,
 }) {
   const inputRef = useRef(null);
 
@@ -92,6 +93,7 @@ export default function ScanInput({
           </button>
         )}
       </div>
+      {!sansIndicateur && (
       <div style={{
         marginTop: "6px", fontSize: "12px", color: "#94a3b8",
         display: "flex", alignItems: "center", gap: "6px"
@@ -102,6 +104,7 @@ export default function ScanInput({
         }} />
         {disabled ? "Lecteur inactif" : "Lecteur prêt — scan automatique"}
       </div>
+      )}
     </form>
   );
 }

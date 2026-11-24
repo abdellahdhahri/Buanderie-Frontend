@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { History, RefreshCw, Radio, Building2 } from "lucide-react";
+import { History, RefreshCw, Radio, Building2, Download } from "lucide-react";
 import { LabelIcon } from "../../../ui/LabelIcon";
 import { SynchroniserButton } from "../../../ui/SynchroniserButton";
 import { ActionBar, ActionButton } from "../../../kit";
@@ -8,12 +8,13 @@ import { IconAjouter, IconDetails, IconModifier, IconSupprimer } from "../../../
 
 export function LingeToolbar({
   hasSelection, isLoading, canCreate = true, onNew, onSynchronised, onAssociateRfid,
-  onDetail, onEdit, onDelete, onPrintLabel, onHistory, onRefresh, onAssignService,
+  onDetail, onEdit, onDelete, onPrintLabel, onHistory, onRefresh, onAssignService, onImportCubix,
 }) {
   const { t } = useTranslation();
   return (
     <ActionBar>
       {canCreate && <ActionButton icon={IconAjouter} label={t("linge.new_article")} variant="ajouter" onClick={onNew} />}
+      {onImportCubix && <ActionButton icon={Download} label={t("linge.import_cubix", "Importer depuis CUBIX")} variant="ajouter" onClick={onImportCubix} />}
       <SynchroniserButton referentiel="LINGE" onTermine={onSynchronised} variant="action" />
       <ActionButton icon={IconDetails} label={t("common.details")} variant="details" disabled={!hasSelection} onClick={onDetail} />
       <ActionButton icon={IconModifier} label={t("common.edit")} variant="modifier" disabled={!hasSelection} onClick={onEdit} />

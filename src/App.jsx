@@ -17,24 +17,10 @@ import { ChatbotProvider } from "./components/chatbot/ChatbotProvider";
 import { isDarkTheme, onThemeChange } from "./utils/theme";
 
 
-import { 
-    startNotificationService, 
-    stopNotificationService 
-} from "./services/NotificationService";
 
 export default function App() {
     const [dark, setDark] = useState(isDarkTheme);
     useEffect(() => onThemeChange(setDark), []);
-
-    useEffect(() => {
-        // Démarrer le service de notification
-        startNotificationService();
-
-        // Nettoyer à la fermeture
-        return () => {
-            stopNotificationService();
-        };
-    }, []);
 
     return (
        <I18nextProvider i18n={i18n}>

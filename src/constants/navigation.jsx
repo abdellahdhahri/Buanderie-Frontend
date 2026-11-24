@@ -1,6 +1,7 @@
 import React from "react";
+import { isAdministrateur } from "../utils/privileges";
 import {
-  IconDashboard, IconSettings, IconHospital, IconBin, IconSteps, IconBundle, IconInfectedBag, IconMachines, IconProgram, IconShelves, IconMonitoring, IconTracking, IconWashCycle, IconBed, IconMachineStatus, IconInventory, IconGarment, IconDirtyZone, IconCollect, IconReception, IconSort, IconWashing, IconCleanZone, IconDrying, IconFolded, IconDelivery, IconDistribution, IconReporting, IconHistory, IconStats, IconComplaint, IconCollectHistory,
+  IconDashboard, IconSettings, IconHospital, IconBin, IconSteps, IconBundle, IconMachines, IconProgram, IconShelves, IconMonitoring, IconTracking, IconWashCycle, IconBed, IconMachineStatus, IconInventory, IconGarment, IconDirtyZone, IconCollect, IconReception, IconSort, IconWashing, IconCleanZone, IconDrying, IconFolded, IconDelivery, IconDistribution, IconReporting, IconHistory, IconStats, IconComplaint, IconCollectHistory, IconBlockedLinen, IconAgents, IconGear,
 } from "../components/Layout/sidebarIcons";
 
 export const NAV_ITEMS = [
@@ -13,11 +14,25 @@ export const NAV_ITEMS = [
   },
 
   {
+    id: "processus",
+    label: "Processus",
+    path: "/processus",
+    privilege: "LIG1501",
+    icon: <IconSteps />,
+  },
+
+  {
     id: "params",
-    label: "Parametrage",
+    label: "Référentiels",
     privilege: "LIG12",
     icon: <IconSettings />,
     children: [
+      {
+        label: "Vue d'ensemble",
+        path: "/referentiels",
+        privilege: "LIG12",
+        icon: <IconDashboard />,
+      },
       {
         label: "Services",
         path: "/services",
@@ -37,18 +52,11 @@ export const NAV_ITEMS = [
         icon: <IconSteps />,
       },
       {
-        label: "Lots",
-        path: "/lot",
-        privilege: "LIG1202",
+        label: "Bacs de tri",
+        path: "/bacs-tri",
+        privilege: "LIG1201",
         icon: <IconBundle />,
       },
-      {
-  label: "Sacs Infectés",
-  path: "/sacs",
-  privilege: "LIG1401",   
-  icon: <IconInfectedBag />,
-  infecte: true,
-},
       {
         label: "Machines",
         path: "/machine",
@@ -62,11 +70,29 @@ export const NAV_ITEMS = [
         icon: <IconProgram />,
       },
       {
+        label: "Produits de nettoyage",
+        path: "/produits-nettoyage",
+        privilege: "LIG1204",
+        icon: <IconInventory />,
+      },
+      {
         label: "Stock",
         path: "/arsenal",
         privilege: "LIG1205",
         icon: <IconShelves />,
-      }
+      },
+      {
+        label: "Agents",
+        path: "/agents",
+        privilege: "LIG1204",
+        icon: <IconAgents />,
+      },
+      {
+        label: "Affectation des agents",
+        path: "/affectation-agents",
+        adminOnly: true,
+        icon: <IconAgents />,
+      },
     ],
   },
 
@@ -81,12 +107,6 @@ export const NAV_ITEMS = [
         path: "/tracking",
         privilege: "LIG1301",
         icon: <IconTracking />,
-      },
-      {
-        label: "Cycles Lavages",
-        path: "/cycleLavage",
-        privilege: "LIG1302",
-        icon: <IconWashCycle />,
       },
       {
         label: "Chambres",
@@ -113,6 +133,12 @@ export const NAV_ITEMS = [
         icon: <IconInventory />,
       },
       {
+        label: "Linges bloqués",
+        path: "/linges-bloques",
+        privilege: "LIG1305",
+        icon: <IconBlockedLinen />,
+      },
+      {
         label: "Linges",
         path: "/Linges",
         privilege: "LIG02",
@@ -123,6 +149,7 @@ export const NAV_ITEMS = [
 
   {
     id: "presences",
+    separateur: true,
     label: "Zone Sale",
     privilege: "LIG15",
     icon: <IconDirtyZone />,
@@ -207,6 +234,7 @@ export const NAV_ITEMS = [
   {
     id: "conges",
     label: "Reporting",
+    separateur: true,
     privilege: "LIG14",
     icon: <IconReporting />,
     children: [
@@ -234,7 +262,32 @@ export const NAV_ITEMS = [
         privilege: "LIG1404",
         icon: <IconCollectHistory />,
       },
+      {
+        label: "Cycles Lavages",
+        path: "/cycleLavage",
+        privilege: "LIG1302",
+        icon: <IconWashCycle />,
+      },
+      {
+        label: "Étapes",
+        path: "/etape",
+        privilege: "LIG1201",
+        icon: <IconSteps />,
+      },
+      {
+        label: "Historique livraisons",
+        path: "/historique-livraisons",
+        privilege: "LIG1404",
+        icon: <IconDelivery />,
+      },
     ],
+  },
+  {
+    id: "parametres",
+    label: "Paramètres",
+    path: "/parametres",
+    adminOnly: true,
+    icon: <IconGear />,
   },
 ];
 
@@ -254,14 +307,26 @@ export function filtrerParEtapes(items, estActive) {
 
 export function filterNavByPrivileges(items, privileges = []) {
   const hasFullAccess = privileges.includes("ADMIN") || privileges.includes("ALL");
+  const estAdmin = hasFullAccess || isAdministrateur(privileges, NAV_ITEMS);
   const hasPrivilege = (code) => !code || hasFullAccess || privileges.includes(code);
+  const autorise = (entree) => (!entree.adminOnly || estAdmin) && hasPrivilege(entree.privilege);
 
   return items
     .map((item) => {
-      if (!hasPrivilege(item.privilege)) return null;
+      if (!autorise(item)) return null;
       if (!item.children) return item;
-      const children = item.children.filter((child) => hasPrivilege(child.privilege));
+      const children = item.children.filter(autorise);
       return children.length ? { ...item, children } : null;
     })
     .filter(Boolean);
+}
+
+export function premiereRouteAutorisee(privileges = []) {
+  const visibles = filterNavByPrivileges(NAV_ITEMS, Array.isArray(privileges) ? privileges : []);
+  for (const item of visibles) {
+    if (item.path) return item.path;
+    const enfant = (item.children || []).find((c) => c.path);
+    if (enfant) return enfant.path;
+  }
+  return null;
 }

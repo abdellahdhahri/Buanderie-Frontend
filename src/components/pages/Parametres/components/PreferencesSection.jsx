@@ -16,6 +16,7 @@ const KPIS = [
   { id: "incomplets", key: "dashboard.incomplete_linens", fr: "Linges incomplets" },
   { id: "finDeVie", key: "dashboard.end_of_life", fr: "Fin de vie proche" },
   { id: "infection", key: "dashboard.infection_rate", fr: "Taux d'infection" },
+  { id: "bacsInfectes", key: "dashboard.infected_bins_waiting", fr: "Bacs infectés en attente" },
 ];
 
 const ResetFooter = ({ section, t }) => (

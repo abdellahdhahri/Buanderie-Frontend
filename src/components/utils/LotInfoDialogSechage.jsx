@@ -2,26 +2,35 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FaTimes, FaLayerGroup, FaThermometerHalf, FaTint, FaWind, FaCheck, FaEdit } from "react-icons/fa";
 import { useSechage } from "../../contextes/SechageContext";
+import { listeQuantites } from "../../services/lavageInfecteService";
 
 export default function LotInfoDialogSechage() {
   const { t } = useTranslation();
   const { lotDialog, setLotDialog, confirmerAjoutLot } = useSechage();
   const [manuel, setManuel] = useState(false);
   const [prog, setProg] = useState({ nom:"", temperature:"", niveauHumidite:"", duree:"" });
+  const [poids, setPoids] = useState(null);
   
   if (!lotDialog) return null;
   const { lotInfo, lot } = lotDialog;
+  const quantites = listeQuantites(lot).length ? listeQuantites(lot) : listeQuantites(lotInfo);
+  const quantiteDeclaree = lot.quantiteDeclaree ?? lotInfo?.quantiteDeclaree ?? null;
+  const afficherQuantites = quantites.length > 0 || quantiteDeclaree != null;
+  const poidsPropose = lot.poidsBalance ?? lotInfo?.poidsBalance ?? null;
   
   const handleOk = () => {
     const scanInfo = manuel
       ? { ...lotInfo, temperature:prog.temperature, niveauHumidite:prog.niveauHumidite,
           duree:prog.duree, programmeRecommande:prog.nom }
       : lotInfo;
-    confirmerAjoutLot(lot, scanInfo);
+    const saisi = poids ?? (poidsPropose != null ? String(poidsPropose) : "");
+    const poidsCharge = saisi !== "" && Number(saisi) > 0 ? Number(saisi) : null;
+    confirmerAjoutLot({ ...lot, poidsCharge, poidsActuel: poidsCharge ?? lot.poidsActuel }, scanInfo);
+    setPoids(null);
     setManuel(false); setProg({ nom:"", temperature:"", niveauHumidite:"", duree:"" });
   };
   
-  const fermer = () => { setLotDialog(null); setManuel(false); };
+  const fermer = () => { setLotDialog(null); setManuel(false); setPoids(null); };
   
   const F = (label, k, ph) => (
     <div style={{ marginBottom:"9px" }}>
@@ -40,12 +49,12 @@ export default function LotInfoDialogSechage() {
         
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"18px" }}>
           <div style={{ display:"flex",alignItems:"center",gap:"10px" }}>
-            <div style={{ width:"38px",height:"38px",borderRadius:"10px",background:"#e0f2fe",
+            <div style={{ width:"38px",height:"38px",borderRadius:"10px",background:"#e9f8fa",
               display:"flex",alignItems:"center",justifyContent:"center" }}>
-              <FaLayerGroup size={16} color="#0ea5e9"/>
+              <FaLayerGroup size={16} color="#0794a4"/>
             </div>
             <div>
-              <div style={{ fontWeight:800,fontSize:"13px" }}>{t('lot_dialog_sechage.lot')} {lot.codeLot}</div>
+              <div style={{ fontWeight:800,fontSize:"13px" }}>{t('lot_dialog_sechage.bac', 'Bac')} {lot.codeLot}</div>
               <div style={{ fontSize:"11px",color:"#64748b" }}>{lot.categorie} · {(lot.poidsActuel||0).toFixed(1)} kg</div>
             </div>
           </div>
@@ -55,10 +64,27 @@ export default function LotInfoDialogSechage() {
           </button>
         </div>
         
+        <div style={{ marginBottom:"14px" }}>
+          <label style={{ fontSize:"11px",color:"#64748b",fontWeight:700,display:"block",marginBottom:"4px" }}>
+            {t("lot_dialog.load_weight", "Poids de chargement (kg)")}
+          </label>
+          <input type="number" min="0" step="0.01"
+            value={poids ?? (poidsPropose != null ? String(poidsPropose) : "")}
+            onChange={e=>setPoids(e.target.value)}
+            placeholder={t("lot_dialog.load_weight_placeholder", "Poids de la balance")}
+            style={{ width:"100%",padding:"8px 11px",borderRadius:"8px",border:"1px solid #e2e8f0",
+              fontSize:"14px",fontWeight:700,outline:"none",boxSizing:"border-box" }}/>
+          <div style={{ fontSize:"11px",color:"#64748b",marginTop:"4px" }}>
+            {poidsPropose != null
+              ? t("lot_dialog.load_weight_hint", "Proposé : poids de la balance du bac ({{kg}} kg). Modifiable.", { kg: Number(poidsPropose).toFixed(2) })
+              : t("lot_dialog.load_weight_none", "Aucune pesée : saisissez le poids de la charge.")}
+          </div>
+        </div>
+
         {!manuel && lotInfo && (
-          <div style={{ background:"#f0f9ff",borderRadius:"12px",padding:"14px",
-            marginBottom:"14px",border:"1px solid #bae6fd" }}>
-            <div style={{ fontWeight:700,fontSize:"12px",color:"#0369a1",marginBottom:"10px",
+          <div style={{ background:"#f8fafc",borderRadius:"12px",padding:"14px",
+            marginBottom:"14px",border:"1px solid #e2e8f0" }}>
+            <div style={{ fontWeight:700,fontSize:"12px",color:"#067a87",marginBottom:"10px",
               display:"flex",alignItems:"center",gap:"5px" }}>
               <FaWind/> {lotInfo.programmeRecommande}
             </div>
@@ -66,7 +92,7 @@ export default function LotInfoDialogSechage() {
               {[
                 [<FaThermometerHalf color="#dc2626"/>, t('lot_dialog_sechage.temperature'), `${lotInfo.temperature}°C`],
                 [<FaTint color="#0ea5e9"/>,            t('lot_dialog_sechage.humidity'),    `${lotInfo.niveauHumidite||"—"}%`],
-                [<FaWind color="#7c3aed"/>,            t('lot_dialog_sechage.duration'),       `${lotInfo.duree} min`],
+                [<FaWind color="#64748b"/>,            t('lot_dialog_sechage.duration'),       `${lotInfo.duree} min`],
               ].map(([icon,label,val])=>(
                 <div key={label} style={{ textAlign:"center",padding:"7px 4px",
                   background:"white",borderRadius:"8px",border:"1px solid #e2e8f0" }}>
@@ -83,6 +109,30 @@ export default function LotInfoDialogSechage() {
           </div>
         )}
         
+        {afficherQuantites && (
+          <div style={{ background:"#fef2f2",borderRadius:"12px",padding:"12px 14px",
+            marginBottom:"14px",border:"1px solid #fecaca" }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom: quantites.length ? "8px" : 0 }}>
+              <span style={{ fontWeight:700,fontSize:"12px",color:"#b91c1c" }}>{t("lavage_infecte.quantities")}</span>
+              {quantiteDeclaree != null && (
+                <span style={{ fontSize:"11px",color:"#7f1d1d" }}>
+                  {t("lavage_infecte.total_declared")} : <b>{quantiteDeclaree}</b>
+                </span>
+              )}
+            </div>
+            {quantites.length > 0 && (
+              <div style={{ display:"flex",flexWrap:"wrap",gap:"6px" }}>
+                {quantites.map((q) => (
+                  <span key={q.categorie} style={{ display:"inline-flex",alignItems:"center",gap:"5px",padding:"3px 9px",
+                    borderRadius:"999px",background:"white",border:"1px solid #fecaca",fontSize:"11px",color:"#0f172a" }}>
+                    {t(`categories.${q.categorie}`, q.categorie)} <b style={{ color:"#b91c1c" }}>{q.quantite}</b>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {manuel && <div style={{ marginBottom:"12px" }}>
           {F(t('lot_dialog_sechage.program_name'),"nom",t('lot_dialog_sechage.program_name_placeholder'))}
           {F(t('lot_dialog_sechage.temperature'),"temperature",t('lot_dialog_sechage.temperature_placeholder'))}
@@ -102,7 +152,7 @@ export default function LotInfoDialogSechage() {
             {t('common.cancel')}
           </button>
           <button onClick={handleOk} style={{ flex:2,padding:"10px",borderRadius:"9px",border:"none",
-            background:"linear-gradient(135deg,#0ea5e9,#0284c7)",color:"white",
+            background:"#0794a4",color:"white",
             fontWeight:700,fontSize:"12px",cursor:"pointer",
             display:"flex",alignItems:"center",justifyContent:"center",gap:"5px" }}>
             <FaCheck size={11}/> {t('lot_dialog_sechage.add_to_dryer')}

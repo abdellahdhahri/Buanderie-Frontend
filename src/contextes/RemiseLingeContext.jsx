@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { useModal } from "./ModalContext";
+import { useAuth } from "../constants/AuthContext";
 import {
   getAgentFromStorage,
   fetchAgentByMatricule,
@@ -42,6 +43,7 @@ export const useRemiseLinge = () => useContext(RemiseLingeContext);
 
 export function RemiseLingeProvider({ children }) {
   const { showAlert } = useModal();
+  const { verifierHabilitation } = useAuth();
 
   // États
   const [agentRemise, setAgentRemise] = useState(null);
@@ -224,6 +226,7 @@ export function RemiseLingeProvider({ children }) {
 
     setScanStatus({ loading: true, code: code.trim() });
 
+    verifierHabilitation("livraison");
     try {
       // Réponse = item de la catégorie scannée (quantiteCollectee / quantiteRemise)
       const data = await scanLingeForRemise(remise.id, code.trim());
@@ -271,7 +274,7 @@ export function RemiseLingeProvider({ children }) {
       });
       throw error;
     }
-  }, [remise, items, agentCollecte, collecteId, chargerRemise, chargerApercu, chargerHistorique]);
+  }, [remise, items, agentCollecte, collecteId, chargerRemise, chargerApercu, chargerHistorique, verifierHabilitation]);
 
   // ✅ Annuler la remise d'un linge (scanné par erreur) : il retrouve son état d'avant
   const annulerLinge = useCallback(async (code) => {

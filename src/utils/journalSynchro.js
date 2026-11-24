@@ -1,4 +1,4 @@
-import Swal from "sweetalert2";
+import Swal from "../components/kit/dialogueApi";
 
 const echapper = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 

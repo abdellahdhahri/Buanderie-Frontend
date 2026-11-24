@@ -9,7 +9,7 @@ import { useCircuitInfecte } from "../../../../../hooks/useEstablishment";
    ═══════════════════════════════════════════════════════════════════════════ */
 export function StatistiquesCollecte({
   nbBlancs, nbInfectes, nbPropres, nbManq, nbNonTr,
-  nbAttendus, totalAttendu, nbSacs, filter, onFilter,
+  nbAttendus, totalAttendu, nbBacs, filter, onFilter,
 }) {
   const { t } = useTranslation();
   const circuitInfecte = useCircuitInfecte();
@@ -37,7 +37,7 @@ export function StatistiquesCollecte({
         icon={<Icons.Biohazard size={19} color="#dc2626" strokeWidth={2.2} />}
         color="#dc2626"
         bg="linear-gradient(135deg, #fef2f2, #fee2e2)"
-        subValue={`${nbSacs} ${t('collecte.sacs')}`}
+        subValue={t('collecte.bac_infecte.count', '{{n}} bac(s) infecté(s)', { n: nbBacs })}
       />}
       <StatutCard
         label={t('collecte.propre')}

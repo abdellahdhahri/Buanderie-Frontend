@@ -11,6 +11,19 @@ async function requete(chemin, options, fallback) {
   return response.status === 204 ? null : response.json().catch(() => null);
 }
 
+async function requeteAvecDelai(chemin, options, fallback, delai) {
+  const controleur = new AbortController();
+  const minuteur = setTimeout(() => controleur.abort(), delai);
+  try {
+    return await requete(chemin, { ...options, signal: controleur.signal }, fallback);
+  } catch (err) {
+    if (err.name === "AbortError") throw new Error(`Délai dépassé : l'opération a pris plus de ${delai / 1000} secondes.`);
+    throw err;
+  } finally {
+    clearTimeout(minuteur);
+  }
+}
+
 const json = (method, body) => ({ method, body: JSON.stringify(body) });
 
 export const arsenalService = {
@@ -24,6 +37,16 @@ export const arsenalService = {
   desactiver: (id) => requete(`/api/Arsenals/${id}`, { method: "DELETE" }, `Erreur désactivation arsenal ${id}`),
 
   getEmplacements: (arsenalId, tous = false) => emplacementService.getByArsenal(arsenalId, tous),
+
+  getAImporter: async ({ q = "", page = 1, pageSize = 50 } = {}) => {
+    const params = new URLSearchParams({ q, page, pageSize });
+    return requete(`/api/Arsenals/arsenauxAimporter?${params}`, {}, "Erreur chargement des arsenaux CUBIX");
+  },
+
+  importer: (corps) => requeteAvecDelai("/api/Arsenals/import", json("POST", corps), "Erreur import des arsenaux", 60000),
+
+  ajouterEmplacements: (id, noms) =>
+    requete(`/api/Arsenals/${id}/emplacements`, json("POST", noms), "Erreur ajout des emplacements"),
 
   getLinges: (arsenalId) =>
     requete(`/api/Arsenals/arsenals/${arsenalId}/linges`, {}, "Erreur chargement des linges de l'arsenal"),

@@ -1,22 +1,18 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useModal } from "../../../../contextes/ModalContext";
 import { apiCall } from "../collecteUtils";
 import { getAgent, isAgentConnected } from "../../../../services/agentService";
 import "../../Linge/WorkflowList.css";
-import { DlgSacInfecte } from "./components/dialogs/DlgSacInfecte";
+import { DlgBacInfecte } from "./components/dialogs/DlgBacInfecte";
 import { DlgManquant } from "../shared/dialogs/DlgManquant";
-import { CollecteHeader } from "../shared/CollecteHeader";
-import { Icons } from "../shared/icons";
-import { CollecteInfoBar } from "./components/CollecteInfoBar";
-import { ZoneScan } from "../shared/ZoneScan";
-import { MessagesEtape } from "./components/MessagesEtape";
-import { ProgressionCollecte } from "./components/ProgressionCollecte";
-import { StatistiquesCollecte } from "./components/StatistiquesCollecte";
-import { SacsDeclares } from "./components/SacsDeclares";
-import { FiltresLinges } from "./components/FiltresLinges";
-import { ListeLinges } from "./components/ListeLinges";
-import { ActionsCollecte } from "./components/ActionsCollecte";
+import { Biohazard, Check, ClipboardCheck, Sparkles, TriangleAlert } from "lucide-react";
+import {
+  ToolbarCollecte, EtapesCollecte, AccueilSansAgent, PosteScan, PastilleEtat, AlerteCollecte,
+  LigneCollecte, BoutonIcone, GroupesLignes, BilanCollecte, nomAgentCollecte,
+} from "../shared/CollecteRc";
+import { getCategorieMeta } from "../../../../constants/categoriesLinge";
+import { collecteService } from "../../../../services/collecte/collecteService";
 import { ResumeCollecte } from "./components/ResumeCollecte";
 import { CollecteStyles } from "../shared/CollecteStyles";
 import { useCircuitInfecte } from "../../../../hooks/useEstablishment";
@@ -32,14 +28,13 @@ function CollageListServiceInner({ modeChambre = false }) {
   const [agent, setAgent] = useState(null);
   const [collecte, setCollecte] = useState(null);
   const [bacBlanc, setBacBlanc] = useState(null);
-  const [sacsDeclares, setSacsDeclares] = useState([]);
+  const [bacsDeclares, setBacsDeclares] = useState([]);
   const [scanVal, setScanVal] = useState("");
   const [loading, setLoading] = useState(false);
   const [resume, setResume] = useState(null);
-  const [dlgSac, setDlgSac] = useState(false);
+  const [dlgBac, setDlgBac] = useState(false);
   const [dlgManq, setDlgManq] = useState(null);
   const [scanStatus, setScanStatus] = useState(null);
-  const [filter, setFilter] = useState("all");
 
   const scanInputRef = useRef(null);
 
@@ -63,17 +58,10 @@ function CollageListServiceInner({ modeChambre = false }) {
   const nbPropres = collecte?.linges?.filter(l => l.statut === "PROPRE").length || 0;
   const nbManq = collecte?.linges?.filter(l => l.statut === "MANQUANT").length || 0;
   const nbNonTr = collecte?.linges?.filter(l => !l.statut).length || 0;
-  const nbInfectes = sacsDeclares.reduce((s, sac) => s + (sac.quantite || 0), 0);
+  const nbInfectes = bacsDeclares.reduce((s, d) => s + (Number(d.quantiteTotale) || 0), 0);
   const totalAttendu = collecte?.nbAttendus || 0;
   const totalTraite = nbBlancs + nbPropres + nbManq + nbInfectes;
   const progression = totalAttendu > 0 ? Math.min(Math.round((totalTraite / totalAttendu) * 100), 100) : 0;
-
-  const filteredLinges = useMemo(() => {
-    if (!collecte?.linges) return [];
-    if (filter === "all") return collecte.linges;
-    if (filter === "untreated") return collecte.linges.filter(l => !l.statut);
-    return collecte.linges.filter(l => l.statut === filter.toUpperCase());
-  }, [collecte, filter]);
 
   const majLinge = useCallback((lingeId, statut) => {
     setCollecte(p =>
@@ -115,7 +103,7 @@ function CollageListServiceInner({ modeChambre = false }) {
           attendusParCategorie: res.attendusParCategorie,
           linges: (res.linges || []).map(l => ({ ...l, lingeId: l.lingeId ?? l.id })),
         });
-        setSacsDeclares([]);
+        setBacsDeclares([]);
         setBacBlanc(null);
         setScanStatus({
           loading: false,
@@ -157,7 +145,7 @@ function CollageListServiceInner({ modeChambre = false }) {
         nbAttendus: res.nbAttendus,
         linges: (res.linges || []).map(l => ({ ...l,lingeId: l.lingeId ?? l.id, })),
       });
-      setSacsDeclares([]);
+      setBacsDeclares([]);
       setBacBlanc(null);
       setScanStatus({
         loading: false,
@@ -295,39 +283,28 @@ const handleScanBlanc = useCallback(async code => {
     }
   }, [collecte, showAlert, majLinge, t]);
 
-  const handleSacInfecte = useCallback(async ({ bacId, items }) => {
-    setDlgSac(false);
+  const handleBacInfecte = useCallback(async ({ bacId, items, observations }) => {
     setLoading(true);
     try {
-      const res = await apiCall(
-        `/api/collecte/service/${collecte.id}/infecte`,
-        {},
-        "POST",
-        {
-          matriculeAgent: agent.codeBarre || agent.matricule,
-          serviceId: collecte.serviceId,
-          bacId,
-          items,
-        }
-      );
-      setSacsDeclares(p => [
-        ...p,
-        {
-          ...res,
-          categorie: items[0]?.categorie,
-          quantite: items[0]?.quantiteDeclaree,
-        },
-      ]);
-      const c = items[0];
+      const res = await collecteService.declarerQuantitesInfectees(collecte.id, {
+        matriculeAgent: agent.codeBarre || agent.matricule,
+        serviceId: collecte.serviceId,
+        chambre: collecte.codeChambre || null,
+        observations,
+        bacId,
+        items,
+      });
+      const quantiteTotale = res?.quantiteTotale ?? items.reduce((s, i) => s + i.quantiteDeclaree, 0);
+      setBacsDeclares(p => [...p, { ...res, quantiteTotale, items: res?.items || items }]);
+      setDlgBac(false);
       showAlert(
-        t('collecte.sac_declared'),
-        `${c?.quantiteDeclaree} ${c?.categorie?.toLowerCase() || t('collecte.linen')}${
-          c?.quantiteDeclaree > 1 ? "s" : ""
-        }`,
+        t('collecte.bac_infecte.declared', 'Quantités infectées enregistrées'),
+        t('collecte.bac_infecte.declared_text', 'Bac {{code}} · {{n}} pièce(s)', { code: res?.codeBac || bacId, n: quantiteTotale }),
         "warning"
       );
     } catch (e) {
-      showAlert(e.message, "", "error");
+      showAlert(t('collecte.bac_infecte.refused', 'Déclaration refusée'), e.message, "error");
+      throw e;
     } finally {
       setLoading(false);
     }
@@ -335,13 +312,12 @@ const handleScanBlanc = useCallback(async code => {
 
 const handleCloturer = useCallback(async () => {
   const nbBlancs = collecte?.linges?.filter(l => l.statut === "BLANC").length || 0;
-  const nbSacs = sacsDeclares.length;
+  const nbBacs = bacsDeclares.length;
   const nbTraites = collecte?.linges?.filter(l => l.statut).length || 0;
   const nbPropres = collecte?.linges?.filter(l => l.statut === "PROPRE").length || 0;
   const nbManquants = collecte?.linges?.filter(l => l.statut === "MANQUANT").length || 0;
 
-  // ✅ Condition corrigée : au moins 1 linge traité (BLANC, PROPRE, MANQUANT) OU 1 sac
-  if (nbTraites === 0 && nbSacs === 0) {
+  if (nbTraites === 0 && nbBacs === 0) {
     showAlert(
       t('collecte.errors.nothing_to_close'),
       t('collecte.errors.scan_at_least_one'),
@@ -355,7 +331,7 @@ const handleCloturer = useCallback(async () => {
   if (nbBlancs > 0) parts.push(`${nbBlancs} ${t('collecte.white_linens')}${nbBlancs > 1 ? "s" : ""}`);
   if (nbPropres > 0) parts.push(`${nbPropres} ${t('collecte.propre')}${nbPropres > 1 ? "s" : ""}`);
   if (nbManquants > 0) parts.push(`${nbManquants} ${t('collecte.missing')}${nbManquants > 1 ? "s" : ""}`);
-  if (nbSacs > 0) parts.push(`${nbSacs} ${t('collecte.infected_sacs')}${nbSacs > 1 ? "s" : ""}`);
+  if (nbBacs > 0) parts.push(t('collecte.bac_infecte.summary', '{{n}} pièce(s) infectée(s) déclarée(s)', { n: nbInfectes }));
 
   if (
     !(await showConfirm(
@@ -375,7 +351,7 @@ const handleCloturer = useCallback(async () => {
   } finally {
     setLoading(false);
   }
-}, [collecte, sacsDeclares, showAlert, showConfirm, t]);
+}, [collecte, bacsDeclares, nbInfectes, showAlert, showConfirm, t]);
 
   const handleScan = useCallback(async code => {
     setScanVal("");
@@ -393,38 +369,93 @@ const handleCloturer = useCallback(async () => {
   const reset = () => {
     setCollecte(null);
     setBacBlanc(null);
-    setSacsDeclares([]);
+    setBacsDeclares([]);
     setResume(null);
     setScanVal("");
     setScanStatus(null);
-    setFilter("all");
     setTimeout(() => scanInputRef.current?.focus(), 200);
   };
 
-  const getPlaceholder = () => {
-    if (!agent) return t('collecte.agent_not_connected');
-    if (!collecte) return modeChambre ? t('collecte.scan_room_code', 'Scannez le code-barres de la chambre') : t('collecte.scan_service_code');
-    if (!bacBlanc) return t('collecte.scan_white_bac');
-    if (resume) return t('collecte.collection_closed');
-    return t('collecte.scan_white_linens');
-  };
-
   const getBorderColor = () => {
-    if (!agent) return "#dc2626";
-    if (resume) return "#e2e8f0";
-    return "#14b8a6";
+    if (!agent) return "#e03131";
+    if (resume) return "#cbd5e1";
+    return "#0d9488";
   };
 
   const isCloturee = !!resume;
   const isDisabled = isCloturee || loading || !agent;
 
+  const etatLinge = (l) => {
+    const map = {
+      BLANC: ["ok", t("collecte.white", "Blanc")],
+      PROPRE: ["info", t("collecte.propre", "Propre")],
+      MANQUANT: ["warn", t("collecte.missing", "Manquant")],
+      INFECTE: ["danger", t("collecte.infected", "Infecté")],
+      INFECTE_PRESUME: ["danger", t("collecte.infected", "Infecté")],
+    }[l.statut];
+    return map ? <PastilleEtat tone={map[0]}>{map[1]}</PastilleEtat> : null;
+  };
+
+  const ligne = (l) => {
+    const { Icon, accent } = getCategorieMeta(l.categorie);
+    return (
+      <LigneCollecte
+        key={l.lingeId}
+        icone={<Icon size={18} strokeWidth={2} />}
+        accent={accent}
+        titre={t(`categories.${l.categorie}`, l.categorie || "—")}
+        code={l.codeBarre}
+        estompe={Boolean(l.statut)}
+        etat={etatLinge(l)}
+        actions={!l.statut && (
+          <>
+            <BoutonIcone icone={<Check size={17} strokeWidth={2.6} />} titre={t("collecte.sale_to_white")} tone="ok" disabled={!bacBlanc?.bacId} onClick={() => handleScanBlanc(l.codeBarre)} />
+            <BoutonIcone icone={<Sparkles size={16} strokeWidth={2.4} />} titre={t("collecte.propre_keep")} tone="info" onClick={() => handlePropre(l)} />
+            <BoutonIcone icone={<TriangleAlert size={16} strokeWidth={2.4} />} titre={t("collecte.missing")} tone="warn" onClick={() => setDlgManq(l)} />
+          </>
+        )}
+      />
+    );
+  };
+
+  const lingesCollecte = collecte?.linges || [];
+  const groupes = [
+    { key: "afaire", titre: t("collecte.to_treat", "À traiter"), items: lingesCollecte.filter((l) => !l.statut), toujours: true },
+    { key: "traites", titre: t("collecte.processed", "Traités"), items: lingesCollecte.filter((l) => l.statut), repliable: true, estompe: true },
+  ];
+
+  const nomAgent = nomAgentCollecte(agent);
+  const etapes = [
+    t("collecte.step_identify", "Identification de l'agent"),
+    modeChambre ? t("collecte.room", "Chambre") : t("collecte.step_service", "Service"),
+    t("collecte.step_linens", "Collecte des linges"),
+    t("collecte.step_close", "Clôture"),
+  ];
+  const faites = [
+    Boolean(agent),
+    Boolean(collecte),
+    Boolean(collecte) && lingesCollecte.length > 0 && nbNonTr === 0,
+    isCloturee,
+  ];
+  const nomCollecte = modeChambre
+    ? `${t("collecte.room", "Chambre")}${collecte?.codeChambre ? ` ${collecte.codeChambre}` : ""}`
+    : collecte?.serviceNom;
+
+  const chipsPoste = collecte && !isCloturee ? (
+    <>
+      <PastilleEtat tone="info">{nomCollecte}</PastilleEtat>
+      {bacBlanc
+        ? <PastilleEtat tone="ok">{t("collecte.white_bac", "Bac blanc")} · {bacBlanc.codeBac}</PastilleEtat>
+        : <PastilleEtat tone="warn">{t("collecte.white_bac", "Bac blanc")} · {t("collecte.required", "requis")}</PastilleEtat>}
+    </>
+  ) : null;
+
   return (
-    <div className="collecte-container cr-page">
-      <DlgSacInfecte
-        visible={dlgSac && circuitInfecte}
-        collecteId={collecte?.id}
-        onValider={handleSacInfecte}
-        onClose={() => setDlgSac(false)}
+    <div className="collecte-container cr-page rc cc">
+      <DlgBacInfecte
+        visible={dlgBac && circuitInfecte}
+        onValider={handleBacInfecte}
+        onClose={() => setDlgBac(false)}
       />
       <DlgManquant
         linge={dlgManq}
@@ -435,118 +466,118 @@ const handleCloturer = useCallback(async () => {
         confirmLabel={t('collecte.confirm_missing')}
       />
 
-      <CollecteHeader
-        icon={<Icons.Building size={28} color="white" strokeWidth={2.2} />}
-        title={modeChambre
-          ? `${t('collecte.room_collection', 'Collecte chambre')}${collecte?.codeChambre ? ` · ${collecte.codeChambre}` : ""}`
-          : t('collecte.service_collection')}
-        agent={agent}
-        agentLabel={t('collecte.agent')}
-        noAgentLabel={t('collecte.no_agent_connected')}
-        accent="#0d9488"
-      />
+      <ToolbarCollecte agent={agent} onReset={collecte ? reset : undefined} />
+      <EtapesCollecte etapes={etapes} faites={faites} label={t("collecte.steps", "Étapes de la collecte")} />
 
-      <div className="cr-shell">
-        <CollecteInfoBar
-          agent={agent}
-          collecte={collecte}
-          bacBlanc={bacBlanc}
-          totalAttendu={totalAttendu}
-          onReset={reset}
-        />
-
-        <ZoneScan
+      {!agent ? (
+        <AccueilSansAgent
+          eyebrow={modeChambre ? t("collecte.room_collection", "Collecte chambre") : t("collecte.service_collection")}
+          titre={t("collecte.no_agent_connected")}
           scanInputRef={scanInputRef}
-          placeholder={getPlaceholder()}
           value={scanVal}
           onChange={setScanVal}
           onSubmit={handleScan}
-          borderColor={getBorderColor()}
-          disabled={isDisabled}
-          isCloturee={isCloturee}
-          showShimmer={!isCloturee && !!bacBlanc}
-          scanStatus={scanStatus}
         />
-
-        <MessagesEtape
-          agent={agent}
-          collecte={collecte}
-          bacBlanc={bacBlanc}
+      ) : resume ? (
+        <ResumeCollecte
           resume={resume}
-          modeChambre={modeChambre}
+          serviceNom={collecte?.serviceNom}
+          nbBacs={bacsDeclares.length}
+          nbInfectes={nbInfectes}
+          onAutreService={() => {
+            setCollecte(null);
+            setBacBlanc(null);
+            setBacsDeclares([]);
+            setResume(null);
+          }}
+          onTerminer={reset}
         />
-
-        {collecte && !resume && (
-          <ProgressionCollecte
-            totalTraite={totalTraite}
-            totalAttendu={totalAttendu}
-            progression={progression}
-          />
-        )}
-
-        {collecte && !resume && (
-          <StatistiquesCollecte
-            nbBlancs={nbBlancs}
-            nbInfectes={nbInfectes}
-            nbPropres={nbPropres}
-            nbManq={nbManq}
-            nbNonTr={nbNonTr}
-            nbAttendus={collecte.nbAttendus}
-            totalAttendu={totalAttendu}
-            nbSacs={sacsDeclares.length}
-            filter={filter}
-            onFilter={setFilter}
-          />
-        )}
-
-        {sacsDeclares.length > 0 && (
-          <SacsDeclares sacs={sacsDeclares} nbInfectes={nbInfectes} />
-        )}
-
-        {collecte && !resume && (
-          <>
-            <FiltresLinges
-              filter={filter}
-              onFilter={setFilter}
-              count={filteredLinges.length}
+      ) : (
+        <div className={collecte ? "rc-layout" : ""}>
+          <div className="rc-main">
+            <PosteScan
+              titre={modeChambre ? t("collecte.room_collection", "Collecte chambre") : t("collecte.service_collection")}
+              chips={chipsPoste}
+              scanInputRef={scanInputRef}
+              value={scanVal}
+              onChange={setScanVal}
+              onSubmit={handleScan}
+              borderColor={getBorderColor()}
+              disabled={isDisabled}
+              scanStatus={scanStatus}
             />
 
-            <ListeLinges
-              linges={filteredLinges}
-              bacBlanc={bacBlanc}
-              onBlanc={handleScanBlanc}
-              onPropre={handlePropre}
-              onManquant={x => setDlgManq(x)}
-            />
+            {collecte && (
+              <section className="rc-card">
+                <div className="rc-card__head">
+                  <h3 className="rc-card__title">{t("collecte.linens_title", "Linges attendus")}</h3>
+                  <span className="rc-count">{totalAttendu}</span>
+                </div>
+                <div className="rc-card__body">
+                  <GroupesLignes groupes={groupes} rendu={ligne} videMessage={t("collecte.all_done", "Tout est traité")} />
+                </div>
+                <div className="cl-actions">
+                  {circuitInfecte && (
+                    <button type="button" className="rc-btn" onClick={() => setDlgBac(true)}>
+                      <Biohazard size={15} /> {t("collecte.declare_infected", "Déclarer infecté")}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="rc-btn rc-btn--primary rc-btn--lg"
+                    disabled={loading || (totalTraite === 0 && bacsDeclares.length === 0)}
+                    onClick={handleCloturer}
+                  >
+                    <ClipboardCheck size={16} />
+                    {nbNonTr === 0 ? t("collecte.finish_and_close", "Terminer et clôturer") : t("collecte.close_with_remaining", { count: nbNonTr, defaultValue: "Clôturer ({{count}} restant(s))" })}
+                  </button>
+                </div>
+              </section>
+            )}
 
-            <ActionsCollecte
-              nbNonTr={nbNonTr}
-              loading={loading}
-              // ✅ Désactiver si AUCUN linge traité ET aucun sac déclaré
-              canClose={!(totalTraite === 0 && sacsDeclares.length === 0)}
-              onDeclarerSac={() => setDlgSac(true)}
-              onCloturer={handleCloturer}
-            />
-          </>
-        )}
+            {bacsDeclares.length > 0 && (
+              <section className="rc-card">
+                <div className="rc-card__head">
+                  <h3 className="rc-card__title"><Biohazard size={15} /> {t("collecte.bac_infecte.declared_title", "Quantités infectées déclarées")}</h3>
+                  <span className="rc-count">{nbInfectes}</span>
+                </div>
+                {bacsDeclares.map((d, i) => (
+                  <div key={`${d.bacId}-${i}`} className="cl-decl">
+                    <code>{d.codeBac || `#${d.bacId}`}</code>
+                    <span className="cl-decl__n">{d.quantiteTotale ?? 0}</span>
+                    <span className="cl-decl__items">
+                      {(d.items || []).map((it) => (
+                        <span key={it.categorie}>{t(`categories.${it.categorie}`, it.categorie)} · {it.quantiteDeclaree}</span>
+                      ))}
+                    </span>
+                  </div>
+                ))}
+              </section>
+            )}
+          </div>
 
-        {resume && (
-          <ResumeCollecte
-            resume={resume}
-            serviceNom={collecte?.serviceNom}
-            nbSacs={sacsDeclares.length}
-            nbInfectes={nbInfectes}
-            onAutreService={() => {
-              setCollecte(null);
-              setBacBlanc(null);
-              setSacsDeclares([]);
-              setResume(null);
-              setFilter("all");
-            }}
-            onTerminer={reset}
-          />
-        )}
-      </div>
+          {collecte && (
+            <aside className="rc-side">
+              <BilanCollecte
+                titre={t("collecte.balance", "Bilan de la collecte")}
+                progression={progression}
+                items={[
+                  { label: t("collecte.expected", "Attendus"), value: totalAttendu },
+                  { label: t("collecte.white", "Blancs"), value: nbBlancs },
+                  { label: t("collecte.propre", "Propres"), value: nbPropres },
+                  { label: t("collecte.missing", "Manquants"), value: nbManq },
+                  ...(circuitInfecte ? [{ label: t("collecte.infected", "Infectés"), value: nbInfectes, tone: "danger" }] : []),
+                  { label: t("collecte.remaining", "Restants"), value: nbNonTr },
+                ]}
+              />
+              <div className="rc-foot">
+                <span>{t("collecte.agent", "Agent")} : <b>{nomAgent}</b></span>
+                <span>{new Date().toLocaleDateString("fr-FR")}</span>
+              </div>
+            </aside>
+          )}
+        </div>
+      )}
 
       <CollecteStyles />
     </div>

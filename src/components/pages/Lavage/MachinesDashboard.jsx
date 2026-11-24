@@ -2,12 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo, useId } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import Swal from "sweetalert2";
+import Swal from "../../kit/dialogueApi";
 import { RefreshCw, Play, Biohazard, WashingMachine, Thermometer, Timer, Layers, Settings2, Square, CircleCheck, Wind, BarChart3 } from "lucide-react";
 import { useMachineContext } from "../../../contextes/MachineContext";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import {
-  Page, PageHeader, ActionBar, ActionButton, Modal, Button, KpiTiles, DetailCard, InfoList, DetailText, DataTable, Tabs, QuickStats,
+  Page, ActionBar, ActionButton, Modal, Button, KpiTiles, DetailCard, InfoList, DetailText, DataTable, Tabs, QuickStats,
   VueSwitch, useVue, Badge, Code, RowActions, RowButton,
 } from "../../kit";
 import { useSetting, formatDateTime } from "../../../utils/appSettings";
@@ -59,10 +58,15 @@ function WasherSvg({ tone, soft, etat, fillPct = 0 }) {
   const level = Math.max(0, Math.min(100, fillPct));
   const waterTop = 84 + 30 - (60 * (running ? Math.max(level, 35) : level * 0.5)) / 100;
   const ink = off ? "#94a3b8" : tone;
+  const open = etat === "DISPONIBLE";
 
   return (
     <svg viewBox="0 0 120 144" className={`md-washer${running ? " is-running" : ""}`} aria-hidden="true">
       <defs>
+        <radialGradient id={`well-${uid}`} cx="50%" cy="45%" r="60%">
+          <stop offset="0%" stopColor="#64748b" />
+          <stop offset="100%" stopColor="#1e293b" />
+        </radialGradient>
         <linearGradient id={`body-${uid}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#ffffff" />
           <stop offset="100%" stopColor="#eef2f7" />
@@ -91,44 +95,52 @@ function WasherSvg({ tone, soft, etat, fillPct = 0 }) {
       <path d="M96 15.5 V20" stroke={ink} strokeWidth="2" strokeLinecap="round" />
 
       <circle cx="60" cy="84" r="37" fill="#e2e8f0" />
-      <circle cx="60" cy="84" r="34" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1.5" />
-      <circle cx="60" cy="84" r="29" fill={`url(#glass-${uid})`} />
+      <circle cx="60" cy="84" r="33" fill={`url(#well-${uid})`} />
 
       <g clipPath={`url(#door-${uid})`}>
+        <g className="md-washer__drum">
+          {[0, 120, 240].map((a) => (
+            <path key={a} d="M60 84 L60 55 A29 29 0 0 1 85 69 Z" fill="#0f172a" opacity="0.28" transform={`rotate(${a} 60 84)`} />
+          ))}
+          {[0, 40, 80, 120, 160, 200, 240, 280, 320].map((a) => (
+            <circle
+              key={a}
+              cx={60 + 22 * Math.cos((a * Math.PI) / 180)}
+              cy={84 + 22 * Math.sin((a * Math.PI) / 180)}
+              r="1.7"
+              fill="#94a3b8"
+              opacity="0.55"
+            />
+          ))}
+          <circle cx="60" cy="84" r="5" fill="#94a3b8" opacity="0.55" />
+          {(running || level > 0) && !off && (
+            <>
+              <ellipse cx="52" cy="92" rx="10" ry="6" fill={tone} opacity="0.85" transform="rotate(-20 52 92)" />
+              <ellipse cx="68" cy="94" rx="9" ry="5.5" fill="#ffffff" opacity="0.9" transform="rotate(25 68 94)" />
+              {running && <ellipse cx="62" cy="72" rx="7" ry="4.5" fill={tone} opacity="0.55" transform="rotate(10 62 72)" />}
+            </>
+          )}
+        </g>
         {(running || level > 0) && !off && (
           <g>
-            <rect x="20" y={waterTop + 3} width="80" height="70" fill={tone} opacity="0.22" />
+            <rect x="20" y={waterTop + 3} width="80" height="70" fill={tone} opacity="0.2" />
             <path
               className={running ? "md-washer__wave" : undefined}
               d={`M20 ${waterTop + 4} q10 -5 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 V130 H20 Z`}
               fill={tone}
-              opacity="0.3"
+              opacity="0.28"
             />
           </g>
         )}
-        <g className="md-washer__drum">
-          {[0, 60, 120, 180, 240, 300].map((a) => (
-            <circle
-              key={a}
-              cx={60 + 21 * Math.cos((a * Math.PI) / 180)}
-              cy={84 + 21 * Math.sin((a * Math.PI) / 180)}
-              r="1.6"
-              fill="#94a3b8"
-              opacity="0.6"
-            />
-          ))}
-          {(running || level > 0) && !off && (
-            <>
-              <ellipse cx="52" cy="92" rx="10" ry="6" fill={tone} opacity="0.75" transform="rotate(-20 52 92)" />
-              <ellipse cx="68" cy="94" rx="9" ry="5.5" fill="#ffffff" stroke={tone} strokeOpacity="0.4" transform="rotate(25 68 94)" />
-              {running && <ellipse cx="62" cy="72" rx="7" ry="4.5" fill={tone} opacity="0.45" transform="rotate(10 62 72)" />}
-            </>
-          )}
-        </g>
       </g>
 
-      <path d="M40 70 A24 24 0 0 1 58 58" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
-      <rect x="92" y="78" width="5" height="14" rx="2.5" fill="#cbd5e1" />
+      <g className={`md-door${open ? " is-open" : ""}`}>
+        <circle cx="60" cy="84" r="37" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1.5" />
+        <circle cx="60" cy="84" r="29" fill={`url(#glass-${uid})`} opacity={open ? 0.95 : 0.55} />
+        <circle cx="60" cy="84" r="29" fill="none" stroke="#cbd5e1" strokeWidth="1" />
+        <path d="M40 70 A24 24 0 0 1 58 58" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+        <rect x="92" y="78" width="5" height="14" rx="2.5" fill="#cbd5e1" />
+      </g>
 
       {off && (
         <g transform="translate(86 104)">
@@ -150,10 +162,15 @@ function DryerSvg({ tone, soft, etat, fillPct = 0 }) {
   const off = etat === "EN_PANNE" || etat === "MAINTENANCE";
   const loaded = running || fillPct > 0;
   const ink = off ? "#94a3b8" : tone;
+  const open = etat === "DISPONIBLE";
 
   return (
     <svg viewBox="0 0 120 144" className={`md-washer md-dryer${running ? " is-running" : ""}`} aria-hidden="true">
       <defs>
+        <radialGradient id={`dwell-${uid}`} cx="50%" cy="45%" r="60%">
+          <stop offset="0%" stopColor="#64748b" />
+          <stop offset="100%" stopColor="#1e293b" />
+        </radialGradient>
         <linearGradient id={`dbody-${uid}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#ffffff" />
           <stop offset="100%" stopColor="#eef2f7" />
@@ -182,11 +199,10 @@ function DryerSvg({ tone, soft, etat, fillPct = 0 }) {
       <path d="M90 14 q-3 3 0 6 t0 6 M97 14 q-3 3 0 6 t0 6" stroke={ink} strokeWidth="1.7" strokeLinecap="round" fill="none" />
 
       <circle cx="60" cy="84" r="37" fill="#e2e8f0" />
-      <circle cx="60" cy="84" r="34" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1.5" />
-      <circle cx="60" cy="84" r="29" fill={`url(#dglass-${uid})`} />
+      <circle cx="60" cy="84" r="33" fill={`url(#dwell-${uid})`} />
 
       <g clipPath={`url(#ddoor-${uid})`}>
-        {running && <circle cx="60" cy="84" r="29" fill={tone} opacity="0.1" />}
+        {running && <circle cx="60" cy="84" r="29" fill={tone} opacity="0.12" />}
         {running && (
           <g className="md-dryer__heat" stroke={tone} strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.6">
             <path d="M50 82 q-3 -3 0 -6 t0 -6" />
@@ -208,8 +224,13 @@ function DryerSvg({ tone, soft, etat, fillPct = 0 }) {
         </g>
       </g>
 
-      <path d="M40 70 A24 24 0 0 1 58 58" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
-      <rect x="92" y="78" width="5" height="14" rx="2.5" fill="#cbd5e1" />
+      <g className={`md-door${open ? " is-open" : ""}`}>
+        <circle cx="60" cy="84" r="37" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1.5" />
+        <circle cx="60" cy="84" r="29" fill={`url(#dglass-${uid})`} opacity={open ? 0.95 : 0.55} />
+        <circle cx="60" cy="84" r="29" fill="none" stroke="#cbd5e1" strokeWidth="1" />
+        <path d="M40 70 A24 24 0 0 1 58 58" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+        <rect x="92" y="78" width="5" height="14" rx="2.5" fill="#cbd5e1" />
+      </g>
       <g stroke="#cbd5e1" strokeWidth="1.4" strokeLinecap="round">
         <path d="M44 124 H76" />
         <path d="M48 127.5 H72" />
@@ -437,7 +458,7 @@ function Section({ color, Icon, title, machines, children }) {
 export default function MachinesDashboard() {
   const { t } = useTranslation();
   const circuitInfecte = useCircuitInfecte();
-  const { machines, cycles, isLoading, lastRefresh, loadAllData, terminerCycle } = useMachineContext();
+  const { machines, cycles, isLoading, loadAllData, terminerCycle } = useMachineContext();
   const refreshSeconds = Number(useSetting("refresh.machinesSeconds")) || 15;
 
   const [machineSelectee, setMachineSelectee] = useState(null);
@@ -473,10 +494,10 @@ export default function MachinesDashboard() {
   const machinesNormal = useMemo(() => machines.filter((m) => categorieDe(m) === "LINGE_NORMAL"), [machines]);
   const machinesInfecte = useMemo(() => machines.filter((m) => categorieDe(m) === "LINGES_INFECTE"), [machines]);
   const machinesSecheurs = useMemo(() => machines.filter((m) => categorieDe(m) === "SECHEUR"), [machines]);
-  const machinesFiltrees = filtre === "TOUS" ? machines : machines.filter((m) => categorieDe(m) === filtre);
+  const enUsage = (m) => m.etatImmobilisation === "EN_COURS";
+  const machinesFiltrees = filtre === "TOUS" ? machines.filter(enUsage) : machines.filter((m) => categorieDe(m) === filtre);
 
   const cyclesEnCours = cycles?.filter((c) => c.statut === "EN_COURS") || [];
-  const cyclesTermines = cycles?.filter((c) => c.statut === "TERMINE") || [];
   const disponibles = machines.filter((m) => m.etatImmobilisation === "DISPONIBLE").length;
   const poidsTotal = machines.reduce((s, m) => s + (Number(m.poidsActuel) || 0), 0);
   const capaciteTotale = machines.reduce((s, m) => s + (Number(m.capaciteKg) || 0), 0);
@@ -523,14 +544,6 @@ export default function MachinesDashboard() {
 
   return (
     <Page>
-      <PageHeader
-        icon={<PageHeaderIcon size={40} />}
-        title={t("machines_dashboard.title")}
-        subtitle={`${t("machines_dashboard.subtitle", { enCours: cyclesEnCours.length, termines: cyclesTermines.length })}${lastRefresh ? ` · ${lastRefresh.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}`}
-        total={machines.length}
-        right={<span className="md-live"><span className="md-live__dot" /> {refreshSeconds}s</span>}
-      />
-
       <ActionBar>
         <Link to="/Lavages" className="action-bar-btn ajouter"><Play size={18} /><span className="btn-label">{t("machines_dashboard.new_wash")}</span></Link>
         {machinesSecheurs.length > 0 && (
@@ -565,21 +578,23 @@ export default function MachinesDashboard() {
           rowKey={(m) => m.id || m.code}
           onRowDoubleClick={setMachineSelectee}
         />
+      ) : filtre === "TOUS" && machinesFiltrees.length === 0 ? (
+        <DetailCard><DetailText empty={t("machines_dashboard.none_running", "Aucune machine en cours d'utilisation")} /></DetailCard>
       ) : filtre === "TOUS" ? (
         <>
-          {machinesNormal.length > 0 && (
+          {machinesNormal.filter(enUsage).length > 0 && (
             <Section color={THEME.LINGE_NORMAL.tone} Icon={WashingMachine} title={t("machines_dashboard.section_normal")} machines={machinesNormal}>
-              {machinesNormal.map(carte)}
+              {machinesNormal.filter(enUsage).map(carte)}
             </Section>
           )}
-          {machinesInfecte.length > 0 && (
+          {machinesInfecte.filter(enUsage).length > 0 && (
             <Section color={THEME.LINGES_INFECTE.tone} Icon={Biohazard} title={t("machines_dashboard.section_infected")} machines={machinesInfecte}>
-              {machinesInfecte.map(carte)}
+              {machinesInfecte.filter(enUsage).map(carte)}
             </Section>
           )}
-          {machinesSecheurs.length > 0 && (
+          {machinesSecheurs.filter(enUsage).length > 0 && (
             <Section color={THEME.SECHEUR.tone} Icon={Wind} title={t("machines_dashboard.section_dryers", "Sécheurs")} machines={machinesSecheurs}>
-              {machinesSecheurs.map(carte)}
+              {machinesSecheurs.filter(enUsage).map(carte)}
             </Section>
           )}
         </>

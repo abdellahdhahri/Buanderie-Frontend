@@ -204,6 +204,15 @@ const NOTIFICATION_STYLES = {
     gradient: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
     label: "Collecte",
   },
+  LINGES_BLOQUES: {
+    Icon: Icons.AlertTriangle,
+    color: "#dc2626",
+    bg: "#fef2f2",
+    border: "#fecaca",
+    gradient: "linear-gradient(135deg, #dc2626, #b91c1c)",
+    label: "Linges bloqués",
+    lien: "/linges-bloques",
+  },
   default: {
     Icon: Icons.Bell,
     color: "#64748b",
@@ -247,6 +256,7 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     privileges = [],
     logout
   } = useAuth();
+  const notifsAutorisees = Boolean(admin) || privileges.length > 1;
   // ─── Chargement des notifications ──────────────────────────────────────
   const loadNotifications = useCallback(async () => {
     try {
@@ -330,6 +340,7 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
 
   // ─── Effects ───────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!notifsAutorisees) return undefined;
     loadNotifications();
 
     let cleanup;
@@ -360,13 +371,15 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
 
     return () => {
       if (cleanup) cleanup();
+      import("../../services/NotificationService").then((module) => module.stopNotificationService());
     };
-  }, [loadNotifications]);
+  }, [notifsAutorisees, loadNotifications]);
 
   useEffect(() => {
+    if (!notifsAutorisees) return undefined;
     const interval = setInterval(updateUnreadCount, 30000);
     return () => clearInterval(interval);
-  }, [updateUnreadCount]);
+  }, [notifsAutorisees, updateUnreadCount]);
 
   // ─── Click outside ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -391,9 +404,9 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
     if (!showNotifications) loadNotifications();
   }, [showNotifications, loadNotifications]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/process');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/auth', { replace: true });
   };
 
   const toggleTheme = () => {
@@ -525,6 +538,7 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
           </motion.button>
 
           {/* ─── BOUTON NOTIFICATIONS ──────────────────────────────── */}
+          {notifsAutorisees && (
           <div className="relative" ref={notifDropdownRef}>
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -635,8 +649,14 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
                             transition={{ delay: index * 0.04 }}
                             onMouseEnter={() => setHoveredNotif(notif.id)}
                             onMouseLeave={() => setHoveredNotif(null)}
-                            onClick={() => handleMarkAsRead(notif.id)}
-                            className="notif-item"
+                            onClick={() => {
+                              handleMarkAsRead(notif.id);
+                              if (style.lien) {
+                                setShowNotifications(false);
+                                navigate(style.lien);
+                              }
+                            }}
+                            className={`notif-item ${style.lien ? "notif-item--link" : ""}`}
                           >
                             {/* Barre latérale colorée */}
                             <div
@@ -738,6 +758,7 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
               )}
             </AnimatePresence>
           </div>
+          )}
 
           <div className="navbar__divider" />
 
@@ -823,7 +844,8 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
           POPUP DE NOTIFICATION EN TEMPS RÉEL
       ═══════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
-        {showPopup &&
+        {notifsAutorisees &&
+          showPopup &&
           currentNotification &&
           (() => {
             const style =
@@ -928,6 +950,10 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       if (currentNotification?.id) handleMarkAsRead(currentNotification.id);
+                      if (style.lien) {
+                        handleClosePopup();
+                        navigate(style.lien);
+                      }
                     }}
                     className="notif-popup__btn notif-popup__btn--primary"
                     style={{
@@ -936,7 +962,7 @@ export function Header({ sidebarOpen, setSidebarOpen }) {
                     }}
                   >
                     <Icons.Check size={12} color="white" />
-                    <span>{t("notifications.mark_as_read") || "Marquer comme lu"}</span>
+                    <span>{style.lien ? t("notifications.see", "Voir") : t("notifications.mark_as_read") || "Marquer comme lu"}</span>
                   </motion.button>
                 </div>
               </motion.div>

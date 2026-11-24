@@ -173,3 +173,7 @@
   color: #ffffff;
   box-shadow: 0 4px 10px color-mix(in srgb, var(--tone) 40%, transparent);
 }
+.lot-basket__chip--tri { background: #fef3c7 !important; color: #92400e !important; font-weight: 700; }
+.dark .lot-basket__chip--tri { background: rgba(245, 158, 11, .15) !important; color: #fcd34d !important; }
+.lot-basket__chip--dechargement { background: #ccfbf1 !important; color: #0f766e !important; font-weight: 700; }
+.dark .lot-basket__chip--dechargement { background: rgba(20, 184, 166, .15) !important; color: #5eead4 !important; }

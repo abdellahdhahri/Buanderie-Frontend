@@ -95,10 +95,16 @@
 .dc-scan.is-retrait .dc-scan__icon { background: linear-gradient(135deg, #f87171, #dc2626); }
 .dc-scan.is-retrait { border-color: #fecaca; background: linear-gradient(180deg, #fff5f5, var(--dc-surface)); }
 .dc-scan.is-retrait form input:focus { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220, 38, 38, .12) !important; }
-.dc-chip__remove { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: none; border-radius: 50%; background: var(--dc-surface-2); color: var(--dc-muted); cursor: pointer; transition: background .15s ease, color .15s ease; }
-.dc-chip__remove:hover:not(:disabled) { background: #fee2e2; color: #b91c1c; }
-.dc-chip__remove:disabled { opacity: .5; cursor: not-allowed; }
+.dc-retirer { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; border: 1px solid #fecaca; background: #fff5f5; color: #b91c1c; font-size: .74rem; font-weight: 700; cursor: pointer; transition: background .15s ease, border-color .15s ease, box-shadow .15s ease; white-space: nowrap; }
+.dc-retirer:hover:not(:disabled) { background: #fee2e2; border-color: #f87171; box-shadow: 0 3px 10px rgba(220, 38, 38, .15); }
+.dc-retirer:disabled { opacity: .5; cursor: not-allowed; }
+.dc-poses { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.dc-poses li { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; background: var(--dc-surface); border: 1px solid var(--dc-border); color: var(--dc-muted); }
+.dc-poses li code { font-weight: 700; color: var(--dc-text); }
+.dc-poses li .dc-retirer { margin-left: auto; }
+.dc-poses li small { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dc-litlinges { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--dc-surface-2); border: 1px solid var(--dc-border); }
 .dc-litlinges__title { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 800; color: var(--dc-text); }
+.dark .dc-retirer { background: rgba(239, 68, 68, .1); border-color: rgba(239, 68, 68, .35); color: #fca5a5; }
+.dark .dc-retirer:hover:not(:disabled) { background: rgba(239, 68, 68, .18); }
 .dark .dc-scan.is-retrait { border-color: rgba(239, 68, 68, .35); background: var(--dk-surface); }
-.dark .dc-chip__remove:hover:not(:disabled) { background: rgba(239, 68, 68, .16); color: #fca5a5; }

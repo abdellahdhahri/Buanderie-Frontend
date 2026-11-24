@@ -2,9 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { RefreshCw, Loader2, CloudDownload, CheckCircle2, AlertTriangle, ChevronDown, History, Settings2, Pencil, Ban, BedDouble } from "lucide-react";
-import Swal from "sweetalert2";
+import Swal from "../../kit/dialogueApi";
 import { motion, AnimatePresence } from "framer-motion";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import { SynchroniserButton } from "../../ui/SynchroniserButton";
 import { BadgeImporte, BadgeInactif } from "../Arsenal/ArsenalEmplacements";
 import { useIntegration } from "../../../hooks/useIntegration";
@@ -13,13 +12,13 @@ import { serviceService } from "../../../services/serviceService";
 import { formatDateTime } from "../../../utils/appSettings";
 
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterActions,
   ListSection, DataTable, Pagination, Badge,
   Modal, Button, FormField,
   DetailsPage, DetailsButton, KpiTiles, DetailCard, DetailGrid, InfoList, DetailText,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  RowActions, RowButton, FormGrid, Code, QuickStats,
+  FormGrid, Code, QuickStats,
 } from "../../kit";
 import { IconAjouter, IconDetails, IconModifier, IconSupprimer } from "../../kit/ActionIcons";
 
@@ -145,7 +144,6 @@ const COLUMNS_DEFAULT = [
   { key: "reference", label: "Référence externe", visible: true, searchable: true },
   { key: "description", label: "Description", visible: false, searchable: true },
   { key: "source", label: "Origine", visible: true, searchable: false },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 export default function ServiceList() {
@@ -344,15 +342,6 @@ export default function ServiceList() {
       label: t("machines.source", "Source"), sortable: true,
       render: (s) => <Badge variant={s.source === "EXTERNE" ? "info" : "default"}>{origine(s)}</Badge>,
     },
-    actions: {
-      label: t("common.actions", "Actions"), align: "center",
-      render: (s) => (
-        <RowActions>
-          <RowButton icon={Pencil} title={t("common.edit", "Modifier")} disabled={lectureSeule(s)} onClick={() => ouvrir(s)} />
-          <RowButton icon={Ban} tone="danger" title={t("services_page.deactivate", "Désactiver")} disabled={lectureSeule(s) || s.actif === false} onClick={() => desactiver(s)} />
-        </RowActions>
-      ),
-    },
   };
 
   const peutModifier = selected && !lectureSeule(selected);
@@ -361,14 +350,6 @@ export default function ServiceList() {
     <Page>
       {viewMode === "list" && (
         <>
-          <PageHeader
-            icon={<PageHeaderIcon size={40} />}
-            title={t("services_page.title", "Services")}
-            subtitle={t("services_page.subtitle", "Services de l'établissement et chambres rattachées.")}
-            total={list.sorted.length}
-            onIconClick={() => setShowColumnSettings(true)}
-          />
-
           <div style={{ marginBottom: 16 }}>
             <BandeauIntegration importes={importes} endpoint={endpoint} onSynchro={recharger} />
           </div>

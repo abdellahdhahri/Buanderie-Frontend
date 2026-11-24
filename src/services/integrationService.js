@@ -38,11 +38,19 @@ export const integrationService = {
   synchroniser: (referentiel) =>
     requete(`/synchroniser/${referentiel}`, { method: "POST" }, `Synchronisation ${referentiel} impossible`),
 
+  testerSessionCubix: () =>
+    requete("/cubix/tester-connexion", { method: "POST" }, "Test de la session CUBIX impossible"),
+
   getJournal: (referentiel) =>
     requete(referentiel ? `/journal?referentiel=${referentiel}` : "/journal", {}, "Erreur chargement du journal"),
 };
 
 // Référentiel alimenté par le système externe : mode EXTERNE et endpoint actif
+export function estImporteCubix(integration) {
+  const c = integration?.configuration;
+  return c?.mode === "EXTERNE" && c?.typeConnecteur === "CUBIX" && c?.typeAuthentification === "CUBIX";
+}
+
 export function estImporte(integration, referentiel) {
   if (integration?.configuration?.mode !== "EXTERNE") return false;
   const endpoint = (integration.endpoints || []).find((e) => e.referentiel === referentiel);

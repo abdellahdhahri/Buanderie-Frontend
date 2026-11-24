@@ -1,27 +1,26 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Swal from "sweetalert2";
+import Swal from "../../kit/dialogueApi";
 import { motion } from "framer-motion";
-import { RefreshCw, Eye, Copy, Check, Printer, PackagePlus } from "lucide-react";
+import { RefreshCw, Copy, Check, Printer, PackagePlus, Biohazard } from "lucide-react";
 import AjouterLingesModal from "./AjouterLingesModal";
 import { ServiceContext } from "../../../contextes/ServiceContext";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import { getSetting, formatDateTime } from "../../../utils/appSettings";
 import { useCircuitInfecte } from "../../../hooks/useEstablishment";
 import { getCategorieMeta } from "../../../constants/categoriesLinge";
-import { C, Glyph, tint, dot, useRelativeTime } from "../../ui/history-kit";
+import { Glyph, tint, dot, useRelativeTime } from "../../ui/history-kit";
 import {
   fetchCollectes,
   fetchCollecteDetails,
   fetchPersonnelsByIds,
 } from "../../../services/historiqueCollecteService";
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterDateRange, FilterActions,
   ListSection, DataTable, Pagination, PersonName,
   DetailsPage, DetailsButton, DetailCard, DetailGrid, InfoList, DetailText, DetailAlert, Timeline,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  Tabs, RowActions, RowButton, Code, QuickStats, day, tk,
+  Tabs, Code, QuickStats, day, tk,
 } from "../../kit";
 import { IconDetails, IconAjouter } from "../../kit/ActionIcons";
 
@@ -84,11 +83,16 @@ const IconClock = (p) => (
   </Glyph>
 );
 
+const C = {
+  teal: "#0794a4", tealDark: "#067a87", tealLight: "#0aa8ba",
+  green: "#047857", red: "#b91c1c", amber: "#b45309", slate: "#64748b", ink: "#334155",
+};
+
 const SOURCES = {
   CH:  { id: "CH",  color: C.teal,   Icon: IconRoom,    key: "source_room",    fb: "Chambre" },
-  SVC: { id: "SVC", color: C.sky,    Icon: IconService, key: "source_service", fb: "Service" },
-  UNI: { id: "UNI", color: C.violet, Icon: IconUniform, key: "source_uniform", fb: "Uniformes" },
-  COL: { id: "COL", color: C.orange, Icon: IconBundle,  key: "source_linen",   fb: "Linge de service" },
+  SVC: { id: "SVC", color: C.tealDark, Icon: IconService, key: "source_service", fb: "Service" },
+  UNI: { id: "UNI", color: C.ink,    Icon: IconUniform, key: "source_uniform", fb: "Uniformes" },
+  COL: { id: "COL", color: C.tealLight, Icon: IconBundle,  key: "source_linen",   fb: "Linge de service" },
   AUTRE: { id: "AUTRE", color: C.slate, Icon: IconCollect, key: "source_other", fb: "Collecte" },
 };
 const getSource = (c) => SOURCES[(c.numeroCollecte || "").split("-")[0].toUpperCase()] || SOURCES.AUTRE;
@@ -159,8 +163,8 @@ function EtatPill({ etat, t }) {
 }
 
 const SEGMENTS = [
-  { k: "blanc", color: C.green, key: "white_collected", fb: "Blanc" },
-  { k: "propres", color: C.sky, key: "clean_in_place", fb: "Propre en place" },
+  { k: "blanc", color: C.teal, key: "white_collected", fb: "Blanc" },
+  { k: "propres", color: C.green, key: "clean_in_place", fb: "Propre en place" },
   { k: "infectes", color: C.red, key: "infected", fb: "Infecté" },
   { k: "manquants", color: C.amber, key: "missing", fb: "Manquant" },
 ];
@@ -199,6 +203,50 @@ function ProgressRing({ pct, size = 112, color = C.teal }) {
   );
 }
 
+function BacsInfectesCard({ initial, t }) {
+  const bacs = Array.isArray(initial) ? initial : [];
+  const total = bacs.reduce((s, b) => s + (Number(b.quantiteDeclaree) || 0), 0);
+
+  return (
+    <DetailCard title={`${t("historique_collecte.infected_bins", "Bacs infectés")}${bacs.length ? ` · ${total} ${t("historique_collecte.pieces", "pièce(s)")}` : ""}`}>
+      {bacs.length === 0 ? (
+        <DetailText empty={t("historique_collecte.no_infected_bins", "Aucun bac infecté déclaré pour cette collecte.")} />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {bacs.map((b, i) => (
+            <motion.div
+              key={b.bacId ?? i}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: i * 0.05 }}
+              style={{ border: "1px solid #fecaca", borderLeft: `4px solid ${C.red}`, borderRadius: 12, padding: "10px 12px", background: "linear-gradient(135deg, #fff5f5, transparent)" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <Biohazard size={15} color={C.red} />
+                <Code>{b.codeBac || `#${b.bacId}`}</Code>
+                <span style={{ marginLeft: "auto", fontSize: ".78rem" }} className="kit-muted">{b.dateDeclaration ? formatDateTime(b.dateDeclaration) : "—"}</span>
+                <strong style={{ color: C.red, fontSize: "1.05rem" }}>{Number(b.quantiteDeclaree) || 0}</strong>
+              </div>
+              {(b.items || []).length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                  {b.items.map((it) => {
+                    const { Icon, accent } = getCategorieMeta(it.categorie);
+                    return (
+                      <span key={it.categorie} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 999, fontSize: ".78rem", fontWeight: 600, background: `${accent}1a`, color: accent }}>
+                        <Icon size={12} /> {t(`categories.${it.categorie}`, it.categorie)} · <strong>{it.quantiteDeclaree}</strong>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </DetailCard>
+  );
+}
+
 function DetailCollecte({ collecte, resume, resumeLoading, onBack, onAddLinges, agentName, serviceName, t, relative }) {
   const [copied, setCopied] = useState(false);
   const circuitInfecte = useCircuitInfecte();
@@ -234,9 +282,9 @@ function DetailCollecte({ collecte, resume, resumeLoading, onBack, onAddLinges, 
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(collecte.numeroCollecte || collecte.id)}</title>
       <style>
         *{box-sizing:border-box} body{font-family:Segoe UI,Arial,sans-serif;color:#0f172a;margin:32px;font-size:13px}
-        h1{font-size:20px;margin:0} .muted{color:#64748b} .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #0d9488;padding-bottom:12px;margin-bottom:20px}
+        h1{font-size:20px;margin:0} .muted{color:#64748b} .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #0794a4;padding-bottom:12px;margin-bottom:20px}
         .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-bottom:20px} .grid div{display:flex;justify-content:space-between;border-bottom:1px solid #e2e8f0;padding:6px 0}
-        h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#0d9488;margin:22px 0 8px}
+        h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#0794a4;margin:22px 0 8px}
         table{width:100%;border-collapse:collapse} td,th{padding:7px 8px;border-bottom:1px solid #e2e8f0;text-align:left} th{font-size:11px;text-transform:uppercase;color:#64748b}
         .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600} .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
         .total td{font-weight:800;border-top:2px solid #0f172a} .foot{margin-top:40px;display:flex;justify-content:space-between;color:#64748b;font-size:11px}
@@ -356,6 +404,12 @@ function DetailCollecte({ collecte, resume, resumeLoading, onBack, onAddLinges, 
         </DetailCard>
       </DetailGrid>
 
+      {circuitInfecte && (
+        <DetailGrid>
+          <BacsInfectesCard initial={resume?.bacsInfectes} t={t} />
+        </DetailGrid>
+      )}
+
       <DetailGrid>
         <DetailCard title={t("historique_collecte.timeline", "Chronologie")}>
           <Timeline steps={[
@@ -372,7 +426,7 @@ function DetailCollecte({ collecte, resume, resumeLoading, onBack, onAddLinges, 
             { label: t("historique_collecte.agent", "Agent"), value: agentName },
             { label: t("historique_collecte.service", "Service"), value: serviceName },
             ...(collecte.codeChambre ? [{ label: t("historique_collecte.room", "Chambre"), value: collecte.codeChambre }] : []),
-            ...(collecte.litIdSqlServer ? [{ label: t("historique_collecte.bed", "Lit"), value: `#${collecte.litIdSqlServer}` }] : []),
+            ...(collecte.litId ? [{ label: t("historique_collecte.bed", "Lit"), value: `#${collecte.litId}` }] : []),
             { label: t("historique_collecte.created_at", "Créée le"), value: formatDateTime(collecte.dateCollecte) },
           ]} />
         </DetailCard>
@@ -388,7 +442,6 @@ const COLUMNS_DEFAULT = [
   { key: "agent", label: "Agent", visible: true, searchable: true },
   { key: "progress", label: "Avancement", visible: true, searchable: false },
   { key: "etat", label: "État", visible: true, searchable: true },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 export default function HistoriqueCollecte() {
@@ -575,15 +628,6 @@ export default function HistoriqueCollecte() {
       },
     },
     etat: { label: t("historique_collecte.status", "État"), sortable: true, align: "center", render: (c) => <EtatPill etat={c.etatCollecte} t={t} /> },
-    actions: {
-      label: t("common.actions"), align: "center",
-      render: (c) => (
-        <RowActions>
-          <RowButton icon={Eye} title={t("historique_collecte.collection_details", "Détails de la collecte")} onClick={() => openDetails(c)} />
-          <RowButton icon={PackagePlus} title={t("historique_collecte.add_linens", "Ajouter des linges")} onClick={() => setAjoutPour(c)} />
-        </RowActions>
-      ),
-    },
   };
 
   const compteSource = (id) => collectes.filter((c) => getSource(c).id === id).length;
@@ -600,14 +644,6 @@ export default function HistoriqueCollecte() {
     <Page>
       {viewMode === "list" && (
         <>
-          <PageHeader
-            icon={<PageHeaderIcon size={40} />}
-            title={t("historique_collecte.title", "Historique des collectes")}
-            subtitle={t("historique_collecte.subtitle", "Traçabilité des collectes réalisées")}
-            total={list.sorted.length}
-            onIconClick={() => setShowColumnSettings(true)}
-          />
-
           <ActionBar>
             <ActionButton icon={IconDetails} label={t("historique_collecte.collection_details", "Détails de la collecte")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
             <ActionButton icon={IconAjouter} label={t("historique_collecte.add_linens", "Ajouter des linges")} variant="ajouter" disabled={!selected} onClick={() => setAjoutPour(selected)} />
@@ -702,8 +738,8 @@ export default function HistoriqueCollecte() {
           kpis={[
             { label: t("historique_collecte.kpi_total", "Collectes"), value: list.sorted.length, color: C.teal },
             { label: t("historique_collecte.kpi_done", "Terminées"), value: totaux.done, color: C.green },
-            { label: t("historique_collecte.completion", "Complétude"), value: `${totaux.attendus ? Math.min(100, Math.round((totaux.traites / totaux.attendus) * 100)) : 0}%`, color: C.sky },
-            { label: t("historique_collecte.processed", "Traitées"), value: totaux.traites, color: C.violet },
+            { label: t("historique_collecte.completion", "Complétude"), value: `${totaux.attendus ? Math.min(100, Math.round((totaux.traites / totaux.attendus) * 100)) : 0}%`, color: C.tealDark },
+            { label: t("historique_collecte.processed", "Traitées"), value: totaux.traites, color: C.ink },
           ]}
           repartitions={[
             {

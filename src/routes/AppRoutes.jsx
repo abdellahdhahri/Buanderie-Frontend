@@ -18,19 +18,23 @@ import ReclamationList from "../components/pages/Reclamation/ReclamationList";
 import TrackingPage from "../components/pages/Tracking/TrackingPage";
 import StockageArsenal from "../components/pages/StockageArsenal/StockageArsenal";
 import SuiviStock from "../components/pages/SuiviStock/SuiviStock";
+import LingesBloquesPage from "../components/pages/LingesBloques/LingesBloquesPage";
 import TriList from "../components/pages/Tri/TriList";
+import HistoriqueRemisesList from "../components/pages/HistoriqueRemises/HistoriqueRemisesList";
 import HistoriqueCollecte from "../components/pages/HistoriqueCollecte/HistoriqueCollecte";
 import MachinesDashboard from "../components/pages/Lavage/MachinesDashboard";
+import ReferentielsHub from "../components/pages/Referentiels/ReferentielsHub";
 import BacList from "../components/pages/Bac/BacList";
-import LotList from "../components/pages/Lots/LotList";
 import ImmobilisationList from "../components/pages/Immobilisation/ImmobilisationList";
 import CollageListUniforme from "../components/pages/Collecte/collecteUniforme/CollageListUniforme";
 import CollageListService from "../components/pages/Collecte/collecteService/CollageListService";
 import CollecteList from "../components/pages/Collecte/DashboardCollecte/CollecteList";
 import ProgrammeList from "../components/pages/Programmes/ProgrammeList";
+import ProduitNettoyageList from "../components/pages/ProduitsNettoyage/ProduitNettoyageList";
 import DistributionUniforme from "../components/pages/Livraison/DistributionUniforme";
 import DistributionList from "../components/pages/Livraison/DistributionList";
 import DistributionChambre from "../components/pages/Livraison/DistributionChambre";
+import AffectationAgents from "../components/pages/Agent/AffectationAgents";
 import AgentList from "../components/pages/Agent/AgentList";
 import MachineList from "../components/pages/Machine/MachineList";
 import ArsenalList from "../components/pages/Arsenal/ArsenalList";
@@ -39,11 +43,11 @@ import ChambreList from "../components/pages/Chambre/ChambreList";
 import InventaireArsenal from "../components/pages/Inventaire/InventaireArsenal";
 import RemiseLinge from "../components/pages/RemiseLinge/RemiseLinge";
 import EtapeList from "../components/pages/Etape/EtapeList";
+import Processus from "../components/pages/Processus/Processus";
 import BuanderieWorkflow from "../components/pages/Workflow/BuanderieWorkflow";
-import SacInfecteList from "../components/pages/SacInfecte/SacInfecteList";
-import ParametresPage from "../components/pages/Parametres/ParametresPage";
+import { PAGES_PARAMETRES, PageParametres, HubParametres } from "../components/pages/Parametres/ParametresPages";
+import { Navigate } from "react-router-dom";
 import ServiceList from "../components/pages/Services/ServiceList";
-import { SiCircuitInfecte } from "../components/Layout/SiCircuitInfecte";
 import { SiEtapeActive, SiEtapeInactive } from "../components/Layout/SiEtapeActive";
 import ChargementPesee from "../components/pages/Chargement/ChargementPesee";
 
@@ -85,6 +89,14 @@ export const router = createBrowserRouter([
             },
           },
           
+          {
+            path: "processus",
+            Component: Processus,
+            handle: {
+              privileges: ["LIG1501"],
+            },
+          },
+
           {
             path: "proc",
             Component: BuanderieWorkflow,
@@ -191,6 +203,13 @@ export const router = createBrowserRouter([
 
 
           {
+            path: "referentiels",
+            Component: ReferentielsHub,
+            handle: {
+              privileges: ["LIG12"],
+            },
+          },
+          {
             path: "services",
             Component: ServiceList,
             handle: {
@@ -206,24 +225,17 @@ export const router = createBrowserRouter([
           },
 
           {
-            path: "lot",
-            Component: LotList,
+            path: "bacs-tri",
+            Component: BacList,
             handle: {
-              privileges: ["LIG1202"],
+              privileges: ["LIG1201"],
             },
           },
+
 
           {
             path: "machine",
             Component: MachineList,
-            handle: {
-              privileges: ["LIG1203"],
-            },
-          },
-           {
-            path: "sacs",
-            // Masqué pour un hôtel (pas de circuit infecté)
-            element: <SiCircuitInfecte><SacInfecteList /></SiCircuitInfecte>,
             handle: {
               privileges: ["LIG1203"],
             },
@@ -235,6 +247,20 @@ export const router = createBrowserRouter([
             handle: {
               privileges: ["LIG1204"],
             },
+          },
+
+          {
+            path: "produits-nettoyage",
+            Component: ProduitNettoyageList,
+            handle: {
+              privileges: ["LIG1204"],
+            },
+          },
+
+          {
+            path: "affectation-agents",
+            Component: AffectationAgents,
+            handle: { adminOnly: true },
           },
 
           {
@@ -296,6 +322,22 @@ export const router = createBrowserRouter([
             },
           },
 
+          {
+            path: "linges-bloques",
+            Component: LingesBloquesPage,
+            handle: {
+              privileges: ["LIG1305"],
+            },
+          },
+
+
+          {
+            path: "historique-livraisons",
+            Component: HistoriqueRemisesList,
+            handle: {
+              privileges: ["LIG1404"],
+            },
+          },
 
           {
             path: "Historiques",
@@ -414,12 +456,13 @@ export const router = createBrowserRouter([
             },
           },
 
-          {
-            // Écran Paramètres : réservé à l'administrateur (tous les privilèges)
-            path: "parametres",
-            Component: ParametresPage,
+
+          { path: "parametres", element: <HubParametres />, handle: { adminOnly: true } },
+          ...PAGES_PARAMETRES.map((page) => ({
+            path: `parametres/${page.path}`,
+            element: <PageParametres page={page} />,
             handle: { adminOnly: true },
-          },
+          })),
 
         ],
       },

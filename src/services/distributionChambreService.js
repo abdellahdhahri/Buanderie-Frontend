@@ -220,13 +220,13 @@ export const CATEGORIES = {
 export const getCategorie = (id) => {
   return CATEGORIES[id] || { label: id, emoji: "📦", color: "#64748b", bg: "#f1f5f9", border: "#e2e8f0" };
 };
-export const retirerLingeDistribue = async (codeOuTag) => {
+export const retirerLingeDistribue = async (codeOuTag, matriculeAgent) => {
   const token = getTokenFromStorage();
-  const agent = getAgentFromStorage();
-  if (!agent) {
+  const matricule = matriculeAgent || getAgentFromStorage()?.matricule;
+  if (!matricule) {
     throw new Error("Aucun agent connecté");
   }
-  const url = `${API_URL}/api/distribution/retirer?codeOuTag=${encodeURIComponent(codeOuTag)}&matriculeAgent=${encodeURIComponent(agent.matricule || agent.codeBarre)}`;
+  const url = `${API_URL}/api/distribution/retirer?codeOuTag=${encodeURIComponent(codeOuTag)}&matriculeAgent=${encodeURIComponent(matricule)}`;
   const response = await fetch(url, {
     method: "POST",
     headers: {

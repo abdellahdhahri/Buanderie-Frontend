@@ -14,16 +14,17 @@ export function ResumeCard({ title, subtitle, compteurs, minColWidth = 110, chil
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
       style={{
-        background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
+        background: "#ffffff",
         borderRadius: 20, padding: 32,
-        border: "2px solid #86efac", textAlign: "center",
+        border: "1px solid #e2e8f0", borderTop: "4px solid #0794a4", textAlign: "center",
+        boxShadow: "0 4px 20px rgba(15,23,42,0.04)",
         position: "relative", overflow: "hidden",
       }}
     >
       <div style={{
         position: "absolute", top: 0, right: 0,
         width: 140, height: 140,
-        background: "radial-gradient(circle, rgba(16,185,129,0.12), transparent)",
+        background: "radial-gradient(circle, rgba(7,148,164,0.08), transparent)",
         borderRadius: "50%", transform: "translate(60px, -60px)",
       }} />
 
@@ -33,23 +34,23 @@ export function ResumeCard({ title, subtitle, compteurs, minColWidth = 110, chil
         transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.2 }}
         style={{
           width: 80, height: 80, borderRadius: "50%",
-          background: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
+          background: "#e6f6f8",
           display: "flex", alignItems: "center", justifyContent: "center",
           margin: "0 auto 16px",
-          boxShadow: "0 12px 32px rgba(16,185,129,0.25)",
-          border: "2px solid #86efac",
+          boxShadow: "0 8px 24px rgba(7,148,164,0.18)",
+          border: "4px solid #ffffff",
         }}
       >
-        <Icons.CheckCheck size={38} color="#15803d" strokeWidth={2.5} />
+        <Icons.CheckCheck size={38} color="#0794a4" strokeWidth={2.5} />
       </motion.div>
 
       <h2 style={{
-        fontSize: 24, fontWeight: 800, color: "#15803d",
+        fontSize: 24, fontWeight: 800, color: "#0f172a",
         margin: 0, marginBottom: 6, letterSpacing: "-0.02em",
       }}>
         {title}
       </h2>
-      <p style={{ fontSize: 13.5, color: "#059669", marginBottom: 22, fontWeight: 600 }}>
+      <p style={{ fontSize: 13.5, color: "#067a87", marginBottom: 22, fontWeight: 600 }}>
         {subtitle}
       </p>
 
@@ -57,9 +58,8 @@ export function ResumeCard({ title, subtitle, compteurs, minColWidth = 110, chil
         display: "grid",
         gridTemplateColumns: `repeat(auto-fit, minmax(${minColWidth}px, 1fr))`,
         gap: 12, marginBottom: 22,
-        background: "white", borderRadius: 16, padding: 18,
-        boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
-        border: "1px solid #bbf7d0",
+        background: "#f8fafc", borderRadius: 16, padding: 18,
+        border: "1px solid #eef2f6",
       }}>
         {compteurs.map(({ icon, label, value, color, bg }, i) => (
           <motion.div

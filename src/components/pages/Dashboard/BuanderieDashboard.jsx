@@ -52,6 +52,7 @@ const CHILD_KEYS = {
   "Statistiques": "Statistiques",
   "Réclamations": "Réclamations",
   "Historique collectes": "Historique collectes",
+  "Linges bloqués": "Linges bloqués",
 };
 
 function DashboardBuanderieInner() {
@@ -112,6 +113,7 @@ function DashboardBuanderieInner() {
           <p>{t('dashboard_buanderie.welcome')}</p>
         </div>
 
+
         {/* ─── Grille des cartes ───────────────────────────────────────────── */}
         <div className="dashboard-grid">
           {menus.map((item) => {
@@ -125,6 +127,7 @@ function DashboardBuanderieInner() {
                 className="dashboard-card"
               >
                 <div className="card-inner">
+                  {!hasChildren && item.path && <Link to={item.path} className="card-link" aria-label={itemLabel} />}
                   {/* Face avant */}
                   <div className="card-front">
                     <div className="icon-wrapper">

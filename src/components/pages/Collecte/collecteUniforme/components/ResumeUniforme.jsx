@@ -11,10 +11,10 @@ export function ResumeUniforme({ resume, personnelNom, onAutreMedecin, onTermine
   const { t } = useTranslation();
 
   const compteurs = [
-    { icon: <Icons.CheckCheck size={22} color="#15803d" strokeWidth={2.5} />, label: t('collecte_uniforme.white'), value: resume.nbBlancs, color: "#15803d", bg: "#f0fdf4" },
-    { icon: <Icons.Biohazard size={22} color="#dc2626" strokeWidth={2.2} />, label: t('collecte_uniforme.infected'), value: resume.nbInfectes, color: "#dc2626", bg: "#fef2f2" },
-    { icon: <Icons.CheckCircle size={22} color="#0284c7" strokeWidth={2.5} />, label: t('collecte_uniforme.clean'), value: resume.nbPropres, color: "#0284c7", bg: "#f0f9ff" },
-    { icon: <Icons.AlertTriangle size={22} color="#d97706" strokeWidth={2.2} />, label: t('collecte_uniforme.missing_short'), value: resume.nbManquants, color: "#d97706", bg: "#fffbeb" },
+    { icon: <Icons.CheckCheck size={22} color="#0794a4" strokeWidth={2.5} />, label: t('collecte_uniforme.white'), value: resume.nbBlancs, color: "#0794a4", bg: "#ffffff" },
+    { icon: <Icons.Biohazard size={22} color="#b91c1c" strokeWidth={2.2} />, label: t('collecte_uniforme.infected'), value: resume.nbInfectes, color: "#b91c1c", bg: "#ffffff" },
+    { icon: <Icons.CheckCircle size={22} color="#047857" strokeWidth={2.5} />, label: t('collecte_uniforme.clean'), value: resume.nbPropres, color: "#047857", bg: "#ffffff" },
+    { icon: <Icons.AlertTriangle size={22} color="#b45309" strokeWidth={2.2} />, label: t('collecte_uniforme.missing_short'), value: resume.nbManquants, color: "#b45309", bg: "#ffffff" },
   ];
 
   return (
@@ -29,7 +29,7 @@ export function ResumeUniforme({ resume, personnelNom, onAutreMedecin, onTermine
           onClick={onAutreMedecin}
           icon={<Icons.UserMd size={15} color="white" strokeWidth={2.5} />}
           label={t('collecte_uniforme.another_doctor')}
-          type="sky"
+          type="primary"
         />
         <ActionButton
           onClick={onTerminer}

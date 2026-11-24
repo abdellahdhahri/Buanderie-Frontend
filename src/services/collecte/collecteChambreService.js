@@ -126,7 +126,7 @@ export const scannerLit = async (collecteId, litId) => {
   return handleResponse(response);
 };
 
-// ─── 5a. Traiter un lit avec un contenant (BAC ou SAC) ─────────────────────
+// ─── 5a. Traiter un lit avec un contenant (bac blanc ou bac infecté) ────────
 // ⚠️ Le backend utilise un seul endpoint /lit avec codeContenant
 export const traiterLitAvecContenant = async (collecteId, litId, codeContenant) => {
   if (!collecteId) throw new Error("Collecte obligatoire");
@@ -159,13 +159,13 @@ export const annulerCollecteVide = async (collecteId) => {
 export const declarerLingeInfecte = async (
   collecteId,
   lingeId,
-  codeSacInfecte
+  codeBacInfecte
 ) => {
   const response = await fetch(
     `${API_URL}/api/collecte/chambre/declarer-linge-infecte` +
     `?collecteId=${encodeURIComponent(collecteId)}` +
     `&lingeId=${encodeURIComponent(lingeId)}` +
-    `&codeSacInfecte=${encodeURIComponent(codeSacInfecte)}`,
+    `&codeBacInfecte=${encodeURIComponent(codeBacInfecte)}`,
     {
       method: "POST",
       headers: {

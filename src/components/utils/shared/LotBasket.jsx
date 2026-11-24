@@ -2,7 +2,9 @@ import React, { useId } from "react";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import "./LotBasket.css";
+import GroupeLavageBadge from "./GroupeLavageBadge";
 import { getSetting } from "../../../utils/appSettings";
+import { estBacDechargement, libelleSourceBac } from "../../../services/bacTriService";
 
 // Seuil « lot plein » réglé dans Paramètres › Seuils (orange 20 points avant)
 export const getSeuilPlein = () => Number(getSetting("thresholds.lotFullPct")) || 80;
@@ -125,7 +127,7 @@ export function LotBasketCard({ lot, onSelect, t, selected = false, sansCapacite
   const pct = capacite > 0 ? (poids / capacite) * 100 : null;
   const tone = getFillTone(pct);
   const estPlein = pct != null && pct >= getSeuilPlein();
-  const nbPieces = lot.nbPieces ?? lot.quantite;
+  const nbPieces = lot.nbPieces ?? lot.quantite ?? lot.quantiteDeclaree;
 
   return (
     <button
@@ -145,7 +147,11 @@ export function LotBasketCard({ lot, onSelect, t, selected = false, sansCapacite
       <LotBasketSvg code={lot.codeLot} poids={poids} capacite={capacite} />
 
       <div className="lot-basket__meta">
-        <span className="lot-basket__chip">{t(`categories.${lot.categorie}`, lot.categorie || "—")}</span>
+        {lot.enTri && <span className="lot-basket__chip lot-basket__chip--tri">{t("lot_status.EN_TRI", "En tri")}</span>}
+        {estBacDechargement(lot) && <span className="lot-basket__chip lot-basket__chip--dechargement">{libelleSourceBac(t, lot)}</span>}
+        {(lot.groupeLavage || lot.etat === "VIDE") && (
+          <GroupeLavageBadge groupe={lot.groupeLavage} libre={lot.etat === "VIDE" || !lot.groupeLavage} />
+        )}
         {lot.typeCollecte && <span className="lot-basket__chip">{lot.typeCollecte}</span>}
         {nbPieces != null && <span className="lot-basket__chip">{nbPieces} {t("lavage.items")}</span>}
         {lot.poidsBalance != null && (

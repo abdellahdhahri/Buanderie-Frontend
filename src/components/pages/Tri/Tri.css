@@ -1,72 +1,50 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   TRI — complète Reception.css (classes rc-*) pour les éléments propres au tri.
-   ═══════════════════════════════════════════════════════════════════════════ */
+.tr-loading { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--rc-muted); }
 
-/* Lot affecté : panier SVG + informations */
-.tr-lot {
-  --k: var(--rc-ok);
-  display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 20px; align-items: center;
-  padding: 18px 20px; position: relative; overflow: hidden;
-  border-color: color-mix(in srgb, var(--k) 30%, var(--rc-border));
-  background:
-    radial-gradient(420px 180px at 0% 50%, color-mix(in srgb, var(--k) 9%, transparent), transparent 70%),
-    var(--rc-surface);
+.tr-current {
+  display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+  border: 1px solid var(--rc-border); border-left: 4px solid var(--rc); border-radius: 8px;
+  background: var(--rc-soft);
 }
-.tr-lot::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--k); }
-.tr-lot .lot-basket__svg { width: 150px; height: auto; display: block; }
-.tr-lot__fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 12px; }
-.tr-field { padding: 8px 10px; border-radius: 10px; background: var(--rc-surface-2); border: 1px solid var(--rc-border); }
-.tr-field small { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--rc-muted); }
-.tr-field b { font-size: 13.5px; }
-@media (max-width: 640px) {
-  .tr-lot { grid-template-columns: 1fr; }
-  .tr-lot .lot-basket__svg { margin: 0 auto; width: 130px; }
+.tr-current__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.tr-current__text code { font: 800 18px var(--rc-mono); color: var(--rc-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-current__text small { font-size: 12.5px; color: var(--rc-muted); }
+
+.tr-ticket__pill { margin-left: auto; background: color-mix(in srgb, #fff 18%, transparent); color: #fff; border-color: color-mix(in srgb, #fff 45%, transparent); }
+.tr-ticket__body {
+  display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 22px; align-items: center;
+  padding: 20px 18px;
+}
+.tr-ticket__basket .lot-basket__svg { width: 150px; height: auto; display: block; }
+.tr-ticket__info { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.tr-ticket__meta { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+.tr-ticket__meta dd small { font-size: 12px; font-weight: 600; color: var(--rc-muted); }
+.tr-ticket__small { font-size: 14px !important; font-weight: 700 !important; padding-top: 4px; }
+@media (max-width: 900px) {
+  .tr-ticket__body { grid-template-columns: 1fr; }
+  .tr-ticket__basket .lot-basket__svg { margin: 0 auto; width: 130px; }
 }
 
-/* Type de collecte */
-.tr-type { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; }
+.tr-type { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 4px; font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .tr-type i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.tr-type--blanc { background: color-mix(in srgb, var(--rc-ok) 11%, transparent); color: var(--rc-ok); }
-.tr-type--infecte { background: color-mix(in srgb, var(--rc-sac) 11%, transparent); color: var(--rc-sac); }
+.tr-type--blanc { background: color-mix(in srgb, var(--rc-ok) 12%, transparent); color: var(--rc-ok); border: 1px solid color-mix(in srgb, var(--rc-ok) 30%, transparent); }
+.tr-type--infecte { background: color-mix(in srgb, var(--rc-sac) 12%, transparent); color: var(--rc-sac); border: 1px solid color-mix(in srgb, var(--rc-sac) 30%, transparent); }
 
-/* Historique : linge → lot */
 .tr-hist .rc-item__foot { justify-content: space-between; }
 .tr-route { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; color: var(--rc-text); }
 .tr-route svg { color: var(--rc-muted); }
-.tr-route code { padding: 1px 7px; border-radius: 6px; background: var(--rc-surface-2); border: 1px solid var(--rc-border); font-size: 11px; }
+.tr-route code { padding: 1px 7px; border-radius: 4px; background: var(--rc-surface-2); border: 1px solid var(--rc-border); font: 700 11px var(--rc-mono); }
 .tr-time { font-size: 11px; color: var(--rc-muted); font-variant-numeric: tabular-nums; }
 
-/* Lots de la session (colonne de droite) */
-.tr-lots { display: flex; flex-direction: column; gap: 8px; }
-.tr-lots__item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--rc-border); background: var(--rc-surface); }
-.tr-lots__item.is-last { border-color: color-mix(in srgb, var(--rc-ok) 40%, transparent); background: color-mix(in srgb, var(--rc-ok) 5%, var(--rc-surface)); }
-.tr-lots__glyph { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--rc-soft); flex-shrink: 0; }
-.tr-lots__main { flex: 1; min-width: 0; }
-.tr-lots__main code { display: block; font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tr-lots__main small { font-size: 11.5px; color: var(--rc-muted); }
-.tr-lots__n { text-align: right; font-size: 12px; font-weight: 700; color: var(--rc); white-space: nowrap; }
-.tr-lots__n small { display: block; font-weight: 500; color: var(--rc-muted); }
+.tr-log .rc-log__row { grid-template-columns: minmax(0, 1fr) 54px 54px 64px; }
+.tr-log .rc-log__row > :last-child { justify-self: end; }
+.tr-lots__validate {
+  width: 34px; height: 30px; display: grid; place-items: center; cursor: pointer;
+  border-radius: 6px; border: 1px solid var(--rc); background: var(--rc-soft); color: var(--rc);
+  transition: background .15s, color .15s;
+}
+.tr-lots__validate:hover { background: var(--rc); color: var(--rc-on); }
 
-/* Fenêtre de choix du lot */
-.tr-modal {
-  position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px;
-  background: rgba(15, 23, 42, .55); backdrop-filter: blur(4px);
-}
-.tr-modal__box {
-  width: 100%; max-width: 780px; max-height: 90vh; overflow-y: auto;
-  background: var(--rc-surface); border: 1px solid var(--rc-border); border-radius: 22px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, .3);
-}
-.tr-modal__box.is-narrow { max-width: 580px; }
-.tr-modal__head { display: flex; align-items: center; gap: 14px; padding: 20px 22px; border-bottom: 1px solid var(--rc-border); position: sticky; top: 0; background: var(--rc-surface); z-index: 1; }
-.tr-modal__head h2 { margin: 0; font-size: 17px; font-weight: 800; }
-.tr-modal__head p { margin: 3px 0 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--rc-muted); }
-.tr-modal__close { margin-left: auto; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--rc-surface-2) !important; color: var(--rc-muted); flex-shrink: 0; }
-.tr-modal__close:hover { color: var(--rc-sac); }
-.tr-modal__body { padding: 20px 22px 24px; }
-.tr-modal__hint { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--rc-muted); margin-bottom: 14px; }
-.tr-validate { margin-top: 14px; color: var(--rc); border-color: color-mix(in srgb, var(--rc) 35%, transparent); background: color-mix(in srgb, var(--rc) 6%, var(--rc-surface)); font-weight: 700; }
-.tr-validate:hover { background: var(--rc); color: #fff; }
-.tr-lots__validate { width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--rc) 35%, transparent); background: color-mix(in srgb, var(--rc) 7%, var(--rc-surface)); color: var(--rc); cursor: pointer; transition: background .18s, color .18s, transform .15s; }
-.tr-lots__validate:hover { background: var(--rc); color: #fff; transform: translateY(-1px); }
-.rc .modern-table td, .rc .modern-table th { font-size: 12.5px; }
+.tr-modal__scan { margin: 0 0 14px; }
+.tr-choix .tr-modal__body { padding: 0; }
+.tr-modal__hint { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--color-muted); margin-bottom: 14px; }
+.tr .modern-table td, .tr .modern-table th { font-size: 12.5px; }

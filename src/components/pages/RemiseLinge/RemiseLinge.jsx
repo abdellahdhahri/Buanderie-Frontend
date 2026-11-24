@@ -1,158 +1,18 @@
 import React, { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import {
-  Check,
-  CircleCheck,
-  Flag,
-  History,
-  Hourglass,
-  LoaderCircle,
-  Package,
-  PackageCheck,
-  PackagePlus,
-  RefreshCw,
-  RotateCcw,
-  TriangleAlert,
-  Truck,
-  User,
-  Users,
-  ScanBarcode,
-  Undo2,
-} from "lucide-react";
-import ScanInput from "../../utils/shared/ScanInput";
+import { Flag, History, PackagePlus, RefreshCw, ScanBarcode, TriangleAlert, Truck, Undo2 } from "lucide-react";
 import { RemiseLingeProvider, useRemiseLinge } from "../../../contextes/RemiseLingeContext";
 import { formatDate, getRemiseStatutConfig } from "../../../services/remiseLingeService";
 import { useServiceName } from "../../../hooks/useServiceName";
 import ApercuRemise, { CollectesConcernees } from "./ApercuRemise";
 import { accentOf } from "../StockageArsenal/arsenalUtils";
-import { Illustration } from "../StockageArsenal/illustrations";
-import "../Linge/WorkflowList.css";
-import "../StockageArsenal/StockageArsenal.css";
-import "./RemiseLinge.css";
-
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
+import { getCategorieMeta } from "../../../constants/categoriesLinge";
+import { ConfirmDialog } from "../../kit";
 import {
-  Page, PageHeader, ActionBar, ActionButton, DataTable, Code, Badge, VueSwitch, useVue, RowActions, RowButton, ConfirmDialog,
-} from "../../kit";
-
-function Meter({ value, label }) {
-  const pct = Math.min(Math.max(value, 0), 100);
-  return (
-    <div className="sa-meter" style={{ marginBottom: 18 }}>
-      <div className="sa-meter__row">
-        <span>{label}</span>
-        <strong>{pct} %</strong>
-      </div>
-      <div className="sa-meter__bar">
-        <span style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function Kpi({ label, value, sub, Icon, color }) {
-  return (
-    <div className="rl-kpi" style={color ? { "--k": color } : undefined}>
-      <div className="rl-kpi__top">
-        <span className="rl-kpi__label">{label}</span>
-        <span className="rl-kpi__icon"><Icon size={16} /></span>
-      </div>
-      <div className="rl-kpi__value">{value}</div>
-      {sub && <div className="rl-kpi__sub">{sub}</div>}
-    </div>
-  );
-}
-
-function CategorieRow({ categorie, collecte, livre, reste }) {
-  const { t } = useTranslation();
-  const isComplete = reste === 0 && collecte > 0;
-  const pct = collecte > 0 ? Math.round((livre / collecte) * 100) : 0;
-  return (
-    <div className={`rl-cat ${isComplete ? "is-done" : ""}`} style={{ "--c": accentOf(categorie) }}>
-      <span className="rl-cat__name">
-        <i className="sa-dot" />
-        {t(`categories.${categorie}`, categorie)}
-      </span>
-      <div className="rl-cat__bar"><span style={{ width: `${pct}%` }} /></div>
-      <span className="rl-cat__nums">
-        <span><b>{livre}</b> / {collecte}</span>
-        {isComplete ? (
-          <span className="rl-pill is-done">✓ {t("remise.complete")}</span>
-        ) : (
-          <span className="rl-pill is-left">{t("remise.n_left", { count: reste })}</span>
-        )}
-      </span>
-    </div>
-  );
-}
-
-function ScanFeedback({ status }) {
-  const { t } = useTranslation();
-  if (!status) return null;
-  if (status.loading) {
-    return (
-      <div className="rl-feedback is-loading">
-        <LoaderCircle size={16} className="animate-spin" />
-        <strong>{t("remise.scanning")}</strong>
-        <code>{status.code}</code>
-      </div>
-    );
-  }
-  if (status.success?.annule) {
-    return (
-      <div className="rl-feedback is-loading">
-        <Undo2 size={16} />
-        <strong>{t("remise.linen_cancelled")}</strong>
-        <code>{status.success.codeBarre}</code>
-        <span>· {t(`categories.${status.success.categorie}`, status.success.categorie)}</span>
-      </div>
-    );
-  }
-  if (status.success) {
-    return (
-      <div className="rl-feedback is-ok">
-        <CircleCheck size={16} />
-        <strong>{t("remise.linen_delivered_success")}</strong>
-        <code>{status.success.codeBarre}</code>
-        <span>· {t(`categories.${status.success.categorie}`, status.success.categorie)}</span>
-      </div>
-    );
-  }
-  if (status.error) {
-    return (
-      <div className="rl-feedback is-ko">
-        <TriangleAlert size={16} />
-        <strong>{t("common.error")}</strong>
-        <span>{status.error}</span>
-      </div>
-    );
-  }
-  return null;
-}
-
-function TrackItem({ icon, label, value, meta, state, action, onAction }) {
-  const { t } = useTranslation();
-  return (
-    <li className={`sa-track__item is-${state}`} aria-current={state === "active" ? "step" : undefined}>
-      <span className="sa-track__dot">{state === "done" ? <Check size={13} strokeWidth={3} /> : icon}</span>
-      <div className="sa-track__body">
-        <span className="sa-track__label">{label}</span>
-        {value ? (
-          <span className="sa-track__value">{value}</span>
-        ) : (
-          <span className="sa-track__placeholder">{state === "active" ? t("remise.in_progress") : "—"}</span>
-        )}
-        {meta && <span className="sa-track__meta">{meta}</span>}
-      </div>
-      {action && (
-        <button type="button" className="sa-link" onClick={onAction}>
-          {action}
-        </button>
-      )}
-    </li>
-  );
-}
+  ToolbarCollecte, EtapesCollecte, PosteScan, PastilleEtat, LigneCollecte, BoutonIcone, BilanCollecte, nomAgentCollecte,
+} from "../Collecte/shared/CollecteRc";
+import "./RemiseLinge.css";
 
 const ORDRE = ["AGENT_REMISE", "AGENT_COLLECTE", "APERCU", "SCAN"];
 
@@ -191,8 +51,6 @@ function RemiseLingeInner() {
   const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
   const [modeAnnulation, setModeAnnulation] = useState(false);
   const [aAnnuler, setAAnnuler] = useState(null);
-  const [vueRemis, setVueRemis] = useVue("livraison.remis");
-  const [vueCategories, setVueCategories] = useVue("livraison.categories");
   const scanInputRef = useRef(null);
 
   const showAlert = useCallback((title, text, icon = "info") => {
@@ -311,300 +169,205 @@ function RemiseLingeInner() {
     (c) => serviceRemise == null || String(c.serviceId) === String(serviceRemise)
   ).length;
 
-  const STAGES = {
-    AGENT_REMISE: { title: t("remise.stage_agent_remise_title"), text: t("remise.stage_agent_remise_text"), art: "badge" },
-    AGENT_COLLECTE: { title: t("remise.stage_agent_collecte_title"), text: t("remise.stage_agent_collecte_text"), art: "badge" },
-    APERCU: { title: t("remise.stage_apercu_title"), text: t("remise.stage_apercu_text"), art: "remise" },
-    SCAN: isCloturee
-      ? { title: t("remise.delivery_completed"), text: t("remise.stage_done_text"), art: "done" }
-      : { title: t("remise.stage_scan_title"), text: t("remise.stage_scan_text"), art: "count" },
+  const nomAgent = nomAgentCollecte(agentRemise);
+  const faites = [Boolean(agentRemise), Boolean(agentCollecte), at > 2 || isCloturee, isCloturee];
+  const etapes = [
+    t("remise.step_delivery_agent", "Agent de remise"),
+    t("remise.step_collection_agent", "Agent de collecte"),
+    t("remise.service", "Service"),
+    t("remise.delivery", "Remise des linges"),
+  ];
+
+  const statutScan = !scanStatus ? null
+    : scanStatus.loading ? { loading: true, code: scanStatus.code }
+      : scanStatus.error ? { error: scanStatus.error }
+        : scanStatus.success ? {
+          success: {
+            message: scanStatus.success.annule ? t("remise.linen_cancelled") : t("remise.linen_delivered_success"),
+            detail: `${scanStatus.success.codeBarre} · ${t(`categories.${scanStatus.success.categorie}`, scanStatus.success.categorie)}`,
+          },
+        } : null;
+
+  const heure = (d) => d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  const statutRemise = remise ? getRemiseStatutConfig(remise.etat).label : null;
+
+  const chipsPoste = etape === "SCAN" ? (
+    <>
+      <button type="button" className={`rc-btn rc-btn--sm ${!modeAnnulation ? "is-on" : ""}`} onClick={() => setModeAnnulation(false)} onMouseDown={(e) => e.preventDefault()}>
+        <ScanBarcode size={13} /> {t("remise.mode_deliver")}
+      </button>
+      <button type="button" className={`rc-btn rc-btn--sm ${modeAnnulation ? "is-on rl-cancel-on" : ""}`} onClick={() => setModeAnnulation(true)} onMouseDown={(e) => e.preventDefault()}>
+        <Undo2 size={13} /> {t("remise.mode_cancel")}
+      </button>
+    </>
+  ) : null;
+
+  const extraToolbar = (
+    <>
+      {remise && <span className="rc-mode"><Truck size={13} /> {remise.numeroLivraison} · {statutRemise}</span>}
+      <button type="button" className="rc-btn" disabled={loading || etape !== "SCAN"} onClick={rafraichir}>
+        <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> {t("common.refresh")}
+      </button>
+      <button type="button" className="rc-btn" disabled={loading || etape !== "SCAN"} onClick={() => { setModeAnnulation(false); nouvelleRemise(); }}>
+        <PackagePlus size={15} /> {t("remise.new_delivery")}
+      </button>
+      <button type="button" className={`rc-btn ${historiqueOuvert ? "is-on" : ""}`} disabled={etape !== "SCAN"} onClick={() => setHistoriqueOuvert((o) => !o)}>
+        <History size={15} /> {historiqueOuvert ? t("remise.hide_history") : t("remise.show_history")} ({remises.length})
+      </button>
+    </>
+  );
+
+  const ligneCategorie = (item) => {
+    const { Icon, accent } = getCategorieMeta(item.categorie);
+    const collecte = item.quantiteCollectee || 0;
+    const livre = item.quantiteRemise || 0;
+    const reste = Math.max(collecte - livre, 0);
+    const complet = reste === 0 && collecte > 0;
+    const pct = collecte > 0 ? Math.round((livre / collecte) * 100) : 0;
+    return (
+      <LigneCollecte
+        key={item.categorie}
+        icone={<Icon size={18} strokeWidth={2} />}
+        accent={accent}
+        titre={t(`categories.${item.categorie}`, item.categorie)}
+        code={`${t("remise.total_to_deliver")} ${collecte}`}
+        estompe={complet}
+        etat={complet
+          ? <PastilleEtat tone="ok">{t("remise.complete")}</PastilleEtat>
+          : <PastilleEtat tone="warn">{t("remise.n_left", { count: reste })}</PastilleEtat>}
+        actions={(
+          <span className="cl-mini">
+            <span className="cl-mini__bar"><i style={{ width: `${pct}%` }} /></span>
+            <strong>{livre}<small>/{collecte}</small></strong>
+          </span>
+        )}
+      />
+    );
   };
-  const stage = STAGES[etape] || STAGES.AGENT_REMISE;
+
+  const ligneRemise = (l) => {
+    const { Icon, accent } = getCategorieMeta(l.categorie);
+    return (
+      <LigneCollecte
+        key={l.codeBarre}
+        icone={<Icon size={18} strokeWidth={2} />}
+        accent={accent}
+        titre={t(`categories.${l.categorie}`, l.categorie)}
+        code={l.codeBarre}
+        etat={<PastilleEtat tone="muted">{heure(l.date)}</PastilleEtat>}
+        actions={<BoutonIcone icone={<Undo2 size={16} strokeWidth={2.4} />} titre={t("remise.cancel_linen")} tone="danger" disabled={loading} onClick={() => setAAnnuler(l.codeBarre)} />}
+      />
+    );
+  };
 
   return (
-    <Page className="sa-page">
-      <PageHeader
-        icon={<PageHeaderIcon size={40} />}
-        title={t('remise.title')}
-        subtitle={agentRemise
-          ? `${t('remise.agent')} : ${agentRemise.nomPrenom || agentRemise.nom}`
-          : t('remise.no_agent_connected')}
-        right={remise ? <span className="rl-num"><Truck size={12} /> {remise.numeroLivraison}</span> : null}
-        badge={remise ? getRemiseStatutConfig(remise.etat).label : undefined}
-      />
+    <div className="collecte-container cr-page rc cc">
+      <ToolbarCollecte agent={agentRemise} extra={extraToolbar} onReset={() => { setModeAnnulation(false); resetAll(); }} resetLabel={t("common.reset")} />
+      <EtapesCollecte etapes={etapes} faites={faites} label={t("remise.track_title")} />
 
-      <ActionBar>
-        <ActionButton
-          icon={<RefreshCw size={18} className={loading ? "animate-spin" : ""} />}
-          label={t('common.refresh')}
-          variant="details"
-          disabled={loading || etape !== "SCAN"}
-          onClick={rafraichir}
-        />
-        <ActionButton
-          icon={<PackagePlus size={18} />}
-          label={t('remise.new_delivery')}
-          variant="ajouter"
-          disabled={loading || etape !== "SCAN"}
-          onClick={() => { setModeAnnulation(false); nouvelleRemise(); }}
-        />
-        <ActionButton
-          icon={<History size={18} />}
-          label={`${historiqueOuvert ? t('remise.hide_history') : t('remise.show_history')} (${remises.length})`}
-          variant="imprimer"
-          disabled={etape !== "SCAN"}
-          onClick={() => setHistoriqueOuvert((o) => !o)}
-        />
-        <ActionButton
-          icon={<RotateCcw size={18} />}
-          label={t('common.reset')}
-          variant="supprimer"
-          onClick={() => { setModeAnnulation(false); resetAll(); }}
-        />
-      </ActionBar>
+      {etape === "APERCU" && apercu ? (
+        <div className="rc-main">
+          <ApercuRemise
+            apercu={apercu}
+            agentCollecte={agentCollecte}
+            serviceChoisi={serviceChoisi}
+            onChoisirService={choisirService}
+            onCreer={handleCreerRemise}
+            onChangerAgent={changerAgentCollecte}
+            loading={loading}
+          />
+        </div>
+      ) : (
+        <div className={etape === "SCAN" && remise ? "rc-layout" : ""}>
+          <div className="rc-main">
+            <PosteScan
+              titre={t("remise.title")}
+              chips={chipsPoste}
+              infecte={etape === "SCAN" && modeAnnulation}
+              alerte={!agentRemise ? (
+                <div className="cc-alert"><TriangleAlert size={18} /><span>{t("remise.no_agent_connected")}</span></div>
+              ) : null}
+              scanInputRef={scanInputRef}
+              value={scanValue}
+              onChange={setScanValue}
+              onSubmit={handleScan}
+              borderColor={etape === "SCAN" && modeAnnulation ? "#e03131" : isCloturee ? "#cbd5e1" : !agentRemise ? "#e03131" : "#0d9488"}
+              disabled={isDisabled}
+              scanStatus={statutScan}
+            />
 
-      <div className="sa-flow">
-        <aside className="sa-track" aria-label={t('remise.track_title')}>
-          <div className="sa-track__title">{t('remise.track_title')}</div>
-          <ol>
-            <TrackItem
-              icon={<User size={13} />}
-              label={t('remise.step_delivery_agent')}
-              value={agentRemise ? agentRemise.nomPrenom || agentRemise.nom : null}
-              meta={agentRemise ? agentRemise.codeBarre || agentRemise.matricule : null}
-              state={agentRemise ? "done" : "active"}
-            />
-            <TrackItem
-              icon={<Users size={13} />}
-              label={t('remise.step_collection_agent')}
-              value={agentCollecte ? agentCollecte.nomPrenom || agentCollecte.nom : null}
-              meta={agentCollecte ? agentCollecte.codeBarre || agentCollecte.matricule : null}
-              state={stateOf("AGENT_COLLECTE")}
-              action={etape === "APERCU" ? t('common.edit') : null}
-              onAction={changerAgentCollecte}
-            />
-            <TrackItem
-              icon={<Package size={13} />}
-              label={t('remise.service')}
-              value={serviceRemise != null ? serviceName(serviceRemise) : null}
-              meta={etape === "APERCU" && serviceRemise != null ? t('remise.n_collectes', { count: nbCollectesService }) : null}
-              state={stateOf("APERCU")}
-            />
-            <TrackItem
-              icon={<PackageCheck size={13} />}
-              label={t('remise.delivery')}
-              value={remise?.numeroLivraison}
-              meta={remise ? t('remise.n_delivered_of', { done: totaux.remis, total: totaux.collecte }) : null}
-              state={stateOf("SCAN", isCloturee)}
-            />
-          </ol>
-        </aside>
+            {etape === "SCAN" && remise && (
+              <>
+                {items.length > 0 && (
+                  <section className="rc-card">
+                    <div className="rc-card__head">
+                      <h3 className="rc-card__title">{t("remise.category_details")}</h3>
+                      <span className="rc-count">{items.length}</span>
+                    </div>
+                    <div className="cl-list">{items.map(ligneCategorie)}</div>
+                  </section>
+                )}
 
-        <section className="sa-stage">
-          <div className="sa-stage__head">
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <span className="sa-eyebrow">{t('remise.step_of', { n: Math.max(at, 0) + 1, total: ORDRE.length })}</span>
-              <h2 className="sa-stage__title">{stage.title}</h2>
-              <p className="sa-stage__text">{stage.text}</p>
-            </div>
-            <div className="sa-stage__art"><Illustration kind={stage.art} /></div>
+                {lingesRemis.length > 0 && (
+                  <section className="rc-card">
+                    <div className="rc-card__head">
+                      <h3 className="rc-card__title">{t("remise.delivered_this_session")}</h3>
+                      <span className="rc-count">{lingesRemis.length}</span>
+                    </div>
+                    <div className="cl-list">{lingesRemis.map(ligneRemise)}</div>
+                  </section>
+                )}
+
+                <CollectesConcernees collectes={collectesRemise} title={t("remise.collectes_ouvertes")} />
+
+                {historiqueOuvert && (
+                  <section className="rc-card">
+                    <div className="rc-card__head">
+                      <h3 className="rc-card__title"><History size={15} /> {t("remise.show_history")}</h3>
+                      <span className="rc-count">{remises.length}</span>
+                    </div>
+                    {remises.length === 0 ? (
+                      <div className="rc-empty"><strong>{t("remise.no_deliveries")}</strong></div>
+                    ) : (
+                      <div className="cl-list">
+                        {remises.map((r) => (
+                          <LigneCollecte
+                            key={r.id ?? r.numeroLivraison}
+                            icone={<Truck size={18} strokeWidth={2} />}
+                            titre={r.numeroLivraison || r.id}
+                            code={`${r.agentRemiseNom || "—"} · ${formatDate(r.dateRemise)}`}
+                            etat={<PastilleEtat tone="info">{getRemiseStatutConfig(r.etat).label}</PastilleEtat>}
+                            actions={<span className="rl-reste"><strong>{r.nbLinges || 0}</strong><small>{t("remise.linens")}</small></span>}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
+              </>
+            )}
           </div>
 
-          {!agentRemise && (
-            <div className="sa-banner is-warning" style={{ marginBottom: 14 }}>
-              <span className="sa-banner__icon"><TriangleAlert size={18} /></span>
-              <div>
-                <strong>{t('remise.no_agent_connected')}</strong>
-                <span>{t('remise.no_agent_connect_text')}</span>
-              </div>
-            </div>
-          )}
-
-          {etape !== "APERCU" && (
-            <div className="sa-scan" style={{ marginBottom: 16 }}>
-              {etape === "SCAN" && (
-                <div className="sa-segment" role="tablist" aria-label={t('remise.scan_mode')}>
-                  <button type="button" role="tab" aria-selected={!modeAnnulation} className={!modeAnnulation ? "is-active" : ""} onClick={() => setModeAnnulation(false)}>
-                    <ScanBarcode size={15} /> {t('remise.mode_deliver')}
-                  </button>
-                  <button type="button" role="tab" aria-selected={modeAnnulation} className={modeAnnulation ? "is-active rl-mode-cancel" : ""} onClick={() => setModeAnnulation(true)}>
-                    <Undo2 size={15} /> {t('remise.mode_cancel')}
-                  </button>
-                </div>
-              )}
-              <ScanInput
-                ref={scanInputRef}
-                placeholder={getPlaceholder()}
-                value={scanValue}
-                onChange={setScanValue}
-                onSubmit={handleScan}
-                borderColor={etape === "SCAN" && modeAnnulation ? "#e03131" : isCloturee ? "#cbd5e1" : !agentRemise ? "#e03131" : "#0794a4"}
-                keepFocus={true}
-                autoDebounce={true}
-                disabled={isDisabled}
-              />
-              <ScanFeedback status={scanStatus} />
-            </div>
-          )}
-
-          {etape === "APERCU" && apercu && (
-            <ApercuRemise
-              apercu={apercu}
-              agentCollecte={agentCollecte}
-              serviceChoisi={serviceChoisi}
-              onChoisirService={choisirService}
-              onCreer={handleCreerRemise}
-              onChangerAgent={changerAgentCollecte}
-              loading={loading}
-            />
-          )}
-
           {etape === "SCAN" && remise && (
-            <>
-              <div className="rl-kpis">
-                <Kpi
-                  label={t('remise.total_to_deliver')}
-                  value={totaux.collecte}
-                  sub={t('remise.n_open_collectes', { count: collectesRemise.length })}
-                  Icon={Package}
-                />
-                <Kpi
-                  label={t('remise.total_delivered')}
-                  value={totaux.remis}
-                  sub={`${totaux.pourcentage} % ${t('remise.of_total')}`}
-                  Icon={CircleCheck}
-                  color="var(--sa)"
-                />
-                <Kpi
-                  label={t('remise.remaining')}
-                  value={totaux.reste}
-                  sub={totaux.reste === 0 ? `✓ ${t('remise.completed')}` : t('remise.pending')}
-                  Icon={Hourglass}
-                  color={totaux.reste === 0 ? "var(--sa)" : "var(--sa-warn)"}
-                />
-                <Kpi
-                  label={t('remise.status')}
-                  value={getRemiseStatutConfig(remise.etat).label}
-                  sub={isCloturee ? t('remise.delivery_finished') : t('remise.in_progress')}
-                  Icon={Flag}
-                  color={isCloturee ? "var(--sa)" : undefined}
-                />
+            <aside className="rc-side">
+              <BilanCollecte
+                titre={t("remise.delivery_progress")}
+                progression={totaux.pourcentage}
+                items={[
+                  { label: t("remise.total_to_deliver"), value: totaux.collecte },
+                  { label: t("remise.total_delivered"), value: totaux.remis },
+                  { label: t("remise.remaining"), value: totaux.reste },
+                  { label: t("remise.status"), value: statutRemise, texte: true },
+                ]}
+              />
+              <div className="rc-foot">
+                <span>{t("remise.agent")} : <b>{nomAgent}</b></span>
+                <span>{new Date().toLocaleDateString("fr-FR")}</span>
               </div>
-
-              <Meter value={totaux.pourcentage} label={t('remise.delivery_progress')} />
-
-              <CollectesConcernees collectes={collectesRemise} title={t('remise.collectes_ouvertes')} />
-
-              {lingesRemis.length > 0 && (
-                <div>
-                  <div className="sa-subhead">
-                    {t('remise.delivered_this_session')}
-                    <span className="sa-count">{lingesRemis.length}</span>
-                    <span style={{ marginInlineStart: "auto" }}><VueSwitch value={vueRemis} onChange={setVueRemis} compact /></span>
-                  </div>
-                  {vueRemis === "tableau" ? (
-                    <DataTable
-                      columns={{
-                        code: { label: t('tri.code', 'Code'), render: (l) => <Code>{l.codeBarre}</Code> },
-                        categorie: { label: t('tri.category', 'Catégorie'), render: (l) => t(`categories.${l.categorie}`, l.categorie) },
-                        heure: { label: t('tri.time', 'Heure'), render: (l) => l.date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) },
-                        actions: {
-                          label: t('common.actions', 'Actions'),
-                          render: (l) => (
-                            <RowActions>
-                              <RowButton icon={Undo2} tone="danger" title={t('remise.cancel_linen')} disabled={loading} onClick={() => setAAnnuler(l.codeBarre)} />
-                            </RowActions>
-                          ),
-                        },
-                      }}
-                      rows={lingesRemis}
-                      rowKey={(l) => l.codeBarre}
-                    />
-                  ) : (
-                  <div className="rl-cats">
-                    {lingesRemis.map((l) => (
-                      <div key={l.codeBarre} className="rl-remis" style={{ "--c": accentOf(l.categorie) }}>
-                        <i className="sa-dot" />
-                        <code>{l.codeBarre}</code>
-                        <span>{t(`categories.${l.categorie}`, l.categorie)}</span>
-                        <small>{l.date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</small>
-                        <button type="button" className="sa-btn sa-btn--sm rl-btn-danger" onClick={() => setAAnnuler(l.codeBarre)} disabled={loading}>
-                          <Undo2 size={13} /> {t('remise.cancel_linen')}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  )}
-                </div>
-              )}
-
-              {items.length > 0 && (
-                <div>
-                  <div className="sa-subhead">
-                    {t('remise.category_details')}
-                    <span className="sa-count">{items.length}</span>
-                    <span style={{ marginInlineStart: "auto" }}><VueSwitch value={vueCategories} onChange={setVueCategories} compact /></span>
-                  </div>
-                  {vueCategories === "tableau" ? (
-                    <DataTable
-                      columns={{
-                        categorie: { label: t('tri.category', 'Catégorie'), render: (it) => <strong>{t(`categories.${it.categorie}`, it.categorie)}</strong> },
-                        collecte: { label: t('remise.total_to_deliver'), render: (it) => it.quantiteCollectee || 0 },
-                        remis: { label: t('remise.total_delivered'), render: (it) => it.quantiteRemise || 0 },
-                        reste: {
-                          label: t('remise.remaining'),
-                          render: (it) => {
-                            const reste = Math.max((it.quantiteCollectee || 0) - (it.quantiteRemise || 0), 0);
-                            return <Badge variant={reste === 0 ? "success" : "warning"}>{reste === 0 ? `✓ ${t("remise.complete")}` : reste}</Badge>;
-                          },
-                        },
-                      }}
-                      rows={items}
-                      rowKey={(it) => it.categorie}
-                    />
-                  ) : (
-                  <div className="rl-cats">
-                    {items.map((item) => (
-                      <CategorieRow
-                        key={item.categorie}
-                        categorie={item.categorie}
-                        collecte={item.quantiteCollectee || 0}
-                        livre={item.quantiteRemise || 0}
-                        reste={Math.max((item.quantiteCollectee || 0) - (item.quantiteRemise || 0), 0)}
-                      />
-                    ))}
-                  </div>
-                  )}
-                </div>
-              )}
-
-              {historiqueOuvert && (
-                <div>
-                  <div className="sa-subhead">
-                    <History size={15} /> {t('remise.show_history')}
-                    <span className="sa-count">{remises.length}</span>
-                  </div>
-                  <DataTable
-                    columns={{
-                      numero: { label: t('remise.delivery'), render: (r) => <Code>{r.numeroLivraison || r.id}</Code> },
-                      statut: {
-                        label: t('remise.status'),
-                        render: (r) => <span className="sa-tag" style={{ color: getRemiseStatutConfig(r.etat).text }}>{getRemiseStatutConfig(r.etat).label}</span>,
-                      },
-                      agent: { label: t('remise.agent'), render: (r) => r.agentRemiseNom || "—" },
-                      date: { label: t('common.date', 'Date'), render: (r) => formatDate(r.dateRemise) },
-                      linges: { label: t('remise.linens'), render: (r) => <strong>{r.nbLinges || 0}</strong> },
-                    }}
-                    rows={remises}
-                    rowKey={(r) => r.id ?? r.numeroLivraison}
-                    emptyText={t('remise.no_deliveries')}
-                  />
-                </div>
-              )}
-            </>
+            </aside>
           )}
-        </section>
-      </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={!!aAnnuler}
@@ -614,7 +377,7 @@ function RemiseLingeInner() {
         onConfirm={handleAnnulerDepuisListe}
         onClose={() => setAAnnuler(null)}
       />
-    </Page>
+    </div>
   );
 }
 

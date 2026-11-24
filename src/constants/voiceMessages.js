@@ -66,7 +66,7 @@ export const MESSAGES = {
     lit_normal: (code, nb) =>
       `Lit ${code}. ${nb} linge${nb > 1 ? "s" : ""} coché${nb > 1 ? "s" : ""}. Touchez un linge pour le retirer, puis scannez le bac blanc.`,
     lit_infecte: (code, nb) =>
-      `Attention. Lit ${code} infecté. ${nb} linge${nb > 1 ? "s" : ""} coché${nb > 1 ? "s" : ""}. Touchez un linge pour le retirer, puis scannez le sac rouge.`,
+      `Attention. Lit ${code} infecté. ${nb} linge${nb > 1 ? "s" : ""} coché${nb > 1 ? "s" : ""}. Touchez un linge pour le retirer, puis scannez le bac infecté.`,
     lit_deja_traite: (code) =>
       `Le lit ${code} a déjà été traité.`,
     lit_vide: (code) =>
@@ -75,8 +75,8 @@ export const MESSAGES = {
     // ── Traitement contenant ───────────────────────────────────────────────
     bac_blanc_ok: (nb, code) =>
       `Parfait. ${nb} linge${nb > 1 ? "s" : ""} collecté${nb > 1 ? "s" : ""} dans le bac ${code}. Passez au lit suivant.`,
-    sac_infecte_ok: (nb, code) =>
-      `${nb} linge${nb > 1 ? "s" : ""} infecté${nb > 1 ? "s" : ""} enregistré${nb > 1 ? "s" : ""} dans le sac ${code}. Passez au lit suivant.`,
+    bac_infecte_ok: (nb, code) =>
+      `${nb} linge${nb > 1 ? "s" : ""} infecté${nb > 1 ? "s" : ""} enregistré${nb > 1 ? "s" : ""} dans le bac infecté ${code}. Passez au lit suivant.`,
     contenant_erreur: (msg) =>
       msg ? `Erreur. ${msg}. Réessayez.` : `Impossible d'enregistrer le contenant. Réessayez.`,
 
@@ -116,7 +116,7 @@ export const MESSAGES = {
 
     // ── Dialogue du lit (écran tactile) ────────────────────────────────────
     guide_chambre: () =>
-      `Touchez un lit pour ouvrir ses linges, puis scannez le bac ou le sac.`,
+      `Touchez un lit pour ouvrir ses linges, puis scannez le bac blanc ou le bac infecté.`,
     selection_vide: () =>
       `Aucun linge coché. Touchez les linges collectés avant de scanner.`,
     tout_coche: (n) =>
@@ -126,13 +126,13 @@ export const MESSAGES = {
     linges_restants_lit: (n) =>
       `${n} linge${n > 1 ? "s" : ""} non coché${n > 1 ? "s" : ""}. Déclarez-les propres ou manquants.`,
     guide_infecte: () =>
-      `Ce linge va être déclaré infecté. Placez-le dans un sac infecté puis scannez le sac.`,
-    scanner_sac_infecte: () =>
-      `Scannez maintenant le code du sac infecté.`,
+      `Ce linge va être déclaré infecté. Placez-le dans un bac infecté puis scannez le bac.`,
+    scanner_bac_infecte: () =>
+      `Scannez maintenant le code ou le tag du bac infecté.`,
     linge_infecte_ok: () =>
-      `Le linge a été déclaré infecté et associé au sac infecté.`,
+      `Le linge a été déclaré infecté et associé au bac infecté.`,
     guide_lit_en_attente: (codeLit) =>
-      `Le lit ${codeLit} attend d'être traité. Scannez un bac blanc ou un sac rouge.`,
+      `Le lit ${codeLit} attend d'être traité. Scannez un bac blanc ou un bac infecté.`,
 
     // ── Distribution chambre ───────────────────────────────────────────────
     bienvenue_distribution: (nom) =>
@@ -192,9 +192,9 @@ export const MESSAGES = {
     bienvenue_lavage: (nom) =>
       `Bonjour ${nom}. Scannez le code de la machine pour commencer le lavage.`,
     machine_normale: (code) =>
-      `Machine ${code} prête pour le linge blanc. Scannez ou touchez les lots à charger.`,
-    machine_infectee: (code, nbSacs) =>
-      `Attention. Machine ${code} pour le linge infecté. ${nbSacs} sac${nbSacs > 1 ? "s" : ""} en attente. Scannez les sacs à laver.`,
+      `Machine ${code} prête pour le linge blanc. Scannez ou touchez les bacs à charger.`,
+    machine_infectee: (code) =>
+      `Attention. Machine ${code} pour le linge infecté. Scannez le bac infecté à laver.`,
     machine_introuvable: () =>
       `Machine introuvable. Vérifiez le code et réessayez.`,
     lot_ajoute: (code, poids, capacite) => capacite
@@ -214,24 +214,8 @@ export const MESSAGES = {
       `Lavage terminé. Vous pouvez décharger la machine.`,
     scanner_machine_d_abord: () =>
       `Scannez d'abord une machine.`,
-    sac_ajoute: (code, nb) =>
-      `Sac ${code} ajouté. ${nb} article${nb > 1 ? "s" : ""}.`,
-    sac_introuvable: () =>
-      `Sac introuvable.`,
-    sac_deja_ajoute: (code) =>
-      `Le sac ${code} est déjà ajouté.`,
-    sac_deja_en_lavage: (code) =>
-      `Le sac ${code} est déjà en lavage.`,
     cycle_deja_en_cours: () =>
       `Un cycle est déjà en cours sur cette machine.`,
-    aucun_sac: () =>
-      `Aucun sac sélectionné. Scannez au moins un sac.`,
-    cycle_infecte_demarre: (n) =>
-      `Lavage infecté démarré pour ${n} sac${n > 1 ? "s" : ""}.`,
-    cycle_infecte_termine: (n) =>
-      `Lavage infecté terminé. ${n} sac${n > 1 ? "s" : ""} lavé${n > 1 ? "s" : ""}.`,
-    cycle_infecte_arrete: () =>
-      `Cycle infecté arrêté.`,
      bienvenue_service: (nom) =>
       `Bonjour ${nom}. Scannez le code du service pour commencer.`,
 
@@ -259,8 +243,8 @@ export const MESSAGES = {
     linge_manquant_service: () =>
       `Linge manquant signalé.`,
 
-    sac_infecte_declare: (total) =>
-      `Sac infecté déclaré. ${total} linge${total>1?"s":""} infecté${total>1?"s":""}.`,
+    bac_infecte_declare: (total) =>
+      `Quantités infectées déclarées. ${total} linge${total>1?"s":""} infecté${total>1?"s":""}.`,
 
     cloture_ok_service: (service, blancs, infectes, manquants) =>
       `Collecte du service ${service} terminée. ${blancs} blanc${blancs>1?"s":""}, ${infectes} infecté${infectes>1?"s":""}, ${manquants} manquant${manquants>1?"s":""}. Bien joué.`,
@@ -313,7 +297,7 @@ export const MESSAGES = {
     lit_normal: (code, nb) =>
       `السرير ${code}. تم تحديد ${arCountGen(nb, "piece")}. اضغط على قطعة لإلغاء تحديدها، ثم امسَح الصندوق الأبيض.`,
     lit_infecte: (code, nb) =>
-      `انتباه. السرير ${code} مُلَوَّث. تم تحديد ${arCountGen(nb, "piece")}. اضغط على قطعة لإلغاء تحديدها، ثم امسَح الكيس الأحمر.`,
+      `انتباه. السرير ${code} مُلَوَّث. تم تحديد ${arCountGen(nb, "piece")}. اضغط على قطعة لإلغاء تحديدها، ثم امسَح الصندوق المُلَوَّث.`,
     lit_deja_traite: (code) =>
       `السرير ${code} تمت معالجته من قبل.`,
     lit_vide: (code) =>
@@ -322,8 +306,8 @@ export const MESSAGES = {
     // ── الصندوق والكيس ─────────────────────────────────────────────────────
     bac_blanc_ok: (nb, code) =>
       `ممتاز. تم جمع ${arCountGen(nb, "piece")} في الصندوق ${code}. انتقِل إلى السرير التالي.`,
-    sac_infecte_ok: (nb, code) =>
-      `تم تسجيل ${arCountGen(nb, "piece", "infected")} في الكيس ${code}. انتقِل إلى السرير التالي.`,
+    bac_infecte_ok: (nb, code) =>
+      `تم تسجيل ${arCountGen(nb, "piece", "infected")} في الصندوق المُلَوَّث ${code}. انتقِل إلى السرير التالي.`,
     contenant_erreur: (msg) =>
       msg ? `خطأ. ${msg}. أعِد المحاولة.` : `تعذَّر تسجيل الصندوق. أعِد المحاولة.`,
 
@@ -360,7 +344,7 @@ export const MESSAGES = {
 
     // ── نافذة السرير (شاشة اللمس) ──────────────────────────────────────────
     guide_chambre: () =>
-      `اضغط على سرير لعرض قطعه، ثم امسَح الصندوق أو الكيس.`,
+      `اضغط على سرير لعرض قطعه، ثم امسَح الصندوق الأبيض أو الصندوق المُلَوَّث.`,
     selection_vide: () =>
       `لم يتم تحديد أي قطعة. اضغط على القطع التي جمعتها، ثم امسَح.`,
     tout_coche: (n) =>
@@ -370,13 +354,13 @@ export const MESSAGES = {
     linges_restants_lit: (n) =>
       `القطع غير المحدَّدة: ${arCount(n, "piece")}. صرِّح بها نظيفة أو مفقودة.`,
     guide_infecte: () =>
-      `سيتم التصريح بهذه القطعة مُلَوَّثة. ضَعها في كيس أحمر، ثم امسَح الكيس.`,
-    scanner_sac_infecte: () =>
-      `امسَح الآن رمز الكيس الأحمر.`,
+      `سيتم التصريح بهذه القطعة مُلَوَّثة. ضَعها في صندوق مُلَوَّث، ثم امسَح الصندوق.`,
+    scanner_bac_infecte: () =>
+      `امسَح الآن رمز الصندوق المُلَوَّث.`,
     linge_infecte_ok: () =>
-      `تم التصريح بالقطعة مُلَوَّثة وربطها بالكيس الأحمر.`,
+      `تم التصريح بالقطعة مُلَوَّثة وربطها بالصندوق المُلَوَّث.`,
     guide_lit_en_attente: (codeLit) =>
-      `السرير ${codeLit} في انتظار المعالجة. امسَح صندوقًا أبيض أو كيسًا أحمر.`,
+      `السرير ${codeLit} في انتظار المعالجة. امسَح صندوقًا أبيض أو صندوقًا مُلَوَّثًا.`,
 
     // ── التوزيع على الغرف ──────────────────────────────────────────────────
     bienvenue_distribution: (nom) =>
@@ -437,8 +421,8 @@ export const MESSAGES = {
       `مرحبًا ${nom}. امسَح رمز الآلة لبدء الغسيل.`,
     machine_normale: (code) =>
       `الآلة ${code} جاهزة للقطع البيضاء. امسَح الدفعات أو اضغط عليها لتحميلها.`,
-    machine_infectee: (code, nbSacs) =>
-      `انتباه. الآلة ${code} مخصَّصة للقطع المُلَوَّثة. ${arCount(nbSacs, "bag")} في الانتظار. امسَح الأكياس التي تغسلها.`,
+    machine_infectee: (code) =>
+      `انتباه. الآلة ${code} مخصَّصة للقطع المُلَوَّثة. امسَح الصندوق المُلَوَّث الذي تغسله.`,
     machine_introuvable: () =>
       `لم يتم العثور على الآلة. تحقَّق من الرمز، ثم أعِد المحاولة.`,
     lot_ajoute: (code, poids, capacite) => capacite
@@ -458,24 +442,8 @@ export const MESSAGES = {
       `انتهى الغسيل. يمكنك تفريغ الآلة.`,
     scanner_machine_d_abord: () =>
       `امسَح رمز الآلة أولًا.`,
-    sac_ajoute: (code, nb) =>
-      `تمت إضافة الكيس ${code}. فيه ${arCount(nb, "piece")}.`,
-    sac_introuvable: () =>
-      `لم يتم العثور على الكيس.`,
-    sac_deja_ajoute: (code) =>
-      `الكيس ${code} مُضاف من قبل.`,
-    sac_deja_en_lavage: (code) =>
-      `الكيس ${code} قيد الغسيل حاليًّا.`,
     cycle_deja_en_cours: () =>
       `توجد دورة غسيل جارية على هذه الآلة.`,
-    aucun_sac: () =>
-      `لم يتم اختيار أي كيس. امسَح كيسًا واحدًا على الأقل.`,
-    cycle_infecte_demarre: (n) =>
-      `بدأ غسيل ${arCountGen(n, "bag", "infected")}.`,
-    cycle_infecte_termine: (n) =>
-      `انتهى الغسيل المُلَوَّث. تم غسل ${arCountGen(n, "bag")}.`,
-    cycle_infecte_arrete: () =>
-      `تم إيقاف دورة الغسيل المُلَوَّث.`,
 
     // ── جمع الأقسام ────────────────────────────────────────────────────────
     bienvenue_service: (nom) =>
@@ -492,8 +460,8 @@ export const MESSAGES = {
       `تم تسجيل القطعة نظيفة.`,
     linge_manquant_service: () =>
       `تم التصريح بقطعة مفقودة.`,
-    sac_infecte_declare: (total) =>
-      `تم تسجيل كيس أحمر. فيه ${arCount(total, "piece", "infected")}.`,
+    bac_infecte_declare: (total) =>
+      `تم التصريح بالكميات المُلَوَّثة: ${arCount(total, "piece", "infected")}.`,
     tous_traites_service: () =>
       `تمت معالجة جميع القطع.`,
     cloture_ok_service: (service, blancs, infectes, manquants) =>

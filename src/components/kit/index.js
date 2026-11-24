@@ -1,6 +1,9 @@
 import './kit.css';
 import './kit-dark.css';
 
+export { Card, SectionCard } from './Card';
+export { useTableControls, TableToolbar, SortableTh, AucunResultat, TablePagination } from './TableControls';
+export { usePagination, PAGE_SIZE } from './TablePagination';
 export { Page, PageHeader, ActionBar, ActionButton, ActionMenu } from './Layout';
 export {
   FilterPanel, FilterRow, FilterField, FilterSelect, FilterText,
@@ -12,9 +15,12 @@ export {
   DetailsPage, DetailsButton, KpiTiles, DetailCard, DetailGrid,
   InfoList, PersonBlock, Timeline, DetailText, DetailAlert,
 } from './Details';
+export { FicheResume, FicheBouton } from './Fiche';
 export { Tabs, StatChips, RowActions, RowButton, FormGrid, Code, VueSwitch, useVue } from './Extras';
 export { tk } from './i18n';
 export { default as StatsModal } from './StatsModal';
+export { DialogueHost } from './Dialogue';
+export { Swal, ouvrirDialogue } from './dialogueApi';
 export { QuickStats, StatsContent, imprimerStats } from './QuickStats';
 export { default as useListPage } from './useListPage';
 export * from './helpers';

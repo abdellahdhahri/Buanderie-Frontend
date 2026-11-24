@@ -1,21 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
-import { RefreshCw, Pencil, Ban, Eye, History, Printer } from "lucide-react";
+import Swal from "../../kit/dialogueApi";
+import { RefreshCw, Pencil, Ban, History, Printer, Download } from "lucide-react";
 import { printLabel } from "../../../utils/labels";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import { arsenalService, getServices } from "../../../services/arsenalService";
 import { useIntegration } from "../../../hooks/useIntegration";
 import { ArsenalEmplacements, BadgeImporte, BadgeInactif } from "./ArsenalEmplacements";
+import { ImportArsenauxCubix } from "./ImportArsenauxCubix";
 import {
-  Page, PageHeader, ActionBar, ActionButton,
+  Page, ActionBar, ActionButton,
   FilterPanel, FilterRow, FilterSelect, FilterText, FilterColumnSelect, FilterActions,
   ListSection, DataTable, Pagination, Badge,
   Modal, Button, FormField, InfoList,
   DetailsPage, DetailsButton, KpiTiles, DetailCard,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  Tabs, RowActions, RowButton, FormGrid, Code, tk,
+  Tabs, FormGrid, Code, tk,
 } from "../../kit";
 import { IconAjouter, IconDetails, IconModifier, IconSupprimer } from "../../kit/ActionIcons";
 
@@ -32,7 +32,6 @@ const COLUMNS_DEFAULT = [
   { key: "nom", label: "Nom", visible: true, searchable: true },
   { key: "service", label: "Service", visible: true, searchable: true },
   { key: "source", label: "Origine", visible: false, searchable: false },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const codeArsenal = (a) => a.code || `ARS-${a.id}`;
@@ -40,7 +39,8 @@ const codeArsenal = (a) => a.code || `ARS-${a.id}`;
 export default function ArsenalList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { estImporte } = useIntegration();
+  const { estImporte, modeCubix } = useIntegration();
+  const [showImportCubix, setShowImportCubix] = useState(false);
   const arsenauxImportes = estImporte("ARSENAL");
 
   const [arsenals, setArsenals] = useState([]);
@@ -110,7 +110,7 @@ export default function ArsenalList() {
     switch (key) {
       case "code": return codeArsenal(a);
       case "service": return serviceNom(a.serviceId);
-      case "source": return a.source === "EXTERNE" ? t("integration.imported", "Importé") : "";
+      case "source": return a.source === "EXTERNE" ? (modeCubix ? "CUBIX" : t("integration.imported", "Importé")) : "";
       case "actions": return "";
       default: return a[key] ?? "";
     }
@@ -214,17 +214,6 @@ export default function ArsenalList() {
     nom: { label: t("arsenal.name"), sortable: true, render: (a) => <><strong>{a.nom}</strong><BadgeImporte item={a} /><BadgeInactif item={a} /></> },
     service: { label: t("arsenal.service"), sortable: true, render: (a) => <Badge variant={a.serviceId ? "info" : "secondary"}>{serviceNom(a.serviceId)}</Badge> },
     source: { label: t("machines.source", "Source"), sortable: true, render: (a) => searchValue(a, "source") || "—" },
-    actions: {
-      label: t("common.actions"), align: "center",
-      render: (a) => (
-        <RowActions>
-          <RowButton icon={Eye} title={t("arsenal.show_linens")} onClick={() => openDetails(a)} />
-          <RowButton icon={Printer} title={t("arsenal.print_code")} onClick={() => imprimer(a)} />
-          <RowButton icon={Pencil} title={t("common.edit")} onClick={() => openForm(a)} />
-          <RowButton icon={Ban} tone="danger" title={t("common.delete")} disabled={lectureSeule(a) || a.actif === false} onClick={() => desactiver(a)} />
-        </RowActions>
-      ),
-    },
   };
 
   const LINGE_COLUMNS = {
@@ -239,18 +228,12 @@ export default function ArsenalList() {
 
   return (
     <Page>
+      {showImportCubix && <ImportArsenauxCubix onClose={() => setShowImportCubix(false)} onImporte={fetchArsenals} />}
       {viewMode === "list" && (
         <>
-          <PageHeader
-            icon={<PageHeaderIcon size={40} />}
-            title={t("arsenal.title")}
-            subtitle={t("arsenal.subtitle")}
-            total={list.sorted.length}
-            onIconClick={() => setShowColumnSettings(true)}
-          />
-
           <ActionBar>
             {!arsenauxImportes && <ActionButton icon={IconAjouter} label={t("arsenal.new")} variant="ajouter" onClick={() => openForm(null)} />}
+            {modeCubix && <ActionButton icon={Download} label={t("arsenal.import_cubix", "Importer depuis CUBIX")} variant="ajouter" onClick={() => setShowImportCubix(true)} />}
             <ActionButton icon={IconDetails} label={t("arsenal.show_linens")} variant="details" disabled={!selected} onClick={() => openDetails(selected)} />
             <ActionButton icon={IconModifier} label={t("common.edit")} variant="modifier" disabled={!selected} onClick={() => openForm(selected)} />
             <ActionButton icon={IconSupprimer} label={t("common.delete")} variant="supprimer" disabled={!selected || lectureSeule(selected) || selected.actif === false} onClick={() => desactiver(selected)} />

@@ -1,141 +1,56 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
-import { DoorOpen, BedDouble, ScanLine, CheckCircle2, AlertTriangle, Loader2, Shirt, User, RotateCcw, Flag, Plus, LogOut, Info, Undo2, X } from "lucide-react";
-import ScanInput from "../../utils/shared/ScanInput";
+import { BarChart3, DoorOpen, BedDouble, Shirt, Flag, Plus, Undo2, ArrowRight, LogOut, Check } from "lucide-react";
 import { getAgentFromStorage, fetchChambre, poserLinge, poserLingeChambre, retirerLingeDistribue } from "../../../services/distributionChambreService";
-import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
 import MuteButton from "../../utils/MuteButton";
 import { useVoiceGuide } from "../../../hooks/useVoiceGuide";
 import { getSetting } from "../../../utils/appSettings";
-import { BedTile, BedGraphic, LegendeLits } from "../Collecte/components/ChambreLits";
 import { useRattachementChambre } from "../../../hooks/useEstablishment";
+import { ConfirmDialog, Code, QuickStats } from "../../kit";
 import {
-  Page, PageHeader, ActionBar, ActionButton, ConfirmDialog, Button, DataTable, Code, Badge,
-  VueSwitch, useVue, RowActions, RowButton,
-} from "../../kit";
-import "../Linge/WorkflowList.css";
-import "./DistributionChambre.css";
-
-const TONS_DISTRIBUTION = {
-  EQUIPE: { main: "#15803D", soft: "#DCFCE7" },
-  INFECTE: { main: "#DC2626", soft: "#FEE2E2" },
-  A_EQUIPER: { main: "#0794A4", soft: "#E9F8FA" },
-};
-
-function CarteLit({ lit, actif, onClick }) {
-  const { t } = useTranslation();
-  const complet = !lit.litVide;
-  const infecte = lit.estInfecte;
-  const nb = lit.lingesPoses?.length || 0;
-  const tone = complet
-    ? { ...TONS_DISTRIBUTION.EQUIPE, label: t("distribution_chambre.completed") }
-    : infecte
-      ? { ...TONS_DISTRIBUTION.INFECTE, label: t("distribution_chambre.infected") }
-      : { ...TONS_DISTRIBUTION.A_EQUIPER, label: t("distribution_chambre.empty") };
-
-  return (
-    <BedTile
-      tone={tone}
-      code={lit.codeLit}
-      meta={nb > 0
-        ? `${nb} ${t("distribution_chambre.linen")}${nb > 1 ? "s" : ""} ${t("distribution_chambre.distributed").toLowerCase()}`
-        : t("distribution_chambre.no_linen_placed")}
-      pill={actif ? t("distribution_chambre.in_progress") : tone.label}
-      active={actif}
-      flag={infecte && !complet}
-      onClick={onClick}
-    >
-      <BedGraphic tone={tone} filled={complet} center={nb > 0 ? "count" : complet ? "check" : "dash"} count={nb} active={actif} />
-    </BedTile>
-  );
-}
-
-function Etapes({ etape, modeChambre }) {
-  const { t } = useTranslation();
-  const liste = [
-    { id: "CHAMBRE", label: t("distribution_chambre.step_room", "Chambre"), Icon: DoorOpen },
-    { id: "DISTRIBUER", label: modeChambre ? t("distribution_chambre.step_drop", "Dépôt des linges") : t("distribution_chambre.step_beds", "Équipement des lits"), Icon: modeChambre ? Shirt : BedDouble },
-    { id: "RESUME", label: t("distribution_chambre.step_summary", "Récapitulatif"), Icon: Flag },
-  ];
-  const courant = liste.findIndex((e) => e.id === etape);
-  return (
-    <ol className="dc-steps">
-      {liste.map((e, i) => (
-        <li key={e.id} className={i < courant ? "is-done" : i === courant ? "is-current" : ""}>
-          <span className="dc-steps__dot">{i < courant ? <CheckCircle2 size={15} /> : <e.Icon size={15} />}</span>
-          <span className="dc-steps__label">{e.label}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function EtatScan({ status }) {
-  if (!status) return null;
-  if (status.loading) {
-    return <div className="dc-status is-loading"><Loader2 size={15} className="animate-spin" /><span>{status.code}</span></div>;
-  }
-  if (status.error) {
-    return <div className="dc-status is-error"><AlertTriangle size={15} /><span>{status.error}</span></div>;
-  }
-  if (status.success) {
-    return (
-      <div className="dc-status is-ok">
-        <CheckCircle2 size={15} />
-        <span><strong>{status.success.message}</strong>{status.success.detail ? ` · ${status.success.detail}` : ""}</span>
-      </div>
-    );
-  }
-  return null;
-}
-
-function Kpi({ icon, label, value, tone }) {
-  return (
-    <div className="dc-kpi" style={{ "--k": tone }}>
-      <span className="dc-kpi__icon">{icon}</span>
-      <div>
-        <small>{label}</small>
-        <strong>{value}</strong>
-      </div>
-    </div>
-  );
-}
+  ToolbarCollecte, EtapesCollecte, AccueilSansAgent, PosteScan, PastilleEtat,
+  LigneCollecte, BoutonIcone, GroupesLignes, BilanCollecte, nomAgentCollecte,
+} from "../Collecte/shared/CollecteRc";
+import { getCategorieMeta } from "../../../constants/categoriesLinge";
 
 function Resume({ res, modeChambre, onNouvelle, onTerminer }) {
   const { t } = useTranslation();
   return (
-    <motion.div className="dc-resume" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-      <div className="dc-resume__hero">
-        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 220, damping: 14 }}>
-          <CheckCircle2 size={30} />
-        </motion.span>
-        <div>
-          <small>{t("distribution_chambre.step_summary", "Récapitulatif")}</small>
-          <h2>{t("distribution_chambre.room_equipped", { code: res.codeChambre })}</h2>
-          <p>
+    <section className="rc-card rc-ticket">
+      <div className="rc-ticket__banner">
+        <Check size={16} strokeWidth={3} />
+        <strong>{t("distribution_chambre.room_equipped", { code: res.codeChambre })}</strong>
+      </div>
+      <div className="rc-ticket__body" style={{ gridTemplateColumns: "minmax(0, 1fr) auto" }}>
+        <div className="rc-ticket__main">
+          <span className="rc-label">{t("distribution_chambre.room", "Chambre")}</span>
+          <code className="rc-ticket__code">{res.codeChambre}</code>
+          <span style={{ color: "var(--rc-muted)", fontSize: 14 }}>
             {modeChambre
               ? t("distribution_chambre.summary_room", "{{count}} linge(s) déposé(s) dans la chambre", { count: res.nbLinges })
               : `${res.nbLinges} ${t("distribution_chambre.linen")}${res.nbLinges > 1 ? "s" : ""} ${t("distribution_chambre.distributed_on")} ${res.nbLits} ${t("distribution_chambre.bed")}${res.nbLits > 1 ? "s" : ""}`}
-          </p>
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" className="rc-btn" onClick={onTerminer}>{t("common.finish", "Terminer")}</button>
+          <button type="button" className="rc-btn rc-btn--primary rc-btn--lg" onClick={onNouvelle}><Plus size={16} /> {t("distribution_chambre.another_room", "Autre chambre")}</button>
         </div>
       </div>
       {!modeChambre && res.litsEquipes?.length > 0 && (
-        <DataTable
-          columns={{
-            lit: { label: t("distribution_chambre.bed"), render: (l) => <span className="dc-inline"><BedDouble size={15} /> <strong>{l.codeLit}</strong></span> },
-            nb: { label: t("distribution_chambre.distributed"), align: "right", render: (l) => <Badge variant="success">{l.nb}</Badge> },
-          }}
-          rows={res.litsEquipes}
-          rowKey={(l) => l.litId}
-        />
+        <div className="cl-list">
+          {res.litsEquipes.map((l) => (
+            <LigneCollecte
+              key={l.litId}
+              icone={<BedDouble size={18} strokeWidth={2} />}
+              titre={`${t("distribution_chambre.bed", "Lit")} ${l.codeLit}`}
+              code={`${l.nb} ${t("distribution_chambre.distributed", "distribué(s)").toLowerCase()}`}
+              etat={<PastilleEtat tone="ok">{t("distribution_chambre.completed", "Équipé")}</PastilleEtat>}
+            />
+          ))}
+        </div>
       )}
-      <div className="dc-resume__actions">
-        <Button variant="secondary" onClick={onTerminer}>{t("common.finish")}</Button>
-        <Button icon={<Plus size={16} />} onClick={onNouvelle}>{t("distribution_chambre.another_room")}</Button>
-      </div>
-    </motion.div>
+    </section>
   );
 }
 
@@ -163,8 +78,6 @@ export default function DistributionChambre() {
   const [confirmerReset, setConfirmerReset] = useState(false);
   const [modeRetrait, setModeRetrait] = useState(false);
   const [aRetirer, setARetirer] = useState(null);
-  const [vueLits, setVueLits] = useVue("distribution.lits");
-  const [vueChambre, setVueChambre] = useVue("distribution.chambre");
 
   const [voiceLang, setVoiceLang] = useState(() => getSetting("voice.lang"));
   const voice = useVoiceGuide(voiceLang);
@@ -227,6 +140,7 @@ export default function DistributionChambre() {
     try {
       const res = await fetchChambre(code);
       setChambre({
+        codeScan: code,
         chambreId: res.chambreId,
         codeChambre: res.codeChambre,
         lits: res.lits || [],
@@ -326,6 +240,23 @@ export default function DistributionChambre() {
     }
   }, [t, voice]);
 
+  const rechargerChambre = useCallback(async () => {
+    const c = chambreRef.current;
+    if (!c?.codeScan) return;
+    try {
+      const res = await fetchChambre(c.codeScan);
+      setChambre((p) => (p ? {
+        ...p,
+        lits: res.lits || [],
+        disponibles: (res.disponibles || []).map((l) => ({ ...l, lingeId: l.lingeId || l.id })),
+        dansChambre: (res.lingesDansChambre || []).map((l) => ({ ...l, lingeId: l.lingeId || l.id })),
+      } : p));
+      setLitActif((l) => (l ? (res.lits || []).find((x) => x.litId === l.litId) || l : l));
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }, []);
+
   const retirer = useCallback(async (code) => {
     const c = chambreRef.current;
     if (!c || !code) return;
@@ -333,7 +264,8 @@ export default function DistributionChambre() {
     setLoading(true);
     setScanStatus({ loading: true, code });
     try {
-      const res = await retirerLingeDistribue(code);
+      const ag = agentRef.current;
+      const res = await retirerLingeDistribue(code, ag?.codeBarre || ag?.matricule);
       const correspond = (l) => l && (l.codeBarre === code || l.rfidTag === code
         || (res?.lingeId != null && l.lingeId === res.lingeId)
         || (res?.codeBarre && l.codeBarre === res.codeBarre));
@@ -358,17 +290,24 @@ export default function DistributionChambre() {
         setPoses((p) => p.map((x) => (x.litId === cle ? { ...x, nb: x.nb - 1 } : x)).filter((x) => x.nb > 0));
       }
       const ou = dansLit ? `${t("distribution_chambre.bed")} ${dansLit.codeLit}` : `${t("distribution_chambre.room")} ${c.codeChambre}`;
-      setScanStatus({ success: { message: t("distribution_chambre.linen_removed", "Linge retiré"), detail: `${linge.codeBarre || code} · ${ou}` } });
+      const titre = res?.origine === "DISTRIBUTION"
+        ? t("distribution_chambre.removed_distribution", "Linge retiré : distribution annulée")
+        : res?.origine === "AFFECTATION"
+          ? t("distribution_chambre.removed_assignment", "Linge retiré : affectation annulée")
+          : t("distribution_chambre.linen_removed", "Linge retiré");
+      const detail = [linge.codeBarre || code, ou, res?.statut ? t(`linge_status.${res.statut}`, res.statut) : null].filter(Boolean).join(" · ");
+      setScanStatus({ success: { message: titre, detail } });
       setTimeout(() => setScanStatus(null), 1800);
-      toast.success(res?.message || t("distribution_chambre.linen_removed", "Linge retiré"), { description: `${linge.codeBarre || code} · ${ou}` });
+      toast.success(titre, { description: detail });
+      await rechargerChambre();
     } catch (e) {
       setScanStatus({ error: e.message });
       voice.sayErreurGenerique(e.message);
-      toast.error(e.message);
+      toast.error(t("distribution_chambre.remove_refused", "Retrait refusé"), { description: e.message });
     } finally {
       setLoading(false);
     }
-  }, [t, voice]);
+  }, [t, voice, rechargerChambre]);
 
   const handleScan = useCallback(async (code) => {
     if (!code || loading) return;
@@ -411,247 +350,236 @@ export default function DistributionChambre() {
     if (!dejaActif) voice.sayLitDistribution(lit.codeLit, lit.estInfecte);
   };
 
-  const getPlaceholder = () => {
-    if (!agent) return t("distribution_chambre.agent_not_connected_placeholder");
-    if (etape === "CHAMBRE") return t("distribution_chambre.scan_room_code");
-    if (etape === "RESUME") return t("distribution_chambre.distribution_completed");
-    if (modeRetrait) return t("distribution_chambre.scan_to_remove", "Scannez le linge à retirer");
-    if (modeChambre) return t("distribution_chambre.scan_linen_to_room", { code: chambre?.codeChambre || "" });
-    if (litActif) return t("distribution_chambre.scan_linen_to_bed", { code: litActif.codeLit });
-    return t("distribution_chambre.select_bed_hint");
-  };
-
   const lits = chambre?.lits || [];
   const litsEquipes = lits.filter((l) => !l.litVide).length;
   const isCloturee = etape === "RESUME";
-  const pret = !!agent && !isCloturee && (etape === "CHAMBRE" || modeChambre || modeRetrait || !!litActif);
   const litCourant = litActif ? lits.find((l) => l.litId === litActif.litId) : null;
+  const lingesPosesChambre = lits.flatMap((lit) => (lit.lingesPoses || []).map((l) => ({ ...l, litId: lit.litId, codeLit: lit.codeLit })));
 
-  const libelleLit = (l) => (!l.litVide
-    ? <Badge variant="success">{t("distribution_chambre.completed")}</Badge>
-    : l.estInfecte
-      ? <Badge variant="danger">{t("distribution_chambre.infected")}</Badge>
-      : <Badge variant="info">{t("distribution_chambre.empty")}</Badge>);
+  const [showStats, setShowStats] = useState(false);
+  const nomAgent = nomAgentCollecte(agent);
+
+  const etapes = [
+    t("distribution_chambre.step_identify", "Identification de l'agent"),
+    t("distribution_chambre.room", "Chambre"),
+    t("distribution_chambre.step_distribute", "Distribution"),
+    t("distribution_chambre.step_close", "Clôture"),
+  ];
+  const faites = [
+    Boolean(agent),
+    Boolean(chambre),
+    Boolean(chambre) && (modeChambre ? (chambre.disponibles || []).length === 0 && nbPoses > 0 : lits.length > 0 && litsEquipes === lits.length),
+    isCloturee,
+  ];
+
+  const ligneLinge = (l, extra) => {
+    const { Icon, accent } = getCategorieMeta(l.categorie);
+    return (
+      <LigneCollecte
+        key={`${l.litId ?? "c"}-${l.lingeId ?? l.codeBarre}`}
+        icone={<Icon size={18} strokeWidth={2} />}
+        accent={accent}
+        titre={l.categorie ? t(`categories.${l.categorie}`, l.categorie) : "—"}
+        code={l.codeBarre}
+        etat={extra}
+        actions={<BoutonIcone icone={<Undo2 size={16} strokeWidth={2.4} />} titre={t("distribution_chambre.remove_yes", "Retirer")} tone="danger" disabled={loading} onClick={() => setARetirer(l)} />}
+      />
+    );
+  };
+
+  const ligneLit = (lit) => {
+    const equipe = !lit.litVide;
+    const actif = litActif?.litId === lit.litId;
+    const nb = lit.lingesPoses?.length || 0;
+    return (
+      <LigneCollecte
+        key={lit.litId}
+        icone={<BedDouble size={18} strokeWidth={2} />}
+        accent={equipe ? "var(--rc-ok)" : lit.estInfecte ? "var(--rc-sac)" : undefined}
+        titre={`${t("distribution_chambre.bed", "Lit")} ${lit.codeLit}`}
+        code={nb > 0 ? `${nb} ${t("distribution_chambre.distributed", "distribué(s)").toLowerCase()}` : t("distribution_chambre.no_linen_placed", "Aucun linge posé")}
+        active={actif}
+        estompe={equipe && !actif}
+        onClick={() => choisirLit(lit)}
+        etat={actif
+          ? <PastilleEtat tone="info">{t("distribution_chambre.in_progress", "En cours")}</PastilleEtat>
+          : equipe
+            ? <PastilleEtat tone="ok">{t("distribution_chambre.completed", "Équipé")}</PastilleEtat>
+            : lit.estInfecte
+              ? <PastilleEtat tone="danger">{t("distribution_chambre.infected", "Infecté")}</PastilleEtat>
+              : <PastilleEtat tone="muted">{t("distribution_chambre.empty", "À équiper")}</PastilleEtat>}
+        actions={<BoutonIcone icone={actif ? <LogOut size={16} strokeWidth={2.4} /> : <ArrowRight size={17} strokeWidth={2.4} />} titre={actif ? t("common.cancel", "Annuler") : t("distribution_chambre.select_bed", "Choisir ce lit")} tone="info" onClick={(e) => { e.stopPropagation(); choisirLit(lit); }} />}
+      />
+    );
+  };
+
+  const groupesLits = [
+    { key: "afaire", titre: t("distribution_chambre.to_equip", "À équiper"), items: lits.filter((l) => l.litVide), toujours: true },
+    { key: "traites", titre: t("distribution_chambre.beds_done", "Lits équipés"), items: lits.filter((l) => !l.litVide), repliable: true, estompe: true },
+  ];
+
+  const chipsPoste = chambre ? (
+    <>
+      <PastilleEtat tone="info">{t("distribution_chambre.room", "Chambre")} {chambre.codeChambre}</PastilleEtat>
+      {!modeChambre && litActif && <PastilleEtat tone="ok">{t("distribution_chambre.bed", "Lit")} {litActif.codeLit}</PastilleEtat>}
+      {modeRetrait && <PastilleEtat tone="danger">{t("distribution_chambre.remove_linen", "Retrait")}</PastilleEtat>}
+    </>
+  ) : null;
+
+  const extraToolbar = (
+    <>
+      <MuteButton muted={voice.muted} onToggle={voice.toggleMute} speaking={voice.speaking} lang={voiceLang} onLangChange={setVoiceLang} />
+      {etape === "DISTRIBUER" && (
+        <button type="button" className={`rc-btn ${modeRetrait ? "is-on" : ""}`} onClick={() => setModeRetrait((m) => !m)}>
+          <Undo2 size={14} /> {modeRetrait ? t("distribution_chambre.stop_removing", "Terminer le retrait") : t("distribution_chambre.remove_linen", "Retirer un linge")}
+        </button>
+      )}
+      <button type="button" className="rc-btn" onClick={() => setShowStats(true)}>
+        <BarChart3 size={15} /> {t("common.statistics", "Statistiques")}
+      </button>
+      {etape === "DISTRIBUER" && (
+        <button type="button" className="rc-btn rc-btn--primary" disabled={!nbPoses} onClick={demanderFin}>
+          <Flag size={14} /> {t("distribution_chambre.finish_distribution_title", "Terminer la distribution")}
+        </button>
+      )}
+    </>
+  );
 
   return (
-    <Page className="dc-page">
-      <PageHeader
-        icon={<PageHeaderIcon size={40} />}
-        title={t("distribution_chambre.title")}
-        subtitle={agent ? `${t("distribution_chambre.agent")} : ${agent.nomPrenom || agent.nom}` : t("distribution_chambre.no_agent_connected")}
-        badge={chambre ? `${t("distribution_chambre.room")} ${chambre.codeChambre}` : undefined}
-        right={<MuteButton muted={voice.muted} onToggle={voice.toggleMute} speaking={voice.speaking} lang={voiceLang} onLangChange={setVoiceLang} />}
+    <div className="collecte-container cr-page rc cc">
+      <ToolbarCollecte
+        agent={agent}
+        extra={extraToolbar}
+        onReset={etape !== "CHAMBRE" ? demanderReset : undefined}
+        resetLabel={t("distribution_chambre.another_room", "Autre chambre")}
       />
+      <EtapesCollecte etapes={etapes} faites={faites} label={t("distribution_chambre.steps", "Étapes de la distribution")} />
 
-      <ActionBar>
-        {etape === "DISTRIBUER" && (
-          <ActionButton icon={<Flag size={18} />} label={t("distribution_chambre.finish_distribution_title")} variant="etat-accepter" disabled={!nbPoses} onClick={demanderFin} />
-        )}
-        {etape === "DISTRIBUER" && (
-          <ActionButton
-            icon={<Undo2 size={18} />}
-            label={modeRetrait ? t("distribution_chambre.stop_removing", "Terminer le retrait") : t("distribution_chambre.remove_linen", "Retirer un linge")}
-            variant={modeRetrait ? "etat-refuser" : "modifier"}
-            onClick={() => setModeRetrait((m) => !m)}
-          />
-        )}
-        {etape !== "CHAMBRE" && (
-          <ActionButton icon={<DoorOpen size={18} />} label={t("distribution_chambre.another_room")} variant="details" onClick={demanderReset} />
-        )}
-        <ActionButton icon={<RotateCcw size={18} />} label={t("common.reset")} variant="supprimer" disabled={etape === "CHAMBRE"} onClick={demanderReset} />
-      </ActionBar>
-
-      <div className="dc-shell">
-        <Etapes etape={etape} modeChambre={modeChambre} />
-
-        {!agent && (
-          <div className="dc-alert">
-            <AlertTriangle size={18} />
-            <div>
-              <strong>{t("distribution_chambre.no_agent_connected")}</strong>
-              <span>{t("distribution_chambre.no_agent_connect_text")}</span>
-            </div>
-          </div>
-        )}
-
-        {!isCloturee && (
-          <section className={`dc-scan ${pret ? "is-ready" : ""} ${modeRetrait ? "is-retrait" : ""}`}>
-            <div className="dc-scan__head">
-              <span className="dc-scan__icon">{modeRetrait ? <Undo2 size={20} /> : <ScanLine size={20} />}</span>
-              <div className="dc-scan__text">
-                <strong>{getPlaceholder()}</strong>
-                <small>
-                  {modeRetrait
-                    ? t("distribution_chambre.remove_hint", "Mode retrait : chaque linge scanné est retiré de son lit ou de la chambre.")
-                    : etape === "DISTRIBUER"
-                      ? t("distribution_chambre.scan_agent_to_close")
-                      : t("distribution_chambre.to_load_beds")}
-                </small>
-              </div>
-              {chambre && (
-                <div className="dc-context">
-                  <span className="kit-chip kit-chip--teal"><DoorOpen size={13} /> {chambre.codeChambre}</span>
-                  {!modeChambre && litActif && <span className="kit-chip kit-chip--info"><BedDouble size={13} /> {litActif.codeLit}</span>}
-                </div>
-              )}
-            </div>
-            <ScanInput
-              ref={scanInputRef}
-              placeholder={getPlaceholder()}
+      {!agent ? (
+        <AccueilSansAgent
+          eyebrow={t("distribution_chambre.title")}
+          titre={t("distribution_chambre.no_agent_connected")}
+          scanInputRef={scanInputRef}
+          value={scanVal}
+          onChange={setScanVal}
+          onSubmit={handleScan}
+        />
+      ) : isCloturee && resume ? (
+        <Resume res={resume} modeChambre={modeChambre} onNouvelle={viderSession} onTerminer={viderSession} />
+      ) : (
+        <div className={etape === "DISTRIBUER" && chambre ? "rc-layout" : ""}>
+          <div className="rc-main">
+            <PosteScan
+              titre={t("distribution_chambre.title")}
+              chips={chipsPoste}
+              infecte={modeRetrait}
+              scanInputRef={scanInputRef}
               value={scanVal}
               onChange={setScanVal}
               onSubmit={handleScan}
-              borderColor={modeRetrait ? "#dc2626" : pret ? "#0794a4" : "#cbd5e1"}
-              keepFocus
-              autoDebounce
-              disabled={isCloturee || loading || !agent}
+              borderColor={modeRetrait ? "#e03131" : "#0d9488"}
+              disabled={loading}
+              scanStatus={scanStatus}
             />
-            <EtatScan status={scanStatus} />
-          </section>
-        )}
 
-        {etape === "CHAMBRE" && agent && (
-          <div className="dc-empty">
-            <span className="dc-empty__art"><DoorOpen size={34} /></span>
-            <strong>{t("distribution_chambre.scan_room_to_load")}</strong>
-            <span>{modeChambre ? t("distribution_chambre.room_mode_hint", "Les linges scannés seront déposés dans la chambre.") : t("distribution_chambre.to_load_beds")}</span>
-          </div>
-        )}
-
-        {etape === "DISTRIBUER" && chambre && (
-          <>
-            <div className="dc-kpis">
-              <Kpi icon={<CheckCircle2 size={18} />} label={t("distribution_chambre.distributed")} value={nbPoses} tone="#10b981" />
-              {modeChambre ? (
-                <Kpi icon={<DoorOpen size={18} />} label={t("distribution_chambre.in_room_title", "Déjà dans la chambre")} value={chambre.dansChambre?.length || 0} tone="#0794a4" />
+            {etape === "DISTRIBUER" && chambre && (
+              modeChambre ? (
+                <section className="rc-card">
+                  <div className="rc-card__head">
+                    <h3 className="rc-card__title"><DoorOpen size={15} /> {t("distribution_chambre.in_room_title", "Déjà dans la chambre")}</h3>
+                    <span className="rc-count">{(chambre.dansChambre || []).length}</span>
+                  </div>
+                  {(chambre.dansChambre || []).length === 0 ? (
+                    <div className="rc-empty"><Shirt size={26} strokeWidth={1.4} /><strong>{t("distribution_chambre.room_empty", "Aucun linge dans la chambre pour le moment.")}</strong></div>
+                  ) : (
+                    <div className="cl-list">
+                      {chambre.dansChambre.map((l) => ligneLinge(
+                        l,
+                        (chambre.recents || []).includes(l.lingeId)
+                          ? <PastilleEtat tone="ok">{t("distribution_chambre.just_placed", "Vient d'être déposé")}</PastilleEtat>
+                          : <PastilleEtat tone="muted">{t("distribution_chambre.in_room_title", "Dans la chambre")}</PastilleEtat>
+                      ))}
+                    </div>
+                  )}
+                </section>
               ) : (
-                <>
-                  <Kpi icon={<BedDouble size={18} />} label={t("distribution_chambre.beds_done", "Lits équipés")} value={`${litsEquipes} / ${lits.length}`} tone="#0794a4" />
-                  <Kpi icon={<BedDouble size={18} />} label={t("distribution_chambre.empty_beds")} value={lits.length - litsEquipes} tone="#f59e0b" />
-                </>
-              )}
-              <Kpi icon={<User size={18} />} label={t("distribution_chambre.agent")} value={agent?.nom || "—"} tone="#6366f1" />
-            </div>
+                <section className="rc-card">
+                  <div className="rc-card__head">
+                    <h3 className="rc-card__title"><BedDouble size={15} /> {t("distribution_chambre.beds_title", "Lits de la chambre")}</h3>
+                    <span className="rc-count">{lits.length}</span>
+                  </div>
+                  <div className="rc-card__body">
+                    <GroupesLignes groupes={groupesLits} rendu={ligneLit} videMessage={t("distribution_chambre.all_equipped", "Tous les lits sont équipés")} />
+                    {litCourant && (litCourant.lingesPoses || []).length > 0 && (
+                      <div className="cl-sub">
+                        <div className="cl-sub__title"><BedDouble size={14} /> {t("distribution_chambre.on_bed", "Sur le lit {{code}}", { code: litCourant.codeLit })}</div>
+                        <div className="cl-list">{litCourant.lingesPoses.map((l) => ligneLinge({ ...l, litId: litCourant.litId }, null))}</div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )
+            )}
 
-            {modeChambre ? (
-              <section className="dc-panel">
-                <header className="dc-panel__head">
-                  <h3><DoorOpen size={16} /> {t("distribution_chambre.in_room_title", "Déjà dans la chambre")}</h3>
-                  <VueSwitch value={vueChambre} onChange={setVueChambre} compact />
-                </header>
-                {(chambre.dansChambre || []).length === 0 ? (
-                  <div className="dc-panel__empty"><Shirt size={22} /> {t("distribution_chambre.room_empty", "Aucun linge dans la chambre pour le moment.")}</div>
-                ) : vueChambre === "tableau" ? (
-                  <DataTable
-                    columns={{
-                      code: { label: t("common.code"), render: (l) => <Code>{l.codeBarre}</Code> },
-                      categorie: { label: t("linge.category"), render: (l) => t(`categories.${l.categorie}`, l.categorie || "—") },
-                      statut: { label: t("linge.status"), render: (l) => ((chambre.recents || []).includes(l.lingeId) ? <Badge variant="success">{t("distribution_chambre.just_placed", "Vient d'être déposé")}</Badge> : <Badge variant="secondary">{t("distribution_chambre.in_room_title", "Déjà dans la chambre")}</Badge>) },
-                      actions: {
-                        label: t("common.actions"),
-                        align: "center",
-                        render: (l) => (
-                          <RowActions>
-                            <RowButton icon={Undo2} tone="danger" title={t("distribution_chambre.remove_linen", "Retirer un linge")} disabled={loading} onClick={() => setARetirer(l)} />
-                          </RowActions>
-                        ),
-                      },
-                    }}
-                    rows={chambre.dansChambre}
-                    rowKey={(l) => l.lingeId ?? l.codeBarre}
-                  />
-                ) : (
-                  <div className="dc-chips">
-                    <AnimatePresence initial={false}>
-                      {chambre.dansChambre.map((l) => (
-                        <motion.span
-                          key={l.lingeId ?? l.codeBarre}
-                          layout
-                          className={`dc-chip ${(chambre.recents || []).includes(l.lingeId) ? "is-new" : ""}`}
-                          initial={{ opacity: 0, scale: 0.85 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.85 }}
-                        >
-                          <code>{l.codeBarre}</code>
-                          {l.categorie && <small>{t(`categories.${l.categorie}`, l.categorie)}</small>}
-                          <button type="button" className="dc-chip__remove" title={t("distribution_chambre.remove_linen", "Retirer un linge")} disabled={loading} onClick={() => setARetirer(l)}>
-                            <X size={12} />
-                          </button>
-                        </motion.span>
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </section>
-            ) : (
-              <section className="dc-panel">
-                <header className="dc-panel__head">
-                  <h3><BedDouble size={16} /> {t("distribution_chambre.beds_title", "Lits de la chambre")}</h3>
-                  <VueSwitch value={vueLits} onChange={setVueLits} compact />
-                </header>
-                {!litActif && (
-                  <div className="dc-hint"><Info size={15} /> {t("distribution_chambre.select_bed_hint")}</div>
-                )}
-                {litCourant && (litCourant.lingesPoses || []).length > 0 && (
-                  <div className="dc-litlinges">
-                    <span className="dc-litlinges__title"><BedDouble size={14} /> {t("distribution_chambre.on_bed", "Sur le lit {{code}}", { code: litCourant.codeLit })}</span>
-                    <div className="dc-chips">
-                      {litCourant.lingesPoses.map((l) => (
-                        <span key={l.lingeId ?? l.codeBarre} className="dc-chip">
-                          <code>{l.codeBarre}</code>
-                          {l.categorie && <small>{t(`categories.${l.categorie}`, l.categorie)}</small>}
-                          <button type="button" className="dc-chip__remove" title={t("distribution_chambre.remove_linen", "Retirer un linge")} disabled={loading} onClick={() => setARetirer(l)}>
-                            <X size={12} />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {vueLits === "tableau" ? (
-                  <DataTable
-                    columns={{
-                      lit: { label: t("distribution_chambre.bed"), render: (l) => <span className="dc-inline"><BedDouble size={15} /> <strong>{l.codeLit}</strong></span> },
-                      etat: { label: t("linge.status"), render: libelleLit },
-                      nb: { label: t("distribution_chambre.distributed"), align: "right", render: (l) => l.lingesPoses?.length || 0 },
-                      actions: {
-                        label: t("common.actions"),
-                        align: "center",
-                        render: (l) => (
-                          <RowActions>
-                            <RowButton icon={litActif?.litId === l.litId ? LogOut : ScanLine} title={litActif?.litId === l.litId ? t("common.cancel") : t("distribution_chambre.select_bed_hint")} onClick={() => choisirLit(l)} />
-                          </RowActions>
-                        ),
-                      },
-                    }}
-                    rows={lits}
-                    rowKey={(l) => l.litId}
-                    activeId={litActif?.litId}
-                    onRowClick={choisirLit}
-                  />
-                ) : (
-                  <>
-                    <LegendeLits items={[
-                      { ...TONS_DISTRIBUTION.A_EQUIPER, label: t("distribution_chambre.empty") },
-                      { ...TONS_DISTRIBUTION.INFECTE, label: t("distribution_chambre.infected") },
-                      { ...TONS_DISTRIBUTION.EQUIPE, label: t("distribution_chambre.completed") },
-                    ]} />
-                    <div className="lits-grid">
-                      {lits.map((lit) => (
-                        <CarteLit key={lit.litId} lit={lit} actif={litActif?.litId === lit.litId} onClick={() => choisirLit(lit)} />
-                      ))}
-                    </div>
-                  </>
-                )}
+            {etape === "DISTRIBUER" && chambre && !modeChambre && lingesPosesChambre.length > 0 && (
+              <section className="rc-card">
+                <div className="rc-card__head">
+                  <h3 className="rc-card__title"><Shirt size={15} /> {t("distribution_chambre.room_state", "État de la chambre")}</h3>
+                  <span className="rc-count">{lingesPosesChambre.length}</span>
+                </div>
+                <div className="cl-list">
+                  {lingesPosesChambre.map((l) => ligneLinge(l, <PastilleEtat tone="info">{t("distribution_chambre.bed", "Lit")} {l.codeLit}</PastilleEtat>))}
+                </div>
               </section>
             )}
-          </>
-        )}
+          </div>
 
-        {isCloturee && resume && (
-          <Resume res={resume} modeChambre={modeChambre} onNouvelle={viderSession} onTerminer={viderSession} />
-        )}
-      </div>
+          {etape === "DISTRIBUER" && chambre && (
+            <aside className="rc-side">
+              <BilanCollecte
+                titre={t("distribution_chambre.balance", "Bilan de la distribution")}
+                progression={modeChambre ? undefined : lits.length ? Math.round((litsEquipes / lits.length) * 100) : 0}
+                items={[
+                  { label: t("distribution_chambre.distributed", "Distribués"), value: nbPoses },
+                  ...(modeChambre
+                    ? [{ label: t("distribution_chambre.in_room_title", "Dans la chambre"), value: chambre.dansChambre?.length || 0 }]
+                    : [
+                      { label: t("distribution_chambre.beds_done", "Lits équipés"), value: `${litsEquipes}/${lits.length}` },
+                      { label: t("distribution_chambre.empty_beds", "Lits vides"), value: lits.length - litsEquipes },
+                    ]),
+                  { label: t("distribution_chambre.available", "Disponibles"), value: chambre.disponibles?.length || 0 },
+                ]}
+              />
+              <div className="rc-foot">
+                <span>{t("distribution_chambre.agent", "Agent")} : <b>{nomAgent}</b></span>
+                <span>{new Date().toLocaleDateString("fr-FR")}</span>
+              </div>
+            </aside>
+          )}
+        </div>
+      )}
+
+      {showStats && (
+        <QuickStats
+          title={t("distribution_chambre.title")}
+          subtitle={chambre ? `${t("distribution_chambre.room")} ${chambre.codeChambre}` : undefined}
+          onClose={() => setShowStats(false)}
+          kpis={[
+            { label: t("distribution_chambre.distributed"), value: nbPoses, color: "#10b981" },
+            ...(modeChambre
+              ? [{ label: t("distribution_chambre.in_room_title", "Déjà dans la chambre"), value: chambre?.dansChambre?.length || 0, color: "#0794a4" }]
+              : [
+                { label: t("distribution_chambre.beds_done", "Lits équipés"), value: `${litsEquipes} / ${lits.length}`, color: "#0794a4" },
+                { label: t("distribution_chambre.empty_beds"), value: lits.length - litsEquipes, color: "#f59e0b" },
+              ]),
+            { label: t("distribution_chambre.available", "Linges disponibles"), value: chambre?.disponibles?.length || 0, color: "#6366f1" },
+          ]}
+          classements={modeChambre ? [] : [{
+            title: t("distribution_chambre.bed"),
+            items: poses.map((p) => ({ label: p.codeLit, value: p.nb })),
+          }]}
+        />
+      )}
 
       <ConfirmDialog
         open={confirmerFin}
@@ -668,7 +596,8 @@ export default function DistributionChambre() {
       <ConfirmDialog
         open={!!aRetirer}
         title={t("distribution_chambre.remove_linen", "Retirer un linge")}
-        message={t("distribution_chambre.remove_confirm", "Retirer le linge {{code}} ? Il redevient disponible à la distribution.", { code: aRetirer?.codeBarre || "" })}
+        message={t("distribution_chambre.remove_confirm", "Retirer ce linge du lit ou de la chambre ?")}
+        details={aRetirer?.codeBarre ? <Code>{aRetirer.codeBarre}</Code> : null}
         confirmLabel={t("distribution_chambre.remove_yes", "Retirer")}
         cancelLabel={t("common.cancel")}
         busy={loading}
@@ -684,6 +613,6 @@ export default function DistributionChambre() {
         onConfirm={viderSession}
         onClose={() => setConfirmerReset(false)}
       />
-    </Page>
+    </div>
   );
 }

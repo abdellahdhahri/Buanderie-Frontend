@@ -7,12 +7,12 @@ import Button from '../Badge/Button';
 import logoSoftsys from '../../../assets/logo_SoftSys.png';
 
 const staticEmployee = {
-    nom: "Rabaa ",
-    prenom: "Daraji",
+    nom: "administrateur ",
+    prenom: "",
     fonction: "",
     matricule: "",
-    service: "Stérilisation",
-    codeBarre: "P0001757",
+    service: "Buanderie",
+    codeBarre: "P0000025",
     photo: null
 };
 
@@ -187,20 +187,20 @@ html, body {
     z-index: 10;
     position: relative;
     box-sizing: border-box;
-    padding-top: 5mm;
+    padding-top: 3mm;
 }
 
-.badge-logo-area { margin-bottom: 3mm; margin-top: 2mm; }
+.badge-logo-area { margin-bottom: 2mm; margin-top: 2mm; }
 .badge-logo-area.small { margin-bottom: 3mm; transform: scale(0.85); }
-.softsys-logo-img { height: 12mm; margin-left: 5mm; width: auto; object-fit: contain; }
+.softsys-logo-img { height: 10mm; margin-left: 5mm; width: auto; object-fit: contain; }
 
 .badge-photo-container {
-    width: 22mm; height: 22mm;
+    width: 19mm; height: 19mm;
     border-radius: 50%;
     border: 0.7mm solid ${colors.primary};
     box-shadow: 0 1mm 3mm rgba(0,0,0,.15);
     overflow: hidden; background: #e2e8f0;
-    margin: 0 auto 3mm;
+    margin: 0 auto 2mm;
     display: flex; justify-content: center; align-items: center;
 }
 .badge-photo { width: 100%; height: 100%; object-fit: cover; }
@@ -220,7 +220,7 @@ html, body {
 
 .badge-codes {
     display: flex; justify-content: center; gap: 3mm; align-items: center;
-    width: 100%; margin-top: auto; padding-bottom: 7mm;
+    width: 100%; margin-top: auto; padding-bottom: 15mm;
     background: transparent !important;
 }
 

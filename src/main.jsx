@@ -4,7 +4,9 @@ import "./index.css";
 import { applySavedTheme } from "./utils/theme";
 
 import { chargerEstablishment } from "./services/establishmentService";
+import { installerSessionGuard } from "./services/sessionGuard";
 
+installerSessionGuard();
 applySavedTheme();
 chargerEstablishment();
 import { NotificationProvider } from "./contextes/NotificationContext.jsx";

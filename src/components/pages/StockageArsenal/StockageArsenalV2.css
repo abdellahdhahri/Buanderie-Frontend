@@ -1,0 +1,72 @@
+.rc-steps--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 900px) { .rc-steps--5 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .rc-steps--5 { grid-template-columns: 1fr; } }
+
+.sa-v2 {
+  --sa: var(--rc);
+  --sa-2: var(--rc);
+  --sa-deep: var(--rc);
+  --sa-soft: var(--rc-soft);
+  --sa-ring: var(--rc-ring);
+  --sa-surface: var(--rc-surface);
+  --sa-surface-2: var(--rc-surface-2);
+  --sa-border: var(--rc-border);
+  --sa-border-soft: var(--rc-surface-2);
+  --sa-text: var(--rc-text);
+  --sa-text-2: var(--rc-text);
+  --sa-muted: var(--rc-muted);
+  --sa-faint: var(--rc-muted);
+  --sa-warn: var(--rc-warn);
+  --sa-danger: var(--rc-sac);
+  --sa-shadow: none;
+}
+
+.sa-v2 .sa-flow { display: flex; flex-direction: column; gap: 14px; }
+.sa-v2 .sa-track, .sa-v2 .sa-stage__art, .sa-v2 .sa-stage__text, .sa-v2 .sa-hero > .sa-art, .sa-v2 .sa-hero > svg, .sa-v2 .sa-hero p, .sa-v2 .sa-empty .sa-art, .sa-v2 .sa-empty > svg { display: none; }
+.sa-v2 .sa-hero { grid-template-columns: 1fr; }
+
+.sa-ctx { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sa-ctx__btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 12px;
+  border: 1px solid var(--rc-strong); border-radius: 6px; background: var(--rc-surface);
+  color: var(--rc-text); font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.sa-ctx__btn:hover { border-color: var(--rc); color: var(--rc); }
+.sa-ctx__btn svg:last-child { color: var(--rc-muted); }
+
+.sa-v2 .sa-stage, .sa-v2 .sa-panel { border-radius: 10px; padding: 20px 22px; }
+.sa-v2 .sa-stage__head { margin-bottom: 16px; }
+.sa-v2 .sa-stage__title { font-size: 18px; font-weight: 700; margin: 0; }
+.sa-v2 .sa-eyebrow { display: none; }
+.sa-v2 .sa-hero h2 { font-size: 18px; }
+.sa-v2 .sa-stage__foot.is-sticky { border-radius: 0 0 10px 10px; }
+.sa-v2 .sa-picks { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+
+.sa-v2 .sa-btn { border-radius: 8px; min-height: 40px; font-weight: 700; }
+.sa-v2 .sa-btn--primary { background: var(--rc); border-color: var(--rc); color: var(--rc-on); box-shadow: none; }
+.sa-v2 .sa-btn--primary:hover:not(:disabled) { filter: brightness(1.08); }
+.sa-v2 .sa-segment { border-radius: 8px; }
+.sa-v2 .sa-segment button { border-radius: 6px; }
+.sa-v2 .sa-segment button.is-active { background: var(--rc); color: var(--rc-on); }
+
+.sa-v2 .sa-scan form input { border: 2px solid var(--rc-strong) !important; border-radius: 8px !important; box-shadow: none !important; background: var(--rc-surface) !important; color: var(--rc-text); min-height: 54px; font: 600 16px var(--rc-mono) !important; }
+.sa-v2 .sa-scan form input:focus { border-color: var(--scan, var(--rc)) !important; box-shadow: 0 0 0 4px color-mix(in srgb, var(--scan, var(--rc)) 18%, transparent) !important; }
+
+.sa-v2 .sa-shelf, .sa-v2 .sa-rack, .sa-v2 .sa-row, .sa-v2 .sa-agent, .sa-v2 .sa-pick, .sa-v2 .sa-active-shelf, .sa-v2 .sa-result, .sa-v2 .sa-qty-row, .sa-v2 .sa-banner, .sa-v2 .sa-journal__item, .sa-v2 .sa-list__row { border-radius: 8px; }
+.sa-v2 .sa-shelf.is-active { border-color: var(--rc); background: var(--rc-soft); box-shadow: 0 0 0 2px var(--rc-ring); }
+.sa-v2 .sa-shelf:hover, .sa-v2 .sa-rack:hover, .sa-v2 .sa-row:hover, .sa-v2 .sa-agent:hover { border-color: var(--rc); }
+.sa-v2 .sa-cat, .sa-v2 .sa-count, .sa-v2 .sa-tag { border-radius: 5px; }
+.sa-v2 .sa-meter__bar, .sa-v2 .sa-catbar { border-radius: 3px; }
+.sa-v2 .sa-meter__bar span { background: var(--rc-ok); }
+.sa-v2 .sa-qty { border-radius: 8px; }
+.sa-v2 .sa-qty__btn { border-radius: 6px; }
+.sa-v2 .sa-panel__title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .09em; }
+.sa-v2 .sa-panel__title-icon { width: auto; height: auto; background: transparent; color: var(--rc); }
+.sa-v2 .sa-subhead { color: var(--rc-muted); letter-spacing: .09em; }
+
+.sa-v2 .sa-flow, .sa-v2 .sa-stage, .sa-v2 .sa-stage > div, .sa-v2 .sa-scan, .sa-v2 .sa-scan form { width: 100%; max-width: none; box-sizing: border-box; }
+.sa-v2 .sa-qty-list { max-width: none; }
+.sa-v2 .sa-qty-row { padding: 10px 14px; }
+.sa-v2 .sa-agents__list { max-height: none; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.sa-v2 .sa-shelves { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }

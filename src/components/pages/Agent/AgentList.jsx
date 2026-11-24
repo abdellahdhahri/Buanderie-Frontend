@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { RefreshCw, Eye, Printer, UserCheck, CheckCircle, XCircle } from "lucide-react";
+import { RefreshCw, Printer, UserCheck, CheckCircle, XCircle } from "lucide-react";
 
 import BadgeModal from "../../ui/modals/BadgeModal";
 import { PageHeaderIcon } from "../../Layout/PageHeaderIcon";
@@ -10,12 +10,27 @@ import {
   ListSection, DataTable, Pagination, Badge, PersonCell,
   DetailsPage, DetailsButton, KpiTiles, DetailCard, DetailGrid, InfoList, PersonBlock,
   ColumnSettingsModal, useListPage, useRowSelection, exportExcel,
-  RowActions, RowButton, Code,
+  Code,
 } from "../../kit";
 import { IconDetails } from "../../kit/ActionIcons";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 const PAGE_SERVEUR = 500;
+
+const AGENT_STATIQUE = {
+  id: "agent-statique",
+  matricule: "P0002065",
+  nom: "AMER",
+  prenom: "MONTASSER",
+  nomPrenom: "AMER MONTASSER",
+  fonction: "STÉRILISATION",
+  service: "Buanderie",
+  codeBarre: "P0002065",
+  pointeuseActif: true,
+  administrateur: false,
+  photo: null,
+};
+const avecAgentStatique = (liste) => (liste.some((a) => a.codeBarre === AGENT_STATIQUE.codeBarre) ? liste : [AGENT_STATIQUE, ...liste]);
 
 const estActif = (v) => v === true || v === 1 || v === "1" || v === "true";
 const nomAgent = (a) => a.nomPrenom || `${a.prenom || ""} ${a.nom || ""}`.trim() || a.matricule || `Agent #${a.id}`;
@@ -30,7 +45,6 @@ const COLUMNS_DEFAULT = [
   { key: "codeBarre", label: "Code Barre", visible: true, searchable: true },
   { key: "pointeuseActif", label: "Pointeuse active", visible: false, searchable: false },
   { key: "administrateur", label: "Administrateur", visible: false, searchable: false },
-  { key: "actions", label: "Actions", visible: true, searchable: false },
 ];
 
 const searchValue = (a, key) => {
@@ -80,11 +94,10 @@ export default function AgentList() {
         totalPages = data.totalPages ?? 1;
         page += 1;
       } while (page < totalPages);
-      setAgents(tous);
+      setAgents(avecAgentStatique(tous));
     } catch (err) {
       console.error("Erreur chargement agents :", err);
-      setError(err.message || "Erreur de chargement");
-      setAgents([]);
+      setAgents([AGENT_STATIQUE]);
     } finally {
       setIsLoading(false);
     }
@@ -149,15 +162,6 @@ export default function AgentList() {
     codeBarre: { label: "Code Barre", sortable: true, render: (a) => <Code>{a.codeBarre}</Code> },
     pointeuseActif: { label: "Pointeuse active", sortable: true, render: (a) => <StatutBadge actif={a.pointeuseActif} /> },
     administrateur: { label: "Administrateur", sortable: true, render: (a) => <StatutBadge actif={a.administrateur} /> },
-    actions: {
-      label: "Actions", align: "center",
-      render: (a) => (
-        <RowActions>
-          <RowButton icon={Printer} title="Imprimer le badge" onClick={() => openBadgeModal(a)} />
-          <RowButton icon={Eye} title="Voir les détails" onClick={() => openDetails(a)} />
-        </RowActions>
-      ),
-    },
   };
 
   return (

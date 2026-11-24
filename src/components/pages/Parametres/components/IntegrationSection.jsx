@@ -26,8 +26,8 @@ const REFERENTIEL_INFOS = {
 const rang = (r) => (REFERENTIELS.includes(r) ? REFERENTIELS.indexOf(r) : REFERENTIELS.length);
 const TYPES_CONNECTEUR = ["STANDARD", "CUBIX", "PERSONNALISE"];
 const CONNECTEUR_LABELS = { STANDARD: "Standard", CUBIX: "Cubix", PERSONNALISE: "Personnalisé" };
-const TYPES_AUTH = ["AUCUNE", "BASIC", "BEARER", "CLE_API"];
-const AUTH_LABELS = { AUCUNE: "Aucune", BASIC: "Utilisateur et mot de passe", BEARER: "Jeton (Bearer)", CLE_API: "Clé API" };
+const TYPES_AUTH = ["AUCUNE", "BASIC", "BEARER", "CLE_API", "CUBIX"];
+const AUTH_LABELS = { AUCUNE: "Aucune", BASIC: "Utilisateur et mot de passe", BEARER: "Jeton (Bearer)", CLE_API: "Clé API", CUBIX: "Compte CUBIX du personnel" };
 
 const carteCls = "overflow-hidden rounded-[14px] border border-slate-200 bg-slate-50/60 dark:border-border dark:bg-white/5";
 const selectCls = "h-10 w-full rounded-[10px] border border-slate-200 bg-white px-3 text-[13.5px] text-slate-800 focus:outline-none focus:ring-[3px] focus:ring-teal-500/12 dark:border-border dark:bg-card dark:text-foreground";
@@ -411,6 +411,7 @@ export function IntegrationSection() {
   const [saving, setSaving] = useState(false);
   const [ouvert, setOuvert] = useState(null);
   const [modeleBusy, setModeleBusy] = useState(false);
+  const [testSession, setTestSession] = useState(false);
 
   if (integration && integration !== source) {
     const f = toForm(integration);
@@ -494,6 +495,20 @@ export function IntegrationSection() {
     }
   };
 
+  const testerSessionCubix = async () => {
+    setTestSession(true);
+    try {
+      const res = await integrationService.testerSessionCubix();
+      const ok = res?.succes === true || res?.success === true;
+      const message = res?.message || (ok ? t("integration.test_ok", "Connexion réussie.") : t("integration.test_ko", "Échec du test."));
+      (ok ? toast.success : toast.error)(message);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setTestSession(false);
+    }
+  };
+
   const choisirConnecteur = (type) => {
     setConfig({ typeConnecteur: type });
     if (type !== "PERSONNALISE") appliquerModele(type);
@@ -561,6 +576,17 @@ export function IntegrationSection() {
                 : t("integration.connector_model_hint", "Le modèle remplit les chemins et les champs des référentiels. L'URL de base et les identifiants restent à saisir.")}
             </small>
           </label>
+          {auth === "CUBIX" && (
+            <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+              <Button type="button" variant="outline" onClick={testerSessionCubix} disabled={testSession}>
+                {testSession ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
+                {t("integration.test_cubix_session", "Tester ma session CUBIX")}
+              </Button>
+              <small className="text-[11.5px] text-slate-500 dark:text-muted-foreground">
+                {t("integration.cubix_auth_hint", "Chaque personnel est authentifié avec son propre compte CUBIX : aucun identifiant n'est à saisir ici.")}
+              </small>
+            </div>
+          )}
           {auth === "BASIC" && (
             <>
               <Input label={t("integration.user", "Utilisateur")} value={c.utilisateur || ""} onChange={(e) => setConfig({ utilisateur: e.target.value })} autoComplete="off" />

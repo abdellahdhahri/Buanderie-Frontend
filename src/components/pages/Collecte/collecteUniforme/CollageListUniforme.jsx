@@ -4,18 +4,15 @@ import { useModal } from "../../../../contextes/ModalContext";
 import { apiCall } from "../collecteUtils";
 import { getAgent, isAgentConnected } from "../../../../services/agentService";
 import "../../Linge/WorkflowList.css";
-import { Icons } from "../shared/icons";
-import { CollecteHeader } from "../shared/CollecteHeader";
-import { ZoneScan } from "../shared/ZoneScan";
 import { CollecteStyles } from "../shared/CollecteStyles";
 import { DlgManquant } from "../shared/dialogs/DlgManquant";
-import { UniformeInfoBar } from "./components/UniformeInfoBar";
-import { StatistiquesUniforme } from "./components/StatistiquesUniforme";
-import { MessagesEtapeUniforme } from "./components/MessagesEtapeUniforme";
-import { UniformeEnCours } from "./components/UniformeEnCours";
-import { BoutonCloturer } from "./components/BoutonCloturer";
 import { ResumeUniforme } from "./components/ResumeUniforme";
-import { ListeUniformes } from "./components/ListeUniformes";
+import { ClipboardCheck, TriangleAlert } from "lucide-react";
+import {
+  ToolbarCollecte, EtapesCollecte, AccueilSansAgent, PosteScan, PastilleEtat, AlerteCollecte,
+  LigneCollecte, BoutonIcone, GroupesLignes, BilanCollecte, nomAgentCollecte,
+} from "../shared/CollecteRc";
+import { getCategorieMeta } from "../../../../constants/categoriesLinge";
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -305,28 +302,73 @@ function CollageListUniformeInner() {
   const blancs = collecte?.uniformes?.filter(u => u.statut === "BLANC").length || 0;
   const manquants = collecte?.uniformes?.filter(u => u.statut === "MANQUANT").length || 0;
 
-  const getPlaceholder = () => {
-    if (!agent) return t('collecte_uniforme.no_agent_connected');
-    if (!collecte) return t('collecte_uniforme.scan_doctor_badge');
-    if (uniformeEnCours) return t('collecte_uniforme.scan_bin');
-    if (etape === "RESUME") return t('collecte_uniforme.collection_closed');
-    return t('collecte_uniforme.scan_uniform');
-  };
-
   const getBorderColor = () => {
-    if (!agent) return "#dc2626";
-    if (etape === "RESUME") return "#e2e8f0";
-    if (uniformeEnCours) {
-      return uniformeEnCours.estInfecte ? "#dc2626" : "#0ea5e9";
-    }
-    return "#0ea5e9";
+    if (!agent) return "#e03131";
+    if (etape === "RESUME") return "#cbd5e1";
+    if (uniformeEnCours?.estInfecte) return "#e03131";
+    return "#0d9488";
   };
 
   const isCloturee = etape === "RESUME";
+  const infecteActif = Boolean(uniformeEnCours?.estInfecte);
+  const pct = total > 0 ? Math.round((traites / total) * 100) : 0;
+  const nomAgent = nomAgentCollecte(agent);
 
+  const etatUniforme = (u) => {
+    const map = {
+      BLANC: ["ok", t("collecte_uniforme.white", "Blanc")],
+      INFECTE: ["danger", t("collecte_uniforme.infected", "Infecté")],
+      MANQUANT: ["warn", t("collecte_uniforme.missing", "Manquant")],
+    }[u.statut];
+    if (map) return <PastilleEtat tone={map[0]}>{map[1]}</PastilleEtat>;
+    if (uniformeEnCours?.lingeId === u.lingeId) return <PastilleEtat tone={u.estInfecte ? "danger" : "info"}>{t("collecte_uniforme.in_progress", "En cours")}</PastilleEtat>;
+    return null;
+  };
+
+  const ligne = (u) => {
+    const { Icon, accent } = getCategorieMeta(u.categorie);
+    const actif = uniformeEnCours?.lingeId === u.lingeId;
+    return (
+      <LigneCollecte
+        key={u.lingeId}
+        icone={<Icon size={18} strokeWidth={2} />}
+        accent={u.estInfecte && !u.statut ? "var(--rc-sac)" : accent}
+        titre={t(`categories.${u.categorie}`, u.categorie || "—")}
+        code={u.codeBarre}
+        tags={u.estInfecte && !u.statut ? <span className="cl-line__tag">{t("collecte_uniforme.infected", "Infecté")}</span> : null}
+        active={actif}
+        estompe={Boolean(u.statut)}
+        etat={etatUniforme(u)}
+        actions={!u.statut && (
+          <BoutonIcone icone={<TriangleAlert size={16} strokeWidth={2.4} />} titre={t("collecte_uniforme.missing")} tone="warn" onClick={() => setDlgManq(u)} />
+        )}
+      />
+    );
+  };
+
+  const uniformes = collecte?.uniformes || [];
+  const groupes = [
+    { key: "afaire", titre: t("collecte_uniforme.to_process", "À traiter"), items: uniformes.filter((u) => !u.statut), toujours: true },
+    { key: "traites", titre: t("collecte_uniforme.processed", "Traités"), items: uniformes.filter((u) => u.statut), repliable: true, estompe: true },
+  ];
+
+  const etapes = [
+    t("collecte_uniforme.step_identify", "Identification de l'agent"),
+    t("collecte_uniforme.step_badge", "Badge du médecin"),
+    t("collecte_uniforme.step_uniforms", "Uniformes"),
+    t("collecte_uniforme.step_close", "Clôture"),
+  ];
+  const faites = [Boolean(agent), Boolean(collecte), Boolean(collecte) && total > 0 && nonTr === 0, isCloturee];
+
+  const chipsPoste = collecte && !isCloturee ? (
+    <>
+      <PastilleEtat tone="info">{collecte.personnelNom}</PastilleEtat>
+      {uniformeEnCours && <PastilleEtat tone={uniformeEnCours.estInfecte ? "danger" : "ok"}>{uniformeEnCours.estInfecte ? t("collecte_uniforme.red_bin", "Bac rouge") : t("collecte_uniforme.white_bin", "Bac blanc")}</PastilleEtat>}
+    </>
+  ) : null;
 
   return (
-    <div className="collecte-container cr-page">
+    <div className="collecte-container cr-page rc cc">
       <DlgManquant
         linge={dlgManq}
         onOk={handleManquant}
@@ -336,92 +378,105 @@ function CollageListUniformeInner() {
         confirmLabel={t('collecte_uniforme.confirm_missing')}
       />
 
-      <CollecteHeader
-        icon={<Icons.UserMd size={28} color="white" strokeWidth={2.2} />}
-        title={t('collecte_uniforme.title')}
-        agent={agent}
-        agentLabel={t('collecte_uniforme.agent')}
-        noAgentLabel={t('collecte_uniforme.no_agent_connected')}
-        accent="#0284c7"
-      />
+      <ToolbarCollecte agent={agent} onReset={collecte ? reset : undefined} />
+      <EtapesCollecte etapes={etapes} faites={faites} label={t("collecte_uniforme.steps", "Étapes de la collecte")} />
 
-      <div className="cr-shell">
-        <UniformeInfoBar agent={agent} collecte={collecte} onReset={reset} />
-
-        {(etape === "SCAN" || etape === "RESUME") && collecte && (
-          <StatistiquesUniforme
-            total={total}
-            blancs={blancs}
-            infectes={infectes}
-            manquants={manquants}
-          />
-        )}
-
-        <ZoneScan
+      {!agent ? (
+        <AccueilSansAgent
+          eyebrow={t("collecte_uniforme.title")}
+          titre={t("collecte_uniforme.no_agent_connected")}
           scanInputRef={scanInputRef}
-          placeholder={getPlaceholder()}
           value={scanVal}
           onChange={setScanVal}
           onSubmit={handleScan}
-          borderColor={getBorderColor()}
-          disabled={isCloturee || loading || !agent}
-          isCloturee={isCloturee}
-          showShimmer={false}
-          scanStatus={scanStatus}
-          scanningLabel={t('collecte_uniforme.scanning')}
-          successLabel={t('collecte_uniforme.success')}
         />
-
-        <MessagesEtapeUniforme
-          agent={agent}
-          collecte={collecte}
-          etape={etape}
-          uniformeEnCours={uniformeEnCours}
+      ) : etape === "RESUME" && resume ? (
+        <ResumeUniforme
+          resume={resume}
+          personnelNom={collecte?.personnelNom}
+          onAutreMedecin={() => {
+            setCollecte(null);
+            setResume(null);
+            setUniformeEnCours(null);
+            setEtape("BADGE");
+            setTimeout(() => scanInputRef.current?.focus(), 200);
+          }}
+          onTerminer={reset}
         />
-
-        {uniformeEnCours && etape === "SCAN" && (
-          <UniformeEnCours
-            uniforme={uniformeEnCours}
-            onCancel={() => setUniformeEnCours(null)}
-          />
-        )}
-
-        {etape === "SCAN" && collecte && (
-          <div style={{ marginTop: 20 }}>
-            <BoutonCloturer
-              onClick={handleCloturer}
-              loading={loading}
-              nonTr={nonTr}
-              total={total}
+      ) : (
+        <div className={collecte ? "rc-layout" : ""}>
+          <div className="rc-main">
+            <PosteScan
+              titre={t("collecte_uniforme.title")}
+              chips={chipsPoste}
+              infecte={infecteActif}
+              alerte={collecte?.estInfecte ? (
+                <AlerteCollecte>
+                  {t("collecte_uniforme.infectious_contact", "Contact infectieux")}
+                  {collecte.infoInfection ? ` · ${collecte.infoInfection}` : ""}
+                </AlerteCollecte>
+              ) : null}
+              scanInputRef={scanInputRef}
+              value={scanVal}
+              onChange={setScanVal}
+              onSubmit={handleScan}
+              borderColor={getBorderColor()}
+              disabled={isCloturee || loading || !agent}
+              scanStatus={scanStatus}
+              scanningLabel={t("collecte_uniforme.scanning")}
+              successLabel={t("collecte_uniforme.success")}
             />
+
+            {uniformeEnCours && (
+              <div className={`cc-alert ${uniformeEnCours.estInfecte ? "" : "is-info"}`}>
+                <span>
+                  <code>{uniformeEnCours.codeBarre}</code> → {uniformeEnCours.estInfecte ? t("collecte_uniforme.red_bin", "Bac rouge") : t("collecte_uniforme.white_bin", "Bac blanc")}
+                </span>
+                <button type="button" className="rc-btn rc-btn--sm cl-cancel" onClick={() => setUniformeEnCours(null)}>
+                  {t("common.cancel", "Annuler")}
+                </button>
+              </div>
+            )}
+
+            {collecte && (
+              <section className="rc-card">
+                <div className="rc-card__head">
+                  <h3 className="rc-card__title">{t("collecte_uniforme.uniforms", "Uniformes")}</h3>
+                  <span className="rc-count">{total}</span>
+                </div>
+                <div className="rc-card__body">
+                  <GroupesLignes groupes={groupes} rendu={ligne} videMessage={t("collecte_uniforme.all_done", "Tous les uniformes sont traités")} />
+                </div>
+                <div className="cl-actions">
+                  <button type="button" className="rc-btn rc-btn--primary rc-btn--lg" disabled={loading} onClick={handleCloturer}>
+                    <ClipboardCheck size={16} />
+                    {nonTr === 0 ? t("collecte_uniforme.finish_and_close", "Terminer et clôturer") : t("collecte_uniforme.close_with_unprocessed", "Clôturer avec des restants")}
+                  </button>
+                </div>
+              </section>
+            )}
           </div>
-        )}
 
-        {etape === "RESUME" && resume && (
-          <ResumeUniforme
-            resume={resume}
-            personnelNom={collecte?.personnelNom}
-            onAutreMedecin={() => {
-              setCollecte(null);
-              setResume(null);
-              setUniformeEnCours(null);
-              setEtape("BADGE");
-              setTimeout(() => scanInputRef.current?.focus(), 200);
-            }}
-            onTerminer={reset}
-          />
-        )}
-
-        {etape === "SCAN" && collecte && (
-          <ListeUniformes
-            uniformes={collecte.uniformes}
-            uniformeEnCours={uniformeEnCours}
-            total={total}
-            traites={traites}
-            onManquant={x => setDlgManq(x)}
-          />
-        )}
-      </div>
+          {collecte && (
+            <aside className="rc-side">
+              <BilanCollecte
+                titre={t("collecte_uniforme.balance", "Bilan de la collecte")}
+                progression={pct}
+                items={[
+                  { label: t("collecte_uniforme.uniforms", "Uniformes"), value: total },
+                  { label: t("collecte_uniforme.white", "Blancs"), value: blancs },
+                  { label: t("collecte_uniforme.infected", "Infectés"), value: infectes, tone: "danger" },
+                  { label: t("collecte_uniforme.missing", "Manquants"), value: manquants },
+                ]}
+              />
+              <div className="rc-foot">
+                <span>{t("collecte_uniforme.agent", "Agent")} : <b>{nomAgent}</b></span>
+                <span>{new Date().toLocaleDateString("fr-FR")}</span>
+              </div>
+            </aside>
+          )}
+        </div>
+      )}
 
       <CollecteStyles />
     </div>

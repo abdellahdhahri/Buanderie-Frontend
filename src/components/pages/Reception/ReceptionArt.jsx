@@ -30,32 +30,6 @@ export function BacGlyph({ size = 40, c = "#0284c7" }) {
   );
 }
 
-/** Sac infecté : sac fermé par un lien, pictogramme de risque biologique. */
-export function SacGlyph({ size = 40, c = "#e03131" }) {
-  const uid = useId().replace(/:/g, "");
-  return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <defs>
-        <linearGradient id={`sac-${uid}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={c} stopOpacity="0.95" />
-          <stop offset="100%" stopColor={c} stopOpacity="0.7" />
-        </linearGradient>
-      </defs>
-      <path d="M19 6c1.5 2 3 3 5 3s3.5-1 5-3l1.5 6h-13L19 6z" fill={c} opacity="0.55" />
-      <rect x="17" y="11" width="14" height="3.4" rx="1.7" fill={c} />
-      <path d="M18 14.5C11 18 8 25 9 32c1 6 6 10 15 10s14-4 15-10c1-7-2-14-9-17.5H18z" fill={`url(#sac-${uid})`} />
-      {/* Risque biologique stylisé */}
-      <g stroke="#fff" strokeOpacity="0.92" strokeWidth="1.8" fill="none">
-        <circle cx="24" cy="23.5" r="3.6" />
-        <circle cx="19.4" cy="31.3" r="3.6" />
-        <circle cx="28.6" cy="31.3" r="3.6" />
-      </g>
-      <circle cx="24" cy="28.6" r="1.6" fill="#fff" />
-      <path d="M14 21c-1.5 2.5-2 5-2 7.5" stroke="#fff" strokeOpacity="0.3" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 /** Linge plié (pile de trois pièces). */
 export function LingeGlyph({ size = 40, c = "#0ca678" }) {
   return (
@@ -72,7 +46,7 @@ export function LingeGlyph({ size = 40, c = "#0ca678" }) {
 }
 
 /** Code-barres balayé par un faisceau (en-tête de la zone de scan). */
-export function ScannerGlyph({ size = 52, c = "#e67700" }) {
+export function ScannerGlyph({ size = 52, c = "#0794a4" }) {
   const bars = [3, 1.5, 2.5, 1, 3, 1.5, 1, 2.5, 1.5, 3, 1, 2];
   let x = 12;
   return (

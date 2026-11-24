@@ -853,3 +853,23 @@
 .dark .pc-produit { background: rgba(16, 185, 129, .12); border-color: rgba(16, 185, 129, .3); color: #6ee7b7; }
 .dark .pc-step__body { border-top-color: var(--dk-border); }
 .param-switch:disabled { opacity: .55; cursor: not-allowed; }
+
+.param-page.param-page--flat { background: transparent; border: 0; border-radius: 0; animation: none; margin-top: 16px; }
+.param-flat__body { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 24px; animation: paramFadeIn 0.3s ease-out; }
+
+.param-hub__group { margin-top: 24px; }
+.param-hub__head h3 { margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a; }
+.param-hub__head p { margin: 2px 0 14px; font-size: .86rem; color: #64748b; }
+.param-hub__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.param-hub__card { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: 16px; background: #fff; border: 1px solid #e2e8f0; text-decoration: none; color: inherit; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.param-hub__card:hover { border-color: #0794a4; box-shadow: 0 12px 26px -14px rgba(7, 148, 164, .45); transform: translateY(-2px); }
+.param-hub__icon { width: 46px; height: 46px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 14px; background: #e9f8fa; color: #0794a4; transition: background .15s ease, color .15s ease; }
+.param-hub__card:hover .param-hub__icon { background: #0794a4; color: #fff; }
+.param-hub__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.param-hub__text strong { font-size: .96rem; font-weight: 800; color: #0f172a; }
+.param-hub__text small { font-size: .8rem; color: #64748b; line-height: 1.35; }
+.param-hub__arrow { color: #94a3b8; flex-shrink: 0; transition: transform .15s ease, color .15s ease; }
+.param-hub__card:hover .param-hub__arrow { color: #0794a4; transform: translateX(3px); }
+.dark .param-hub__card { background: var(--dk-surface, #1e293b); border-color: var(--dk-border, #334155); }
+.dark .param-hub__text strong, .dark .param-hub__head h3 { color: var(--dk-text, #e2e8f0); }
+.dark .param-flat__body { background: var(--dk-surface, #1e293b); }

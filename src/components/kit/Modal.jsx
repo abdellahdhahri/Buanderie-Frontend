@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle, CheckCircle2, HelpCircle } from 'lucide-react';
 import { tk } from './i18n';
 
 export const Modal = ({
@@ -62,25 +63,34 @@ export const TextArea = ({ value, onChange, rows = 3, ...props }) => (
 
 export const ModalSummary = ({ children }) => <div className="kit-modal-summary">{children}</div>;
 
-export const ConfirmDialog = ({ open = true, title = tk('confirmation', 'Confirmation'), message, details, confirmLabel = tk('confirm', 'Confirmer'), cancelLabel = tk('cancel', 'Annuler'), tone = 'danger', busy = false, onConfirm, onClose }) => (
-  <Modal
-    open={open}
-    title={title}
-    tone={tone}
-    onClose={busy ? undefined : onClose}
-    footer={(
-      <>
-        <Button variant="secondary" onClick={onClose} disabled={busy}>{cancelLabel}</Button>
-        <Button variant={tone === 'danger' ? 'danger' : tone === 'success' ? 'success' : 'primary'} onClick={onConfirm} disabled={busy}>
-          {confirmLabel}
-        </Button>
-      </>
-    )}
-  >
-    {message && <p>{message}</p>}
-    {details && <div style={{ marginTop: 12, padding: 12, background: '#f8fafc', borderRadius: 8 }}>{details}</div>}
-  </Modal>
-);
+const ICONES_TON = { danger: AlertTriangle, warning: AlertTriangle, success: CheckCircle2, default: HelpCircle };
+
+export const ConfirmDialog = ({ open = true, title = tk('confirmation', 'Confirmation'), message, details, confirmLabel = tk('confirm', 'Confirmer'), cancelLabel = tk('cancel', 'Annuler'), tone = 'danger', busy = false, onConfirm, onClose }) => {
+  const Icone = ICONES_TON[tone] || HelpCircle;
+  return (
+    <Modal
+      open={open}
+      title={title}
+      tone={tone}
+      icon={<Icone size={22} />}
+      className="kit-dialogue"
+      onClose={busy ? undefined : onClose}
+      footer={(
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>{cancelLabel}</Button>
+          <Button variant={tone === 'danger' ? 'danger' : tone === 'success' ? 'success' : 'primary'} onClick={onConfirm} disabled={busy} autoFocus>
+            {confirmLabel}
+          </Button>
+        </>
+      )}
+    >
+      <div className="kit-dialogue__body" data-modal="true">
+        {message && <p className="kit-dialogue__text">{message}</p>}
+        {details && <div className="kit-dialogue__details">{details}</div>}
+      </div>
+    </Modal>
+  );
+};
 
 export const MotifDialog = ({ open = true, title, summary, label = tk('reason', 'Motif'), value, onChange, confirmLabel = tk('confirm', 'Confirmer'), busyLabel = tk('saving', 'Enregistrement…'), tone = 'danger', busy = false, error, onConfirm, onClose }) => (
   <Modal
